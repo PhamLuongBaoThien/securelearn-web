@@ -1,8 +1,13 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+// ========================
+// Navbar: Thanh điều hướng chính
+// Hiển thị user menu + chức năng đăng xuất khi đã đăng nhập.
+// ========================
+import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../app/hooks';
 import { toggleTheme } from '../../features/dashboard/uiSlice';
-import { ShoppingCart, Search, Menu, Sun, Moon, X, ChevronRight } from 'lucide-react';
+import { useLogout } from '@/hooks/useAuth';
+import { ShoppingCart, Search, Menu, Sun, Moon, X, ChevronRight, LogOut, User, BookOpen, Settings } from 'lucide-react';
 import { buttonVariants, Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -13,12 +18,15 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import { toast } from 'sonner';
 
 export const Navbar = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
   const theme = useAppSelector((state) => state.ui.theme);
   const cartItems = useAppSelector((state) => state.cart.cartItems);
-  const user = useAppSelector((state) => state.auth.user);
+  const { user, isAuthenticated, isInitializing } = useAppSelector((state) => state.auth);
 
   // Giải quyết trạng thái 'system' thành 'dark' hoặc 'light' dựa trên cài đặt của OS
   const currentTheme = theme === 'system' 
@@ -27,6 +35,38 @@ export const Navbar = () => {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Đóng user menu khi click bên ngoài
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const logoutMutation = useLogout();
+
+  const handleLogout = () => {
+    setIsUserMenuOpen(false);
+    setIsMobileMenuOpen(false);
+    logoutMutation.mutate(undefined, {
+      onSuccess: (data) => {
+        toast.success(data?.message || 'Đã đăng xuất thành công.');
+        navigate('/auth/login');
+      },
+    });
+  };
+
+  /** Lấy chữ cái đầu tên user để hiển thị avatar */
+  const getInitial = () => {
+    if (!user) return '?';
+    return user.fullName?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || '?';
+  };
 
   return (
     <>
@@ -48,28 +88,21 @@ export const Navbar = () => {
           </Link>
 
           {/* Giao diện Danh mục trên Desktop */}
-          {/* 1. NavigationMenu là component ngoài cùng, khởi tạo "context" giúp các mục bên trong biết khi nào nên đóng/mở */}
           <NavigationMenu className="hidden md:flex">
-            {/* 2. NavigationMenuList đóng vai trò như thẻ <ul> chứa các danh mục */}
             <NavigationMenuList>
-              {/* 3. NavigationMenuItem đóng vai trò là thẻ <li> định nghĩa một khối của Navigation */}
               <NavigationMenuItem>
-                {/* 4. Trigger là vùng mà thư viện sẽ theo dõi. Khi bạn rê chuột vào đây, nó lập tức kích hoạt logic tự mở menu thả xuống và xoay mũi tên */}
                 <NavigationMenuTrigger className="bg-transparent hover:bg-transparent focus:bg-transparent px-3 text-sm font-medium hover:text-primary transition-colors">
                   Khám phá
                 </NavigationMenuTrigger>
-                {/* 5. Content là nội dung phần thả xuống. Thư viện sẽ tính toán độ trễ (delay) hợp lý, để khi trượt chuột qua lại nó không bị ẩn ngay gây chớp */}
                 <NavigationMenuContent>
                   <ul className="flex flex-col w-64 p-2 relative">
                     <li className="relative group/category">
-                      {/* 6. asChild là tính năng cốt lõi của Radix. Vì react-router dùng thẻ <Link>, asChild giúp gộp chung sự kiện của NavigationMenuLink thẳng vào thẻ <Link> bên dưới để không tạo sinh ra thẻ <a> dư thừa gây rối CSS */}
                       <NavigationMenuLink asChild>
                         <Link to="/category/development" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
                           Phát triển phần mềm
                           <ChevronRight className="h-4 w-4 opacity-70 transition-transform group-hover/category:translate-x-1" />
                         </Link>
                       </NavigationMenuLink>
-                      {/* Dropdown con cấp 2 xuất hiện khi bên trên được hover */}
                       <div className="absolute left-full top-0 hidden group-hover/category:block animate-in fade-in slide-in-from-left-2 z-50 pl-1">
                         <ul className="flex flex-col w-64 p-2 bg-popover text-popover-foreground border border-border shadow-md rounded-md">
                           <li>
@@ -105,7 +138,6 @@ export const Navbar = () => {
                           <ChevronRight className="h-4 w-4 opacity-70 transition-transform group-hover/category:translate-x-1" />
                         </Link>
                       </NavigationMenuLink>
-                      {/* Dropdown con cấp 2 cho khối Thiết kế */}
                       <div className="absolute left-full top-0 hidden group-hover/category:block animate-in fade-in slide-in-from-left-2 z-50 pl-1">
                         <ul className="flex flex-col w-64 p-2 bg-popover text-popover-foreground border border-border shadow-md rounded-md">
                           <li>
@@ -148,6 +180,11 @@ export const Navbar = () => {
             <Link to="/teach" className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
               Giảng dạy trên SecureLearn
             </Link>
+            {!isInitializing && isAuthenticated && user && (
+              <Link to="/student/dashboard" className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
+                Học tập
+              </Link>
+            )}
           </div>
 
           {/* Actions */}
@@ -169,21 +206,102 @@ export const Navbar = () => {
               )}
             </Link>
 
-            {user ? (
-              <div className="hidden md:flex items-center gap-3 ml-2 cursor-pointer group">
-                <div className="h-9 w-9 rounded-full bg-foreground text-background flex items-center justify-center font-bold text-sm">
-                  {user.name.charAt(0)}
-                </div>
+            {!isInitializing && (
+              isAuthenticated && user ? (
+              /* ===== User đã đăng nhập: Avatar + Dropdown menu ===== */
+              <div className="hidden md:flex items-center gap-3 ml-2 relative" ref={userMenuRef}>
+                <button 
+                  className="flex items-center gap-2 cursor-pointer group"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                >
+                  {user.profile?.avatarUrl ? (
+                    <img 
+                      src={user.profile.avatarUrl} 
+                      alt={user.fullName}
+                      className="h-9 w-9 rounded-full object-cover border-2 border-transparent group-hover:border-primary transition-colors"
+                    />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm border-2 border-transparent group-hover:border-primary/50 transition-colors">
+                      {getInitial()}
+                    </div>
+                  )}
+                </button>
+
+                {/* User Dropdown Menu */}
+                {isUserMenuOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-72 bg-popover text-popover-foreground border border-border shadow-lg rounded-lg overflow-hidden animate-in fade-in slide-in-from-top-2 z-50">
+                    {/* Header */}
+                    <div className="p-4 border-b border-border bg-secondary/30">
+                      <div className="flex items-center gap-3">
+                        {user.profile?.avatarUrl ? (
+                          <img 
+                            src={user.profile.avatarUrl} 
+                            alt={user.fullName}
+                            className="h-12 w-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">
+                            {getInitial()}
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-sm truncate">{user.fullName}</span>
+                          <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="py-2">
+                      <Link 
+                        to="/student/dashboard" 
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <BookOpen className="h-4 w-4 text-muted-foreground" />
+                        Khóa học của tôi
+                      </Link>
+                      <Link 
+                        to="/profile" 
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        Hồ sơ cá nhân
+                      </Link>
+                      <Link 
+                        to="/settings" 
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <Settings className="h-4 w-4 text-muted-foreground" />
+                        Cài đặt
+                      </Link>
+                    </div>
+
+                    {/* Logout */}
+                    <div className="border-t border-border py-2">
+                      <button 
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-destructive/10 text-destructive transition-colors w-full text-left"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Đăng xuất
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
                <div className="hidden md:flex items-center gap-2 ml-1">
-                  <Link to="/auth/login" className={buttonVariants({ variant: 'udemy_outline', className: "px-5 py-2.5 rounded-none font-bold" })}>
+                  <Link to="/auth/login" state={{ from: location }} className={buttonVariants({ variant: 'udemy_outline', className: "px-5 py-2.5 rounded-none font-bold" })}>
                     Đăng nhập
                   </Link>
-                  <Link to="/auth/signup" className={buttonVariants({ variant: 'udemy_dark', className: "px-5 py-2.5 rounded-none font-bold" })}>
+                  <Link to="/auth/signup" state={{ from: location }} className={buttonVariants({ variant: 'udemy_dark', className: "px-5 py-2.5 rounded-none font-bold" })}>
                     Đăng ký
                   </Link>
                </div>
+              )
             )}
 
             <Button 
@@ -232,25 +350,49 @@ export const Navbar = () => {
         </div>
         
         <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-1">
-          {user ? (
+          {!isInitializing && (
+            isAuthenticated && user ? (
             <div className="px-4 pb-4 mb-2 border-b border-border/50 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-foreground text-background flex items-center justify-center font-bold text-base">
-                {user.name.charAt(0)}
-              </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-foreground">Chào, {user.name}</span>
-                <span className="text-xs text-muted-foreground">Chào mừng trở lại</span>
+              {user.profile?.avatarUrl ? (
+                <img 
+                  src={user.profile.avatarUrl} 
+                  alt={user.fullName}
+                  className="h-10 w-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-base">
+                  {getInitial()}
+                </div>
+              )}
+              <div className="flex flex-col min-w-0">
+                <span className="font-bold text-foreground truncate">{user.fullName}</span>
+                <span className="text-xs text-muted-foreground truncate">{user.email}</span>
               </div>
             </div>
           ) : (
             <div className="px-4 pb-4 mb-2 flex flex-col gap-2 border-b border-border/50">
-              <Link to="/auth/login" onClick={() => setIsMobileMenuOpen(false)} className="text-primary hover:underline font-bold py-2">
+              <Link to="/auth/login" state={{ from: location }} onClick={() => setIsMobileMenuOpen(false)} className="text-primary hover:underline font-bold py-2">
                 Đăng nhập
               </Link>
-              <Link to="/auth/signup" onClick={() => setIsMobileMenuOpen(false)} className="text-primary hover:underline font-bold py-2">
+              <Link to="/auth/signup" state={{ from: location }} onClick={() => setIsMobileMenuOpen(false)} className="text-primary hover:underline font-bold py-2">
                 Đăng ký
               </Link>
             </div>
+            )
+          )}
+
+          {isAuthenticated && (
+            <>
+              <div className="px-4 py-2 text-sm font-bold text-muted-foreground">Tài khoản</div>
+              <Link to="/student/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 hover:bg-secondary transition-colors flex items-center gap-3">
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
+                Khóa học của tôi
+              </Link>
+              <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 hover:bg-secondary transition-colors flex items-center gap-3">
+                <User className="h-4 w-4 text-muted-foreground" />
+                Hồ sơ cá nhân
+              </Link>
+            </>
           )}
 
           <div className="px-4 py-2 mt-2 text-sm font-bold text-muted-foreground">Học tập</div>
@@ -266,6 +408,18 @@ export const Navbar = () => {
             {currentTheme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
           </button>
 
+          {/* Nút đăng xuất ở mobile drawer */}
+          {isAuthenticated && (
+            <div className="px-4 mt-2 border-t border-border/50 pt-4">
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-3 py-3 text-sm text-destructive hover:bg-destructive/10 transition-colors w-full px-2 rounded-md"
+              >
+                <LogOut className="h-4 w-4" />
+                Đăng xuất
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>

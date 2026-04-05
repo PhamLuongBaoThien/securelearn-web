@@ -1,44 +1,45 @@
+// ========================
+// Redux Slice: Auth — Thin Client State Only
+// Chỉ giữ sync reducers. Mọi API call giờ do React Query hooks xử lý.
+// ========================
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import type { AuthState, IUser } from '@/types/auth.types';
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'student' | 'teacher' | 'admin';
-  avatar?: string;
-}
-
-interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  loading: boolean;
-}
-
+// ===== Initial State =====
 const initialState: AuthState = {
   user: null,
+  accessToken: null,
   isAuthenticated: false,
-  loading: false,
+  isInitializing: true, // để khi F5 header không bị giật
 };
 
+// ===== Slice =====
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    login: (state) => {
-      state.loading = true;
+    /** Set initialized = false khi không có auth state (lỗi refresh token)  */
+    setInitialized: (state) => {
+      state.isInitializing = false;
     },
-    setUser: (state, action: PayloadAction<User>) => {
-      state.user = action.payload;
+
+    /** Set user + token khi React Query mutation thành công (login, OAuth, session recovery) */
+    setUser: (state, action: PayloadAction<{ user: IUser; accessToken: string }>) => {
+      state.user = action.payload.user;
+      state.accessToken = action.payload.accessToken;
       state.isAuthenticated = true;
-      state.loading = false;
+      state.isInitializing = false;
     },
-    logout: (state) => {
+
+    /** Xóa auth state khi logout hoặc session expired */
+    clearUser: (state) => {
       state.user = null;
+      state.accessToken = null;
       state.isAuthenticated = false;
-      state.loading = false;
+      state.isInitializing = false;
     },
   },
 });
 
-export const { login, setUser, logout } = authSlice.actions;
+export const { setUser, clearUser, setInitialized } = authSlice.actions;
 export default authSlice.reducer;

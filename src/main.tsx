@@ -1,3 +1,7 @@
+// ========================
+// Entry Point: Khởi tạo ứng dụng React
+// Bao gồm: Redux Provider, Theme, React Query, Auth, Toast, Router.
+// ========================
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
@@ -6,17 +10,49 @@ import { store } from './app/store'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppRouter } from './routes'
 import { ThemeProvider } from './components/providers/ThemeProvider'
+import { AuthInitializer } from './components/auth/AuthInitializer'
+import { Toaster } from 'sonner'
 
-const queryClient = new QueryClient()
+console.log('[SecureLearn] main.tsx loaded')
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <AppRouter />
-        </QueryClientProvider>
-      </ThemeProvider>
-    </Provider>
-  </React.StrictMode>,
-)
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,      // 5 phút cache
+      retry: 1,                        // Retry 1 lần khi lỗi
+      refetchOnWindowFocus: false,     // Tránh refetch không cần thiết
+    },
+  },
+})
+
+try {
+  console.log('[SecureLearn] Mounting React app...')
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <Provider store={store}>
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthInitializer>
+              <AppRouter />
+            </AuthInitializer>
+            {/* Toast container — tự động hiển thị ở góc màn hình */}
+            <Toaster 
+              position="top-right"
+              richColors
+              closeButton
+              duration={4000}
+              toastOptions={{
+                style: {
+                  fontFamily: 'inherit',
+                },
+              }}
+            />
+          </QueryClientProvider>
+        </ThemeProvider>
+      </Provider>
+    </React.StrictMode>,
+  )
+  console.log('[SecureLearn] React app mounted successfully')
+} catch (error) {
+  console.error('[SecureLearn] FATAL ERROR mounting app:', error)
+}

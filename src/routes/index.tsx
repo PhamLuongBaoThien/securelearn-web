@@ -1,3 +1,7 @@
+// ========================
+// Router Configuration: Định nghĩa toàn bộ routes cho ứng dụng
+// Bao gồm: Public, Auth, Protected (Student), và OAuth callback.
+// ========================
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import { Home } from '../pages/public/Home';
 
@@ -16,6 +20,17 @@ import { Checkout } from '../pages/public/Checkout';
 import { Cart } from '../pages/public/Cart';
 import { Teach } from '../pages/public/Teach';
 import { ScrollToTop } from '../components/layout/ScrollToTop';
+import { NotFound } from '../pages/public/NotFound';
+
+// Auth Components
+import { OAuthCallback } from '../pages/auth/OAuthCallback';
+import { ProtectedRoute } from '../components/auth/ProtectedRoute';
+
+// Admin Components
+import { AdminLogin } from '../pages/admin/auth/AdminLogin';
+import { AdminLayout } from '../components/layout/AdminLayout';
+import { AdminProtectedRoute } from '../components/auth/AdminProtectedRoute';
+import { Dashboard as AdminDashboard } from '../pages/admin/Dashboard';
 
 // Tạo một RootLayout chung bọc bên ngoài toàn bộ các route
 // Nhờ đó, ScrollToTop luôn tồn tại trong App và hoạt động mỗi lần chuyển Route
@@ -53,15 +68,49 @@ const router = createBrowserRouter([
           { path: 'forgot-password', element: <ForgotPassword /> },
         ]
       },
+      // OAuth Callback — Route riêng, không dùng layout
+      {
+        path: '/oauth-callback',
+        element: <OAuthCallback />,
+      },
+      // ===== Protected Routes: Yêu cầu đăng nhập =====
       {
         path: '/student/dashboard',
-        element: <StudentDashboard />,
+        element: (
+          <ProtectedRoute>
+            <StudentDashboard />
+          </ProtectedRoute>
+        ),
       },
       {
         path: '/student/courses/:courseId/learn',
-        element: <LearningInterface />,
+        element: (
+          <ProtectedRoute>
+            <LearningInterface />
+          </ProtectedRoute>
+        ),
+      },
+      // ===== Admin Routes =====
+      {
+        path: '/admin/login',
+        element: <AdminLogin />,
+      },
+      {
+        path: '/admin',
+        element: (
+          <AdminProtectedRoute>
+            <AdminLayout />
+          </AdminProtectedRoute>
+        ),
+        children: [
+          { path: 'dashboard', element: <AdminDashboard /> },
+          // Thêm các routes quản lý ở đây
+        ],
+      },
+      {
+        path: '*',
+        element: <NotFound />,
       }
-      // We will map more public, student, teacher, admin routes here
     ]
   }
 ]);
