@@ -7,8 +7,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppDispatch } from '@/app/hooks';
 import { setUser, clearUser } from '@/features/auth/authSlice';
 import { setAccessToken } from '@/services/apiClient';
-import { loginUser, registerUser, logoutUser, getMe, refreshToken } from '@/services/authApi';
-import type { LoginPayload, RegisterPayload } from '@/types/auth.types';
+import {
+  loginUser, registerUser, logoutUser, getMe, refreshToken, 
+  updateProfile, deleteAccount, changePassword,
+  forgotPasswordRequest, resetPasswordRequest, verifyOTPRequest, // Add these imports
+} from '@/services/authApi';
+import type { LoginPayload, RegisterPayload, ForgotPasswordPayload, VerifyOTPPayload, ResetPasswordPayload } from '@/types/auth.types';
 
 // ===== Query Keys =====
 export const authKeys = {
@@ -111,5 +115,103 @@ export function useInitializeAuth() {
     retry: false,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
+  });
+}
+
+// ===== useUpdateProfile =====
+export function useUpdateProfile() {
+  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      const response = await updateProfile(formData);
+      if (response.status === 'ERR') {
+        throw new Error(response.message);
+      }
+      return response.data!;
+    },
+    onSuccess: (updatedUser) => {
+      queryClient.setQueryData(authKeys.profile, updatedUser);
+      // Sync Redux state để UI phản ánh thay đổi ngay
+      const currentSession = queryClient.getQueryData(authKeys.session) as any;
+      if (currentSession?.accessToken) {
+        dispatch(setUser({ user: updatedUser, accessToken: currentSession.accessToken }));
+      }
+    },
+  });
+}
+
+// ===== useDeleteAccount =====
+export function useDeleteAccount() {
+  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await deleteAccount();
+      if (response.status === 'ERR') {
+        throw new Error(response.message);
+      }
+      return response;
+    },
+    onSuccess: () => {
+      setAccessToken(null);
+      dispatch(clearUser());
+      queryClient.removeQueries({ queryKey: authKeys.session });
+      queryClient.removeQueries({ queryKey: authKeys.profile });
+    },
+  });
+}
+
+// ===== useChangePassword =====
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async (payload: { oldPassword?: string; newPassword?: string }) => {
+      const response = await changePassword(payload);
+      if (response.status === 'ERR') {
+        throw new Error(response.message);
+      }
+      return response;
+    },
+  });
+}
+
+// ===== useForgotPassword =====
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: async (payload: ForgotPasswordPayload) => {
+      const response = await forgotPasswordRequest(payload);
+      if (response.status === 'ERR') {
+        throw new Error(response.message);
+      }
+      return response;
+    },
+  });
+}
+
+// ===== useVerifyOTP =====
+export function useVerifyOTP() {
+  return useMutation({
+    mutationFn: async (payload: VerifyOTPPayload) => {
+      const response = await verifyOTPRequest(payload);
+      if (response.status === 'ERR') {
+        throw new Error(response.message);
+      }
+      return response;
+    },
+  });
+}
+
+// ===== useResetPassword =====
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: async (payload: ResetPasswordPayload) => {
+      const response = await resetPasswordRequest(payload);
+      if (response.status === 'ERR') {
+        throw new Error(response.message);
+      }
+      return response;
+    },
   });
 }

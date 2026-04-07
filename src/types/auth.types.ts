@@ -31,6 +31,7 @@ export interface IUser {
   role: Role;
   isVerified: boolean;
   subscriptionStatus: SubscriptionStatus;
+  phone?: string;
   profile?: IUserProfile;
   createdAt: string;
   updatedAt: string;
@@ -49,6 +50,24 @@ export interface RegisterPayload {
 export interface LoginPayload {
   email: string;
   password: string;
+}
+
+/** Body gửi lên khi yêu cầu reset pasword — POST /api/auth/forgot-password */
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+/** Body gửi lên khi gửi xác thực OTP (trung gian) — POST /api/auth/verify-reset-otp */
+export interface VerifyOTPPayload {
+  email: string;
+  otp: string;
+}
+
+/** Body gửi lên khi đổi pass — POST /api/auth/reset-password */
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  newPassword: string;
 }
 
 // ===== API Response Types =====

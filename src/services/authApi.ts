@@ -11,6 +11,9 @@ import type {
   RegisterResponseData,
   RefreshTokenResponse,
   IUser,
+  ForgotPasswordPayload,
+  VerifyOTPPayload,
+  ResetPasswordPayload,
 } from '@/types/auth.types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
@@ -76,3 +79,66 @@ export const refreshToken = async () => {
 export const googleLogin = () => {
   window.location.href = `${API_BASE_URL}/api/auth/google`;
 };
+
+/**
+ * Cập nhật profile (Hỗ trợ upload ảnh với FormData).
+ * PUT /api/auth/profile
+ */
+export const updateProfile = async (formData: FormData) => {
+  const { data } = await apiClient.put<ApiResponse<IUser>>(
+    '/api/auth/profile',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return data;
+};
+
+/**
+ * Xóa tài khoản
+ * DELETE /api/auth/account
+ */
+export const deleteAccount = async () => {
+  const { data } = await apiClient.delete<ApiResponse>('/api/auth/account');
+  return data;
+};
+
+/**
+ * Đổi mật khẩu
+ * PUT /api/auth/password
+ */
+export const changePassword = async (payload: { oldPassword?: string; newPassword?: string }) => {
+  const { data } = await apiClient.put<ApiResponse>('/api/auth/password', payload);
+  return data;
+};
+
+/**
+ * Quên mật khẩu - Gửi OTP
+ * POST /api/auth/forgot-password
+ */
+export const forgotPasswordRequest = async (payload: ForgotPasswordPayload) => {
+  const { data } = await apiClient.post<ApiResponse>('/api/auth/forgot-password', payload);
+  return data;
+};
+
+/**
+ * Khôi phục mật khẩu (Gửi OTP và mật khẩu mới)
+ * POST /api/auth/reset-password
+ */
+export const resetPasswordRequest = async (payload: ResetPasswordPayload) => {
+  const { data } = await apiClient.post<ApiResponse>('/api/auth/reset-password', payload);
+  return data;
+};
+
+/**
+ * Xác thực mã OTP
+ * POST /api/auth/verify-reset-otp
+ */
+export const verifyOTPRequest = async (payload: VerifyOTPPayload) => {
+  const { data } = await apiClient.post<ApiResponse>('/api/auth/verify-reset-otp', payload);
+  return data;
+};
+

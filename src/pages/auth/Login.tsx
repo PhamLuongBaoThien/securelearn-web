@@ -78,7 +78,7 @@ export function Login() {
   }, [loginMutation.error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // để chặn hành vi load lại trang khi submit form
 
     if (!validateForm()) return;
 

@@ -7,6 +7,7 @@ import { Home } from '../pages/public/Home';
 
 import { StudentDashboard } from '../pages/dashboard/StudentDashboard';
 import { LearningInterface } from '../pages/learning/LearningInterface';
+import { Profile } from '../pages/user/Profile';
 
 // Public & Auth Imports
 import { PublicLayout } from '../components/layout/PublicLayout';
@@ -57,6 +58,14 @@ const router = createBrowserRouter([
           { path: 'checkout', element: <Checkout /> },
           { path: 'cart', element: <Cart /> },
           { path: 'teach', element: <Teach /> },
+          {
+            path: 'profile',
+            element: (
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            ),
+          },
         ]
       },
       {

@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppRouter } from './routes'
 import { ThemeProvider } from './components/providers/ThemeProvider'
 import { AuthInitializer } from './components/auth/AuthInitializer'
-import { Toaster } from 'sonner'
+import { Toaster } from '@/components/ui/sonner'
 
 console.log('[SecureLearn] main.tsx loaded')
 
@@ -35,19 +35,10 @@ try {
             <AuthInitializer>
               <AppRouter />
             </AuthInitializer>
-            {/* Toast container — tự động hiển thị ở góc màn hình */}
-            <Toaster 
-              position="top-right"
-              richColors
-              closeButton
-              duration={4000}
-              toastOptions={{
-                style: {
-                  fontFamily: 'inherit',
-                },
-              }}
-            />
+            {/* Toast container — tích hợp shadcn */}
+            <Toaster position="top-center" closeButton duration={4000} richColors />
           </QueryClientProvider>
+
         </ThemeProvider>
       </Provider>
     </React.StrictMode>,
