@@ -4,7 +4,9 @@ import { Camera, Save, Trash2, User, Mail, FileText, Briefcase, Loader2, AlertCi
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAppSelector } from '@/app/hooks';
-import { useUpdateProfile, useDeleteAccount, useChangePassword } from '@/hooks/useAuth';
+import { useUpdateProfile, useDeleteAccount, useChangePassword, authKeys } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 type ProfileFormData = {
   fullName: string;
@@ -26,6 +28,7 @@ export function Profile() {
   const { mutateAsync: updateProfile, isPending: isUpdating } = useUpdateProfile();
   const { mutateAsync: deleteAccount, isPending: isDeleting } = useDeleteAccount();
   const { mutateAsync: changePassword, isPending: isChangingPassword } = useChangePassword();
+  const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<TabType>('public');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -104,17 +107,20 @@ export function Profile() {
   };
 
   const onSubmitPassword = async (data: PasswordFormData) => {
+    if (!user) return;
     if (data.newPassword !== data.confirmPassword) {
        toast.error('Mật khẩu xác nhận không khớp.');
        return;
     }
     try {
       await changePassword({
-         oldPassword: data.oldPassword,
+         oldPassword: user.hasPassword ? data.oldPassword : undefined,
          newPassword: data.newPassword,
       });
-      toast.success('Mật khẩu đã được thay đổi thành công!');
+      toast.success(user.hasPassword ? 'Mật khẩu đã được thay đổi thành công!' : 'Tạo mật khẩu thành công! Bạn có thể đăng nhập bằng email/mật khẩu.');
       resetPasswordForm();
+      // Re-fetch profile để cập nhật hasPassword
+      queryClient.invalidateQueries({ queryKey: authKeys.session });
     } catch (error: any) {
       toast.error(error.message || 'Có lỗi xảy ra khi đổi mật khẩu.');
     }
@@ -164,13 +170,7 @@ export function Profile() {
         className="bg-card rounded-2xl shadow-sm border border-border p-8 mb-8"
       >
         <div className="flex flex-col md:flex-row items-center gap-6">
-          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-primary/20 shadow-md bg-muted flex items-center justify-center shrink-0">
-            {user.profile?.avatarUrl ? (
-              <img src={user.profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <User size={40} className="text-muted-foreground" />
-            )}
-          </div>
+          <UserAvatar user={user} className="w-24 h-24 text-4xl border-2 border-primary/20 shadow-md" />
           <div className="flex-1 text-center md:text-left">
             <h1 className="text-3xl font-bold tracking-tight text-foreground">{user.fullName}</h1>
             <p className="text-muted-foreground mt-1 text-lg flex items-center justify-center md:justify-start gap-2">
@@ -392,11 +392,10 @@ export function Profile() {
                     <div className="flex items-center gap-8">
                        <div className="relative group">
                         <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-background shadow-xl relative bg-muted flex items-center justify-center">
-                          {avatarPreview ? (
-                            <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-                          ) : (
-                            <User size={64} className="text-muted-foreground" />
-                          )}
+                          <UserAvatar 
+                            user={avatarPreview ? { ...user, profile: { ...user?.profile, avatarUrl: avatarPreview } } : user} 
+                            className="w-full h-full text-6xl"
+                          />
                           <div 
                             className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                             onClick={() => fileInputRef.current?.click()}
@@ -446,18 +445,35 @@ export function Profile() {
                 <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
                   <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
                     <Key className="text-primary" size={24} />
-                    Mật khẩu & Đăng nhập
+                    {user.hasPassword ? 'Mật khẩu & Đăng nhập' : 'Tạo mật khẩu'}
                   </h2>
-                  <form onSubmit={handlePasswordSubmit(onSubmitPassword)} className="space-y-6 max-w-md">
-                    <div className="space-y-2">
-                       <label className="text-sm font-medium">Mật khẩu hiện tại</label>
-                       <input 
-                         type="password"
-                         {...registerPassword('oldPassword', { required: 'Vui lòng nhập mật khẩu cũ' })}
-                         className={inputClassName}
-                       />
-                       {passwordErrors.oldPassword && <p className="text-sm text-destructive">{passwordErrors.oldPassword.message}</p>}
+
+                  {/* Thông báo cho tài khoản Google-only */}
+                  {!user.hasPassword && (
+                    <div className="flex items-start gap-3 p-4 mb-6 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                      <svg className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path></svg>
+                      <div>
+                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Tài khoản đăng nhập qua Google</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Bạn đang đăng nhập bằng Google. Tạo mật khẩu để có thể đăng nhập bằng cả email và mật khẩu.
+                        </p>
+                      </div>
                     </div>
+                  )}
+
+                  <form onSubmit={handlePasswordSubmit(onSubmitPassword)} className="space-y-6 max-w-md">
+                    {/* Mật khẩu hiện tại — chỉ hiển thị khi user ĐÃ CÓ password */}
+                    {user.hasPassword && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Mật khẩu hiện tại</label>
+                        <input 
+                          type="password"
+                          {...registerPassword('oldPassword', { required: 'Vui lòng nhập mật khẩu cũ' })}
+                          className={inputClassName}
+                        />
+                        {passwordErrors.oldPassword && <p className="text-sm text-destructive">{passwordErrors.oldPassword.message}</p>}
+                      </div>
+                    )}
                     <div className="space-y-2">
                        <label className="text-sm font-medium">Mật khẩu mới</label>
                        <input 
@@ -485,7 +501,7 @@ export function Profile() {
                       className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8"
                     >
                       {isChangingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Đổi Mật Khẩu
+                      {user.hasPassword ? 'Đổi Mật Khẩu' : 'Tạo Mật Khẩu'}
                     </button>
                   </form>
                 </div>

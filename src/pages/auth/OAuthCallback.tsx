@@ -39,8 +39,8 @@ export function OAuthCallback() {
         const profileRes = await getMe();
         if (profileRes.status === 'OK' && profileRes.data) {
           dispatch(setUser({ user: profileRes.data, accessToken: token }));
-          toast.success(profileRes.message || `Chào mừng ${profileRes.data.fullName}! 🎉`);
-          navigate('/student/dashboard', { replace: true });
+          toast.success(profileRes.message || `Chào mừng ${profileRes.data.fullName}!`);
+          navigate('/', { replace: true });
         } else {
           throw new Error(profileRes.message || 'Không lấy được thông tin profile.');
         }

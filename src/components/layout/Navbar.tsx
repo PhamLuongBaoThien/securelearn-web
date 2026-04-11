@@ -18,6 +18,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { toast } from 'sonner';
 
 export const Navbar = () => {
@@ -60,12 +61,6 @@ export const Navbar = () => {
         navigate('/auth/login');
       },
     });
-  };
-
-  /** Lấy chữ cái đầu tên user để hiển thị avatar */
-  const getInitial = () => {
-    if (!user) return '?';
-    return user.fullName?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || '?';
   };
 
   return (
@@ -214,17 +209,10 @@ export const Navbar = () => {
                   className="flex items-center gap-2 cursor-pointer group"
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 >
-                  {user.profile?.avatarUrl ? (
-                    <img 
-                      src={user.profile.avatarUrl} 
-                      alt={user.fullName}
-                      className="h-9 w-9 rounded-full object-cover border-2 border-transparent group-hover:border-primary transition-colors"
-                    />
-                  ) : (
-                    <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm border-2 border-transparent group-hover:border-primary/50 transition-colors">
-                      {getInitial()}
-                    </div>
-                  )}
+                  <UserAvatar 
+                    user={user} 
+                    className="h-9 w-9 text-sm border-2 border-transparent group-hover:border-primary transition-colors" 
+                  />
                 </button>
 
                 {/* User Dropdown Menu */}
@@ -233,17 +221,7 @@ export const Navbar = () => {
                     {/* Header */}
                     <div className="p-4 border-b border-border bg-secondary/30">
                       <div className="flex items-center gap-3">
-                        {user.profile?.avatarUrl ? (
-                          <img 
-                            src={user.profile.avatarUrl} 
-                            alt={user.fullName}
-                            className="h-12 w-12 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">
-                            {getInitial()}
-                          </div>
-                        )}
+                        <UserAvatar user={user} className="h-12 w-12 text-lg" />
                         <div className="flex flex-col min-w-0">
                           <span className="font-bold text-sm truncate">{user.fullName}</span>
                           <span className="text-xs text-muted-foreground truncate">{user.email}</span>
@@ -353,17 +331,7 @@ export const Navbar = () => {
           {!isInitializing && (
             isAuthenticated && user ? (
             <div className="px-4 pb-4 mb-2 border-b border-border/50 flex items-center gap-3">
-              {user.profile?.avatarUrl ? (
-                <img 
-                  src={user.profile.avatarUrl} 
-                  alt={user.fullName}
-                  className="h-10 w-10 rounded-full object-cover"
-                />
-              ) : (
-                <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-base">
-                  {getInitial()}
-                </div>
-              )}
+              <UserAvatar user={user} className="h-10 w-10 text-base" />
               <div className="flex flex-col min-w-0">
                 <span className="font-bold text-foreground truncate">{user.fullName}</span>
                 <span className="text-xs text-muted-foreground truncate">{user.email}</span>
