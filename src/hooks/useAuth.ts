@@ -10,7 +10,8 @@ import { setAccessToken } from '@/services/apiClient';
 import {
   loginUser, registerUser, logoutUser, getMe, refreshToken, 
   updateProfile, deleteAccount, changePassword,
-  forgotPasswordRequest, resetPasswordRequest, verifyOTPRequest, // Add these imports
+  forgotPasswordRequest, resetPasswordRequest, verifyOTPRequest,
+  switchToInstructor,
 } from '@/services/authApi';
 import type { LoginPayload, RegisterPayload, ForgotPasswordPayload, VerifyOTPPayload, ResetPasswordPayload } from '@/types/auth.types';
 
@@ -212,6 +213,30 @@ export function useResetPassword() {
         throw new Error(response.message);
       }
       return response;
+    },
+  });
+}
+
+// ===== useSwitchToInstructor =====
+export function useSwitchToInstructor() {
+  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await switchToInstructor();
+      if (response.status === 'ERR') {
+        throw new Error(response.message);
+      }
+      return response.data!; // The updated User profile
+    },
+    onSuccess: (updatedUser) => {
+      queryClient.setQueryData(authKeys.profile, updatedUser);
+      // Sync Redux state
+      const currentSession = queryClient.getQueryData(authKeys.session) as any;
+      if (currentSession?.accessToken) {
+        dispatch(setUser({ user: updatedUser, accessToken: currentSession.accessToken }));
+      }
     },
   });
 }

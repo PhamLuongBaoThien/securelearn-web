@@ -29,6 +29,19 @@ export const Navbar = () => {
   const cartItems = useAppSelector((state) => state.cart.cartItems);
   const { user, isAuthenticated, isInitializing } = useAppSelector((state) => state.auth);
 
+  // Logic chuyển đổi nút Giảng dạy / Giảng viên / Học viên
+  const isInstructor = user?.role === 'INSTRUCTOR';
+  const isInstructorView = location.pathname.startsWith('/instructor');
+
+  const getTeachButtonProps = () => {
+    if (!user) return { text: 'Giảng dạy trên SecureLearn', to: '/teach' };
+    if (isInstructorView) return { text: 'Học viên', to: '/student/dashboard' };
+    if (isInstructor) return { text: 'Giảng viên', to: '/instructor/dashboard' };
+    return { text: 'Giảng dạy trên SecureLearn', to: '/teach' };
+  };
+
+  const teachBtnProps = getTeachButtonProps();
+
   // Giải quyết trạng thái 'system' thành 'dark' hoặc 'light' dựa trên cài đặt của OS
   const currentTheme = theme === 'system' 
     ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') 
@@ -172,8 +185,8 @@ export const Navbar = () => {
 
           {/* Desktop Links */}
           <div className="hidden lg:flex items-center gap-1 shrink-0">
-            <Link to="/teach" className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
-              Giảng dạy trên SecureLearn
+            <Link to={teachBtnProps.to} className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
+              {teachBtnProps.text}
             </Link>
             {!isInitializing && isAuthenticated && user && (
               <Link to="/student/dashboard" className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
@@ -365,7 +378,7 @@ export const Navbar = () => {
 
           <div className="px-4 py-2 mt-2 text-sm font-bold text-muted-foreground">Học tập</div>
           <Link to="/courses" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 hover:bg-secondary transition-colors">Khám phá</Link>
-          <Link to="/teach" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 hover:bg-secondary transition-colors">Giảng dạy trên SecureLearn</Link>
+          <Link to={teachBtnProps.to} onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 hover:bg-secondary transition-colors">{teachBtnProps.text}</Link>
           
           <div className="px-4 mt-4 py-2 text-sm font-bold text-muted-foreground border-t border-border/50 pt-6">Cài đặt</div>
           <button 

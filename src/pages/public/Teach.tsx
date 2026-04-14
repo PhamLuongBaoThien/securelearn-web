@@ -1,9 +1,37 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useAppSelector } from '../../app/hooks';
 import { SlideUp } from '../../components/animations/SlideUp';
 import { FadeIn } from '../../components/animations/FadeIn';
 import { buttonVariants } from '../../components/ui/button';
+import { useSwitchToInstructor } from '../../hooks/useAuth';
+import { toast } from 'sonner';
 
 export const Teach = () => {
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const navigate = useNavigate();
+  const switchToInstructorMutation = useSwitchToInstructor();
+
+  const handleStartTeaching = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isAuthenticated && user) {
+      if (user.role !== 'INSTRUCTOR') {
+        switchToInstructorMutation.mutate(undefined, {
+          onSuccess: () => {
+             toast.success('Chào mừng bạn đến với trang Giảng viên!');
+             navigate('/instructor/dashboard');
+          },
+          onError: (error: any) => {
+             toast.error(error.message || 'Có lỗi xảy ra khi chuyển sang Giảng viên');
+          }
+        });
+      } else {
+        navigate('/instructor/dashboard');
+      }
+    } else {
+      navigate('/auth/signup');
+    }
+  };
+
   return (
     <div className="w-full">
       {/* Hero Section */}
@@ -18,9 +46,9 @@ export const Teach = () => {
             <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto mb-8 leading-snug">
               Trở thành giảng viên trên SecureLearn và tiếp cận hàng triệu học viên toàn thế giới. Nền tảng của chúng tôi cung cấp hệ thống bảo mật bảo vệ triệt để chất xám của bạn.
             </p>
-            <Link to="/auth/signup" className={buttonVariants({ variant: 'default', className: 'h-14 px-8 text-lg font-bold rounded-none bg-blue-600 hover:bg-blue-700 text-white border-0' })}>
-              Bắt đầu giảng dạy
-            </Link>
+            <button onClick={handleStartTeaching} disabled={switchToInstructorMutation.isPending} className={buttonVariants({ variant: 'default', className: 'h-14 px-8 text-lg font-bold rounded-none bg-blue-600 hover:bg-blue-700 text-white border-0' })}>
+              {switchToInstructorMutation.isPending ? 'Đang chuyển...' : 'Bắt đầu giảng dạy'}
+            </button>
           </SlideUp>
         </div>
       </section>
@@ -57,9 +85,9 @@ export const Teach = () => {
       <section className="bg-secondary/40 px-6 py-20 text-center border-t border-border">
         <h2 className="text-3xl font-bold font-serif mb-6">Bạn đã sẵn sàng bước lên bục giảng?</h2>
         <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">Tham gia cùng hàng ngàn giảng viên uy tín trên mạng lưới của SecureLearn để truyền đạt kiến thức ngay hôm nay.</p>
-        <Link to="/auth/signup" className={buttonVariants({ variant: 'udemy_dark', className: 'h-14 px-12 text-lg font-bold rounded-none' })}>
-          Bắt đầu ngay bây giờ
-        </Link>
+        <button onClick={handleStartTeaching} disabled={switchToInstructorMutation.isPending} className={buttonVariants({ variant: 'udemy_dark', className: 'h-14 px-12 text-lg font-bold rounded-none' })}>
+          {switchToInstructorMutation.isPending ? 'Đang xử lý...' : 'Bắt đầu ngay bây giờ'}
+        </button>
       </section>
     </div>
   );

@@ -142,3 +142,12 @@ export const verifyOTPRequest = async (payload: VerifyOTPPayload) => {
   return data;
 };
 
+/**
+ * Chuyển đổi vai trò sang giảng viên
+ * PUT /api/auth/profile/role
+ */
+export const switchToInstructor = async () => {
+  const { data } = await apiClient.put<ApiResponse<IUser>>('/api/auth/profile/role');
+  return data;
+};
+
