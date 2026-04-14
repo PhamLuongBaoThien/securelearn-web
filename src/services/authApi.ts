@@ -2,7 +2,7 @@
 // Auth API Service: Tập trung toàn bộ API calls liên quan Authentication
 // Sử dụng apiClient (Axios) đã có interceptor tự động refresh token.
 // ========================
-import apiClient from './apiClient';
+import apiClient, { getApiBaseUrl } from './apiClient';
 import type {
   LoginPayload,
   RegisterPayload,
@@ -16,7 +16,7 @@ import type {
   ResetPasswordPayload,
 } from '@/types/auth.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+
 
 /**
  * Đăng ký tài khoản mới.
@@ -77,7 +77,7 @@ export const refreshToken = async () => {
  * Không dùng Axios — chuyển hướng trực tiếp trên trình duyệt.
  */
 export const googleLogin = () => {
-  window.location.href = `${API_BASE_URL}/api/auth/google`;
+  window.location.href = `${getApiBaseUrl()}/api/auth/google`;
 };
 
 /**

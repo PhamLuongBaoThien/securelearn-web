@@ -5,8 +5,8 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { RefreshTokenResponse } from '@/types/auth.types';
 
-// ===== Base URL của Backend Identity Service =====
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+// ===== Base URL — Gọi qua Kong API Gateway =====
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 // ===== Tạo Axios Instance =====
 const apiClient = axios.create({
@@ -30,6 +30,9 @@ export const setAccessToken = (token: string | null) => {
 
 /** Lấy access token hiện tại */
 export const getAccessToken = () => accessToken;
+
+/** Lấy base URL của API Gateway */
+export const getApiBaseUrl = () => API_BASE_URL;
 
 // ===== Request Interceptor =====
 // Tự động gắn Authorization header vào mỗi request

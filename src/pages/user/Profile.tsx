@@ -7,7 +7,8 @@ import { useAppSelector } from '@/app/hooks';
 import { useUpdateProfile, useDeleteAccount, useChangePassword, authKeys } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { UserAvatar } from '@/components/ui/UserAvatar';
-
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Button } from '@/components/ui/button';
 type ProfileFormData = {
   fullName: string;
   phone: string;
@@ -127,13 +128,11 @@ export function Profile() {
   };
 
   const handleDeleteAccount = async () => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản này? Hành động này không thể hoàn tác.')) {
-      try {
-        await deleteAccount();
-        toast.success('Tài khoản đã được xóa.');
-      } catch (error: any) {
-        toast.error(error.message || 'Có lỗi xảy ra khi xóa tài khoản');
-      }
+    try {
+      await deleteAccount();
+      toast.success('Tài khoản đã được xóa.');
+    } catch (error: any) {
+      toast.error(error.message || 'Có lỗi xảy ra khi xóa tài khoản');
     }
   };
 
@@ -515,14 +514,24 @@ export function Profile() {
                   <p className="text-sm text-destructive/80 mb-6 max-w-xl leading-relaxed">
                     Khi bạn xóa tài khoản, mọi tiến trình học tập, thông tin thanh toán, và toàn bộ dữ liệu trên hệ thống sẽ bị xóa vĩnh viễn. Hành động này không thể được hoàn tác dưới bất kỳ hình thức nào.
                   </p>
-                  <button
-                    onClick={handleDeleteAccount}
-                    disabled={isDeleting}
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none border border-destructive bg-background hover:bg-destructive hover:text-destructive-foreground h-11 px-8 text-destructive"
-                  >
-                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                    Tiến hành Xóa Tài Khoản
-                  </button>
+                  <ConfirmDialog
+                    title="Bạn có chắc chắn muốn xóa tài khoản?"
+                    description="Hành động này không thể hoàn tác. Toàn bộ dữ liệu của bạn sẽ bị xóa vĩnh viễn khỏi hệ thống."
+                    confirmText="Xác nhận xóa"
+                    cancelText="Hủy bỏ"
+                    isDestructive={true}
+                    onConfirm={handleDeleteAccount}
+                    triggerButton={
+                      <Button
+                        disabled={isDeleting}
+                        variant="outline"
+                        className="h-11 px-8 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      >
+                        {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                        Tiến hành Xóa Tài Khoản
+                      </Button>
+                    }
+                  />
                 </div>
               </motion.div>
             )}
