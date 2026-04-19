@@ -78,245 +78,257 @@ export const Navbar = () => {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 w-full bg-background border-b border-border shadow-sm">
-        <div className="px-4 sm:px-6 flex h-[72px] items-center gap-3">
-          {/* Mobile Menu Icon */}
-          <button 
-            className="md:hidden p-2 hover:text-primary transition-colors"
-            onClick={() => setIsMobileMenuOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-
-          {/* Logo */}
-          <Link to="/" className="flex items-center shrink-0">
-            <span className="font-extrabold text-2xl tracking-tight text-foreground transition-opacity hover:opacity-80">
-              SecureLearn
-            </span>
-          </Link>
-
-          {/* Giao diện Danh mục trên Desktop */}
-          <NavigationMenu className="hidden md:flex">
-            <NavigationMenuList>
-              <NavigationMenuItem>
-                <NavigationMenuTrigger className="bg-transparent hover:bg-transparent focus:bg-transparent px-3 text-sm font-medium hover:text-primary transition-colors">
-                  Khám phá
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <ul className="flex flex-col w-64 p-2 relative">
-                    <li className="relative group/category">
-                      <NavigationMenuLink asChild>
-                        <Link to="/category/development" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
-                          Phát triển phần mềm
-                          <ChevronRight className="h-4 w-4 opacity-70 transition-transform group-hover/category:translate-x-1" />
-                        </Link>
-                      </NavigationMenuLink>
-                      <div className="absolute left-full top-0 hidden group-hover/category:block animate-in fade-in slide-in-from-left-2 z-50 pl-1">
-                        <ul className="flex flex-col w-64 p-2 bg-popover text-popover-foreground border border-border shadow-md rounded-md">
-                          <li>
-                            <Link to="/category/development/web" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Phát triển Web</Link>
-                          </li>
-                          <li>
-                            <Link to="/category/development/mobile" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Phát triển Mobile</Link>
-                          </li>
-                          <li>
-                            <Link to="/category/development/data-science" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Khoa học Dữ liệu</Link>
-                          </li>
-                        </ul>
-                      </div>
-                    </li>
-                    <li className="relative group/category">
-                      <NavigationMenuLink asChild>
-                        <Link to="/category/business" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
-                          Kinh doanh
-                        </Link>
-                      </NavigationMenuLink>
-                    </li>
-                    <li className="relative group/category">
-                      <NavigationMenuLink asChild>
-                        <Link to="/category/it-software" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
-                          CNTT & Phần mềm
-                        </Link>
-                      </NavigationMenuLink>
-                    </li>
-                    <li className="relative group/category">
-                      <NavigationMenuLink asChild>
-                        <Link to="/category/design" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
-                          Thiết kế
-                          <ChevronRight className="h-4 w-4 opacity-70 transition-transform group-hover/category:translate-x-1" />
-                        </Link>
-                      </NavigationMenuLink>
-                      <div className="absolute left-full top-0 hidden group-hover/category:block animate-in fade-in slide-in-from-left-2 z-50 pl-1">
-                        <ul className="flex flex-col w-64 p-2 bg-popover text-popover-foreground border border-border shadow-md rounded-md">
-                          <li>
-                            <Link to="/category/design/graphic" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Thiết kế Đồ họa</Link>
-                          </li>
-                          <li>
-                            <Link to="/category/design/ui-ux" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">UI/UX Design</Link>
-                          </li>
-                          <li>
-                            <Link to="/category/design/3d" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Thiết kế 3D</Link>
-                          </li>
-                        </ul>
-                      </div>
-                    </li>
-                    <li className="relative group/category">
-                      <NavigationMenuLink asChild>
-                        <Link to="/category/marketing" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
-                          Marketing
-                        </Link>
-                      </NavigationMenuLink>
-                    </li>
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-            </NavigationMenuList>
-          </NavigationMenu>
-
-          {/* Search Bar - Flexible width */}
-          <div className="hidden md:flex flex-1 max-w-4xl items-center relative group">
-            <Search className="absolute left-4 h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors z-10" />
-            <Input 
-              type="text" 
-              placeholder="Tìm kiếm khóa học..." 
-              className="w-full h-[48px] pl-12 pr-4 bg-secondary/60 border-transparent rounded-full"
-            />
-          </div>
-
-          {/* Desktop Links */}
-          <div className="hidden lg:flex items-center gap-1 shrink-0">
-            <Link to={teachBtnProps.to} className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
-              {teachBtnProps.text}
-            </Link>
-            {!isInitializing && isAuthenticated && user && (
-              <Link to="/student/dashboard" className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
-                Học tập
-              </Link>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3 shrink-0 ml-auto md:ml-0">
+      <nav className="sticky top-4 mx-auto z-50 w-[96%] max-w-7xl bg-background/80 backdrop-blur-md border border-border/50 shadow-lg rounded-full transition-all duration-300 mb-6">
+        <div className="px-4 sm:px-6 flex h-[64px] items-center justify-between relative">
+          
+          {/* LEFT: Khám phá và Tìm kiếm */}
+          <div className="flex items-center gap-3 flex-1 justify-start z-10">
             {/* Mobile Search Icon */}
             <button 
               className="md:hidden p-2 hover:bg-secondary rounded-full transition-colors"
               onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
             >
-              <Search className="h-6 w-6" />
+              <Search className="h-5 w-5" />
             </button>
 
-            <Link to="/cart" className="relative p-2 hover:bg-secondary rounded-full transition-colors cursor-pointer group shrink-0">
-              <ShoppingCart className="h-6 w-6 text-foreground group-hover:text-primary transition-colors" />
-              {cartItems.length > 0 && (
-                <span className="absolute top-0 right-0 h-4 w-4 rounded-full bg-primary text-[10px] font-bold text-primary-foreground flex items-center justify-center pointer-events-none">
-                  {cartItems.length}
-                </span>
-              )}
-            </Link>
-
-            {!isInitializing && (
-              isAuthenticated && user ? (
-              /* ===== User đã đăng nhập: Avatar + Dropdown menu ===== */
-              <div className="hidden md:flex items-center gap-3 ml-2 relative" ref={userMenuRef}>
-                <button 
-                  className="flex items-center gap-2 cursor-pointer group"
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                >
-                  <UserAvatar 
-                    user={user} 
-                    className="h-9 w-9 text-sm border-2 border-transparent group-hover:border-primary transition-colors" 
-                  />
-                </button>
-
-                {/* User Dropdown Menu */}
-                {isUserMenuOpen && (
-                  <div className="absolute top-full right-0 mt-2 w-72 bg-popover text-popover-foreground border border-border shadow-lg rounded-lg overflow-hidden animate-in fade-in slide-in-from-top-2 z-50">
-                    {/* Header */}
-                    <div className="p-4 border-b border-border bg-secondary/30">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar user={user} className="h-12 w-12 text-lg" />
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-sm truncate">{user.fullName}</span>
-                          <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+            {/* Giao diện Danh mục trên Desktop */}
+            <NavigationMenu className="hidden xl:flex">
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="bg-transparent hover:bg-transparent focus:bg-transparent px-3 text-sm font-medium hover:text-primary transition-colors">
+                    Khám phá
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="flex flex-col w-64 p-2 relative">
+                      <li className="relative group/category">
+                        <NavigationMenuLink asChild>
+                          <Link to="/category/development" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
+                            Phát triển phần mềm
+                            <ChevronRight className="h-4 w-4 opacity-70 transition-transform group-hover/category:translate-x-1" />
+                          </Link>
+                        </NavigationMenuLink>
+                        <div className="absolute left-full top-0 hidden group-hover/category:block animate-in fade-in slide-in-from-left-2 z-50 pl-1">
+                          <ul className="flex flex-col w-64 p-2 bg-popover text-popover-foreground border border-border shadow-md rounded-md">
+                            <li>
+                              <Link to="/category/development/web" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Phát triển Web</Link>
+                            </li>
+                            <li>
+                              <Link to="/category/development/mobile" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Phát triển Mobile</Link>
+                            </li>
+                            <li>
+                              <Link to="/category/development/data-science" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Khoa học Dữ liệu</Link>
+                            </li>
+                          </ul>
                         </div>
-                      </div>
-                    </div>
+                      </li>
+                      <li className="relative group/category">
+                        <NavigationMenuLink asChild>
+                          <Link to="/category/business" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
+                            Kinh doanh
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li className="relative group/category">
+                        <NavigationMenuLink asChild>
+                          <Link to="/category/it-software" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
+                            CNTT & Phần mềm
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                      <li className="relative group/category">
+                        <NavigationMenuLink asChild>
+                          <Link to="/category/design" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
+                            Thiết kế
+                            <ChevronRight className="h-4 w-4 opacity-70 transition-transform group-hover/category:translate-x-1" />
+                          </Link>
+                        </NavigationMenuLink>
+                        <div className="absolute left-full top-0 hidden group-hover/category:block animate-in fade-in slide-in-from-left-2 z-50 pl-1">
+                          <ul className="flex flex-col w-64 p-2 bg-popover text-popover-foreground border border-border shadow-md rounded-md">
+                            <li>
+                              <Link to="/category/design/graphic" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Thiết kế Đồ họa</Link>
+                            </li>
+                            <li>
+                              <Link to="/category/design/ui-ux" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">UI/UX Design</Link>
+                            </li>
+                            <li>
+                              <Link to="/category/design/3d" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Thiết kế 3D</Link>
+                            </li>
+                          </ul>
+                        </div>
+                      </li>
+                      <li className="relative group/category">
+                        <NavigationMenuLink asChild>
+                          <Link to="/category/marketing" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
+                            Marketing
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
 
-                    {/* Menu Items */}
-                    <div className="py-2">
-                      <Link 
-                        to="/student/dashboard" 
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <BookOpen className="h-4 w-4 text-muted-foreground" />
-                        Khóa học của tôi
-                      </Link>
-                      <Link 
-                        to="/profile" 
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        Hồ sơ cá nhân
-                      </Link>
-                      <Link 
-                        to="/settings" 
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <Settings className="h-4 w-4 text-muted-foreground" />
-                        Cài đặt
-                      </Link>
-                    </div>
+            {/* Search Bar */}
+            <div className="hidden md:flex w-full xl:max-w-[280px] items-center relative group">
+              <Search className="absolute left-4 h-4 w-4 text-muted-foreground group-focus-within:text-foreground transition-colors z-10" />
+              <Input 
+                type="text" 
+                placeholder="Tìm kiếm khóa học..." 
+                className="w-full h-[36px] pl-11 pr-4 bg-secondary/60 border-transparent rounded-full focus-visible:ring-1 focus-visible:ring-primary/30 transition-all text-sm"
+              />
+            </div>
+          </div>
 
-                    {/* Logout */}
-                    <div className="border-t border-border py-2">
-                      <button 
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-destructive/10 text-destructive transition-colors w-full text-left"
-                        onClick={handleLogout}
-                      >
-                        <LogOut className="h-4 w-4" />
-                        Đăng xuất
-                      </button>
-                    </div>
-                  </div>
+          {/* CENTER: Logo */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center shrink-0 pointer-events-none z-20">
+            <Link to="/" className="flex items-center pointer-events-auto">
+              <span className="font-bold text-xl tracking-tight text-foreground transition-opacity hover:opacity-70">
+                SecureLearn
+              </span>
+            </Link>
+          </div>
+
+          {/* RIGHT: Phần còn lại */}
+          <div className="flex items-center gap-2 sm:gap-4 flex-1 justify-end z-10">
+            
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              {/* Desktop Links */}
+              <div className="hidden lg:flex items-center gap-1 shrink-0">
+                <Link to={teachBtnProps.to} className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
+                  {teachBtnProps.text}
+                </Link>
+                {!isInitializing && isAuthenticated && user && (
+                  <Link to="/student/dashboard" className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
+                    Học tập
+                  </Link>
                 )}
               </div>
-            ) : (
-               <div className="hidden md:flex items-center gap-2 ml-1">
-                  <Link to="/auth/login" state={{ from: location }} className={buttonVariants({ variant: 'udemy_outline', className: "px-5 py-2.5 rounded-none font-bold" })}>
-                    Đăng nhập
-                  </Link>
-                  <Link to="/auth/signup" state={{ from: location }} className={buttonVariants({ variant: 'udemy_dark', className: "px-5 py-2.5 rounded-none font-bold" })}>
-                    Đăng ký
-                  </Link>
-               </div>
-              )
-            )}
 
-            <Button 
-              variant="udemy_outline"
-              onClick={() => dispatch(toggleTheme(currentTheme === 'dark' ? 'light' : 'dark'))} 
-              className="hidden md:flex ml-1 w-10 h-10 p-0 rounded-none"
-              title="Toggle theme"
-            >
-              {currentTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
+              {/* Actions */}
+              <div className="flex items-center gap-2 sm:gap-2 shrink-0">
+                
+                <Link to="/cart" className="relative p-2 hover:bg-secondary rounded-full transition-colors cursor-pointer group shrink-0">
+                  <ShoppingCart className="h-5 w-5 text-foreground group-hover:text-primary transition-colors" />
+                  {cartItems.length > 0 && (
+                    <span className="absolute top-0 right-0 h-[14px] w-[14px] rounded-full bg-primary text-[9px] font-bold text-primary-foreground flex items-center justify-center pointer-events-none">
+                      {cartItems.length}
+                    </span>
+                  )}
+                </Link>
 
+                {!isInitializing && (
+                  isAuthenticated && user ? (
+                  /* ===== User đã đăng nhập: Avatar + Dropdown menu ===== */
+                  <div className="hidden md:flex items-center gap-2 relative" ref={userMenuRef}>
+                    <button 
+                      className="flex items-center gap-2 cursor-pointer group rounded-full overflow-hidden"
+                      onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    >
+                      <UserAvatar 
+                        user={user} 
+                        className="h-8 w-8 text-sm border-2 border-transparent group-hover:border-primary/50 transition-colors" 
+                      />
+                    </button>
 
+                    {/* User Dropdown Menu */}
+                    {isUserMenuOpen && (
+                      <div className="absolute top-full right-0 mt-3 w-72 bg-popover text-popover-foreground border border-border shadow-lg rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 z-50">
+                        {/* Header */}
+                        <div className="p-4 border-b border-border bg-secondary/30">
+                          <div className="flex items-center gap-3">
+                            <UserAvatar user={user} className="h-10 w-10 text-base" />
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-sm truncate">{user.fullName}</span>
+                              <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Menu Items */}
+                        <div className="py-2">
+                          <Link 
+                            to="/student/dashboard" 
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <BookOpen className="h-4 w-4 text-muted-foreground" />
+                            Khóa học của tôi
+                          </Link>
+                          <Link 
+                            to="/profile" 
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            Hồ sơ cá nhân
+                          </Link>
+                          <Link 
+                            to="/settings" 
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Settings className="h-4 w-4 text-muted-foreground" />
+                            Cài đặt
+                          </Link>
+                        </div>
+
+                        {/* Logout */}
+                        <div className="border-t border-border py-2">
+                          <button 
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-destructive/10 text-destructive transition-colors w-full text-left"
+                            onClick={handleLogout}
+                          >
+                            <LogOut className="h-4 w-4" />
+                            Đăng xuất
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                   <div className="hidden md:flex items-center gap-2">
+                      <Link to="/auth/login" state={{ from: location }} className="text-sm font-semibold px-4 py-2 hover:bg-secondary rounded-full transition-colors">
+                        Đăng nhập
+                      </Link>
+                      <Link to="/auth/signup" state={{ from: location }} className="text-sm font-semibold px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-full transition-colors">
+                        Đăng ký
+                      </Link>
+                   </div>
+                  )
+                )}
+
+                <Button 
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => dispatch(toggleTheme(currentTheme === 'dark' ? 'light' : 'dark'))} 
+                  className="hidden md:flex h-9 w-9 rounded-full"
+                  title="Toggle theme"
+                >
+                  {currentTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </Button>
+
+                {/* Mobile Menu Icon */}
+                <button 
+                  className="md:hidden p-2 hover:text-primary transition-colors ml-1"
+                  onClick={() => setIsMobileMenuOpen(true)}
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         
         {/* Mobile Search Bar Dropdown */}
         {isMobileSearchOpen && (
-          <div className="md:hidden px-4 pb-4 pt-2 bg-background border-b border-border">
-            <div className="relative flex items-center">
-              <Search className="absolute left-3 h-5 w-5 text-muted-foreground z-10" />
+          <div className="absolute top-full left-0 right-0 mt-2 px-4 pb-2 md:hidden animate-in fade-in slide-in-from-top-2">
+            <div className="relative flex items-center bg-background rounded-full border border-border shadow-md">
+              <Search className="absolute left-4 h-4 w-4 text-muted-foreground z-10" />
               <Input 
                 type="text" 
-                placeholder="Tìm kiếm khóa học..." 
-                className="w-full h-12 pl-10 pr-4 bg-secondary/60 border-transparent rounded-full"
+                placeholder="Tìm kiếm nâng cao..." 
+                className="w-full h-12 pl-12 pr-4 bg-transparent border-transparent rounded-full focus-visible:ring-0 text-sm"
               />
             </div>
           </div>
