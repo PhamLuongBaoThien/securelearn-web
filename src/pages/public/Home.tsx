@@ -1,11 +1,46 @@
 import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
 import { FadeIn } from '../../components/animations/FadeIn';
 import { SlideUp } from '../../components/animations/SlideUp';
 import { StaggerContainer, StaggerItem } from '../../components/animations/Stagger';
 import { CourseCarousel } from '../../components/ui/CourseCarousel';
-import { Search } from 'lucide-react';
-import { Button, buttonVariants } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
+import { buttonVariants } from '../../components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+// ========================
+// Banner Slides Data
+// Sau này admin sẽ quản lý danh sách này từ backend (thêm/xóa/sửa hình, tiêu đề, link)
+// ========================
+const bannerSlides = [
+  {
+    id: '1',
+    image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000',
+    title: 'Học tập không giới hạn',
+    subtitle: 'Kỹ năng cho hiện tại và tương lai của bạn. Bắt đầu cùng chúng tôi.',
+    link: '/courses',
+  },
+  {
+    id: '2',
+    image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=2000',
+    title: 'Lập trình thực chiến',
+    subtitle: 'Hàng trăm khóa học từ cơ bản đến nâng cao, do chuyên gia hàng đầu giảng dạy.',
+    link: '/category/development',
+  },
+  {
+    id: '3',
+    image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2000',
+    title: 'An toàn thông tin',
+    subtitle: 'Nắm vững Cybersecurity với lộ trình bài bản và chứng chỉ quốc tế.',
+    link: '/category/it-software',
+  },
+  {
+    id: '4',
+    image: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&q=80&w=2000',
+    title: 'Công nghệ AI & Machine Learning',
+    subtitle: 'Khám phá trí tuệ nhân tạo và ứng dụng vào thực tế ngay hôm nay.',
+    link: '/category/development',
+  },
+];
 
 const mockCourses = [
   { id: '1', title: '100 Days of Code: The Complete Python Pro Bootcamp', instructor: 'Dr. Angela Yu', rating: 4.7, reviews: 295000, price: 349000, originalPrice: 1999000, thumbnail: 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=500&q=80', badge: 'Bestseller' },
@@ -15,35 +50,107 @@ const mockCourses = [
   { id: '5', title: 'Automate the Boring Stuff with Python', instructor: 'Al Sweigart', rating: 4.6, reviews: 108000, price: 299000, originalPrice: 1290000, thumbnail: 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=500&q=80' },
 ];
 
+const SLIDE_INTERVAL = 5000; // 5 giây mỗi slide
+
 export const Home = () => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const nextSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
+  }, []);
+
+  const prevSlide = useCallback(() => {
+    setCurrentSlide((prev) => (prev - 1 + bannerSlides.length) % bannerSlides.length);
+  }, []);
+
+  // Auto slide
+  useEffect(() => {
+    if (isPaused) return;
+    const timer = setInterval(nextSlide, SLIDE_INTERVAL);
+    return () => clearInterval(timer);
+  }, [isPaused, nextSlide]);
+
   return (
     <>
-      {/* Udemy Hero Section */}
-        <section className="relative px-0 md:px-6 mt-6 max-w-[1340px] mx-auto">
-          <div className="relative w-full aspect-[21/9] md:aspect-[3/1] bg-secondary/20 md:rounded overflow-hidden flex items-center">
-            {/* Background Image */}
-            <div className="absolute inset-0">
-               <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000" alt="Hero" className="w-full h-full object-cover dark:opacity-90" />
+      {/* Hero Banner Slider */}
+      <section
+        className="relative px-0 md:px-6 max-w-[1340px] mx-auto"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
+        <div className="relative w-full aspect-[21/9] md:aspect-[3/1] md:rounded-2xl overflow-hidden">
+          {/* Slides */}
+          {bannerSlides.map((slide, index) => (
+            <div
+              key={slide.id}
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+              }`}
+            >
+              <img
+                src={slide.image}
+                alt={slide.title}
+                className="w-full h-full object-cover"
+              />
+              {/* Overlay gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
             </div>
-            {/* Left Box */}
-            <FadeIn delay={0.2} direction="up" distance={40} className="w-full md:w-auto h-full md:h-auto flex items-center md:items-stretch">
-              <div className="relative z-10 bg-background p-6 lg:p-8 shadow-xl w-full md:w-[450px] lg:w-[500px] md:ml-12 lg:ml-16">
-                <h1 className="text-3xl md:text-5xl font-bold font-serif mb-4 text-foreground leading-tight tracking-tight">
-                  Học tập thấu hiểu bạn
+          ))}
+
+          {/* Text Content */}
+          <div className="absolute inset-0 z-20 flex items-end pb-10 md:pb-14 px-6 md:px-12 lg:px-16">
+            <FadeIn key={currentSlide} delay={0.1} direction="up" distance={30}>
+              <div className="max-w-xl">
+                <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-3 leading-tight drop-shadow-lg">
+                  {bannerSlides[currentSlide].title}
                 </h1>
-                <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
-                  Kỹ năng cho hiện tại (và tương lai của bạn). Bắt đầu cùng chúng tôi.
+                <p className="text-white/80 text-sm sm:text-base md:text-lg mb-5 drop-shadow-md">
+                  {bannerSlides[currentSlide].subtitle}
                 </p>
-                <div className="flex gap-0">
-                  <Input type="text" placeholder="Bạn muốn học gì?" className="flex-1 w-full h-[48px] rounded-none border-foreground border-r-0 bg-background focus-visible:ring-0" />
-                  <Button variant="udemy_dark" className="h-[48px] w-[48px] p-0 rounded-none">
-                    <Search className="h-5 w-5" />
-                  </Button>
-                </div>
+                <Link
+                  to={bannerSlides[currentSlide].link}
+                  className="inline-flex items-center px-6 py-2.5 bg-white text-black font-semibold text-sm rounded-full hover:bg-white/90 transition-colors shadow-lg"
+                >
+                  Khám phá ngay
+                </Link>
               </div>
             </FadeIn>
           </div>
-        </section>
+
+          {/* Navigation Arrows */}
+          <button
+            onClick={prevSlide}
+            className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 backdrop-blur-sm transition-colors"
+            aria-label="Slide trước"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            onClick={nextSlide}
+            className="absolute right-3 md:right-5 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 backdrop-blur-sm transition-colors"
+            aria-label="Slide tiếp"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+
+          {/* Dot Indicators */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+            {bannerSlides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  index === currentSlide
+                    ? 'w-6 bg-white'
+                    : 'w-2 bg-white/50 hover:bg-white/80'
+                }`}
+                aria-label={`Đi đến slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
 
         {/* Trusted By */}
         <section className="bg-secondary/20 py-16 px-6 mt-16 text-center">
@@ -52,8 +159,8 @@ export const Home = () => {
           </SlideUp>
           <StaggerContainer className="flex flex-wrap justify-center gap-12 sm:gap-16 items-center opacity-60">
             {/* Fake startup tech partners */}
-            <StaggerItem><span className="text-2xl font-bold font-serif">Viettel Cyber</span></StaggerItem>
-            <StaggerItem><span className="text-2xl font-bold font-sans tracking-tighter">CTU</span></StaggerItem>
+            <StaggerItem><span className="text-2xl font-bold font-serif">CTU</span></StaggerItem>
+            <StaggerItem><span className="text-2xl font-bold font-sans tracking-tighter">CTUM</span></StaggerItem>
             <StaggerItem><span className="text-2xl font-bold font-mono tracking-widest">VNG</span></StaggerItem>
             <StaggerItem><span className="text-2xl font-bold font-serif italic">MoMo</span></StaggerItem>
             <StaggerItem><span className="text-2xl font-bold">VNPT</span></StaggerItem>
