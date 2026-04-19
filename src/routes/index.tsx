@@ -33,6 +33,11 @@ import { AdminLayout } from '../components/layout/AdminLayout';
 import { AdminProtectedRoute } from '../components/auth/AdminProtectedRoute';
 import { Dashboard as AdminDashboard } from '../pages/admin/Dashboard';
 
+// Instructor Components
+import { InstructorLayout } from '../components/layout/InstructorLayout';
+import { InstructorDashboard } from '../pages/instructor/Dashboard';
+import { InstructorCourses } from '../pages/instructor/Courses';
+
 // Tạo một RootLayout chung bọc bên ngoài toàn bộ các route
 // Nhờ đó, ScrollToTop luôn tồn tại trong App và hoạt động mỗi lần chuyển Route
 function RootLayout() {
@@ -98,6 +103,21 @@ const router = createBrowserRouter([
             <LearningInterface />
           </ProtectedRoute>
         ),
+      },
+      // ===== Instructor Routes =====
+      {
+        path: '/instructor',
+        element: (
+          <ProtectedRoute allowedRoles={['INSTRUCTOR']}>
+            <InstructorLayout />
+          </ProtectedRoute>
+        ),
+        children: [
+          { path: '', element: <InstructorDashboard /> }, // fallback
+          { path: 'dashboard', element: <InstructorDashboard /> },
+          { path: 'courses', element: <InstructorCourses /> },
+          // Các trang khác thêm sau: performance, communication...
+        ]
       },
       // ===== Admin Routes =====
       {
