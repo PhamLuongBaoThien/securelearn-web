@@ -1,42 +1,67 @@
+// ========================
+// Instructor Dashboard: Tổng quan (Real API + Mock Charts)
+// ========================
 import React from 'react';
-import { 
-  Users, 
-  BookOpen, 
-  DollarSign, 
+import { Link } from 'react-router-dom';
+import {
+  Users,
+  BookOpen,
+  DollarSign,
   Star,
   TrendingUp,
-  Clock
+  Clock,
+  Loader2,
+  ArrowRight,
 } from 'lucide-react';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
 } from 'recharts';
 import { useAppSelector } from '@/app/hooks';
+import { useGetMyCourses } from '@/hooks/useInstructorCourses';
 
-// Mock Data
-const data = [
-  { name: 'T1', revenue: 4000, students: 240 },
-  { name: 'T2', revenue: 3000, students: 139 },
-  { name: 'T3', revenue: 2000, students: 980 },
-  { name: 'T4', revenue: 2780, students: 390 },
-  { name: 'T5', revenue: 1890, students: 480 },
-  { name: 'T6', revenue: 2390, students: 380 },
-  { name: 'T7', revenue: 3490, students: 430 },
+// Mock Chart Data (sẽ thay bằng analytics API sau)
+const chartData = [
+  { name: 'T1', revenue: 4000000, students: 24 },
+  { name: 'T2', revenue: 3000000, students: 13 },
+  { name: 'T3', revenue: 5200000, students: 42 },
+  { name: 'T4', revenue: 2780000, students: 39 },
+  { name: 'T5', revenue: 6890000, students: 48 },
+  { name: 'T6', revenue: 4390000, students: 38 },
+  { name: 'T7', revenue: 7490000, students: 53 },
 ];
 
 const recentActivities = [
-  { id: 1, type: 'enrollment', message: 'Nguyen Van A đã đăng ký khóa Khởi đầu lập trình web', time: '2 giờ trước' },
-  { id: 2, type: 'review', message: 'Tran B đã để lại đánh giá 5 sao cho khóa Python cơ bản', time: '5 giờ trước' },
-  { id: 3, type: 'question', message: 'Le C đã hỏi một câu trong phần Mảng (Arrays)', time: '1 ngày trước' },
+  { id: 1, type: 'enrollment', message: 'Một học viên mới đã ghi danh vào khóa học của bạn', time: '2 giờ trước' },
+  { id: 2, type: 'review', message: 'Học viên đã để lại đánh giá 5 sao', time: '5 giờ trước' },
+  { id: 3, type: 'question', message: 'Có câu hỏi mới trong mục Giao tiếp', time: '1 ngày trước' },
 ];
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value);
 
 export const InstructorDashboard: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
+  const { data: courses = [], isLoading } = useGetMyCourses();
+
+  // Thống kê từ dữ liệu thật
+  const totalCourses = courses.length;
+  const publishedCourses = courses.filter((c) => c.status === 'PUBLISHED').length;
+  const draftCourses = courses.filter((c) => c.status === 'DRAFT').length;
+  const totalStudents = courses.reduce((sum, c) => sum + (c.enrollmentCount || 0), 0);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -44,7 +69,7 @@ export const InstructorDashboard: React.FC = () => {
         <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
           Chào mừng trở lại, {user?.fullName || 'Giảng viên'}!
         </h1>
-        <p className="text-muted-foreground mt-2">Dưới đây là tình hình các khóa học của bạn trong tháng qua.</p>
+        <p className="text-muted-foreground mt-2">Dưới đây là tổng quan về các khóa học của bạn.</p>
       </div>
 
       {/* Stats Grid */}
@@ -53,7 +78,7 @@ export const InstructorDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Tổng doanh thu</p>
-              <h3 className="text-3xl font-bold mt-1 text-zinc-900 dark:text-white">₫12.5M</h3>
+              <h3 className="text-3xl font-bold mt-1 text-zinc-900 dark:text-white">{formatCurrency(chartData.reduce((s, d) => s + d.revenue, 0))}</h3>
             </div>
             <div className="h-12 w-12 bg-green-500/10 text-green-600 dark:text-green-400 rounded-xl flex items-center justify-center">
               <DollarSign className="w-6 h-6" />
@@ -69,7 +94,7 @@ export const InstructorDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Học viên</p>
-              <h3 className="text-3xl font-bold mt-1 text-zinc-900 dark:text-white">1,248</h3>
+              <h3 className="text-3xl font-bold mt-1 text-zinc-900 dark:text-white">{totalStudents.toLocaleString('vi-VN')}</h3>
             </div>
             <div className="h-12 w-12 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
               <Users className="w-6 h-6" />
@@ -77,7 +102,7 @@ export const InstructorDashboard: React.FC = () => {
           </div>
           <div className="mt-4 flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 font-medium">
             <TrendingUp className="w-4 h-4" />
-            <span>+42 học viên mới</span>
+            <span>Từ {publishedCourses} khóa đã xuất bản</span>
           </div>
         </div>
 
@@ -100,14 +125,14 @@ export const InstructorDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Khóa học</p>
-              <h3 className="text-3xl font-bold mt-1 text-zinc-900 dark:text-white">4</h3>
+              <h3 className="text-3xl font-bold mt-1 text-zinc-900 dark:text-white">{totalCourses}</h3>
             </div>
             <div className="h-12 w-12 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center">
               <BookOpen className="w-6 h-6" />
             </div>
           </div>
           <div className="mt-4 flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 font-medium">
-            <span>2 khóa đang Draft</span>
+            <span>{draftCourses > 0 ? `${draftCourses} bản nháp` : 'Tất cả đã xuất bản'}</span>
           </div>
         </div>
       </div>
@@ -118,17 +143,17 @@ export const InstructorDashboard: React.FC = () => {
           <h3 className="text-lg font-bold mb-6 text-zinc-900 dark:text-white">Biểu đồ doanh thu & Học viên</h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+              <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                <XAxis dataKey="name" stroke="#9ca3af" axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" stroke="#9ca3af" axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" axisLine={false} tickLine={false} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff' }}
+                <XAxis dataKey="name" stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} />
+                <YAxis yAxisId="left" stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`} />
+                <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
                   itemStyle={{ color: '#fff' }}
                 />
-                <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Doanh thu" />
-                <Line yAxisId="right" type="monotone" dataKey="students" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Học viên" />
+                <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Doanh thu" />
+                <Line yAxisId="right" type="monotone" dataKey="students" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Học viên" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -142,7 +167,7 @@ export const InstructorDashboard: React.FC = () => {
               <div key={activity.id} className="flex gap-4">
                 <div className="mt-1">
                   <div className={`w-2 h-2 rounded-full mt-1.5
-                    ${activity.type === 'enrollment' ? 'bg-blue-500' : 
+                    ${activity.type === 'enrollment' ? 'bg-blue-500' :
                       activity.type === 'review' ? 'bg-yellow-500' : 'bg-purple-500'}`
                   }></div>
                 </div>
@@ -156,9 +181,12 @@ export const InstructorDashboard: React.FC = () => {
               </div>
             ))}
           </div>
-          <button className="w-full mt-6 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors">
-            Xem tất cả hoạt động
-          </button>
+          <Link
+            to="/instructor/communication"
+            className="flex items-center justify-center gap-2 w-full mt-6 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+          >
+            Xem tất cả <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       </div>
     </div>

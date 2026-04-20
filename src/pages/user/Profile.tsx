@@ -524,12 +524,12 @@ export function Profile() {
                     triggerButton={
                       <Button
                         disabled={isDeleting}
-                        variant="outline"
+                        variant="outline" // variant="outline" là để button có viền
                         className="h-11 px-8 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
                       >
                         {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                         Tiến hành Xóa Tài Khoản
-                      </Button>
+                      </Button> // thẻ Loader2 là icon loading, thẻ trash2 là icon thùng rác
                     }
                   />
                 </div>

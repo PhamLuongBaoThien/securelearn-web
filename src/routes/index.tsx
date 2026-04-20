@@ -37,6 +37,9 @@ import { Dashboard as AdminDashboard } from '../pages/admin/Dashboard';
 import { InstructorLayout } from '../components/layout/InstructorLayout';
 import { InstructorDashboard } from '../pages/instructor/Dashboard';
 import { InstructorCourses } from '../pages/instructor/Courses';
+import { CourseEditor } from '../pages/instructor/CourseEditor';
+import { InstructorPerformance } from '../pages/instructor/Performance';
+import { InstructorCommunication } from '../pages/instructor/Communication';
 
 // Tạo một RootLayout chung bọc bên ngoài toàn bộ các route
 // Nhờ đó, ScrollToTop luôn tồn tại trong App và hoạt động mỗi lần chuyển Route
@@ -113,10 +116,12 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
-          { path: '', element: <InstructorDashboard /> }, // fallback
+          { path: '', element: <InstructorDashboard /> },
           { path: 'dashboard', element: <InstructorDashboard /> },
           { path: 'courses', element: <InstructorCourses /> },
-          // Các trang khác thêm sau: performance, communication...
+          { path: 'courses/:courseId/edit', element: <CourseEditor /> },
+          { path: 'performance', element: <InstructorPerformance /> },
+          { path: 'communication', element: <InstructorCommunication /> },
         ]
       },
       // ===== Admin Routes =====

@@ -78,7 +78,7 @@ export const Navbar = () => {
 
   return (
     <>
-      <nav className="sticky top-4 mx-auto z-50 w-[96%] max-w-7xl bg-background/80 backdrop-blur-md border border-border/50 shadow-lg rounded-full transition-all duration-300 mb-6">
+      <nav className="sticky top-4 mx-auto z-50 w-[96%] max-w-[1440px] bg-background/80 backdrop-blur-md border border-border/50 shadow-lg rounded-full transition-all duration-300 mb-6">
         <div className="px-4 sm:px-6 flex h-[64px] items-center justify-between relative">
           
           {/* LEFT: Khám phá và Tìm kiếm */}

@@ -16,26 +16,31 @@ export interface ICourse {
   category?: string;
   level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
   price: number;
-  status: 'DRAFT' | 'PUBLISHED';
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   totalStudents: number;
+  totalDuration: number;    // Tổng thời lượng (giây)
+  totalLessons: number;     // Tổng số bài học
+  enrollmentCount: number;  // Số lượt ghi danh
   sections: ISection[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ISection {
+  _id?: string;
   title: string;
   order: number;
   lessons: ILesson[];
 }
 
 export interface ILesson {
+  _id?: string;
   title: string;
-  type: 'VIDEO' | 'TEXT' | 'QUIZ';
+  type: 'VIDEO' | 'DOCUMENT' | 'QUIZ';
   content?: string;
-  videoUrl?: string;
   duration?: number;
   order: number;
+  isFreePreview?: boolean;
 }
 
 export interface IEnrollment {
