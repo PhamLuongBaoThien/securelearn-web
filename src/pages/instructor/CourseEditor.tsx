@@ -1,5 +1,6 @@
 // ========================
 // Instructor Course Editor: Chỉnh sửa chi tiết khóa học + Giáo trình
+// Video upload inline per lesson — upload đi qua Media Service nền.
 // ========================
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -15,6 +16,9 @@ import {
   Video,
   FileText,
   Loader2,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -22,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { useGetCourseForManage, useUpdateCourse, usePublishCourse } from '@/hooks/useInstructorCourses';
 import { toast } from 'sonner';
 import type { ICourse, ISection, ILesson } from '@/services/courseApi';
+import { LessonVideoUploader } from './LessonVideoUploader';
 
 export const CourseEditor: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
@@ -49,10 +54,19 @@ export const CourseEditor: React.FC = () => {
       setLevel(course.level);
       setPrice(course.price);
       setSections(course.sections || []);
-      // Mở rộng tất cả sections ban đầu
       setExpandedSections(new Set(course.sections?.map((_, i) => i) || []));
     }
   }, [course]);
+
+  // ─── Tính số video chưa sẵn sàng ───
+  const pendingVideos = sections
+    .flatMap((s) => s.lessons)
+    .filter(
+      (l) =>
+        l.type === 'VIDEO' &&
+        (l.processingStatus === 'PENDING' || l.processingStatus === 'PROCESSING')
+    );
+  const hasBlockingVideos = pendingVideos.length > 0;
 
   const toggleSection = (index: number) => {
     setExpandedSections((prev) => {
@@ -77,6 +91,12 @@ export const CourseEditor: React.FC = () => {
   };
 
   const handlePublish = () => {
+    if (hasBlockingVideos) {
+      toast.error(
+        `Còn ${pendingVideos.length} video đang được xử lý. Vui lòng đợi hoàn tất trước khi xuất bản.`
+      );
+      return;
+    }
     publishMutation.mutate(courseId!, {
       onSuccess: () => {
         toast.success('Khóa học đã được xuất bản!');
@@ -116,6 +136,7 @@ export const CourseEditor: React.FC = () => {
       content: '',
       duration: 0,
       order: lessons.length + 1,
+      processingStatus: 'NONE',
     };
     updated[sectionIndex] = {
       ...updated[sectionIndex],
@@ -137,6 +158,29 @@ export const CourseEditor: React.FC = () => {
     const updated = [...sections];
     const lessons = [...updated[sectionIndex].lessons];
     lessons[lessonIndex] = { ...lessons[lessonIndex], [field]: value };
+    updated[sectionIndex] = { ...updated[sectionIndex], lessons };
+    setSections(updated);
+  };
+
+  const handleLessonTypeChange = (sectionIndex: number, lessonIndex: number, newType: string) => {
+    const updated = [...sections];
+    const lessons = [...updated[sectionIndex].lessons];
+    // Reset video fields khi đổi type khỏi VIDEO
+    lessons[lessonIndex] = {
+      ...lessons[lessonIndex],
+      type: newType as ILesson['type'],
+      ...(newType !== 'VIDEO' && {
+        videoId: undefined,
+        processingStatus: undefined,
+        processingProgress: undefined,
+        playbackUrl: undefined,
+        videoFileName: undefined,
+        videoDurationSec: undefined,
+      }),
+      ...(newType === 'VIDEO' && {
+        processingStatus: 'NONE' as const,
+      }),
+    };
     updated[sectionIndex] = { ...updated[sectionIndex], lessons };
     setSections(updated);
   };
@@ -177,15 +221,28 @@ export const CourseEditor: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Video processing warning */}
+          {hasBlockingVideos && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl text-xs font-medium text-amber-700 dark:text-amber-400">
+              <Clock className="w-3.5 h-3.5 animate-pulse" />
+              {pendingVideos.length} video đang xử lý
+            </div>
+          )}
           <Button variant="outline" onClick={handleSave} disabled={updateMutation.isPending} className="gap-2 rounded-xl">
             {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Lưu
           </Button>
           {course.status === 'DRAFT' && (
-            <Button onClick={handlePublish} disabled={publishMutation.isPending} className="gap-2 rounded-xl">
+            <Button
+              onClick={handlePublish}
+              disabled={publishMutation.isPending}
+              className={`gap-2 rounded-xl ${hasBlockingVideos ? 'opacity-60' : ''}`}
+              title={hasBlockingVideos ? 'Đợi video xử lý xong để xuất bản' : ''}
+            >
               {publishMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               Xuất bản
+              {hasBlockingVideos && <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />}
             </Button>
           )}
         </div>
@@ -194,7 +251,7 @@ export const CourseEditor: React.FC = () => {
       {/* Course Info Form */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 space-y-6">
         <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Thông tin chung</h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="md:col-span-2">
             <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Tên khóa học</label>
@@ -235,7 +292,15 @@ export const CourseEditor: React.FC = () => {
       {/* Curriculum / Sections */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Giáo trình</h2>
+          <div>
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Giáo trình</h2>
+            {hasBlockingVideos && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {pendingVideos.length} video đang được mã hóa — khóa học sẽ xuất bản được khi xong
+              </p>
+            )}
+          </div>
           <Button variant="outline" onClick={addSection} className="gap-2 rounded-xl text-sm">
             <Plus className="w-4 h-4" /> Thêm chương
           </Button>
@@ -265,39 +330,25 @@ export const CourseEditor: React.FC = () => {
                   <button onClick={(e) => { e.stopPropagation(); removeSection(sIdx); }} className="p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0">
                     <Trash2 className="w-4 h-4" />
                   </button>
-                  {expandedSections.has(sIdx) ? <ChevronUp className="w-4 h-4 shrink-0 text-zinc-400" /> : <ChevronDown className="w-4 h-4 shrink-0 text-zinc-400" />}
+                  {expandedSections.has(sIdx)
+                    ? <ChevronUp className="w-4 h-4 shrink-0 text-zinc-400" />
+                    : <ChevronDown className="w-4 h-4 shrink-0 text-zinc-400" />
+                  }
                 </div>
 
                 {/* Lessons */}
                 {expandedSections.has(sIdx) && (
                   <div className="p-4 space-y-3 border-t border-zinc-200 dark:border-zinc-800">
                     {section.lessons.map((lesson, lIdx) => (
-                      <div key={lIdx} className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-950 rounded-lg">
-                        <GripVertical className="w-4 h-4 text-zinc-400 shrink-0" />
-                        {lesson.type === 'VIDEO' ? (
-                          <Video className="w-4 h-4 text-blue-500 shrink-0" />
-                        ) : (
-                          <FileText className="w-4 h-4 text-green-500 shrink-0" />
-                        )}
-                        <Input
-                          value={lesson.title}
-                          onChange={(e) => updateLesson(sIdx, lIdx, 'title', e.target.value)}
-                          className="h-8 text-sm border-none bg-transparent p-0 focus-visible:ring-0 flex-1"
-                          placeholder="Tên bài giảng..."
-                        />
-                        <select
-                          value={lesson.type}
-                          onChange={(e) => updateLesson(sIdx, lIdx, 'type', e.target.value)}
-                          className="h-8 px-2 text-xs rounded-md bg-background border border-zinc-200 dark:border-zinc-800"
-                        >
-                          <option value="VIDEO">Video</option>
-                          <option value="DOCUMENT">Tài liệu</option>
-                          <option value="QUIZ">Quiz</option>
-                        </select>
-                        <button onClick={() => removeLesson(sIdx, lIdx)} className="p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      <LessonRow
+                        key={lIdx}
+                        lesson={lesson}
+                        sectionIndex={sIdx}
+                        lessonIndex={lIdx}
+                        onUpdateField={(field, value) => updateLesson(sIdx, lIdx, field, value)}
+                        onChangeType={(newType) => handleLessonTypeChange(sIdx, lIdx, newType)}
+                        onRemove={() => removeLesson(sIdx, lIdx)}
+                      />
                     ))}
                     <Button variant="ghost" size="sm" onClick={() => addLesson(sIdx)} className="gap-2 text-xs text-muted-foreground">
                       <Plus className="w-3.5 h-3.5" /> Thêm bài giảng
@@ -313,7 +364,105 @@ export const CourseEditor: React.FC = () => {
   );
 };
 
-// Helper inline — reused from Courses.tsx
+// ──────────────────────────────────────────────────────────
+// Sub-component: LessonRow
+// ──────────────────────────────────────────────────────────
+interface LessonRowProps {
+  lesson: ILesson;
+  sectionIndex: number;
+  lessonIndex: number;
+  onUpdateField: (field: string, value: any) => void;
+  onChangeType: (newType: string) => void;
+  onRemove: () => void;
+}
+
+const LessonRow: React.FC<LessonRowProps> = ({
+  lesson,
+  onUpdateField,
+  onChangeType,
+  onRemove,
+}) => {
+  const isVideo = lesson.type === 'VIDEO';
+  const status = lesson.processingStatus;
+
+  return (
+    <div className={`rounded-xl border transition-colors overflow-hidden ${
+      isVideo && status === 'DONE'
+        ? 'border-green-200 dark:border-green-500/20'
+        : isVideo && (status === 'PENDING' || status === 'PROCESSING')
+        ? 'border-indigo-200 dark:border-indigo-500/20'
+        : 'border-zinc-200 dark:border-zinc-800/60'
+    }`}>
+      {/* Lesson Header */}
+      <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-950">
+        <GripVertical className="w-4 h-4 text-zinc-400 shrink-0" />
+
+        {/* Type icon */}
+        {isVideo ? (
+          <div className={`w-5 h-5 shrink-0 ${
+            status === 'DONE' ? 'text-green-500'
+            : status === 'PROCESSING' || status === 'PENDING' ? 'text-indigo-500'
+            : status === 'FAILED' ? 'text-red-500'
+            : 'text-blue-400'
+          }`}>
+            <Video className="w-4 h-4" />
+          </div>
+        ) : lesson.type === 'DOCUMENT' ? (
+          <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
+        ) : (
+          <CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" />
+        )}
+
+        <Input
+          value={lesson.title}
+          onChange={(e) => onUpdateField('title', e.target.value)}
+          className="h-8 text-sm border-none bg-transparent p-0 focus-visible:ring-0 flex-1"
+          placeholder="Tên bài giảng..."
+        />
+
+        {/* Video status badge (compact) */}
+        {isVideo && status && status !== 'NONE' && (
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 hidden sm:inline-block ${
+            status === 'DONE' ? 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400'
+            : status === 'FAILED' ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400'
+            : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400'
+          }`}>
+            {status === 'DONE' ? '✓ Sẵn sàng'
+              : status === 'FAILED' ? '✗ Lỗi'
+              : status === 'PROCESSING' ? '⟳ Mã hóa...'
+              : '↑ Đang tải...'}
+          </span>
+        )}
+
+        <select
+          value={lesson.type}
+          onChange={(e) => onChangeType(e.target.value)}
+          className="h-8 px-2 text-xs rounded-lg bg-background border border-zinc-200 dark:border-zinc-800 shrink-0"
+        >
+          <option value="VIDEO">Video</option>
+          <option value="DOCUMENT">Tài liệu</option>
+          <option value="QUIZ">Quiz</option>
+        </select>
+
+        <button onClick={onRemove} className="p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0">
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Video upload zone — chỉ hiển thị khi type = VIDEO */}
+      {isVideo && (
+        <div className="px-4 pb-4 pt-1 bg-white dark:bg-zinc-900/50">
+          <LessonVideoUploader
+            lesson={lesson}
+            onUpdate={(field, value) => onUpdateField(field as string, value)}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Helper: status badge ───
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'PUBLISHED':

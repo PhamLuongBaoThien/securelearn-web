@@ -5,10 +5,10 @@ import { toggleTheme } from '@/features/dashboard/uiSlice';
 import { useLogout } from '@/hooks/useAuth';
 import {
   LayoutDashboard,
-  BookOpen,
-  MessageSquare,
-  BarChart3,
-  Settings,
+  PlaySquare,
+  Activity,
+  Wallet,
+  Bell,
   LogOut,
   Menu,
   ChevronLeft,
@@ -16,7 +16,6 @@ import {
   Sun,
   Monitor,
   GraduationCap,
-  PlaySquare
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -42,12 +41,27 @@ export const InstructorLayout: React.FC = () => {
     navigate('/student/dashboard');
   };
 
-  const menuItems = [
-    { name: 'Bảng điều khiển', path: '/instructor/dashboard', icon: <LayoutDashboard className="w-5 h-5 shrink-0" /> },
-    { name: 'Khóa học', path: '/instructor/courses', icon: <PlaySquare className="w-5 h-5 shrink-0" /> },
-    { name: 'Giao tiếp', path: '/instructor/communication', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
-    { name: 'Hiệu suất', path: '/instructor/performance', icon: <BarChart3 className="w-5 h-5 shrink-0" /> },
-    { name: 'Cài đặt', path: '/instructor/settings', icon: <Settings className="w-5 h-5 shrink-0" /> },
+  const menuGroups = [
+    {
+      label: 'Tổng quan',
+      items: [
+        { name: 'Bảng điều khiển', path: '/instructor/dashboard', icon: <LayoutDashboard className="w-5 h-5 shrink-0" /> },
+      ],
+    },
+    {
+      label: 'Quản lý nội dung',
+      items: [
+        { name: 'Khóa học', path: '/instructor/courses', icon: <PlaySquare className="w-5 h-5 shrink-0" /> },
+      ],
+    },
+    {
+      label: 'Phân tích & Kinh doanh',
+      items: [
+        { name: 'Learning Analytics', path: '/instructor/performance', icon: <Activity className="w-5 h-5 shrink-0" /> },
+        { name: 'Tài chính', path: '/instructor/earnings', icon: <Wallet className="w-5 h-5 shrink-0" /> },
+        { name: 'Thông báo lớp', path: '/instructor/communication', icon: <Bell className="w-5 h-5 shrink-0" /> },
+      ],
+    },
   ];
 
   const handleToggleSidebar = () => setCollapsed(!collapsed);
@@ -98,32 +112,44 @@ export const InstructorLayout: React.FC = () => {
         )}
 
         {/* Navigation */}
-        <nav className={`flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-1.5 custom-scrollbar transition-all ${collapsed ? 'mt-4' : 'mt-2'}`}>
-          {menuItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              title={collapsed ? item.name : ''}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group relative ${
-                  isActive
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100'
-                } ${collapsed ? 'justify-center' : ''}`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <span className={`transition-transform duration-200 shrink-0 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
-                    {item.icon}
-                  </span>
-                  {!collapsed && <span className="whitespace-nowrap">{item.name}</span>}
-                  {isActive && !collapsed && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md shadow-[0_0_10px_theme('colors.primary.DEFAULT')]" />
-                  )}
-                </>
+        <nav className={`flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar transition-all ${collapsed ? 'mt-4 space-y-2' : 'mt-2 space-y-4'}`}>
+          {menuGroups.map((group) => (
+            <div key={group.label}>
+              {/* Group Label */}
+              {!collapsed && (
+                <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-600">
+                  {group.label}
+                </p>
               )}
-            </NavLink>
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    title={collapsed ? item.name : ''}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
+                        isActive
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100'
+                      } ${collapsed ? 'justify-center' : ''}`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <span className={`transition-transform duration-200 shrink-0 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
+                          {item.icon}
+                        </span>
+                        {!collapsed && <span className="whitespace-nowrap text-sm">{item.name}</span>}
+                        {isActive && !collapsed && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md shadow-[0_0_10px_theme('colors.primary.DEFAULT')]" />
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
