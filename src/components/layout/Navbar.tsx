@@ -8,7 +8,7 @@ import { useAppSelector, useAppDispatch } from '../../app/hooks';
 import { toggleTheme } from '../../features/dashboard/uiSlice';
 import { useLogout } from '@/hooks/useAuth';
 import { ShoppingCart, Search, Menu, Sun, Moon, X, ChevronRight, LogOut, User, BookOpen, Settings } from 'lucide-react';
-import { buttonVariants, Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   NavigationMenu,
@@ -27,7 +27,7 @@ export const Navbar = () => {
   const location = useLocation();
   const theme = useAppSelector((state) => state.ui.theme);
   const cartItems = useAppSelector((state) => state.cart.cartItems);
-  const { user, isAuthenticated, isInitializing } = useAppSelector((state) => state.auth);
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
   // Logic chuyển đổi nút Giảng dạy / Giảng viên / Học viên
   const isInstructor = user?.role === 'INSTRUCTOR';
@@ -198,7 +198,7 @@ export const Navbar = () => {
                 <Link to={teachBtnProps.to} className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
                   {teachBtnProps.text}
                 </Link>
-                {!isInitializing && isAuthenticated && user && (
+                {isAuthenticated && user && (
                   <Link to="/student/dashboard" className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
                     Học tập
                   </Link>
@@ -217,8 +217,8 @@ export const Navbar = () => {
                   )}
                 </Link>
 
-                {!isInitializing && (
-                  isAuthenticated && user ? (
+                {/* Auth section */}
+                {isAuthenticated && user ? (
                   /* ===== User đã đăng nhập: Avatar + Dropdown menu ===== */
                   <div className="hidden md:flex items-center gap-2 relative" ref={userMenuRef}>
                     <button 
@@ -295,7 +295,6 @@ export const Navbar = () => {
                         Đăng ký
                       </Link>
                    </div>
-                  )
                 )}
 
                 <Button 
@@ -353,8 +352,7 @@ export const Navbar = () => {
         </div>
         
         <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-1">
-          {!isInitializing && (
-            isAuthenticated && user ? (
+          {isAuthenticated && user ? (
             <div className="px-4 pb-4 mb-2 border-b border-border/50 flex items-center gap-3">
               <UserAvatar user={user} className="h-10 w-10 text-base" />
               <div className="flex flex-col min-w-0">
@@ -371,10 +369,9 @@ export const Navbar = () => {
                 Đăng ký
               </Link>
             </div>
-            )
           )}
 
-          {isAuthenticated && (
+          {isAuthenticated && user && (
             <>
               <div className="px-4 py-2 text-sm font-bold text-muted-foreground">Tài khoản</div>
               <Link to="/student/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 hover:bg-secondary transition-colors flex items-center gap-3">
@@ -402,7 +399,7 @@ export const Navbar = () => {
           </button>
 
           {/* Nút đăng xuất ở mobile drawer */}
-          {isAuthenticated && (
+          {isAuthenticated && user && (
             <div className="px-4 mt-2 border-t border-border/50 pt-4">
               <button 
                 onClick={handleLogout}

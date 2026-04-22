@@ -5,7 +5,7 @@
 // ========================
 import { useEffect } from 'react';
 import { useAppDispatch } from '@/app/hooks';
-import { setUser, clearUser, setInitialized } from '@/features/auth/authSlice';
+import { setUser, clearUser } from '@/features/auth/authSlice';
 import { setAccessToken } from '@/services/apiClient';
 import { useInitializeAuth } from '@/hooks/useAuth';
 
@@ -22,7 +22,7 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
     if (status === 'success' && data) {
       dispatch(setUser({ user: data.user, accessToken: data.accessToken }));
     } else if (status === 'error') {
-      dispatch(setInitialized());
+      dispatch(clearUser());
     }
   }, [status, data, dispatch]);
 
