@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../app/hooks';
 import { removeFromCart } from '../../features/courses/cartSlice';
 import { buttonVariants } from '../../components/ui/button';
-import { Trash2, ShieldCheck } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 export const Cart = () => {
   const dispatch = useAppDispatch();

@@ -10,7 +10,6 @@ const initialState: AuthState = {
   user: null,
   accessToken: null,
   isAuthenticated: false,
-  isInitializing: true,
 };
 
 // ===== Slice =====

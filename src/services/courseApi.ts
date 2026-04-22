@@ -33,14 +33,23 @@ export interface ISection {
   lessons: ILesson[];
 }
 
+export type VideoProcessingStatus = 'NONE' | 'PENDING' | 'PROCESSING' | 'DONE' | 'FAILED';
+
 export interface ILesson {
   _id?: string;
   title: string;
   type: 'VIDEO' | 'DOCUMENT' | 'QUIZ';
-  content?: string;
-  duration?: number;
+  content?: string;       // URL document hoặc nội dung quiz
+  duration?: number;      // Thời lượng (giây)
   order: number;
   isFreePreview?: boolean;
+  // ─── Video fields (chỉ khi type === 'VIDEO') ───
+  videoId?: string;               // ID từ Media Service sau khi upload xong
+  processingStatus?: VideoProcessingStatus; // Trạng thái xử lý HLS
+  processingProgress?: number;    // Tiến độ mã hóa 0-100
+  playbackUrl?: string;           // m3u8 URL khi DONE
+  videoFileName?: string;         // Tên file gốc để hiển thị
+  videoDurationSec?: number;      // Thời lượng video (giây)
 }
 
 export interface IEnrollment {

@@ -123,6 +123,4 @@ export interface AuthState {
   accessToken: string | null;
   /** Trạng thái xác thực */
   isAuthenticated: boolean;
-  /** Trạng thái đang khôi phục session lúc khởi động */
-  isInitializing: boolean;
 }

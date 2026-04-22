@@ -16,11 +16,11 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
-  const { isLoading } = useInitializeAuth();
+  const { isLoading, isSuccess } = useInitializeAuth();
   const location = useLocation();
 
-  // Đang kiểm tra session → hiện loading
-  if (isLoading) {
+  // Đang kiểm tra session, hoặc thành công nhưng Redux chưa kịp sync state → hiện loading
+  if (isLoading || (isSuccess && !isAuthenticated)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -31,7 +31,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     );
   }
 
-  // Chưa đăng nhập → redirect về login (lưu lại URL hiện tại để quay lại sau)
+  // Chưa đăng nhập (API lỗi) → redirect về login (lưu lại URL hiện tại để quay lại sau)
   if (!isAuthenticated) {
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }

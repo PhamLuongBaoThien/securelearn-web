@@ -61,11 +61,6 @@ const initialState: AuthState = {
   user:            persisted?.user ?? null,
   accessToken:     null, // Access token KHÔNG lưu localStorage (bảo mật)
   isAuthenticated: persisted?.status === 'authenticated',
-  // isInitializing = true chỉ khi KHÔNG biết trạng thái (lần đầu vào web).
-  // 'authenticated' → render avatar ngay (false)
-  // 'guest'         → render nút đăng nhập ngay (false)
-  // null            → phải gọi API refresh để xác định (true)
-  isInitializing:  persisted === null, 
 };
 
 // ===== Slice =====
@@ -78,7 +73,6 @@ const authSlice = createSlice({
       state.user            = action.payload.user;
       state.accessToken     = action.payload.accessToken;
       state.isAuthenticated = true;
-      state.isInitializing  = false;
       // Persist user vào localStorage để lần load sau render ngay
       saveAuthToStorage(action.payload.user);
     },
@@ -88,7 +82,6 @@ const authSlice = createSlice({
       state.user            = null;
       state.accessToken     = null;
       state.isAuthenticated = false;
-      state.isInitializing  = false;
       // Đánh dấu 'guest' → lần load sau biết ngay, render nút đăng nhập không cần chờ API
       clearAuthFromStorage();
     },

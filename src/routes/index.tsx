@@ -33,6 +33,33 @@ import { AdminLayout } from '../components/layout/AdminLayout';
 import { AdminProtectedRoute } from '../components/auth/AdminProtectedRoute';
 import { Dashboard as AdminDashboard } from '../pages/admin/Dashboard';
 
+// Admin — System & CMS
+import { WebsiteConfig } from '../pages/admin/system/WebsiteConfig';
+import { BannerManager } from '../pages/admin/system/BannerManager';
+import { CategoryManager } from '../pages/admin/system/CategoryManager';
+
+// Admin — Users & RBAC
+import { UserList } from '../pages/admin/users/UserList';
+import { RbacManager } from '../pages/admin/users/RbacManager';
+
+// Admin — Courses
+import { CourseReview } from '../pages/admin/courses/CourseReview';
+import { ResourceManager } from '../pages/admin/courses/ResourceManager';
+
+// Admin — Media & Security
+import { EncryptionMonitor } from '../pages/admin/media/EncryptionMonitor';
+import { KmsManager } from '../pages/admin/media/KmsManager';
+import { SecurityConfig } from '../pages/admin/media/SecurityConfig';
+
+// Admin — Finance
+import { Transactions } from '../pages/admin/finance/Transactions';
+import { PlanManager } from '../pages/admin/finance/PlanManager';
+import { RevenueReport } from '../pages/admin/finance/RevenueReport';
+
+// Admin — Notifications & Progress
+import { NotificationConfig } from '../pages/admin/notifications/NotificationConfig';
+import { LearningReport } from '../pages/admin/notifications/LearningReport';
+
 // Instructor Components
 import { InstructorLayout } from '../components/layout/InstructorLayout';
 import { InstructorDashboard } from '../pages/instructor/Dashboard';
@@ -40,6 +67,7 @@ import { InstructorCourses } from '../pages/instructor/Courses';
 import { CourseEditor } from '../pages/instructor/CourseEditor';
 import { InstructorPerformance } from '../pages/instructor/Performance';
 import { InstructorCommunication } from '../pages/instructor/Communication';
+import { InstructorEarnings } from '../pages/instructor/Earnings';
 
 // Tạo một RootLayout chung bọc bên ngoài toàn bộ các route
 // Nhờ đó, ScrollToTop luôn tồn tại trong App và hoạt động mỗi lần chuyển Route
@@ -121,6 +149,7 @@ const router = createBrowserRouter([
           { path: 'courses', element: <InstructorCourses /> },
           { path: 'courses/:courseId/edit', element: <CourseEditor /> },
           { path: 'performance', element: <InstructorPerformance /> },
+          { path: 'earnings', element: <InstructorEarnings /> },
           { path: 'communication', element: <InstructorCommunication /> },
         ]
       },
@@ -138,7 +167,27 @@ const router = createBrowserRouter([
         ),
         children: [
           { path: 'dashboard', element: <AdminDashboard /> },
-          // Thêm các routes quản lý ở đây
+          // ===== System & CMS =====
+          { path: 'system/config', element: <WebsiteConfig /> },
+          { path: 'system/banners', element: <BannerManager /> },
+          { path: 'system/categories', element: <CategoryManager /> },
+          // ===== Users & RBAC =====
+          { path: 'users/list', element: <UserList /> },
+          { path: 'users/rbac', element: <RbacManager /> },
+          // ===== Courses =====
+          { path: 'courses/review', element: <CourseReview /> },
+          { path: 'courses/resources', element: <ResourceManager /> },
+          // ===== Media & Security =====
+          { path: 'media/encryption', element: <EncryptionMonitor /> },
+          { path: 'media/kms', element: <KmsManager /> },
+          { path: 'media/security', element: <SecurityConfig /> },
+          // ===== Finance =====
+          { path: 'finance/transactions', element: <Transactions /> },
+          { path: 'finance/plans', element: <PlanManager /> },
+          { path: 'finance/reports', element: <RevenueReport /> },
+          // ===== Notifications & Progress =====
+          { path: 'notifications/config', element: <NotificationConfig /> },
+          { path: 'notifications/progress', element: <LearningReport /> },
         ],
       },
       {

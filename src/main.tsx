@@ -13,8 +13,6 @@ import { ThemeProvider } from './components/providers/ThemeProvider'
 import { AuthInitializer } from './components/auth/AuthInitializer'
 import { Toaster } from '@/components/ui/sonner'
 
-console.log('[SecureLearn] main.tsx loaded')
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -25,25 +23,18 @@ const queryClient = new QueryClient({
   },
 })
 
-try {
-  console.log('[SecureLearn] Mounting React app...')
-  ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-      <Provider store={store}>
-        <ThemeProvider>
-          <QueryClientProvider client={queryClient}>
-            <AuthInitializer>
-              <AppRouter />
-            </AuthInitializer>
-            {/* Toast container — tích hợp shadcn */}
-            <Toaster position="top-center" closeButton duration={4000} richColors />
-          </QueryClientProvider>
-
-        </ThemeProvider>
-      </Provider>
-    </React.StrictMode>,
-  )
-  console.log('[SecureLearn] React app mounted successfully')
-} catch (error) {
-  console.error('[SecureLearn] FATAL ERROR mounting app:', error)
-}
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <Provider store={store}>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthInitializer>
+            <AppRouter />
+          </AuthInitializer>
+          {/* Toast container — tích hợp shadcn */}
+          <Toaster position="top-center" closeButton duration={4000} richColors />
+        </QueryClientProvider>
+      </ThemeProvider>
+    </Provider>
+  </React.StrictMode>,
+)

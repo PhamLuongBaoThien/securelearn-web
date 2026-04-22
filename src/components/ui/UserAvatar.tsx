@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { User as UserIcon } from 'lucide-react';
 
 interface UserAvatarProps {
@@ -36,6 +36,7 @@ export function UserAvatar({
         alt={user.fullName || "Avatar"} 
         className={`rounded-full object-cover shrink-0 ${className}`} 
         onError={() => setImageError(true)}
+        referrerPolicy="no-referrer" // giúp không gửi thông tin về google
       />
     );
   }

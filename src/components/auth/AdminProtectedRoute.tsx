@@ -28,7 +28,8 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ childr
     }
   }, [isSuccess, data, dispatch]);
 
-  if (isLoading) {
+  // Đợi đến khi loading xong, hoặc nếu thành công thì đợi Redux sync xong
+  if (isLoading || (isSuccess && !isAuthenticated)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A]">
         <div className="flex flex-col items-center gap-4">
@@ -39,6 +40,7 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ childr
     );
   }
 
+  // API chạy xong (không loading), và auth state false (lỗi call API, session expired)
   if (!isAuthenticated) {
     return <Navigate to="/not-found" state={{ from: location }} replace />;
   }
