@@ -1,5 +1,17 @@
-import React, { useState } from 'react';
-import { Plus, ChevronRight, Pencil, Trash2, Tag, Save, Hash, Folder } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import {
+  Plus,
+  ChevronRight,
+  Pencil,
+  Trash2,
+  Tag,
+  Save,
+  Hash,
+  Folder,
+  Loader2,
+  ToggleLeft,
+  ToggleRight,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import type { ICategory } from '@/types/admin.types';
 import {
@@ -10,32 +22,59 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-
-const MOCK_CATEGORIES: ICategory[] = [
-  {
-    _id: '1', name: 'Công nghệ thông tin', slug: 'cntt', description: 'Lập trình, phát triển phần mềm', icon: '💻', parentId: null, order: 1, isActive: true, courseCount: 85, createdAt: '2026-01-01T00:00:00Z',
-    children: [
-      { _id: '1-1', name: 'Lập trình Web', slug: 'lap-trinh-web', parentId: '1', order: 1, isActive: true, courseCount: 32, createdAt: '2026-01-01T00:00:00Z' },
-      { _id: '1-2', name: 'Phát triển Mobile', slug: 'mobile', parentId: '1', order: 2, isActive: true, courseCount: 18, createdAt: '2026-01-01T00:00:00Z' },
-      { _id: '1-3', name: 'DevOps & Cloud', slug: 'devops', parentId: '1', order: 3, isActive: false, courseCount: 12, createdAt: '2026-01-01T00:00:00Z' },
-    ],
-  },
-  {
-    _id: '2', name: 'Bảo mật thông tin', slug: 'bao-mat', description: 'An ninh mạng, ethical hacking', icon: '🔐', parentId: null, order: 2, isActive: true, courseCount: 64, createdAt: '2026-01-01T00:00:00Z',
-    children: [
-      { _id: '2-1', name: 'Ethical Hacking', slug: 'ethical-hacking', parentId: '2', order: 1, isActive: true, courseCount: 28, createdAt: '2026-01-01T00:00:00Z' },
-      { _id: '2-2', name: 'Mã hóa & Cryptography', slug: 'cryptography', parentId: '2', order: 2, isActive: true, courseCount: 15, createdAt: '2026-01-01T00:00:00Z' },
-    ],
-  },
-  { _id: '3', name: 'Kinh doanh', slug: 'kinh-doanh', description: 'Khởi nghiệp, marketing, quản trị', icon: '💼', parentId: null, order: 3, isActive: true, courseCount: 42, createdAt: '2026-01-01T00:00:00Z', children: [] },
-  { _id: '4', name: 'Thiết kế', slug: 'thiet-ke', description: 'UI/UX, đồ hoạ, video', icon: '🎨', parentId: null, order: 4, isActive: true, courseCount: 37, createdAt: '2026-01-01T00:00:00Z', children: [] },
-];
+import {
+  useAdminCategories,
+  useCreateAdminCategory,
+  useSetAdminCategoryStatus,
+  useUpdateAdminCategory,
+} from '@/hooks/useAdminCategories';
 
 const inputCls = 'w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all';
 
-interface FormState { name: string; slug: string; description: string; parentId: string | null; }
+interface FormState {
+  name: string;
+  description: string;
+  parentId: string | null;
+}
 
-// ===== Category Form Dialog =====
+const autoSlug = (name: string) =>
+  name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+
+const flattenCategories = (categories: ICategory[]): ICategory[] => {
+  const result: ICategory[] = [];
+
+  const visit = (items: ICategory[]) => {
+    for (const item of items) {
+      result.push(item);
+      if (item.children?.length) visit(item.children);
+    }
+  };
+
+  visit(categories);
+  return result;
+};
+
+const getDescendantIds = (category: ICategory): string[] => {
+  const collected: string[] = [];
+
+  const visit = (node: ICategory) => {
+    for (const child of node.children || []) {
+      collected.push(child._id);
+      visit(child);
+    }
+  };
+
+  visit(category);
+  return collected;
+};
+
 interface CategoryFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -44,10 +83,15 @@ interface CategoryFormDialogProps {
   onSave: (data: FormState) => void;
 }
 
-const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({ open, onOpenChange, initial, categories, onSave }) => {
+const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
+  open,
+  onOpenChange,
+  initial,
+  categories,
+  onSave,
+}) => {
   const [form, setForm] = useState<FormState>({
     name: initial.name || '',
-    slug: initial.slug || '',
     description: initial.description || '',
     parentId: initial.parentId ?? null,
   });
@@ -55,18 +99,32 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({ open, onOpenCha
   React.useEffect(() => {
     setForm({
       name: initial.name || '',
-      slug: initial.slug || '',
       description: initial.description || '',
       parentId: initial.parentId ?? null,
     });
   }, [initial._id, open]);
 
-  const autoSlug = (name: string) =>
-    name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+  const flatCategories = useMemo(() => flattenCategories(categories), [categories]);
+  const blockedIds = useMemo(() => {
+    if (!initial._id) return new Set<string>();
+    const current = flatCategories.find((item) => item._id === initial._id);
+    return new Set([initial._id, ...(current ? getDescendantIds(current) : [])] as string[]);
+  }, [flatCategories, initial._id]);
+
+  const availableParents = flatCategories.filter((item) => !blockedIds.has(item._id));
+  const slugPreview = autoSlug(form.name);
 
   const handleSubmit = () => {
-    if (!form.name.trim()) { toast.error('Vui lòng nhập tên danh mục.'); return; }
-    onSave(form);
+    if (!form.name.trim()) {
+      toast.error('Vui lòng nhập tên danh mục.');
+      return;
+    }
+
+    onSave({
+      name: form.name.trim(),
+      description: form.description.trim(),
+      parentId: form.parentId || null,
+    });
     onOpenChange(false);
   };
 
@@ -78,25 +136,22 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({ open, onOpenCha
         </DialogHeader>
 
         <div className="space-y-3 py-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Tên danh mục</label>
-              <input
-                className={inputCls}
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value, slug: autoSlug(e.target.value) }))}
-                placeholder="Tên danh mục..."
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Slug</label>
-              <input
-                className={inputCls}
-                value={form.slug}
-                onChange={(e) => setForm((p) => ({ ...p, slug: e.target.value }))}
-                placeholder="ten-danh-muc"
-              />
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Tên danh mục</label>
+            <input
+              className={inputCls}
+              value={form.name}
+              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder="Tên danh mục..."
+              autoFocus
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Slug URL</label>
+            <div className={`${inputCls} flex items-center gap-2 text-zinc-500 dark:text-zinc-400`}>
+              <Hash className="w-4 h-4 shrink-0" />
+              <span>{slugPreview || 'slug-se-duoc-tao-tu-dong'}</span>
             </div>
           </div>
 
@@ -105,7 +160,7 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({ open, onOpenCha
             <textarea
               className={`${inputCls} resize-none h-20`}
               value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
               placeholder="Mô tả ngắn..."
             />
           </div>
@@ -115,11 +170,13 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({ open, onOpenCha
             <select
               className={inputCls}
               value={form.parentId || ''}
-              onChange={(e) => setForm((p) => ({ ...p, parentId: e.target.value || null }))}
+              onChange={(e) => setForm((prev) => ({ ...prev, parentId: e.target.value || null }))}
             >
               <option value="">Danh mục gốc</option>
-              {categories.map((c) => (
-                <option key={c._id} value={c._id}>{c.name}</option>
+              {availableParents.map((category) => (
+                <option key={category._id} value={category._id}>
+                  {category.name}
+                </option>
               ))}
             </select>
           </div>
@@ -134,7 +191,7 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({ open, onOpenCha
           </button>
           <button
             onClick={handleSubmit}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-md shadow-primary/20"
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-md shadow-primary/20"
           >
             <Save className="w-4 h-4" /> Lưu
           </button>
@@ -144,15 +201,15 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({ open, onOpenCha
   );
 };
 
-// ===== Category Row Component =====
 const CategoryRow: React.FC<{
   cat: ICategory;
   depth?: number;
   expandedIds: string[];
   onToggleExpand: (id: string) => void;
   onEdit: (cat: ICategory) => void;
-  onDelete: (id: string) => void;
-}> = ({ cat, depth = 0, expandedIds, onToggleExpand, onEdit, onDelete }) => {
+  onToggleStatus: (cat: ICategory) => void;
+  onDelete: (cat: ICategory) => void;
+}> = ({ cat, depth = 0, expandedIds, onToggleExpand, onEdit, onToggleStatus, onDelete }) => {
   const isExpanded = expandedIds.includes(cat._id);
   const hasChildren = (cat.children || []).length > 0;
 
@@ -179,15 +236,24 @@ const CategoryRow: React.FC<{
           </div>
           <div className="flex items-center gap-3 mt-0.5">
             <span className="flex items-center gap-1 text-xs text-zinc-400"><Hash className="w-3 h-3" />{cat.slug}</span>
-            <span className="text-xs text-zinc-400">{cat.courseCount} khóa học</span>
+            <span className="text-xs text-zinc-400">{cat.courseCount || 0} khóa học</span>
           </div>
         </div>
 
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => onToggleStatus(cat)}
+            className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            title={cat.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+          >
+            {cat.isActive
+              ? <ToggleRight className="w-4 h-4 text-primary" />
+              : <ToggleLeft className="w-4 h-4 text-zinc-400" />}
+          </button>
           <button onClick={() => onEdit(cat)} className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 text-blue-500 transition-colors">
             <Pencil className="w-4 h-4" />
           </button>
-          <button onClick={() => onDelete(cat._id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 transition-colors">
+          <button onClick={() => onDelete(cat)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 transition-colors">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -201,6 +267,7 @@ const CategoryRow: React.FC<{
           expandedIds={expandedIds}
           onToggleExpand={onToggleExpand}
           onEdit={onEdit}
+          onToggleStatus={onToggleStatus}
           onDelete={onDelete}
         />
       ))}
@@ -208,59 +275,110 @@ const CategoryRow: React.FC<{
   );
 };
 
-// ===== Main Page =====
 export const CategoryManager: React.FC = () => {
-  const [categories, setCategories] = useState<ICategory[]>(MOCK_CATEGORIES);
-  const [expandedIds, setExpandedIds] = useState<string[]>(['1', '2']);
+  const { data: categories = [], isLoading, error } = useAdminCategories();
+  const createMutation = useCreateAdminCategory();
+  const updateMutation = useUpdateAdminCategory();
+  const statusMutation = useSetAdminCategoryStatus();
+
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<Partial<ICategory>>({});
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [statusTarget, setStatusTarget] = useState<ICategory | null>(null);
 
-  const toggleExpand = (id: string) =>
-    setExpandedIds((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+  React.useEffect(() => {
+    if (categories.length > 0 && expandedIds.length === 0) {
+      setExpandedIds(categories.slice(0, 4).map((category) => category._id));
+    }
+  }, [categories, expandedIds.length]);
 
-  const handleOpenAdd = () => { setEditItem({}); setDialogOpen(true); };
-  const handleOpenEdit = (cat: ICategory) => { setEditItem(cat); setDialogOpen(true); };
+  const flatCategories = useMemo(() => flattenCategories(categories), [categories]);
+  const totalCategories = flatCategories.length;
+  const totalChildren = flatCategories.filter((category) => category.parentId).length;
+  const totalRoots = flatCategories.filter((category) => !category.parentId).length;
+  const totalCourses = flatCategories.reduce((sum, category) => sum + (category.courseCount || 0), 0);
 
-  const handleDelete = () => {
-    if (!deleteId) return;
-    setCategories((p) => {
-      // Xoá root
-      const withoutRoot = p.filter((c) => c._id !== deleteId);
-      // Xoá child
-      return withoutRoot.map((c) => ({ ...c, children: (c.children || []).filter((ch) => ch._id !== deleteId) }));
-    });
-    setDeleteId(null);
-    toast.success('Đã xóa danh mục.');
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]);
+  };
+
+  const handleOpenAdd = () => {
+    setEditItem({});
+    setDialogOpen(true);
+  };
+
+  const handleOpenEdit = (category: ICategory) => {
+    setEditItem(category);
+    setDialogOpen(true);
   };
 
   const handleSave = (data: FormState) => {
     if (editItem._id) {
-      setCategories((p) => p.map((c) => c._id === editItem._id ? { ...c, ...data } : c));
-      toast.success('Đã cập nhật danh mục.');
-    } else {
-      const newCat: ICategory = {
-        _id: Date.now().toString(),
-        name: data.name, slug: data.slug, description: data.description,
-        parentId: data.parentId,
-        order: categories.length + 1, isActive: true, courseCount: 0,
-        createdAt: new Date().toISOString(),
-      };
-      if (!data.parentId) {
-        setCategories((p) => [...p, { ...newCat, children: [] }]);
-      } else {
-        setCategories((p) => p.map((c) => c._id === data.parentId
-          ? { ...c, children: [...(c.children || []), newCat] }
-          : c
-        ));
-      }
-      toast.success('Đã thêm danh mục.');
+      updateMutation.mutate(
+        {
+          id: editItem._id,
+          payload: {
+            name: data.name,
+            description: data.description,
+            parentId: data.parentId,
+          },
+        },
+        {
+          onSuccess: () => toast.success('Đã cập nhật danh mục.'),
+          onError: (err: any) => toast.error(err.message || 'Không thể cập nhật danh mục.'),
+        }
+      );
+      return;
     }
+
+    createMutation.mutate(
+      {
+        name: data.name,
+        description: data.description,
+        parentId: data.parentId,
+      },
+      {
+        onSuccess: (created) => {
+          toast.success('Đã thêm danh mục.');
+          if (!data.parentId) {
+            setExpandedIds((prev) => prev.includes(created._id) ? prev : [...prev, created._id]);
+          }
+        },
+        onError: (err: any) => toast.error(err.message || 'Không thể tạo danh mục.'),
+      }
+    );
+  };
+
+  const handleToggleStatus = (category: ICategory) => {
+    statusMutation.mutate(
+      { id: category._id, isActive: !category.isActive },
+      {
+        onSuccess: () => toast.success(category.isActive ? 'Đã vô hiệu hóa danh mục.' : 'Đã kích hoạt danh mục.'),
+        onError: (err: any) => toast.error(err.message || 'Không thể cập nhật trạng thái danh mục.'),
+      }
+    );
+  };
+
+  const handleDisable = () => {
+    if (!statusTarget) return;
+
+    statusMutation.mutate(
+      { id: statusTarget._id, isActive: false },
+      {
+        onSuccess: () => {
+          toast.success(`Đã vô hiệu hóa danh mục "${statusTarget.name}".`);
+          setStatusTarget(null);
+        },
+        onError: (err: any) => {
+          toast.error(err.message || 'Không thể vô hiệu hóa danh mục.');
+          setStatusTarget(null);
+        },
+      }
+    );
   };
 
   return (
     <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-in-out space-y-6">
-      {/* Form Dialog */}
       <CategoryFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -269,18 +387,16 @@ export const CategoryManager: React.FC = () => {
         onSave={handleSave}
       />
 
-      {/* Confirm Delete */}
       <ConfirmDialog
-        open={deleteId !== null}
-        onOpenChange={(o) => { if (!o) setDeleteId(null); }}
-        title="Xóa Danh mục?"
-        description="Danh mục và tất cả danh mục con sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác."
-        confirmText="Xóa"
+        open={statusTarget !== null}
+        onOpenChange={(open) => { if (!open) setStatusTarget(null); }}
+        title="Vô hiệu hóa Danh mục?"
+        description={`Danh mục "${statusTarget?.name}" sẽ không còn được chọn cho khóa học mới. Bạn có muốn tiếp tục?`}
+        confirmText="Vô hiệu hóa"
         isDestructive
-        onConfirm={handleDelete}
+        onConfirm={handleDisable}
       />
 
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Quản lý Danh mục</h1>
@@ -289,45 +405,62 @@ export const CategoryManager: React.FC = () => {
         <button
           id="btn-add-category"
           onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
         >
           <Plus className="w-4 h-4" /> Thêm Danh mục
         </button>
       </div>
 
-      {/* Stats */}
+      {error ? (
+        <div className="bg-white dark:bg-zinc-900/40 border border-red-200 dark:border-red-500/20 rounded-2xl p-6 text-sm text-red-600 dark:text-red-400">
+          {(error as Error).message || 'Không thể tải danh mục.'}
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Tổng danh mục', value: categories.length + categories.reduce((s, c) => s + (c.children?.length || 0), 0) },
-          { label: 'Gốc', value: categories.length },
-          { label: 'Con', value: categories.reduce((s, c) => s + (c.children?.length || 0), 0) },
-          { label: 'Tổng khóa học', value: categories.reduce((s, c) => s + c.courseCount, 0) },
-        ].map((s) => (
-          <div key={s.label} className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-center shadow-sm">
-            <p className="text-2xl font-bold text-zinc-900 dark:text-white">{s.value}</p>
-            <p className="text-sm text-zinc-500 mt-1">{s.label}</p>
+          { label: 'Tổng danh mục', value: totalCategories },
+          { label: 'Gốc', value: totalRoots },
+          { label: 'Con', value: totalChildren },
+          { label: 'Tổng khóa học', value: totalCourses },
+        ].map((stat) => (
+          <div key={stat.label} className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-center shadow-sm">
+            <p className="text-2xl font-bold text-zinc-900 dark:text-white">{stat.value}</p>
+            <p className="text-sm text-zinc-500 mt-1">{stat.label}</p>
           </div>
         ))}
       </div>
 
-      {/* Tree */}
       <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
           <Tag className="w-4 h-4 text-primary" />
           <span className="font-semibold text-zinc-900 dark:text-white text-sm">Cấu trúc danh mục</span>
+          {isLoading && <Loader2 className="w-4 h-4 animate-spin text-zinc-400 ml-2" />}
         </div>
-        <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-          {categories.map((cat) => (
-            <CategoryRow
-              key={cat._id}
-              cat={cat}
-              expandedIds={expandedIds}
-              onToggleExpand={toggleExpand}
-              onEdit={handleOpenEdit}
-              onDelete={(id) => setDeleteId(id)}
-            />
-          ))}
-        </div>
+
+        {isLoading ? (
+          <div className="p-10 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : categories.length === 0 ? (
+          <div className="p-10 text-center text-zinc-500 dark:text-zinc-400">
+            Chưa có danh mục nào.
+          </div>
+        ) : (
+          <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            {categories.map((category) => (
+              <CategoryRow
+                key={category._id}
+                cat={category}
+                expandedIds={expandedIds}
+                onToggleExpand={toggleExpand}
+                onEdit={handleOpenEdit}
+                onToggleStatus={handleToggleStatus}
+                onDelete={(item) => setStatusTarget(item)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -83,7 +83,7 @@ export const RbacManager: React.FC = () => {
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Phân quyền RBAC</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Thiết lập và điều chỉnh quyền hạn cụ thể cho từng vai trò trong hệ thống.</p>
         </div>
-        <button onClick={handleSave} disabled={saving || selectedRole === 'ADMIN'} id="btn-save-rbac" className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-all shadow-lg shadow-primary/20">
+        <button onClick={handleSave} disabled={saving || selectedRole === 'ADMIN'} id="btn-save-rbac" className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-all shadow-lg shadow-primary/20">
           <Save className="w-4 h-4" />
           {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
         </button>

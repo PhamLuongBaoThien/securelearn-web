@@ -5,6 +5,8 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { RefreshTokenResponse } from '@/types/auth.types';
 
+type AuthContext = 'user' | 'admin';
+
 // ===== Base URL — Gọi qua Kong API Gateway =====
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -22,10 +24,12 @@ const apiClient = axios.create({
 // ===== Token Manager =====
 // Lưu access_token trong closure (memory) — không dùng localStorage để chống XSS
 let accessToken: string | null = null;
+let accessTokenContext: AuthContext = 'user';
 
 /** Cập nhật access token — được gọi từ authSlice */
-export const setAccessToken = (token: string | null) => {
+export const setAccessToken = (token: string | null, context: AuthContext = 'user') => {
   accessToken = token;
+  accessTokenContext = context;
 };
 
 /** Lấy access token hiện tại */
@@ -82,9 +86,9 @@ apiClient.interceptors.response.use(
     // Không retry cho chính request refresh-token và các đường dẫn login (tránh vòng lặp vô hạn)
     if (
       error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes('/refresh-token') &&
-      !originalRequest.url?.includes('/login')
+      !originalRequest._retry && // để không gọi nếu đã retry
+      !originalRequest.url?.includes('/refresh-token') && // không retry lại khi đang refresh token
+      !originalRequest.url?.includes('/login') // không retry lại khi đang login
     ) {
       // Nếu đang refresh → xếp vào hàng chờ
       if (isRefreshing) {
@@ -103,8 +107,12 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Phân biệt gọi refresh token cho User hay Admin dựa trên url bị lỗi
-        const isAdminRoute = originalRequest.url?.includes('/api/admin/');
+        // Ưu tiên context do caller truyền; fallback theo URL.
+        const headerContext = originalRequest.headers['X-Auth-Context'];
+        const isAdminRoute =
+          headerContext === 'admin' ||
+          originalRequest.url?.includes('/api/admin/') ||
+          accessTokenContext === 'admin';
         const refreshUrl = isAdminRoute 
           ? `${API_BASE_URL}/api/admin/auth/refresh-token`
           : `${API_BASE_URL}/api/auth/refresh-token`;
@@ -119,6 +127,7 @@ apiClient.interceptors.response.use(
         if (data.status === 'OK' && data.access_token) {
           // Cập nhật token mới
           accessToken = data.access_token;
+          accessTokenContext = isAdminRoute ? 'admin' : 'user';
 
           // Xử lý hàng chờ với token mới
           processQueue(null, data.access_token);

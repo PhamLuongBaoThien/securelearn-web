@@ -15,16 +15,17 @@ interface AuthInitializerProps {
 
 export function AuthInitializer({ children }: AuthInitializerProps) {
   const dispatch = useAppDispatch();
-  const { data, status } = useInitializeAuth();
+  const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+  const { data, status } = useInitializeAuth({ enabled: !isAdminPath });
 
   // Khi session recovery thành công hoặc thất bại → sync vào Redux
   useEffect(() => {
     if (status === 'success' && data) {
       dispatch(setUser({ user: data.user, accessToken: data.accessToken }));
-    } else if (status === 'error') {
+    } else if (status === 'error' && !isAdminPath) {
       dispatch(clearUser());
     }
-  }, [status, data, dispatch]);
+  }, [status, data, dispatch, isAdminPath]);
 
   // Lắng nghe event khi refresh token cũng hết hạn (session expired hoàn toàn)
   useEffect(() => {

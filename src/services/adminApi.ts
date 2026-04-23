@@ -23,58 +23,108 @@ import type {
 } from '@/types/admin.types';
 
 const ADMIN = '/api/admin';
+const adminRequestConfig = {
+  headers: {
+    'X-Auth-Context': 'admin',
+  },
+};
 
 // ===== System & CMS =====
 
 export const getWebsiteConfig = async (): Promise<AdminApiResponse<IWebsiteConfig>> => {
-  const res = await apiClient.get<AdminApiResponse<IWebsiteConfig>>(`${ADMIN}/system/config`);
+  const res = await apiClient.get<AdminApiResponse<IWebsiteConfig>>(`${ADMIN}/system/config`, adminRequestConfig);
   return res.data;
 };
 
 export const updateWebsiteConfig = async (data: Partial<IWebsiteConfig>): Promise<AdminApiResponse> => {
-  const res = await apiClient.put<AdminApiResponse>(`${ADMIN}/system/config`, data);
+  const res = await apiClient.put<AdminApiResponse>(`${ADMIN}/system/config`, data, adminRequestConfig);
   return res.data;
 };
 
 export const getBanners = async (): Promise<AdminApiResponse<IBanner[]>> => {
-  const res = await apiClient.get<AdminApiResponse<IBanner[]>>(`${ADMIN}/system/banners`);
+  const res = await apiClient.get<AdminApiResponse<IBanner[]>>(`${ADMIN}/system/banners`, adminRequestConfig);
   return res.data;
 };
 
 export const createBanner = async (data: Partial<IBanner>): Promise<AdminApiResponse<IBanner>> => {
-  const res = await apiClient.post<AdminApiResponse<IBanner>>(`${ADMIN}/system/banners`, data);
+  const res = await apiClient.post<AdminApiResponse<IBanner>>(`${ADMIN}/system/banners`, data, adminRequestConfig);
   return res.data;
 };
 
 export const updateBanner = async (id: string, data: Partial<IBanner>): Promise<AdminApiResponse> => {
-  const res = await apiClient.put<AdminApiResponse>(`${ADMIN}/system/banners/${id}`, data);
+  const res = await apiClient.put<AdminApiResponse>(`${ADMIN}/system/banners/${id}`, data, adminRequestConfig);
   return res.data;
 };
 
 export const deleteBanner = async (id: string): Promise<AdminApiResponse> => {
-  const res = await apiClient.delete<AdminApiResponse>(`${ADMIN}/system/banners/${id}`);
+  const res = await apiClient.delete<AdminApiResponse>(`${ADMIN}/system/banners/${id}`, adminRequestConfig);
   return res.data;
 };
 
 export const getCategories = async (): Promise<AdminApiResponse<ICategory[]>> => {
-  const res = await apiClient.get<AdminApiResponse<ICategory[]>>(`${ADMIN}/system/categories`);
-  return res.data;
+  const res = await apiClient.get<{ status: 'OK' | 'ERR'; message?: string; data?: any[] }>('/api/categories/admin/all', adminRequestConfig);
+
+  return {
+    status: res.data.status,
+    message: res.data.message || '',
+    data: (res.data.data || []).map(mapCategoryNode),
+  };
 };
 
-export const createCategory = async (data: Partial<ICategory>): Promise<AdminApiResponse<ICategory>> => {
-  const res = await apiClient.post<AdminApiResponse<ICategory>>(`${ADMIN}/system/categories`, data);
-  return res.data;
+export const createCategory = async (data: {
+  name: string;
+  description?: string;
+  parentId?: string | null;
+  sortOrder?: number;
+}): Promise<AdminApiResponse<ICategory>> => {
+  const res = await apiClient.post<{ status: 'OK' | 'ERR'; message: string; data?: any }>('/api/categories', data, adminRequestConfig);
+  return {
+    status: res.data.status,
+    message: res.data.message,
+    data: res.data.data ? mapCategoryNode(res.data.data) : undefined,
+  };
 };
 
-export const updateCategory = async (id: string, data: Partial<ICategory>): Promise<AdminApiResponse> => {
-  const res = await apiClient.put<AdminApiResponse>(`${ADMIN}/system/categories/${id}`, data);
-  return res.data;
+export const updateCategory = async (
+  id: string,
+  data: {
+    name?: string;
+    description?: string;
+    parentId?: string | null;
+    sortOrder?: number;
+    isActive?: boolean;
+  }
+): Promise<AdminApiResponse<ICategory>> => {
+  const res = await apiClient.put<{ status: 'OK' | 'ERR'; message: string; data?: any }>(`/api/categories/${id}`, data, adminRequestConfig);
+  return {
+    status: res.data.status,
+    message: res.data.message,
+    data: res.data.data ? mapCategoryNode(res.data.data) : undefined,
+  };
 };
 
-export const deleteCategory = async (id: string): Promise<AdminApiResponse> => {
-  const res = await apiClient.delete<AdminApiResponse>(`${ADMIN}/system/categories/${id}`);
-  return res.data;
+export const setCategoryStatus = async (id: string, isActive: boolean): Promise<AdminApiResponse<ICategory>> => {
+  const res = await apiClient.patch<{ status: 'OK' | 'ERR'; message: string; data?: any }>(`/api/categories/${id}/status`, { isActive }, adminRequestConfig);
+  return {
+    status: res.data.status,
+    message: res.data.message,
+    data: res.data.data ? mapCategoryNode(res.data.data) : undefined,
+  };
 };
+
+const mapCategoryNode = (category: any): ICategory => ({
+  _id: category._id,
+  name: category.name,
+  slug: category.slug,
+  description: category.description || '',
+  parentId: category.parentId ?? null,
+  order: category.sortOrder ?? 0,
+  isActive: category.isActive ?? true,
+  courseCount: category.courseCount ?? 0,
+  children: (category.children || []).map(mapCategoryNode),
+  createdAt: category.createdAt,
+  updatedAt: category.updatedAt,
+});
 
 // ===== Users & RBAC =====
 

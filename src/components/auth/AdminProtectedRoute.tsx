@@ -42,7 +42,7 @@ export const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ childr
 
   // API chạy xong (không loading), và auth state false (lỗi call API, session expired)
   if (!isAuthenticated) {
-    return <Navigate to="/not-found" state={{ from: location }} replace />;
+    return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
   return <>{children}</>;

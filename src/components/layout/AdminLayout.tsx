@@ -11,7 +11,6 @@ import {
   LogOut,
   Shield,
   CreditCard,
-  BarChart3,
   Menu,
   ChevronLeft,
   Moon,
@@ -26,14 +25,10 @@ import {
   Lock,
   CheckSquare,
   FolderOpen,
-  Video,
-  Key,
-  ShieldCheck,
   DollarSign,
   Package,
   FileText,
   Bell,
-  TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -96,24 +91,11 @@ const sidebarEntries: SidebarEntry[] = [
   {
     type: 'group',
     group: {
-      groupName: 'Media & Bảo mật',
-      groupIcon: <Shield className="w-5 h-5 shrink-0" />,
-      items: [
-        { name: 'Giám sát Mã hóa', path: '/admin/media/encryption', icon: <Video className="w-4 h-4 shrink-0" /> },
-        { name: 'Quản lý Khóa (KMS)', path: '/admin/media/kms', icon: <Key className="w-4 h-4 shrink-0" /> },
-        { name: 'Cấu hình Bảo vệ', path: '/admin/media/security', icon: <ShieldCheck className="w-4 h-4 shrink-0" /> },
-      ],
-    },
-  },
-  {
-    type: 'group',
-    group: {
       groupName: 'Tài chính',
       groupIcon: <CreditCard className="w-5 h-5 shrink-0" />,
       items: [
         { name: 'Giao dịch', path: '/admin/finance/transactions', icon: <DollarSign className="w-4 h-4 shrink-0" /> },
         { name: 'Gói cước', path: '/admin/finance/plans', icon: <Package className="w-4 h-4 shrink-0" /> },
-        { name: 'Đối soát & Báo cáo', path: '/admin/finance/reports', icon: <BarChart3 className="w-4 h-4 shrink-0" /> },
       ],
     },
   },
@@ -124,7 +106,6 @@ const sidebarEntries: SidebarEntry[] = [
       groupIcon: <Bell className="w-5 h-5 shrink-0" />,
       items: [
         { name: 'Mẫu Thông báo', path: '/admin/notifications/config', icon: <FileText className="w-4 h-4 shrink-0" /> },
-        { name: 'Tiến độ Học tập', path: '/admin/notifications/progress', icon: <TrendingUp className="w-4 h-4 shrink-0" /> },
       ],
     },
   },

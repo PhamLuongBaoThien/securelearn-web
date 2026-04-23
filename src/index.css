@@ -58,6 +58,27 @@
   }
 }
 
+@keyframes float3d {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotateX(var(--float-rotate-x, 8deg))
+      rotateY(var(--float-rotate-y, -6deg));
+  }
+  50% {
+    transform: translate3d(0, calc(var(--float-distance, 8px) * -1), 0) rotateX(0deg)
+      rotateY(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes float3d {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg);
+    }
+  }
+}
+
 /* ── TipTap Rich Text Editor ── */
 .tiptap.ProseMirror { outline: none; }
 

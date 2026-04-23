@@ -102,7 +102,7 @@ export const InstructorDashboard: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
-            Chào mừng trở lại, {user?.fullName || 'Giảng viên'}! 👋
+            Chào mừng trở lại, {user?.fullName || 'Giảng viên'}!
           </h1>
           <p className="text-muted-foreground mt-2">Dưới đây là tổng quan về các khóa học của bạn hôm nay.</p>
         </div>

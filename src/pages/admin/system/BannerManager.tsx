@@ -101,7 +101,7 @@ const BannerFormDialog: React.FC<BannerFormDialogProps> = ({ open, onOpenChange,
           </button>
           <button
             onClick={handleSubmit}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-md shadow-primary/20"
+            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-md shadow-primary/20"
           >
             <Save className="w-4 h-4" />
             {initial._id ? 'Cập nhật' : 'Thêm Banner'}
@@ -195,7 +195,7 @@ export const BannerManager: React.FC = () => {
         <button
           id="btn-add-banner"
           onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
         >
           <Plus className="w-4 h-4" /> Thêm Banner
         </button>

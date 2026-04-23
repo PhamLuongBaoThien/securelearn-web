@@ -1,400 +1,277 @@
 // ========================
-// Instructor Communication: Tương tác & Thông báo Lớp học
-// Soạn thông báo, lịch sử gửi, quick templates.
+// Instructor Communication: Hỏi đáp & Tin nhắn
+// Hỏi đáp học viên (filter theo khóa học) + Tin nhắn
 // ========================
 import React, { useState } from 'react';
-import {
-  Send,
-  Mail,
-  Bell,
-  MessageSquare,
-  Users,
-  BookOpen,
-  Clock,
-  CheckCircle2,
-  ChevronDown,
-  Sparkles,
-  BarChart2,
-  Smartphone,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { MessageSquare, Mail, Search, ChevronDown, ThumbsUp, Clock, Check, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
-// ===== Mock Data =====
-const SENT_HISTORY = [
+type CommTab = 'qa' | 'messages';
+
+// ─── Mock Data ───
+const MOCK_COURSES = [
+  { id: 'all', title: 'Tất cả khóa học' },
+  { id: '1', title: 'React Nâng cao' },
+  { id: '2', title: 'Node.js Microservices' },
+  { id: '3', title: 'TypeScript Toàn tập' },
+];
+
+const MOCK_QUESTIONS = [
   {
-    id: '1',
-    title: 'Chào mừng học viên mới khóa React Masterclass!',
-    channel: ['Email', 'Push'],
-    recipients: 24,
-    opened: 18,
-    course: 'React Masterclass 2024',
-    sentAt: '2026-04-21 09:00',
+    id: 1, courseId: '1', course: 'React Nâng cao',
+    student: 'Nguyễn Văn A', avatar: 'N', time: '2 giờ trước',
+    question: 'Sự khác biệt giữa useCallback và useMemo là gì? Khi nào nên dùng cái nào?',
+    answered: false, likes: 4,
   },
   {
-    id: '2',
-    title: 'Nhắc nhở: Bài tập Redux chương 3 sắp hết hạn',
-    channel: ['Push'],
-    recipients: 142,
-    opened: 98,
-    course: 'React Masterclass 2024',
-    sentAt: '2026-04-20 15:30',
+    id: 2, courseId: '2', course: 'Node.js Microservices',
+    student: 'Trần Thị B', avatar: 'T', time: '5 giờ trước',
+    question: 'Làm thế nào để xử lý lỗi circuit breaker trong microservices?',
+    answered: true, answer: 'Circuit breaker pattern được dùng để ngăn chặn cascading failures. Bạn có thể dùng thư viện opossum hoặc tự implement với state machine gồm 3 trạng thái: CLOSED, OPEN, HALF_OPEN.',
+    likes: 7,
   },
   {
-    id: '3',
-    title: 'Bài giảng mới: Docker Compose thực hành',
-    channel: ['Email', 'Push', 'SMS'],
-    recipients: 87,
-    opened: 71,
-    course: 'DevOps Fundamentals',
-    sentAt: '2026-04-19 10:00',
+    id: 3, courseId: '3', course: 'TypeScript Toàn tập',
+    student: 'Lê Văn C', avatar: 'L', time: '1 ngày trước',
+    question: 'Conditional Types và Template Literal Types trong TypeScript có thể kết hợp như thế nào?',
+    answered: false, likes: 2,
   },
   {
-    id: '4',
-    title: 'Cập nhật giáo trình — Thêm 3 bài giảng mới',
-    channel: ['Email'],
-    recipients: 203,
-    opened: 145,
-    course: 'Python Advanced',
-    sentAt: '2026-04-18 08:00',
+    id: 4, courseId: '1', course: 'React Nâng cao',
+    student: 'Phạm Thị D', avatar: 'P', time: '2 ngày trước',
+    question: 'Context API vs Redux: Khi nào nên dùng cái nào trong dự án thực tế?',
+    answered: true, answer: 'Context API phù hợp cho global state đơn giản (theme, user auth). Redux phù hợp cho state phức tạp, cần middleware, time-travel debugging, hoặc team lớn.',
+    likes: 11,
   },
 ];
 
-const QUICK_TEMPLATES = [
-  {
-    id: 't1',
-    icon: '👋',
-    label: 'Chào mừng học viên',
-    preview: 'Chào mừng bạn đến với khóa học! Hãy bắt đầu hành trình học tập ngay hôm nay...',
-  },
-  {
-    id: 't2',
-    icon: '⏰',
-    label: 'Nhắc bài tập',
-    preview: 'Bạn vẫn chưa hoàn thành bài tập của chương [X]. Hãy dành 30 phút để hoàn thành nhé!',
-  },
-  {
-    id: 't3',
-    icon: '🎉',
-    label: 'Thông báo nội dung mới',
-    preview: 'Tin vui! Tôi vừa thêm [N] bài giảng mới vào khóa học. Hãy kiểm tra ngày hôm nay!',
-  },
-  {
-    id: 't4',
-    icon: '🏆',
-    label: 'Chúc mừng hoàn thành',
-    preview: 'Chúc mừng bạn đã hoàn thành khóa học! Đừng quên để lại đánh giá nhé!',
-  },
+const MOCK_MESSAGES = [
+  { id: 1, student: 'Nguyễn Văn A', avatar: 'N', lastMsg: 'Thầy ơi, em muốn hỏi thêm về bài tập số 3 ạ.', time: '10 phút trước', unread: 2, course: 'React Nâng cao' },
+  { id: 2, student: 'Trần Thị B', avatar: 'T', lastMsg: 'Cảm ơn thầy đã giải đáp rất nhiều!', time: '1 giờ trước', unread: 0, course: 'Node.js Microservices' },
+  { id: 3, student: 'Lê Văn C', avatar: 'L', lastMsg: 'Em đã hiểu rồi ạ, cảm ơn thầy.', time: '3 giờ trước', unread: 0, course: 'TypeScript Toàn tập' },
 ];
 
-const channelConfig: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  Email: { label: 'Email', icon: <Mail className="w-3 h-3" />, color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
-  Push: { label: 'Push', icon: <Bell className="w-3 h-3" />, color: 'bg-purple-500/10 text-purple-600 border-purple-500/20' },
-  SMS: { label: 'SMS', icon: <Smartphone className="w-3 h-3" />, color: 'bg-green-500/10 text-green-600 border-green-500/20' },
-};
-
-export const InstructorCommunication: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'compose' | 'history'>('compose');
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set(['Push']));
-  const [audience, setAudience] = useState<'all' | 'course' | 'incomplete'>('all');
+// ─── Q&A Tab ───
+const QATab: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState('all');
+  const [search, setSearch] = useState('');
+  const [replyId, setReplyId] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [questions, setQuestions] = useState(MOCK_QUESTIONS);
 
-  const totalRecipients = audience === 'all' ? 432 : audience === 'incomplete' ? 156 : 142;
-  const openRate = Math.round(
-    (SENT_HISTORY.reduce((s, h) => s + h.opened, 0) / SENT_HISTORY.reduce((s, h) => s + h.recipients, 0)) * 100
-  );
+  const filtered = questions.filter(q => {
+    const matchCourse = selectedCourse === 'all' || q.courseId === selectedCourse;
+    const matchSearch = q.question.toLowerCase().includes(search.toLowerCase()) || q.student.toLowerCase().includes(search.toLowerCase());
+    return matchCourse && matchSearch;
+  });
 
-  const toggleChannel = (ch: string) => {
-    setSelectedChannels((prev) => {
-      const next = new Set(prev);
-      if (next.has(ch)) {
-        if (next.size > 1) next.delete(ch);
-        else toast.error('Phải chọn ít nhất 1 kênh gửi.');
-      } else {
-        next.add(ch);
-      }
-      return next;
-    });
+  const handleReply = (id: number) => {
+    if (!replyText.trim()) return;
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, answered: true, answer: replyText.trim() } : q));
+    setReplyId(null);
+    setReplyText('');
   };
-
-  const handleSend = () => {
-    if (!title.trim() || !content.trim()) {
-      toast.error('Vui lòng nhập tiêu đề và nội dung thông báo.');
-      return;
-    }
-    toast.success(`Đã gửi thông báo đến ${totalRecipients} học viên!`);
-    setTitle('');
-    setContent('');
-  };
-
-  const applyTemplate = (t: typeof QUICK_TEMPLATES[0]) => {
-    setTitle(t.label);
-    setContent(t.preview);
-    toast.success(`Đã áp dụng mẫu "${t.label}"`);
-  };
-
-  const TABS = [
-    { key: 'compose', label: 'Soạn thông báo', icon: <Send className="w-4 h-4" /> },
-    { key: 'history', label: 'Lịch sử gửi', icon: <Clock className="w-4 h-4" /> },
-  ] as const;
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
-            Thông báo Lớp học
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Gửi Email, Push Notification hoặc SMS đến học viên qua Notification Service.
-          </p>
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm kiếm câu hỏi..." className="pl-9 h-10 rounded-xl" />
+        </div>
+        <div className="relative">
+          <select
+            value={selectedCourse}
+            onChange={e => setSelectedCourse(e.target.value)}
+            className="h-10 pl-3 pr-8 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none cursor-pointer"
+          >
+            {MOCK_COURSES.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
         </div>
       </div>
 
-      {/* Overview stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Tổng học viên', value: '432', icon: <Users className="w-5 h-5" />, color: 'bg-blue-500/10 text-blue-600' },
-          { label: 'Thông báo đã gửi', value: SENT_HISTORY.length, icon: <Send className="w-5 h-5" />, color: 'bg-green-500/10 text-green-600' },
-          { label: 'Tỷ lệ mở TB', value: `${openRate}%`, icon: <BarChart2 className="w-5 h-5" />, color: 'bg-purple-500/10 text-purple-600' },
-          { label: 'Tổng người nhận', value: SENT_HISTORY.reduce((s, h) => s + h.recipients, 0), icon: <MessageSquare className="w-5 h-5" />, color: 'bg-orange-500/10 text-orange-600' },
-        ].map((s) => (
-          <div key={s.label} className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 ${s.color} rounded-xl flex items-center justify-center shrink-0`}>{s.icon}</div>
-              <div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">{s.label}</p>
-                <p className="text-xl font-bold text-zinc-900 dark:text-white">{s.value}</p>
+      {/* Stats row */}
+      <div className="flex gap-4 text-sm">
+        <span className="px-3 py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg font-medium">
+          {filtered.filter(q => !q.answered).length} chưa trả lời
+        </span>
+        <span className="px-3 py-1.5 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 rounded-lg font-medium">
+          {filtered.filter(q => q.answered).length} đã trả lời
+        </span>
+      </div>
+
+      {/* Questions List */}
+      <div className="space-y-4">
+        {filtered.length === 0 ? (
+          <div className="text-center py-16 text-zinc-400">Không có câu hỏi nào.</div>
+        ) : filtered.map(q => (
+          <div key={q.id} className={`bg-white dark:bg-zinc-900 border rounded-2xl p-5 space-y-4 ${q.answered ? 'border-zinc-200 dark:border-zinc-800' : 'border-amber-200 dark:border-amber-500/30'}`}>
+            {/* Question */}
+            <div className="flex gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center font-bold text-primary text-sm shrink-0">{q.avatar}</div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-semibold text-zinc-900 dark:text-white">{q.student}</span>
+                  <span className="text-xs text-zinc-400">· {q.course} · {q.time}</span>
+                  {q.answered
+                    ? <span className="ml-auto text-xs px-2 py-0.5 bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 rounded-full flex items-center gap-1"><Check className="w-3 h-3" />Đã trả lời</span>
+                    : <span className="ml-auto text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full flex items-center gap-1"><Clock className="w-3 h-3" />Chờ trả lời</span>
+                  }
+                </div>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{q.question}</p>
+                <div className="flex items-center gap-1 mt-2 text-xs text-zinc-400">
+                  <ThumbsUp className="w-3 h-3" />{q.likes} người thấy hữu ích
+                </div>
               </div>
             </div>
+
+            {/* Answer */}
+            {q.answered && q.answer && (
+              <div className="ml-12 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-primary-foreground">GV</div>
+                  <span className="text-xs font-semibold text-primary">Giảng viên (Bạn)</span>
+                </div>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{q.answer}</p>
+              </div>
+            )}
+
+            {/* Reply area */}
+            {!q.answered && replyId !== q.id && (
+              <div className="ml-12">
+                <Button variant="outline" size="sm" onClick={() => setReplyId(q.id)} className="rounded-xl gap-2 text-xs">
+                  <MessageSquare className="w-3.5 h-3.5" /> Trả lời
+                </Button>
+              </div>
+            )}
+            {replyId === q.id && (
+              <div className="ml-12 space-y-2">
+                <textarea
+                  value={replyText}
+                  onChange={e => setReplyText(e.target.value)}
+                  rows={3}
+                  placeholder="Nhập câu trả lời của bạn..."
+                  className="w-full p-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => handleReply(q.id)} className="rounded-xl gap-2 text-xs"><Send className="w-3.5 h-3.5" /> Gửi trả lời</Button>
+                  <Button variant="ghost" size="sm" onClick={() => { setReplyId(null); setReplyText(''); }} className="rounded-xl text-xs">Hủy</Button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
+    </div>
+  );
+};
 
-      {/* Tabs */}
-      <div className="border-b border-zinc-200 dark:border-zinc-800">
-        <div className="flex gap-1">
-          {TABS.map((tab) => (
+// ─── Messages Tab ───
+const MessagesTab: React.FC = () => {
+  const [selected, setSelected] = useState<number | null>(null);
+  const [input, setInput] = useState('');
+
+  const conv = MOCK_MESSAGES.find(m => m.id === selected);
+
+  return (
+    <div className="flex gap-4 h-[520px]">
+      {/* Conversation list */}
+      <div className="w-72 shrink-0 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden flex flex-col">
+        <div className="p-3 border-b border-zinc-100 dark:border-zinc-800">
+          <p className="text-sm font-bold text-zinc-900 dark:text-white">Tin nhắn</p>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {MOCK_MESSAGES.map(m => (
             <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all ${
-                activeTab === tab.key
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
-              }`}
+              key={m.id}
+              onClick={() => setSelected(m.id)}
+              className={`w-full flex items-start gap-3 p-3 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors border-b border-zinc-100 dark:border-zinc-800/60 last:border-0 ${selected === m.id ? 'bg-primary/5' : ''}`}
             >
-              {tab.icon}{tab.label}
+              <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center font-bold text-primary text-sm shrink-0">{m.avatar}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{m.student}</span>
+                  {m.unread > 0 && <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-primary-foreground shrink-0">{m.unread}</span>}
+                </div>
+                <p className="text-xs text-zinc-400 truncate">{m.lastMsg}</p>
+                <p className="text-[10px] text-zinc-300 dark:text-zinc-600 mt-0.5">{m.time}</p>
+              </div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Tab: Compose */}
-      {activeTab === 'compose' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Compose Form */}
-          <div className="lg:col-span-2 space-y-5">
-            {/* Audience */}
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 space-y-4">
-              <h3 className="font-bold text-zinc-900 dark:text-white">Đối tượng nhận</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {([
-                  { key: 'all', label: 'Tất cả học viên', sub: '432 người', icon: <Users className="w-4 h-4" /> },
-                  { key: 'course', label: 'Theo khóa học', sub: '142 người', icon: <BookOpen className="w-4 h-4" /> },
-                  { key: 'incomplete', label: 'Chưa hoàn thành', sub: '156 người', icon: <Clock className="w-4 h-4" /> },
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.key}
-                    onClick={() => setAudience(opt.key)}
-                    className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all ${
-                      audience === opt.key
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-primary/40'
-                    }`}
-                  >
-                    {opt.icon}
-                    <div>
-                      <p className="text-sm font-medium">{opt.label}</p>
-                      <p className="text-xs opacity-70">{opt.sub}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              {audience === 'course' && (
-                <div className="relative">
-                  <select
-                    value={selectedCourse}
-                    onChange={(e) => setSelectedCourse(e.target.value)}
-                    className="w-full h-11 px-3 pr-8 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
-                  >
-                    <option value="all">-- Chọn khóa học --</option>
-                    <option value="react">React Masterclass 2024</option>
-                    <option value="devops">DevOps Fundamentals</option>
-                    <option value="python">Python Advanced</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
-                </div>
-              )}
-            </div>
-
-            {/* Channel */}
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 space-y-3">
-              <h3 className="font-bold text-zinc-900 dark:text-white">Kênh gửi</h3>
-              <div className="flex gap-3 flex-wrap">
-                {(['Email', 'Push', 'SMS'] as const).map((ch) => {
-                  const cfg = channelConfig[ch];
-                  const active = selectedChannels.has(ch);
-                  return (
-                    <button
-                      key={ch}
-                      onClick={() => toggleChannel(ch)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                        active
-                          ? `${cfg.color} border`
-                          : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-primary/30'
-                      }`}
-                    >
-                      {cfg.icon} {cfg.label}
-                      {active && <CheckCircle2 className="w-3.5 h-3.5 ml-0.5" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Message */}
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 space-y-4">
-              <h3 className="font-bold text-zinc-900 dark:text-white">Nội dung thông báo</h3>
+      {/* Chat area */}
+      <div className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex flex-col overflow-hidden">
+        {!conv ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-3">
+            <Mail className="w-12 h-12 opacity-30" />
+            <p className="text-sm">Chọn một cuộc trò chuyện</p>
+          </div>
+        ) : (
+          <>
+            <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center font-bold text-primary text-sm">{conv.avatar}</div>
               <div>
-                <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-1.5 block">Tiêu đề</label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Nhập tiêu đề thông báo..."
-                  className="h-11 rounded-xl"
-                />
+                <p className="text-sm font-bold text-zinc-900 dark:text-white">{conv.student}</p>
+                <p className="text-xs text-zinc-400">{conv.course}</p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-zinc-600 dark:text-zinc-400 mb-1.5 block">Nội dung</label>
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={5}
-                  placeholder="Nhập nội dung thông báo gửi đến học viên..."
-                  className="w-full p-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[120px]"
-                />
-                <p className="text-xs text-zinc-400 mt-1">{content.length} ký tự</p>
-              </div>
-
-              {/* Summary & Send */}
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between flex-wrap gap-3">
-                <div className="text-sm text-zinc-500">
-                  Gửi đến <span className="font-semibold text-zinc-900 dark:text-white">{totalRecipients}</span> học viên qua{' '}
-                  <span className="font-semibold text-zinc-900 dark:text-white">{Array.from(selectedChannels).join(', ')}</span>
+            </div>
+            <div className="flex-1 p-4 overflow-y-auto space-y-4">
+              <div className="flex gap-2">
+                <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary shrink-0">{conv.avatar}</div>
+                <div className="max-w-[70%] bg-zinc-100 dark:bg-zinc-800 rounded-2xl rounded-tl-none px-4 py-2.5">
+                  <p className="text-sm text-zinc-800 dark:text-zinc-200">{conv.lastMsg}</p>
                 </div>
-                <Button onClick={handleSend} className="gap-2 rounded-xl px-6">
-                  <Send className="w-4 h-4" /> Gửi ngay
-                </Button>
               </div>
             </div>
-          </div>
-
-          {/* Quick Templates Sidebar */}
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 space-y-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-yellow-500" />
-                <h3 className="font-bold text-zinc-900 dark:text-white">Mẫu nhanh</h3>
-              </div>
-              <div className="space-y-3">
-                {QUICK_TEMPLATES.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => applyTemplate(t)}
-                    className="w-full text-left p-4 bg-zinc-50 dark:bg-zinc-950 rounded-xl hover:bg-primary/5 hover:border-primary/20 border border-transparent transition-all group"
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-lg">{t.icon}</span>
-                      <span className="text-sm font-semibold text-zinc-900 dark:text-white group-hover:text-primary transition-colors">{t.label}</span>
-                    </div>
-                    <p className="text-xs text-zinc-400 line-clamp-2">{t.preview}</p>
-                  </button>
-                ))}
-              </div>
+            <div className="p-3 border-t border-zinc-100 dark:border-zinc-800 flex gap-2">
+              <Input value={input} onChange={e => setInput(e.target.value)} placeholder="Nhập tin nhắn..." className="h-10 rounded-xl flex-1" onKeyDown={e => e.key === 'Enter' && setInput('')} />
+              <Button size="sm" className="h-10 w-10 p-0 rounded-xl" onClick={() => setInput('')}><Send className="w-4 h-4" /></Button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
 
-      {/* Tab: History */}
-      {activeTab === 'history' && (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 dark:bg-zinc-950">
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className="text-left py-3 px-4 font-medium text-zinc-500">Thông báo</th>
-                  <th className="text-left py-3 px-4 font-medium text-zinc-500 hidden md:table-cell">Khóa học</th>
-                  <th className="text-center py-3 px-4 font-medium text-zinc-500">Kênh</th>
-                  <th className="text-right py-3 px-4 font-medium text-zinc-500 hidden sm:table-cell">Người nhận</th>
-                  <th className="text-right py-3 px-4 font-medium text-zinc-500 hidden lg:table-cell">Tỷ lệ mở</th>
-                  <th className="text-right py-3 px-4 font-medium text-zinc-500 hidden lg:table-cell">Thời gian</th>
-                </tr>
-              </thead>
-              <tbody>
-                {SENT_HISTORY.map((item) => {
-                  const rate = Math.round((item.opened / item.recipients) * 100);
-                  return (
-                    <tr key={item.id} className="border-b border-zinc-100 dark:border-zinc-800/60 hover:bg-zinc-50 dark:hover:bg-zinc-950/50 transition-colors">
-                      <td className="py-3 px-4">
-                        <p className="font-medium text-zinc-900 dark:text-white line-clamp-1 max-w-[260px]">{item.title}</p>
-                      </td>
-                      <td className="py-3 px-4 text-zinc-500 hidden md:table-cell">
-                        <div className="flex items-center gap-1.5">
-                          <BookOpen className="w-3.5 h-3.5 shrink-0" />
-                          <span className="line-clamp-1 max-w-[160px] text-xs">{item.course}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center justify-center gap-1 flex-wrap">
-                          {item.channel.map((ch) => {
-                            const cfg = channelConfig[ch];
-                            return (
-                              <Badge key={ch} className={`flex items-center gap-0.5 text-[10px] border ${cfg.color}`}>
-                                {cfg.icon} {ch}
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-right text-zinc-700 dark:text-zinc-300 font-medium hidden sm:table-cell">
-                        {item.recipients}
-                      </td>
-                      <td className="py-3 px-4 text-right hidden lg:table-cell">
-                        <div className="flex items-center justify-end gap-2">
-                          <div className="w-16 bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5">
-                            <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${rate}%` }} />
-                          </div>
-                          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 w-10 text-left">{rate}%</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-right text-xs text-zinc-400 hidden lg:table-cell whitespace-nowrap">
-                        {item.sentAt}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+// ─── Main Export ───
+export const InstructorCommunication: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<CommTab>('qa');
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Giao tiếp</h1>
+        <p className="text-muted-foreground mt-1">Quản lý hỏi đáp và tin nhắn với học viên.</p>
+      </div>
+
+      {/* Tab bar */}
+      <div className="flex gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 w-fit">
+        {([
+          { id: 'qa' as CommTab, label: 'Hỏi đáp', icon: <MessageSquare className="w-4 h-4" /> },
+          { id: 'messages' as CommTab, label: 'Tin nhắn', icon: <Mail className="w-4 h-4" /> },
+        ]).map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              activeTab === tab.id
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm border border-zinc-200 dark:border-zinc-700'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+            }`}
+          >
+            {tab.icon} {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'qa'       && <QATab />}
+      {activeTab === 'messages' && <MessagesTab />}
     </div>
   );
 };

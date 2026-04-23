@@ -35,7 +35,7 @@ export function useLogin() {
       }
 
       // Cập nhật token vào apiClient
-      setAccessToken(response.data!.access_token);
+      setAccessToken(response.data!.access_token, 'user');
 
       // Lấy profile đầy đủ
       const profileRes = await getMe();
@@ -78,7 +78,7 @@ export function useLogout() {
         const response = await logoutUser();
         return response;
       } finally {
-        setAccessToken(null);
+        setAccessToken(null, 'user');
       }
     },
     onSuccess: () => {
@@ -93,7 +93,7 @@ export function useLogout() {
 // ===== useInitializeAuth =====
 // Khôi phục session khi app khởi động — dùng refresh token cookie.
 // Component sử dụng hook này cần tự sync data vào Redux qua useEffect.
-export function useInitializeAuth() {
+export function useInitializeAuth(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: authKeys.session,
     queryFn: async () => {
@@ -104,7 +104,7 @@ export function useInitializeAuth() {
       }
 
       // Cập nhật token mới
-      setAccessToken(refreshRes.access_token);
+      setAccessToken(refreshRes.access_token, 'user');
 
       // Lấy profile
       const profileRes = await getMe();
@@ -116,6 +116,7 @@ export function useInitializeAuth() {
     retry: false,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -157,7 +158,7 @@ export function useDeleteAccount() {
       return response;
     },
     onSuccess: () => {
-      setAccessToken(null);
+      setAccessToken(null, 'user');
       dispatch(clearUser());
       queryClient.removeQueries({ queryKey: authKeys.session });
       queryClient.removeQueries({ queryKey: authKeys.profile });

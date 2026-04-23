@@ -12,7 +12,11 @@ const ADMIN_API_PREFIX = '/api/admin/auth';
  * @param payload - Chứa email, password.
  */
 export const loginAdmin = async (payload: LoginPayload): Promise<ApiResponse<LoginResponseData>> => {
-  const response = await apiClient.post<ApiResponse<LoginResponseData>>(`${ADMIN_API_PREFIX}/login`, payload);
+  const response = await apiClient.post<ApiResponse<LoginResponseData>>(`${ADMIN_API_PREFIX}/login`, payload, {
+    headers: {
+      'X-Auth-Context': 'admin',
+    },
+  });
   return response.data;
 };
 
@@ -20,7 +24,11 @@ export const loginAdmin = async (payload: LoginPayload): Promise<ApiResponse<Log
  * Lấy thông tin Admin đang đăng nhập.
  */
 export const getAdminMe = async (): Promise<ApiResponse<any>> => {
-  const response = await apiClient.get<ApiResponse<any>>(`${ADMIN_API_PREFIX}/me`);
+  const response = await apiClient.get<ApiResponse<any>>(`${ADMIN_API_PREFIX}/me`, {
+    headers: {
+      'X-Auth-Context': 'admin',
+    },
+  });
   return response.data;
 };
 
@@ -28,7 +36,11 @@ export const getAdminMe = async (): Promise<ApiResponse<any>> => {
  * Đăng xuất khỏi phiên Admin.
  */
 export const logoutAdmin = async (): Promise<ApiResponse> => {
-  const response = await apiClient.post<ApiResponse>(`${ADMIN_API_PREFIX}/logout`);
+  const response = await apiClient.post<ApiResponse>(`${ADMIN_API_PREFIX}/logout`, undefined, {
+    headers: {
+      'X-Auth-Context': 'admin',
+    },
+  });
   return response.data;
 };
 
@@ -37,6 +49,10 @@ export const logoutAdmin = async (): Promise<ApiResponse> => {
  * (Refresh Token lưu trong cookie => không cần gửi param)
  */
 export const refreshAdminToken = async (): Promise<RefreshTokenResponse> => {
-  const response = await apiClient.post<RefreshTokenResponse>(`${ADMIN_API_PREFIX}/refresh-token`);
+  const response = await apiClient.post<RefreshTokenResponse>(`${ADMIN_API_PREFIX}/refresh-token`, undefined, {
+    headers: {
+      'X-Auth-Context': 'admin',
+    },
+  });
   return response.data;
 };

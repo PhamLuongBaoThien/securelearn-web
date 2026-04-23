@@ -52,6 +52,7 @@ export interface ICategory {
   courseCount: number;
   children?: ICategory[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 // ===== Users & RBAC =====

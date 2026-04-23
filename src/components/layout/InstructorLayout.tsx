@@ -6,8 +6,8 @@ import { useLogout } from '@/hooks/useAuth';
 import {
   LayoutDashboard,
   PlaySquare,
-  Activity,
-  Wallet,
+  BarChart2,
+  MessageSquare,
   Bell,
   LogOut,
   Menu,
@@ -43,9 +43,10 @@ export const InstructorLayout: React.FC = () => {
 
   const menuGroups = [
     {
-      label: 'Tổng quan',
+      label: 'Hiệu suất',
       items: [
-        { name: 'Bảng điều khiển', path: '/instructor/dashboard', icon: <LayoutDashboard className="w-5 h-5 shrink-0" /> },
+        { name: 'Tổng quan', path: '/instructor/dashboard', icon: <LayoutDashboard className="w-5 h-5 shrink-0" /> },
+        { name: 'Phân tích', path: '/instructor/performance', icon: <BarChart2 className="w-5 h-5 shrink-0" /> },
       ],
     },
     {
@@ -55,11 +56,10 @@ export const InstructorLayout: React.FC = () => {
       ],
     },
     {
-      label: 'Phân tích & Kinh doanh',
+      label: 'Giao tiếp',
       items: [
-        { name: 'Learning Analytics', path: '/instructor/performance', icon: <Activity className="w-5 h-5 shrink-0" /> },
-        { name: 'Tài chính', path: '/instructor/earnings', icon: <Wallet className="w-5 h-5 shrink-0" /> },
-        { name: 'Thông báo lớp', path: '/instructor/communication', icon: <Bell className="w-5 h-5 shrink-0" /> },
+        { name: 'Hỏi đáp & Tin nhắn', path: '/instructor/communication', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
+        { name: 'Thông báo', path: '/instructor/notifications', icon: <Bell className="w-5 h-5 shrink-0" /> },
       ],
     },
   ];

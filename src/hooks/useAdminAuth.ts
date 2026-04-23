@@ -27,7 +27,7 @@ export function useAdminLogin() {
         throw new Error(response.message);
       }
 
-      setAccessToken(response.data!.access_token);
+      setAccessToken(response.data!.access_token, 'admin');
 
       const profileRes = await getAdminMe();
       return {
@@ -54,7 +54,7 @@ export function useAdminLogout() {
         const response = await logoutAdmin();
         return response;
       } finally {
-        setAccessToken(null);
+        setAccessToken(null, 'admin');
       }
     },
     onSuccess: () => {
@@ -76,7 +76,7 @@ export function useInitializeAdminAuth() {
         throw new Error('Không có session admin.');
       }
 
-      setAccessToken(refreshRes.access_token);
+      setAccessToken(refreshRes.access_token, 'admin');
 
       const profileRes = await getAdminMe();
       return {
