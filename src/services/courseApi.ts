@@ -5,15 +5,26 @@
 import apiClient from './apiClient';
 
 // ===== Types =====
+export interface ICourseCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  parentId: string | null;
+}
+
 export interface ICourse {
   _id: string;
   title: string;
   slug: string;
-  description?: string;
-  thumbnail?: string;
+  description?: string;           // Mô tả chi tiết (rich text HTML)
+  shortDescription?: string;      // Mô tả ngắn hiển thị dưới tên khóa học
+  thumbnail?: string;             // URL hình ảnh quảng cáo
+  whatYouWillLearn?: string[];    // Học viên sẽ học được gì (danh sách)
+  requirements?: string[];        // Điều kiện tiên quyết (danh sách)
   instructorId: string;
   instructorName: string;
-  category?: string;
+  categoryId?: string | null;
+  category?: ICourseCategory | null;
   level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
   price: number;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -84,7 +95,7 @@ interface PaginatedData {
 export const createCourse = async (payload: {
   title: string;
   description?: string;
-  category?: string;
+  categoryId?: string;
   level?: string;
   price?: number;
 }) => {

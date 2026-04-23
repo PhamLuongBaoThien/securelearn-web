@@ -57,3 +57,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ── TipTap Rich Text Editor ── */
+.tiptap.ProseMirror { outline: none; }
+
+.tiptap.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply text-zinc-400 dark:text-zinc-600 float-left h-0 pointer-events-none;
+}
+.tiptap.ProseMirror h2 { @apply text-xl font-bold mt-4 mb-2 text-zinc-900 dark:text-white; }
+.tiptap.ProseMirror h3 { @apply text-lg font-semibold mt-3 mb-1.5 text-zinc-900 dark:text-white; }
+.tiptap.ProseMirror p  { @apply mb-2 leading-relaxed; }
+.tiptap.ProseMirror strong { @apply font-bold; }
+.tiptap.ProseMirror em { @apply italic; }
+.tiptap.ProseMirror u  { @apply underline; }
+.tiptap.ProseMirror ul { @apply list-disc pl-5 space-y-1 mb-3; }
+.tiptap.ProseMirror ol { @apply list-decimal pl-5 space-y-1 mb-3; }
+.tiptap.ProseMirror li { @apply leading-relaxed; }
