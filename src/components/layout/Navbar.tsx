@@ -7,19 +7,70 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../app/hooks';
 import { toggleTheme } from '../../features/dashboard/uiSlice';
 import { useLogout } from '@/hooks/useAuth';
-import { ShoppingCart, Search, Menu, Sun, Moon, X, ChevronRight, LogOut, User, BookOpen, Settings } from 'lucide-react';
+import { ShoppingCart, Search, Menu, Sun, Moon, X, ChevronRight, LogOut, User, BookOpen, Settings, Monitor, Compass, Layers, Minus, ArrowRight } from 'lucide-react';
+import { Sidebar } from './Sidebar';
+import type { SidebarEntry, MenuItem } from './Sidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
-  NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { usePublicCourseCategories } from '@/hooks/usePublicCourseCategories';
 import { toast } from 'sonner';
+import brandLogo from '@/assets/logoweb.png';
+import type { ICourseCategoryNode } from '@/services/courseApi';
+
+const MegaMenuColumn = ({
+  title,
+  items,
+  activeId,
+  onHover,
+}: {
+  title?: string;
+  items: ICourseCategoryNode[];
+  activeId?: string | null;
+  onHover: (item: ICourseCategoryNode) => void;
+}) => {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="w-[260px] border-r border-border last:border-r-0 shrink-0 py-2 animate-in fade-in slide-in-from-left-4 duration-200 ease-out">
+      {title ? (
+        <div className="px-5 pt-3 pb-2 text-base font-bold text-foreground">
+          {title}
+        </div>
+      ) : null}
+      <ul>
+        {items.map((item) => {
+          const isActive = activeId === item._id;
+          const hasChildren = (item.children || []).length > 0;
+
+          return (
+            <li key={item._id}>
+              <Link
+                to={`/courses?category=${encodeURIComponent(item.slug)}`}
+                onMouseEnter={() => onHover(item)}
+                className={`flex items-center justify-between gap-3 px-5 py-2.5 text-sm transition-colors ${
+                  isActive
+                    ? 'bg-secondary text-primary font-medium'
+                    : 'text-foreground/80 hover:text-primary hover:bg-secondary/40'
+                }`}
+              >
+                <span className="line-clamp-1">{item.name}</span>
+                {hasChildren ? <ChevronRight className="h-4 w-4 shrink-0 opacity-60" /> : null}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+};
 
 export const Navbar = () => {
   const dispatch = useAppDispatch();
@@ -28,10 +79,26 @@ export const Navbar = () => {
   const theme = useAppSelector((state) => state.ui.theme);
   const cartItems = useAppSelector((state) => state.cart.cartItems);
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { data: categories = [], isLoading: isCategoriesLoading } = usePublicCourseCategories();
 
   // Logic chuyển đổi nút Giảng dạy / Giảng viên / Học viên
   const isInstructor = user?.role === 'INSTRUCTOR';
   const isInstructorView = location.pathname.startsWith('/instructor');
+  const isStudentView = location.pathname.startsWith('/student');
+
+  const desktopNavLinkClass = (active = false) =>
+    `rounded-full px-3 py-2 text-sm font-medium transition-all duration-200 ${
+      active
+        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-1 ring-primary/70'
+        : 'text-foreground/80 hover:bg-secondary hover:text-primary'
+    }`;
+
+  const mobileNavLinkClass = (active = false) =>
+    `px-4 py-3 transition-colors ${
+      active
+        ? 'bg-primary text-primary-foreground font-semibold'
+        : 'hover:bg-secondary'
+    }`;
 
   const getTeachButtonProps = () => {
     if (!user) return { text: 'Giảng dạy trên SecureLearn', to: '/teach' };
@@ -50,6 +117,9 @@ export const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [activeRootId, setActiveRootId] = useState<string | null>(null);
+  const [activeChildId, setActiveChildId] = useState<string | null>(null);
+  const [activeGrandchildId, setActiveGrandchildId] = useState<string | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Đóng user menu khi click bên ngoài
@@ -76,101 +146,183 @@ export const Navbar = () => {
     });
   };
 
+  const navCategories = categories.slice(0, 6);
+  const activeRoot = activeRootId ? navCategories.find((category) => category._id === activeRootId) : null;
+  const activeChildren = activeRoot?.children || [];
+  const activeChild = activeChildId ? activeChildren.find((category) => category._id === activeChildId) : null;
+  const activeGrandchildren = activeChild?.children || [];
+  const activeGrandchild = activeGrandchildId ? activeGrandchildren.find((category) => category._id === activeGrandchildId) : null;
+  const activeFourthLevel = activeGrandchild?.children || [];
+
+  const mobileSidebarEntries: SidebarEntry[] = [];
+
+  if (isAuthenticated && user) {
+    mobileSidebarEntries.push({
+      type: 'label',
+      label: {
+        labelName: 'Tài khoản',
+        items: [
+          { name: 'Khóa học của tôi', path: '/student/dashboard', icon: <BookOpen className="w-4 h-4" /> },
+          { name: 'Hồ sơ cá nhân', path: '/profile', icon: <User className="w-4 h-4" /> },
+          { name: 'Cài đặt', path: '/settings', icon: <Settings className="w-4 h-4" /> },
+        ]
+      }
+    });
+  } else {
+    mobileSidebarEntries.push({
+      type: 'label',
+      label: {
+        labelName: 'Tài khoản',
+        items: [
+          { name: 'Đăng nhập', path: '/auth/login', icon: <User className="w-4 h-4" /> },
+          { name: 'Đăng ký', path: '/auth/signup', icon: <User className="w-4 h-4" /> },
+        ]
+      }
+    });
+  }
+
+  mobileSidebarEntries.push({
+    type: 'label',
+    label: {
+      labelName: 'Khám phá',
+      items: []
+    }
+  });
+
+  const buildRecursiveCategories = (cats: ICourseCategoryNode[]): MenuItem[] => {
+    return cats.map(c => {
+      const item: MenuItem = {
+        name: c.name,
+        path: `/courses?category=${encodeURIComponent(c.slug)}`,
+        icon: <Minus className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+      };
+      
+      if (c.children && c.children.length > 0) {
+        item.children = buildRecursiveCategories(c.children as ICourseCategoryNode[]);
+      }
+      return item;
+    });
+  };
+
+  categories.forEach(cat => {
+    const item: SidebarEntry = {
+      type: 'single',
+      name: cat.name,
+      path: `/courses?category=${encodeURIComponent(cat.slug)}`,
+      icon: <Layers className="w-4 h-4 text-muted-foreground shrink-0" />
+    };
+
+    if (cat.children && cat.children.length > 0) {
+      item.children = buildRecursiveCategories(cat.children as ICourseCategoryNode[]);
+    }
+    
+    mobileSidebarEntries.push(item);
+  });
+
+  mobileSidebarEntries.push({
+    type: 'single',
+    name: 'Tất cả khóa học',
+    path: '/courses',
+    icon: <Search className="w-4 h-4 text-primary shrink-0" />
+  });
+
+  mobileSidebarEntries.push({
+    type: 'label',
+    label: {
+      labelName: 'Giảng dạy',
+      items: [
+        { name: teachBtnProps.text, path: teachBtnProps.to, icon: <Monitor className="w-4 h-4" /> }
+      ]
+    }
+  });
+
   return (
     <>
-      <nav className="sticky top-4 mx-auto z-50 w-[96%] max-w-[1440px] bg-background/80 backdrop-blur-md border border-border/50 shadow-lg rounded-full transition-all duration-300 mb-6">
+      <nav className="sticky top-4 mx-auto z-50 mb-6 w-[96%] max-w-[1440px] rounded-full border border-border/50 bg-background/80 shadow-lg backdrop-blur-md transition-all duration-300 dark:border-zinc-700/70 dark:bg-zinc-900/85 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_10px_30px_rgba(255,255,255,0.08)]">
         <div className="px-4 sm:px-6 flex h-[64px] items-center justify-between relative">
           
           {/* LEFT: Khám phá và Tìm kiếm */}
           <div className="flex items-center gap-3 flex-1 justify-start z-10">
             {/* Mobile Search Icon */}
-            <button 
+            <Button 
+              type="button"
+              variant="ghost"
+              size="icon"
               className="md:hidden p-2 hover:bg-secondary rounded-full transition-colors"
               onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
             >
               <Search className="h-5 w-5" />
-            </button>
+            </Button>
 
             {/* Giao diện Danh mục trên Desktop */}
             <NavigationMenu className="hidden xl:flex">
               <NavigationMenuList>
                 <NavigationMenuItem>
-                  <NavigationMenuTrigger className="bg-transparent hover:bg-transparent focus:bg-transparent px-3 text-sm font-medium hover:text-primary transition-colors">
+                <NavigationMenuTrigger 
+                    onMouseEnter={() => {
+                      setActiveRootId(null);
+                      setActiveChildId(null);
+                      setActiveGrandchildId(null);
+                    }}
+                    className="bg-transparent hover:bg-transparent focus:bg-transparent px-3 text-sm font-medium hover:text-primary transition-colors">
                     Khám phá
                   </NavigationMenuTrigger>
                   <NavigationMenuContent>
-                    <ul className="flex flex-col w-64 p-2 relative">
-                      <li className="relative group/category">
-                        <NavigationMenuLink asChild>
-                          <Link to="/category/development" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
-                            Phát triển phần mềm
-                            <ChevronRight className="h-4 w-4 opacity-70 transition-transform group-hover/category:translate-x-1" />
-                          </Link>
-                        </NavigationMenuLink>
-                        <div className="absolute left-full top-0 hidden group-hover/category:block animate-in fade-in slide-in-from-left-2 z-50 pl-1">
-                          <ul className="flex flex-col w-64 p-2 bg-popover text-popover-foreground border border-border shadow-md rounded-md">
-                            <li>
-                              <Link to="/category/development/web" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Phát triển Web</Link>
-                            </li>
-                            <li>
-                              <Link to="/category/development/mobile" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Phát triển Mobile</Link>
-                            </li>
-                            <li>
-                              <Link to="/category/development/data-science" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Khoa học Dữ liệu</Link>
-                            </li>
-                          </ul>
+                    {isCategoriesLoading ? (
+                      <div className="flex min-h-[420px] w-[260px] flex-col overflow-hidden rounded-md border border-border bg-popover shadow-xl p-5">
+                        <div className="h-5 w-3/4 animate-pulse rounded bg-secondary mt-1"></div>
+                        <div className="space-y-4 mt-6">
+                          {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <div key={i} className="flex items-center justify-between">
+                              <div className="h-4 w-2/3 animate-pulse rounded bg-secondary"></div>
+                              <div className="h-4 w-4 animate-pulse rounded bg-secondary"></div>
+                            </div>
+                          ))}
                         </div>
-                      </li>
-                      <li className="relative group/category">
-                        <NavigationMenuLink asChild>
-                          <Link to="/category/business" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
-                            Kinh doanh
-                          </Link>
-                        </NavigationMenuLink>
-                      </li>
-                      <li className="relative group/category">
-                        <NavigationMenuLink asChild>
-                          <Link to="/category/it-software" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
-                            CNTT & Phần mềm
-                          </Link>
-                        </NavigationMenuLink>
-                      </li>
-                      <li className="relative group/category">
-                        <NavigationMenuLink asChild>
-                          <Link to="/category/design" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
-                            Thiết kế
-                            <ChevronRight className="h-4 w-4 opacity-70 transition-transform group-hover/category:translate-x-1" />
-                          </Link>
-                        </NavigationMenuLink>
-                        <div className="absolute left-full top-0 hidden group-hover/category:block animate-in fade-in slide-in-from-left-2 z-50 pl-1">
-                          <ul className="flex flex-col w-64 p-2 bg-popover text-popover-foreground border border-border shadow-md rounded-md">
-                            <li>
-                              <Link to="/category/design/graphic" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Thiết kế Đồ họa</Link>
-                            </li>
-                            <li>
-                              <Link to="/category/design/ui-ux" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">UI/UX Design</Link>
-                            </li>
-                            <li>
-                              <Link to="/category/design/3d" className="block px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">Thiết kế 3D</Link>
-                            </li>
-                          </ul>
-                        </div>
-                      </li>
-                      <li className="relative group/category">
-                        <NavigationMenuLink asChild>
-                          <Link to="/category/marketing" className="flex items-center justify-between px-4 py-3 text-sm hover:bg-secondary hover:text-primary transition-colors rounded-md">
-                            Marketing
-                          </Link>
-                        </NavigationMenuLink>
-                      </li>
-                    </ul>
+                      </div>
+                    ) : navCategories.length > 0 ? (
+                      <div className="flex min-h-[420px] w-max overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-xl">
+                        <MegaMenuColumn
+                          items={navCategories}
+                          activeId={activeRoot?._id}
+                          onHover={(item) => {
+                            setActiveRootId(item._id);
+                            setActiveChildId(null);
+                            setActiveGrandchildId(null);
+                          }}
+                        />
+                        <MegaMenuColumn
+                          title={activeRoot?.name}
+                          items={activeChildren}
+                          activeId={activeChild?._id}
+                          onHover={(item) => {
+                            setActiveChildId(item._id);
+                            setActiveGrandchildId(null);
+                          }}
+                        />
+                        <MegaMenuColumn
+                          title={activeChild?.name}
+                          items={activeGrandchildren}
+                          activeId={activeGrandchild?._id}
+                          onHover={(item) => setActiveGrandchildId(item._id)}
+                        />
+                        <MegaMenuColumn
+                          title={activeGrandchild?.name}
+                          items={activeFourthLevel}
+                          activeId={null}
+                          onHover={() => {}}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-64 p-4 text-sm text-muted-foreground">Chưa có danh mục</div>
+                    )}
                   </NavigationMenuContent>
                 </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
 
             {/* Search Bar */}
-            <div className="hidden md:flex w-full xl:max-w-[280px] items-center relative group">
+            <div className="hidden md:flex w-full max-w-[220px] lg:max-w-[280px] items-center relative group">
               <Search className="absolute left-4 h-4 w-4 text-muted-foreground group-focus-within:text-foreground transition-colors z-10" />
               <Input 
                 type="text" 
@@ -181,8 +333,13 @@ export const Navbar = () => {
           </div>
 
           {/* CENTER: Logo */}
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center shrink-0 pointer-events-none z-20">
+          <div className="flex items-center justify-center shrink-0 pointer-events-none z-20 px-2 lg:px-4">
             <Link to="/" className="flex items-center pointer-events-auto">
+              <img
+                src={brandLogo}
+                alt="SecureLearn logo"
+                className="h-9 w-9 object-contain"
+              />
               <span className="font-bold text-xl tracking-tight text-foreground transition-opacity hover:opacity-70">
                 SecureLearn
               </span>
@@ -194,12 +351,18 @@ export const Navbar = () => {
             
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {/* Desktop Links */}
-              <div className="hidden lg:flex items-center gap-1 shrink-0">
-                <Link to={teachBtnProps.to} className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
+              <div className="hidden xl:flex items-center gap-1 shrink-0">
+                <Link
+                  to={teachBtnProps.to}
+                  className={desktopNavLinkClass(isInstructorView)}
+                >
                   {teachBtnProps.text}
                 </Link>
                 {isAuthenticated && user && (
-                  <Link to="/student/dashboard" className="text-sm font-medium hover:text-primary px-3 py-2 transition-colors">
+                  <Link
+                    to="/student/dashboard"
+                    className={desktopNavLinkClass(isStudentView)}
+                  >
                     Học tập
                   </Link>
                 )}
@@ -221,15 +384,17 @@ export const Navbar = () => {
                 {isAuthenticated && user ? (
                   /* ===== User đã đăng nhập: Avatar + Dropdown menu ===== */
                   <div className="hidden md:flex items-center gap-2 relative" ref={userMenuRef}>
-                    <button 
-                      className="flex items-center gap-2 cursor-pointer group rounded-full overflow-hidden"
+                    <Button 
+                      type="button"
+                      variant="ghost"
+                      className="flex h-auto w-auto items-center gap-2 cursor-pointer group rounded-full overflow-hidden p-0 hover:bg-transparent"
                       onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     >
                       <UserAvatar 
                         user={user} 
                         className="h-8 w-8 text-sm border-2 border-transparent group-hover:border-primary/50 transition-colors" 
                       />
-                    </button>
+                    </Button>
 
                     {/* User Dropdown Menu */}
                     {isUserMenuOpen && (
@@ -275,19 +440,21 @@ export const Navbar = () => {
 
                         {/* Logout */}
                         <div className="border-t border-border py-2">
-                          <button 
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-destructive/10 text-destructive transition-colors w-full text-left"
+                          <Button 
+                            type="button"
+                            variant="ghost"
+                            className="flex h-auto w-full items-center justify-start gap-3 rounded-none px-4 py-2.5 text-sm text-left text-destructive hover:bg-destructive/10 hover:text-destructive"
                             onClick={handleLogout}
                           >
                             <LogOut className="h-4 w-4" />
                             Đăng xuất
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     )}
                   </div>
                 ) : (
-                   <div className="hidden md:flex items-center gap-2">
+                   <div className="hidden lg:flex items-center gap-2">
                       <Link to="/auth/login" state={{ from: location }} className="text-sm font-semibold px-4 py-2 hover:bg-secondary rounded-full transition-colors">
                         Đăng nhập
                       </Link>
@@ -308,12 +475,15 @@ export const Navbar = () => {
                 </Button>
 
                 {/* Mobile Menu Icon */}
-                <button 
-                  className="md:hidden p-2 hover:text-primary transition-colors ml-1"
+                <Button 
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="xl:hidden p-2 hover:text-primary transition-colors ml-1"
                   onClick={() => setIsMobileMenuOpen(true)}
                 >
                   <Menu className="h-5 w-5" />
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -337,79 +507,35 @@ export const Navbar = () => {
       {/* Mobile Drawer Overlay */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 z-[100] md:hidden"
+          className="fixed inset-0 bg-black/60 z-[100] xl:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         ></div>
       )}
 
       {/* Mobile Drawer */}
-      <div className={`fixed inset-y-0 left-0 w-[280px] bg-background z-[110] transform transition-transform duration-300 ease-in-out flex flex-col md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-4 flex items-center justify-between border-b border-border/50">
-          <span className="font-extrabold text-xl tracking-tight text-foreground">SecureLearn</span>
-          <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-secondary rounded-full">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-1">
-          {isAuthenticated && user ? (
-            <div className="px-4 pb-4 mb-2 border-b border-border/50 flex items-center gap-3">
-              <UserAvatar user={user} className="h-10 w-10 text-base" />
-              <div className="flex flex-col min-w-0">
-                <span className="font-bold text-foreground truncate">{user.fullName}</span>
-                <span className="text-xs text-muted-foreground truncate">{user.email}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="px-4 pb-4 mb-2 flex flex-col gap-2 border-b border-border/50">
-              <Link to="/auth/login" state={{ from: location }} onClick={() => setIsMobileMenuOpen(false)} className="text-primary hover:underline font-bold py-2">
-                Đăng nhập
-              </Link>
-              <Link to="/auth/signup" state={{ from: location }} onClick={() => setIsMobileMenuOpen(false)} className="text-primary hover:underline font-bold py-2">
-                Đăng ký
-              </Link>
-            </div>
-          )}
-
-          {isAuthenticated && user && (
-            <>
-              <div className="px-4 py-2 text-sm font-bold text-muted-foreground">Tài khoản</div>
-              <Link to="/student/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 hover:bg-secondary transition-colors flex items-center gap-3">
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-                Khóa học của tôi
-              </Link>
-              <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 hover:bg-secondary transition-colors flex items-center gap-3">
-                <User className="h-4 w-4 text-muted-foreground" />
-                Hồ sơ cá nhân
-              </Link>
-            </>
-          )}
-
-          <div className="px-4 py-2 mt-2 text-sm font-bold text-muted-foreground">Học tập</div>
-          <Link to="/courses" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 hover:bg-secondary transition-colors">Khám phá</Link>
-          <Link to={teachBtnProps.to} onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 hover:bg-secondary transition-colors">{teachBtnProps.text}</Link>
-          
-          <div className="px-4 mt-4 py-2 text-sm font-bold text-muted-foreground border-t border-border/50 pt-6">Cài đặt</div>
-          <button 
-            onClick={() => dispatch(toggleTheme(currentTheme === 'dark' ? 'light' : 'dark'))} 
-            className="px-4 py-3 hover:bg-secondary flex items-center gap-3 text-left transition-colors w-full"
-          >
-            {currentTheme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            {currentTheme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
-          </button>
-
-          {/* Nút đăng xuất ở mobile drawer */}
-          {isAuthenticated && user && (
-            <div className="px-4 mt-2 border-t border-border/50 pt-4">
-              <button 
-                onClick={handleLogout}
-                className="flex items-center gap-3 py-3 text-sm text-destructive hover:bg-destructive/10 transition-colors w-full px-2 rounded-md"
-              >
-                <LogOut className="h-4 w-4" />
-                Đăng xuất
-              </button>
-            </div>
-          )}
+      <div className={`fixed inset-y-0 left-0 w-72 z-[110] transform transition-transform duration-300 ease-in-out xl:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="absolute inset-0">
+          <Sidebar
+            entries={mobileSidebarEntries}
+            collapsed={false}
+            onToggleCollapsed={() => setIsMobileMenuOpen(false)}
+            userFullName={user?.fullName || 'Người dùng'}
+            userEmail={user?.email || 'Vui lòng đăng nhập để trải nghiệm'}
+            userAvatarNode={
+              isAuthenticated && user ? (
+                <UserAvatar user={user} className="h-10 w-10 text-base" />
+              ) : (
+                <div className="h-10 w-10 flex items-center justify-center bg-secondary rounded-full">
+                  <User className="h-5 w-5 text-muted-foreground" />
+                </div>
+              )
+            }
+            profileLink={isAuthenticated ? "/profile" : undefined}
+            theme={currentTheme as 'light' | 'dark' | 'system'}
+            onThemeChange={() => dispatch(toggleTheme(currentTheme === 'dark' ? 'light' : 'dark'))}
+            onLogout={isAuthenticated ? handleLogout : undefined}
+            logoSrc={brandLogo}
+          />
         </div>
       </div>
     </>

@@ -4,12 +4,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, Upload, Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Video, FileText, Loader2, AlertTriangle, CheckCircle2, Clock, BookOpen, Settings, Film } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { ThumbnailUploader } from "@/components/ui/ThumbnailUploader";
 import { useGetCourseForManage, useUpdateCourse, usePublishCourse } from "@/hooks/useInstructorCourses";
+import { usePublicCourseCategories } from "@/hooks/usePublicCourseCategories";
 import { toast } from "sonner";
-import type { ICourse, ISection, ILesson } from "@/services/courseApi";
+import type { ICourse, ISection, ILesson, ICourseCategoryNode } from "@/services/courseApi";
 import { LessonVideoUploader } from "./LessonVideoUploader";
 
 type Tab = "basic" | "detail" | "curriculum";
@@ -37,9 +39,9 @@ const BulletListEditor: React.FC<BulletListEditorProps> = ({ items, onChange, pl
         <div key={i} className="flex items-center gap-2">
           <span className="w-5 h-5 shrink-0 flex items-center justify-center text-xs font-bold text-primary bg-primary/10 rounded-full">{i + 1}</span>
           <Input value={item} onChange={e => update(i, e.target.value)} placeholder={placeholder} className="h-9 rounded-lg flex-1" />
-          <button type="button" onClick={() => remove(i)} className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors shrink-0">
+          <Button type="button" variant="ghost" size="icon" onClick={() => remove(i)} className="h-8 w-8 p-1.5 text-zinc-400 hover:text-red-500 transition-colors shrink-0">
             <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          </Button>
         </div>
       ))}
       <Button type="button" variant="ghost" size="sm" onClick={add} className="gap-2 text-xs text-muted-foreground mt-1">
@@ -49,11 +51,27 @@ const BulletListEditor: React.FC<BulletListEditorProps> = ({ items, onChange, pl
   );
 };
 
+type CategoryOption = {
+  value: string;
+  label: string;
+};
+
+const flattenCategoryOptions = (categories: ICourseCategoryNode[], parentTrail = ""): CategoryOption[] => {
+  return categories.flatMap((category) => {
+    const label = parentTrail ? `${parentTrail} > ${category.name}` : category.name;
+    return [
+      { value: category._id, label },
+      ...flattenCategoryOptions(category.children || [], label),
+    ];
+  });
+};
+
 // --- Main Component ---
 export const CourseEditor: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const { data: course, isLoading, error } = useGetCourseForManage(courseId!);
+  const { data: categories = [], isLoading: isCategoriesLoading } = usePublicCourseCategories();
   const updateMutation = useUpdateCourse();
   const publishMutation = usePublishCourse();
 
@@ -85,6 +103,8 @@ export const CourseEditor: React.FC = () => {
       setExpandedSections(new Set(course.sections?.map((_, i) => i) || []));
     }
   }, [course]);
+
+  const categoryOptions = flattenCategoryOptions(categories);
 
   const pendingVideos = sections.flatMap(s => s.lessons).filter(l => l.type === "VIDEO" && (l.processingStatus === "PENDING" || l.processingStatus === "PROCESSING"));
   const hasBlockingVideos = pendingVideos.length > 0;
@@ -124,9 +144,9 @@ export const CourseEditor: React.FC = () => {
       {/* Top Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate("/instructor/courses")} className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/instructor/courses")} className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
             <ArrowLeft className="w-5 h-5" />
-          </button>
+          </Button>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Chỉnh sửa khóa học</h1>
@@ -156,9 +176,10 @@ export const CourseEditor: React.FC = () => {
       {/* Tab Bar */}
       <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
         {TABS.map(tab => (
-          <button
+          <Button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            variant="ghost"
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
               activeTab === tab.id
                 ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm border border-zinc-200 dark:border-zinc-700"
@@ -167,7 +188,7 @@ export const CourseEditor: React.FC = () => {
           >
             {tab.icon}
             <span className="hidden sm:inline">{tab.label}</span>
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -205,15 +226,30 @@ export const CourseEditor: React.FC = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Danh mục</label>
-                <Input value={categoryId} onChange={e => setCategoryId(e.target.value)} className="h-11 rounded-xl" placeholder="ID danh mục..." />
+                <Select
+                  value={categoryId}
+                  onChange={e => setCategoryId(e.target.value)}
+                  className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  disabled={isCategoriesLoading}
+                >
+                  <option value="">
+                    {isCategoriesLoading ? "Đang tải danh mục..." : "Chọn danh mục"}
+                  </option>
+                  {categoryOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+                <p className="mt-1.5 text-xs text-zinc-400">Hiển thị đầy đủ cây danh mục tối đa 4 cấp.</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Trình độ</label>
-                <select value={level} onChange={e => setLevel(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <Select value={level} onChange={e => setLevel(e.target.value)} className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
                   <option value="BEGINNER">Cơ bản</option>
                   <option value="INTERMEDIATE">Trung cấp</option>
                   <option value="ADVANCED">Nâng cao</option>
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Giá (VND)</label>
@@ -280,7 +316,7 @@ export const CourseEditor: React.FC = () => {
                     <GripVertical className="w-4 h-4 text-zinc-400 shrink-0" />
                     <Input value={section.title} onChange={e => updateSectionTitle(sIdx, e.target.value)} onClick={e => e.stopPropagation()} className="h-8 text-sm font-medium border-none bg-transparent p-0 focus-visible:ring-0" />
                     <Badge variant="secondary" className="shrink-0 text-xs">{section.lessons.length} bài</Badge>
-                    <button onClick={e => { e.stopPropagation(); removeSection(sIdx); }} className="p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    <Button type="button" variant="ghost" size="icon" onClick={e => { e.stopPropagation(); removeSection(sIdx); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0"><Trash2 className="w-4 h-4" /></Button>
                     {expandedSections.has(sIdx) ? <ChevronUp className="w-4 h-4 shrink-0 text-zinc-400" /> : <ChevronDown className="w-4 h-4 shrink-0 text-zinc-400" />}
                   </div>
                   {expandedSections.has(sIdx) && (
@@ -322,12 +358,12 @@ const LessonRow: React.FC<LessonRowProps> = ({ lesson, onUpdateField, onChangeTy
             {status === "DONE" ? "✓ Sẵn sàng" : status === "FAILED" ? "✗ Lỗi" : status === "PROCESSING" ? "⟳ Mã hóa..." : "↑ Đang tải..."}
           </span>
         )}
-        <select value={lesson.type} onChange={e => onChangeType(e.target.value)} className="h-8 px-2 text-xs rounded-lg bg-background border border-zinc-200 dark:border-zinc-800 shrink-0">
+        <Select value={lesson.type} onChange={e => onChangeType(e.target.value)} className="h-8 w-[120px] px-2 text-xs rounded-lg bg-background border border-zinc-200 dark:border-zinc-800 shrink-0">
           <option value="VIDEO">Video</option>
           <option value="DOCUMENT">Tài liệu</option>
           <option value="QUIZ">Quiz</option>
-        </select>
-        <button onClick={onRemove} className="p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+        </Select>
+        <Button type="button" variant="ghost" size="icon" onClick={onRemove} className="h-7 w-7 p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0"><Trash2 className="w-3.5 h-3.5" /></Button>
       </div>
       {isVideo && <div className="px-4 pb-4 pt-1 bg-white dark:bg-zinc-900/50"><LessonVideoUploader lesson={lesson} onUpdate={(f, v) => onUpdateField(f as string, v)} /></div>}
     </div>

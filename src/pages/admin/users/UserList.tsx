@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
-import { Search, Filter, Lock, Unlock, KeyRound, Shield, Mail, Phone, BookOpen, ShoppingBag, Save, Eye, EyeOff } from 'lucide-react';
+import { Search, Filter, Lock, Unlock, Shield, Mail, Phone, BookOpen, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import type { IAdminUser, UserRole, UserStatus } from '@/types/admin.types';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 const MOCK_USERS: IAdminUser[] = [
@@ -34,86 +26,7 @@ const statusColors: Record<UserStatus, string> = {
 const roleLabel: Record<UserRole, string> = { STUDENT: 'Học viên', INSTRUCTOR: 'Giảng viên', ADMIN: 'Admin' };
 const statusLabel: Record<UserStatus, string> = { ACTIVE: 'Hoạt động', LOCKED: 'Đã khóa', UNVERIFIED: 'Chưa xác minh' };
 
-// ===== Change Password Dialog =====
-interface PasswordDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  user: IAdminUser | null;
-}
 
-const PasswordDialog: React.FC<PasswordDialogProps> = ({ open, onOpenChange, user }) => {
-  const [pw, setPw] = useState('');
-  const [showPw, setShowPw] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  React.useEffect(() => {
-    if (open) { setPw(''); setShowPw(false); }
-  }, [open]);
-
-  const handleSave = async () => {
-    if (!pw || pw.length < 6) { toast.error('Mật khẩu tối thiểu 6 ký tự!'); return; }
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSaving(false);
-    toast.success(`Đã đổi mật khẩu cho tài khoản ${user?.email}`);
-    onOpenChange(false);
-  };
-
-  if (!user) return null;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Đổi mật khẩu</DialogTitle>
-          <DialogDescription>
-            Tài khoản: <span className="font-semibold text-zinc-900 dark:text-zinc-100">{user.email}</span>
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="py-2">
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Mật khẩu mới</label>
-          <div className="relative">
-            <input
-              type={showPw ? 'text' : 'password'}
-              className="w-full px-4 py-2.5 pr-11 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
-              placeholder="Tối thiểu 6 ký tự..."
-              value={pw}
-              onChange={(e) => setPw(e.target.value)}
-              autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPw((p) => !p)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
-            >
-              {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-          <p className="mt-1.5 text-xs text-zinc-400">Mật khẩu sẽ được hash và lưu an toàn.</p>
-        </div>
-
-        <DialogFooter>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="px-4 py-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors shadow-md shadow-primary/20"
-          >
-            <Save className="w-4 h-4" />
-            {saving ? 'Đang lưu...' : 'Xác nhận'}
-          </button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 // ===== Main Page =====
 export const UserList: React.FC = () => {
@@ -123,7 +36,6 @@ export const UserList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
 
   // Dialog states
-  const [pwDialogUser, setPwDialogUser] = useState<IAdminUser | null>(null);
   const [lockTarget, setLockTarget] = useState<IAdminUser | null>(null);
 
   const filtered = users.filter((u) => {
@@ -153,12 +65,7 @@ export const UserList: React.FC = () => {
 
   return (
     <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-in-out space-y-6">
-      {/* Change Password Dialog */}
-      <PasswordDialog
-        open={pwDialogUser !== null}
-        onOpenChange={(o) => { if (!o) setPwDialogUser(null); }}
-        user={pwDialogUser}
-      />
+
 
       {/* Lock/Unlock Confirm Dialog */}
       <ConfirmDialog
@@ -178,8 +85,8 @@ export const UserList: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Danh sách Người dùng</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">Quản lý tài khoản Học viên, Giảng viên và thực hiện các thao tác kiểm soát.</p>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Danh sách người dùng</h1>
+          <p className="text-zinc-500 dark:text-zinc-400">Quản lý tài khoản Học viên và Giảng viên trên nền tảng.</p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-500 shadow-sm">
           <Shield className="w-4 h-4 text-primary" />
@@ -282,14 +189,6 @@ export const UserList: React.FC = () => {
                         className={`p-1.5 rounded-lg transition-colors ${user.status === 'LOCKED' ? 'hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-emerald-500' : 'hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500'}`}
                       >
                         {user.status === 'LOCKED' ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                      </button>
-                      <button
-                        id={`btn-change-pw-${user._id}`}
-                        onClick={() => setPwDialogUser(user)}
-                        title="Đổi mật khẩu"
-                        className="p-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 text-amber-500 transition-colors"
-                      >
-                        <KeyRound className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

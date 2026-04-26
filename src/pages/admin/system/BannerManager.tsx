@@ -10,6 +10,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const MOCK_BANNERS: IBanner[] = [
   { _id: '1', title: 'Học Bảo Mật Cùng Chuyên Gia', subtitle: 'Khám phá hơn 200 khóa học chuyên sâu về an ninh mạng', imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&q=80', linkUrl: '/courses?cat=security', isActive: true, order: 1, createdAt: '2026-01-10T10:00:00Z', updatedAt: '2026-04-01T10:00:00Z' },
@@ -70,7 +72,7 @@ const BannerFormDialog: React.FC<BannerFormDialogProps> = ({ open, onOpenChange,
           {fields.map(({ key, label, placeholder }) => (
             <div key={key}>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">{label}</label>
-              <input
+              <Input
                 className={inputCls}
                 value={form[key]}
                 onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
@@ -93,19 +95,19 @@ const BannerFormDialog: React.FC<BannerFormDialogProps> = ({ open, onOpenChange,
         </div>
 
         <DialogFooter>
-          <button
+          <Button
             onClick={() => onOpenChange(false)}
             className="px-4 py-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
           >
             Hủy
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit}
             className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-md shadow-primary/20"
           >
             <Save className="w-4 h-4" />
             {initial._id ? 'Cập nhật' : 'Thêm Banner'}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -192,13 +194,13 @@ export const BannerManager: React.FC = () => {
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Quản lý Banner & Slider</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Cập nhật hình ảnh và thông điệp quảng bá hiển thị tại trang chủ.</p>
         </div>
-        <button
+        <Button
           id="btn-add-banner"
           onClick={handleOpenAdd}
           className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
         >
           <Plus className="w-4 h-4" /> Thêm Banner
-        </button>
+        </Button>
       </div>
 
       {/* Banner List */}

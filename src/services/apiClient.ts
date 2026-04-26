@@ -6,17 +6,19 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { RefreshTokenResponse } from '@/types/auth.types';
 
 type AuthContext = 'user' | 'admin';
+type SessionExpiredDetail = {
+  context: AuthContext;
+};
 
 // ===== Base URL — Gọi qua Kong API Gateway =====
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.DEV
+  ? ''
+  : import.meta.env.VITE_API_BASE_URL;
 
 // ===== Tạo Axios Instance =====
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // 10 giây timeout
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  timeout: 10000, // 10 giây này là thời gian mà request sẽ chờ API trả về
   // QUAN TRỌNG: cho phép gửi/nhận HttpOnly cookies (refresh_token)
   withCredentials: true,
 });
@@ -25,11 +27,96 @@ const apiClient = axios.create({
 // Lưu access_token trong closure (memory) — không dùng localStorage để chống XSS
 let accessToken: string | null = null;
 let accessTokenContext: AuthContext = 'user';
+let silentRefreshTimer: number | null = null; // timer để gọi refresh token trước khi token hết hạn
+
+const SESSION_EXPIRED_EVENT = 'auth:session-expired';
+const SILENT_REFRESH_BUFFER_MS = 60 * 1000; // 1 phút trước khi token hết hạn
+
+// Hàm xóa timer refresh token
+const clearSilentRefreshTimer = () => {
+  if (silentRefreshTimer !== null) {
+    window.clearTimeout(silentRefreshTimer);
+    silentRefreshTimer = null;
+  }
+};
+
+// Hàm giải mã JWT token để lấy thời gian hết hạn (exp)
+const decodeJwtExp = (token: string): number | null => {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
+    const decoded = JSON.parse(window.atob(padded));
+
+    return typeof decoded.exp === 'number' ? decoded.exp : null;
+  } catch {
+    return null;
+  }
+};
+
+// Hàm phát sự kiện session hết hạn
+const emitSessionExpired = (context: AuthContext) => {
+  window.dispatchEvent(
+    new CustomEvent<SessionExpiredDetail>(SESSION_EXPIRED_EVENT, {
+      detail: { context },
+    })
+  );
+};
+
+// Hàm làm mới access token
+const refreshAccessToken = async (context: AuthContext): Promise<string> => {
+  const refreshUrl = context === 'admin'
+    ? `${API_BASE_URL}/api/admin/auth/refresh-token`
+    : `${API_BASE_URL}/api/auth/refresh-token`;
+
+  const { data } = await axios.post<RefreshTokenResponse>(
+    refreshUrl,
+    {},
+    { withCredentials: true }
+  );
+
+  if (data.status !== 'OK' || !data.access_token) {
+    throw new Error(data.message || 'Refresh token thất bại');
+  }
+
+  accessToken = data.access_token;
+  accessTokenContext = context;
+  return data.access_token;
+};
+
+// Lên lịch để làm mới access token trước khi nó hết hạn
+const scheduleSilentRefresh = (token: string, context: AuthContext) => {
+  clearSilentRefreshTimer();
+
+  const exp = decodeJwtExp(token);
+  if (!exp) return;
+
+  const refreshAt = exp * 1000 - SILENT_REFRESH_BUFFER_MS;
+  const delay = Math.max(refreshAt - Date.now(), 0);
+
+  silentRefreshTimer = window.setTimeout(async () => {
+    try {
+      const nextToken = await refreshAccessToken(context);
+      scheduleSilentRefresh(nextToken, context);
+    } catch {
+      clearSilentRefreshTimer();
+      accessToken = null;
+      emitSessionExpired(context);
+    }
+  }, delay);
+};
 
 /** Cập nhật access token — được gọi từ authSlice */
 export const setAccessToken = (token: string | null, context: AuthContext = 'user') => {
   accessToken = token;
   accessTokenContext = context;
+
+  clearSilentRefreshTimer();
+  if (token) {
+    scheduleSilentRefresh(token, context);
+  }
 };
 
 /** Lấy access token hiện tại */
@@ -107,46 +194,32 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Ưu tiên context do caller truyền; fallback theo URL.
-        const headerContext = originalRequest.headers['X-Auth-Context'];
         const isAdminRoute =
-          headerContext === 'admin' ||
           originalRequest.url?.includes('/api/admin/') ||
           accessTokenContext === 'admin';
-        const refreshUrl = isAdminRoute 
-          ? `${API_BASE_URL}/api/admin/auth/refresh-token`
-          : `${API_BASE_URL}/api/auth/refresh-token`;
+        const context: AuthContext = isAdminRoute ? 'admin' : 'user';
+        const nextToken = await refreshAccessToken(context);
 
-        // Gọi refresh token — cookie tự động gửi nhờ withCredentials
-        const { data } = await axios.post<RefreshTokenResponse>(
-          refreshUrl,
-          {},
-          { withCredentials: true }
-        );
-
-        if (data.status === 'OK' && data.access_token) {
+        if (nextToken) {
           // Cập nhật token mới
-          accessToken = data.access_token;
-          accessTokenContext = isAdminRoute ? 'admin' : 'user';
+          scheduleSilentRefresh(nextToken, context);
 
           // Xử lý hàng chờ với token mới
-          processQueue(null, data.access_token);
+          processQueue(null, nextToken);
 
           // Retry request ban đầu với token mới (Trường hợp này xảy ra khi refresh token còn hạn)
-          originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
+          originalRequest.headers.Authorization = `Bearer ${nextToken}`;
           return apiClient(originalRequest);
-        } else {
-          // Refresh thất bại → xóa session (Trường hợp này xảy ra khi refresh token hết hạn)
-          accessToken = null;
-          processQueue(new Error('Refresh token thất bại'), null);
-          // Dispatch event để AuthInitializer bắt và xử lý logout
-          window.dispatchEvent(new CustomEvent('auth:session-expired'));
-          return Promise.reject(error);
         }
       } catch (refreshError) {
+        const context: AuthContext =
+          originalRequest.url?.includes('/api/admin/') || accessTokenContext === 'admin'
+            ? 'admin'
+            : 'user';
         accessToken = null;
+        clearSilentRefreshTimer();
         processQueue(refreshError, null);
-        window.dispatchEvent(new CustomEvent('auth:session-expired'));
+        emitSessionExpired(context);
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

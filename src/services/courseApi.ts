@@ -12,6 +12,13 @@ export interface ICourseCategory {
   parentId: string | null;
 }
 
+export interface ICourseCategoryNode extends ICourseCategory {
+  description?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+  children: ICourseCategoryNode[];
+}
+
 export interface ICourse {
   _id: string;
   title: string;
@@ -145,6 +152,15 @@ export const publishCourse = async (courseId: string) => {
  */
 export const deleteCourse = async (courseId: string) => {
   const { data } = await apiClient.delete<ApiResponse>(`/api/courses/${courseId}`);
+  return data;
+};
+
+/**
+ * Lấy cây danh mục public để hiển thị cho instructor/student.
+ * GET /api/categories
+ */
+export const getCourseCategories = async () => {
+  const { data } = await apiClient.get<ApiResponse<ICourseCategoryNode[]>>('/api/categories');
   return data;
 };
 

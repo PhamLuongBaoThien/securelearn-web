@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Pencil, Check, X, ToggleLeft, ToggleRight, Save, Users, Infinity, Calendar, Zap, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import type { IPricingPlan, PlanType } from '@/types/admin.types';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const MOCK_PLANS: IPricingPlan[] = [
   { _id: 'p1', type: 'MONTHLY', name: 'Gói Tháng', price: 199000, durationDays: 30, features: ['Truy cập toàn bộ khóa học', 'Xem video chất lượng HD', 'Tải tài liệu PDF', 'Hỗ trợ email'], isActive: true, subscriberCount: 324, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-04-01T00:00:00Z' },
@@ -81,32 +83,32 @@ export const PlanManager: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <button onClick={() => handleToggle(plan._id)} title={plan.isActive ? 'Tạm dừng' : 'Kích hoạt'} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+                <Button type="button" variant="ghost" size="icon" onClick={() => handleToggle(plan._id)} title={plan.isActive ? 'Tạm dừng' : 'Kích hoạt'} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
                   {plan.isActive ? <ToggleRight className="w-6 h-6 text-primary" /> : <ToggleLeft className="w-6 h-6" />}
-                </button>
+                </Button>
               </div>
 
               {/* Price */}
               <div className="mb-4">
                 {isEditing ? (
                   <div className="flex items-center gap-2">
-                    <input
+                    <Input
                       type="text"
                       value={editPrice}
                       onChange={(e) => setEditPrice(e.target.value)}
                       className="flex-1 px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-600 rounded-xl text-xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 text-zinc-900 dark:text-zinc-100"
                       autoFocus
                     />
-                    <button onClick={() => handleSavePrice(plan._id)} className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"><Check className="w-4 h-4" /></button>
-                    <button onClick={() => setEditingId(null)} className="p-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors"><X className="w-4 h-4" /></button>
+                    <Button type="button" size="icon" onClick={() => handleSavePrice(plan._id)} className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"><Check className="w-4 h-4" /></Button>
+                    <Button type="button" variant="secondary" size="icon" onClick={() => setEditingId(null)} className="p-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors"><X className="w-4 h-4" /></Button>
                   </div>
                 ) : (
                   <div className="flex items-baseline gap-2 group">
                     <span className="text-3xl font-extrabold text-zinc-900 dark:text-white">{fmt(plan.price)}</span>
                     <span className="text-zinc-500 text-sm">{plan.type === 'LIFETIME' ? '/ mãi mãi' : plan.type === 'MONTHLY' ? '/ tháng' : '/ năm'}</span>
-                    <button onClick={() => handleStartEdit(plan)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 transition-all ml-auto">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => handleStartEdit(plan)} className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 transition-all ml-auto">
                       <Pencil className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                 )}
                 <p className="text-xs text-zinc-400 mt-1">
@@ -141,9 +143,9 @@ export const PlanManager: React.FC = () => {
 
       {/* Save All */}
       <div className="flex justify-end">
-        <button id="btn-save-plans" onClick={() => toast.success('Đã đồng bộ cấu hình gói cước.')} className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+        <Button id="btn-save-plans" onClick={() => toast.success('Đã đồng bộ cấu hình gói cước.')} className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
           <Save className="w-4 h-4" /> Đồng bộ cài đặt
-        </button>
+        </Button>
       </div>
     </div>
   );

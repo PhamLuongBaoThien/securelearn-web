@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Globe, Save, Mail, Phone, MapPin, Search, Image as ImageIcon, Facebook, Youtube } from 'lucide-react';
 import { toast } from 'sonner';
 import type { IWebsiteConfig } from '@/types/admin.types';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const MOCK_CONFIG: IWebsiteConfig = {
   siteName: 'SecureLearn',
@@ -63,7 +65,7 @@ export const WebsiteConfig: React.FC = () => {
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Cấu hình Website</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Quản lý thông tin chung, thương hiệu và SEO của nền tảng.</p>
         </div>
-        <button
+        <Button
           onClick={handleSave}
           disabled={saving}
           id="btn-save-website-config"
@@ -71,7 +73,7 @@ export const WebsiteConfig: React.FC = () => {
         >
           <Save className="w-4 h-4" />
           {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -79,16 +81,16 @@ export const WebsiteConfig: React.FC = () => {
         <SectionCard title="Thông tin thương hiệu" description="Tên, logo và URL chính của nền tảng.">
           <div className="space-y-4">
             <FormField label="Tên website" icon={<Globe className="w-4 h-4 text-zinc-400" />}>
-              <input className={inputCls} value={config.siteName} onChange={(e) => handleChange('siteName', e.target.value)} />
+              <Input className={inputCls} value={config.siteName} onChange={(e) => handleChange('siteName', e.target.value)} />
             </FormField>
             <FormField label="URL website" icon={<Globe className="w-4 h-4 text-zinc-400" />}>
-              <input className={inputCls} value={config.siteUrl} onChange={(e) => handleChange('siteUrl', e.target.value)} />
+              <Input className={inputCls} value={config.siteUrl} onChange={(e) => handleChange('siteUrl', e.target.value)} />
             </FormField>
             <FormField label="URL Logo" icon={<ImageIcon className="w-4 h-4 text-zinc-400" />} hint="PNG/SVG, khuyến nghị 200×60px">
-              <input className={inputCls} value={config.logoUrl} onChange={(e) => handleChange('logoUrl', e.target.value)} />
+              <Input className={inputCls} value={config.logoUrl} onChange={(e) => handleChange('logoUrl', e.target.value)} />
             </FormField>
             <FormField label="URL Favicon" icon={<ImageIcon className="w-4 h-4 text-zinc-400" />} hint="ICO/PNG, 32×32px">
-              <input className={inputCls} value={config.faviconUrl} onChange={(e) => handleChange('faviconUrl', e.target.value)} />
+              <Input className={inputCls} value={config.faviconUrl} onChange={(e) => handleChange('faviconUrl', e.target.value)} />
             </FormField>
           </div>
         </SectionCard>
@@ -97,20 +99,20 @@ export const WebsiteConfig: React.FC = () => {
         <SectionCard title="Thông tin liên hệ" description="Email, số điện thoại và địa chỉ hiển thị trên website.">
           <div className="space-y-4">
             <FormField label="Email liên hệ" icon={<Mail className="w-4 h-4 text-zinc-400" />}>
-              <input type="email" className={inputCls} value={config.contactEmail} onChange={(e) => handleChange('contactEmail', e.target.value)} />
+              <Input type="email" className={inputCls} value={config.contactEmail} onChange={(e) => handleChange('contactEmail', e.target.value)} />
             </FormField>
             <FormField label="Số điện thoại" icon={<Phone className="w-4 h-4 text-zinc-400" />}>
-              <input className={inputCls} value={config.contactPhone} onChange={(e) => handleChange('contactPhone', e.target.value)} />
+              <Input className={inputCls} value={config.contactPhone} onChange={(e) => handleChange('contactPhone', e.target.value)} />
             </FormField>
             <FormField label="Địa chỉ" icon={<MapPin className="w-4 h-4 text-zinc-400" />}>
               <textarea className={`${inputCls} resize-none h-24`} value={config.address} onChange={(e) => handleChange('address', e.target.value)} />
             </FormField>
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Facebook" icon={<Facebook className="w-4 h-4 text-zinc-400" />}>
-                <input className={inputCls} value={config.facebookUrl || ''} onChange={(e) => handleChange('facebookUrl', e.target.value)} />
+                <Input className={inputCls} value={config.facebookUrl || ''} onChange={(e) => handleChange('facebookUrl', e.target.value)} />
               </FormField>
               <FormField label="YouTube" icon={<Youtube className="w-4 h-4 text-zinc-400" />}>
-                <input className={inputCls} value={config.youtubeUrl || ''} onChange={(e) => handleChange('youtubeUrl', e.target.value)} />
+                <Input className={inputCls} value={config.youtubeUrl || ''} onChange={(e) => handleChange('youtubeUrl', e.target.value)} />
               </FormField>
             </div>
           </div>
@@ -121,13 +123,13 @@ export const WebsiteConfig: React.FC = () => {
           <SectionCard title="Cài đặt SEO" description="Tối ưu hóa công cụ tìm kiếm — tác động trực tiếp đến thứ hạng tìm kiếm.">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField label="SEO Title" icon={<Search className="w-4 h-4 text-zinc-400" />} hint="Khuyến nghị 50-60 ký tự">
-                <input className={inputCls} value={config.seoTitle} onChange={(e) => handleChange('seoTitle', e.target.value)} />
+                <Input className={inputCls} value={config.seoTitle} onChange={(e) => handleChange('seoTitle', e.target.value)} />
                 <div className="flex justify-end mt-1">
                   <span className={`text-xs ${config.seoTitle.length > 60 ? 'text-red-400' : 'text-zinc-400'}`}>{config.seoTitle.length}/60</span>
                 </div>
               </FormField>
               <FormField label="Keywords" icon={<Search className="w-4 h-4 text-zinc-400" />} hint="Phân cách bằng dấu phẩy">
-                <input className={inputCls} value={config.seoKeywords} onChange={(e) => handleChange('seoKeywords', e.target.value)} />
+                <Input className={inputCls} value={config.seoKeywords} onChange={(e) => handleChange('seoKeywords', e.target.value)} />
               </FormField>
               <div className="md:col-span-2">
                 <FormField label="Meta Description" icon={<Search className="w-4 h-4 text-zinc-400" />} hint="Khuyến nghị 150-160 ký tự">

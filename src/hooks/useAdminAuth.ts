@@ -4,7 +4,7 @@
 // ========================
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppDispatch } from '@/app/hooks';
-import { setAdminUser, clearAdminUser } from '@/features/auth/adminAuthSlice';
+import { setAdminUser, updateAdminUser, clearAdminUser } from '@/features/auth/adminAuthSlice';
 import { setAccessToken } from '@/services/apiClient';
 import { loginAdmin, getAdminMe, logoutAdmin, refreshAdminToken } from '@/services/adminAuthApi';
 import type { LoginPayload } from '@/types/auth.types';
@@ -38,6 +38,10 @@ export function useAdminLogin() {
     },
     onSuccess: (data) => {
       dispatch(setAdminUser({ user: data.user, accessToken: data.accessToken }));
+      queryClient.setQueryData(adminAuthKeys.session, {
+        user: data.user,
+        accessToken: data.accessToken,
+      });
       queryClient.setQueryData(adminAuthKeys.profile, data.user);
     },
   });
@@ -87,5 +91,41 @@ export function useInitializeAdminAuth() {
     retry: false,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
+  });
+}
+
+// ===== useUpdateAdminProfile =====
+export function useUpdateAdminProfile() {
+  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      const { updateAdminProfile } = await import('@/services/adminAuthApi');
+      const response = await updateAdminProfile(formData);
+      if (response.status === 'ERR') {
+        throw new Error(response.message);
+      }
+      return response.data;
+    },
+    onSuccess: (updatedUser) => {
+      // Cập nhật Redux store và cache
+      dispatch(updateAdminUser({ user: updatedUser }));
+      queryClient.setQueryData(adminAuthKeys.profile, updatedUser);
+    },
+  });
+}
+
+// ===== useChangeAdminPassword =====
+export function useChangeAdminPassword() {
+  return useMutation({
+    mutationFn: async (payload: any) => {
+      const { changeAdminPassword } = await import('@/services/adminAuthApi');
+      const response = await changeAdminPassword(payload);
+      if (response.status === 'ERR') {
+        throw new Error(response.message);
+      }
+      return response.data;
+    },
   });
 }

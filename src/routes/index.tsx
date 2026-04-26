@@ -33,14 +33,16 @@ import { AdminLayout } from '../components/layout/AdminLayout';
 import { AdminGuestRoute } from '../components/auth/AdminGuestRoute';
 import { AdminProtectedRoute } from '../components/auth/AdminProtectedRoute';
 import { Dashboard as AdminDashboard } from '../pages/admin/Dashboard';
+import { AdminProfile } from '../pages/admin/AdminProfile';
 
-// Admin — System & CMS
+// Admin — System & CMS (System & Content Management System dịch sang tiếng việt là quản lý hệ thống và quản lý nội dung ) 
 import { WebsiteConfig } from '../pages/admin/system/WebsiteConfig';
 import { BannerManager } from '../pages/admin/system/BannerManager';
 import { CategoryManager } from '../pages/admin/system/CategoryManager';
 
-// Admin — Users & RBAC
+// Admin — Users & RBAC (RBAC là viết tắt của Role Based Access Control có nghĩa là quản lý vai trò và quyền)
 import { UserList } from '../pages/admin/users/UserList';
+import { StaffList } from '../pages/admin/users/StaffList';
 import { RbacManager } from '../pages/admin/users/RbacManager';
 
 // Admin — Courses
@@ -53,6 +55,8 @@ import { PlanManager } from '../pages/admin/finance/PlanManager';
 
 // Admin — Notifications & Progress
 import { NotificationConfig } from '../pages/admin/notifications/NotificationConfig';
+import { SendNotification } from '../pages/admin/notifications/SendNotification';
+import { Inbox } from '../pages/admin/notifications/Inbox';
 
 // Instructor Components
 import { InstructorLayout } from '../components/layout/InstructorLayout';
@@ -171,6 +175,7 @@ const router = createBrowserRouter([
           { path: 'system/categories', element: <CategoryManager /> },
           // ===== Users & RBAC =====
           { path: 'users/list', element: <UserList /> },
+          { path: 'users/staff', element: <StaffList /> },
           { path: 'users/rbac', element: <RbacManager /> },
           // ===== Courses =====
           { path: 'courses/review', element: <CourseReview /> },
@@ -179,7 +184,11 @@ const router = createBrowserRouter([
           { path: 'finance/transactions', element: <Transactions /> },
           { path: 'finance/plans', element: <PlanManager /> },
           // ===== Notifications & Progress =====
+          { path: 'notifications/send', element: <SendNotification /> },
+          { path: 'notifications/inbox', element: <Inbox /> },
           { path: 'notifications/config', element: <NotificationConfig /> },
+          // ===== Profile =====
+          { path: 'profile', element: <AdminProfile /> },
         ],
       },
       {

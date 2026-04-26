@@ -9,6 +9,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 
 const MOCK_TEMPLATES: INotificationTemplate[] = [
   { _id: 'n1', name: 'Thanh toán thành công', event: 'PAYMENT_SUCCESS', type: 'EMAIL', subject: 'Xác nhận thanh toán - {{courseName}}', body: 'Chào {{userName}},\n\nChúng tôi xác nhận bạn đã thanh toán thành công cho khóa học "{{courseName}}" với số tiền {{amount}}.\n\nMã giao dịch: {{transactionId}}\nThời gian: {{createdAt}}\n\nChúc bạn học tập hiệu quả!\nTeam SecureLearn', variables: ['{{userName}}', '{{courseName}}', '{{amount}}', '{{transactionId}}', '{{createdAt}}'], isActive: true, createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-03-15T08:00:00Z' },
@@ -105,29 +108,30 @@ export const NotificationConfig: React.FC = () => {
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Cấu hình Thông báo</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Soạn thảo và quản lý mẫu email hóa đơn và thông báo đẩy cho các sự kiện hệ thống.</p>
         </div>
-        <button
+        <Button
           id="btn-add-template"
           onClick={() => toast.info('Tính năng thêm template đang phát triển.')}
           className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
         >
           <Plus className="w-4 h-4" /> Thêm Template
-        </button>
+        </Button>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-2xl w-fit">
         {(['EMAIL', 'PUSH'] as NotificationType[]).map((tab) => (
-          <button
+          <Button
             key={tab}
             onClick={() => setActiveTab(tab)}
             id={`tab-notification-${tab.toLowerCase()}`}
+            variant="ghost"
             className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === tab
               ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
               : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
           >
             {tab === 'EMAIL' ? <Mail className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
             {tab === 'EMAIL' ? 'Email' : 'Push'}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -154,12 +158,13 @@ export const NotificationConfig: React.FC = () => {
                 </div>
                 <span className={`shrink-0 w-2 h-2 rounded-full mt-1 ${t.isActive ? 'bg-emerald-400' : 'bg-zinc-300'}`} />
               </div>
-              <button
+              <Button
                 onClick={(e) => { e.stopPropagation(); setPreviewItem(t); }}
+                variant="ghost"
                 className="flex items-center gap-1 text-xs text-zinc-400 hover:text-blue-500 transition-colors mt-2"
               >
                 <Eye className="w-3 h-3" />Preview
-              </button>
+              </Button>
             </div>
           ))}
           {filtered.length === 0 && (
@@ -177,25 +182,28 @@ export const NotificationConfig: React.FC = () => {
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Chỉnh sửa Template</h2>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
                     onClick={() => setPreviewItem(editItem)}
+                    variant="outline"
                     className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-500 hover:text-blue-500 border border-zinc-200 dark:border-zinc-700 rounded-xl hover:border-blue-300 transition-all"
                   >
                     <Eye className="w-4 h-4" />Preview
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => setEditItem(null)}
+                    variant="ghost"
+                    size="icon"
                     className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Tên Template</label>
-                  <input
+                  <Input
                     className={inputCls}
                     value={editItem.name}
                     onChange={(e) => setEditItem((p) => p ? { ...p, name: e.target.value } : p)}
@@ -203,20 +211,20 @@ export const NotificationConfig: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Sự kiện</label>
-                  <select
+                  <Select
                     className={inputCls}
                     value={editItem.event}
                     onChange={(e) => setEditItem((p) => p ? { ...p, event: e.target.value as TemplateEvent } : p)}
                   >
                     {Object.entries(eventLabel).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
+                  </Select>
                 </div>
               </div>
 
               {editItem.type === 'EMAIL' && (
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Subject Email</label>
-                  <input
+                  <Input
                     className={inputCls}
                     value={editItem.subject || ''}
                     onChange={(e) => setEditItem((p) => p ? { ...p, subject: e.target.value } : p)}
@@ -263,19 +271,20 @@ export const NotificationConfig: React.FC = () => {
               </div>
 
               <div className="flex gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                <button
+                <Button
                   onClick={() => setEditItem(null)}
+                  variant="outline"
                   className="flex-1 px-4 py-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                 >
                   Hủy
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleSave}
                   disabled={saving}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors shadow-md shadow-primary/20"
                 >
                   <Save className="w-4 h-4" />{saving ? 'Đang lưu...' : 'Lưu Template'}
-                </button>
+                </Button>
               </div>
             </div>
           ) : (

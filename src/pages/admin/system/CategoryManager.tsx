@@ -22,6 +22,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import {
   useAdminCategories,
   useCreateAdminCategory,
@@ -36,6 +39,8 @@ interface FormState {
   description: string;
   parentId: string | null;
 }
+
+const MAX_CATEGORY_DEPTH = 4;
 
 const autoSlug = (name: string) =>
   name
@@ -59,6 +64,40 @@ const flattenCategories = (categories: ICategory[]): ICategory[] => {
 
   visit(categories);
   return result;
+};
+
+const getCategoryDepthMap = (categories: ICategory[]) => {
+  const depthMap = new Map<string, number>();
+
+  const visit = (items: ICategory[], depth: number) => {
+    for (const item of items) {
+      depthMap.set(item._id, depth);
+      if (item.children?.length) visit(item.children, depth + 1);
+    }
+  };
+
+  visit(categories, 1);
+  return depthMap;
+};
+
+const getSubtreeHeight = (category: ICategory): number => {
+  if (!category.children?.length) return 1;
+  return 1 + Math.max(...category.children.map((child) => getSubtreeHeight(child)));
+};
+
+const getCategoryTrailMap = (categories: ICategory[]) => {
+  const trailMap = new Map<string, string>();
+
+  const visit = (items: ICategory[], parentTrail = '') => {
+    for (const item of items) {
+      const trail = parentTrail ? `${parentTrail} > ${item.name}` : item.name;
+      trailMap.set(item._id, trail);
+      if (item.children?.length) visit(item.children, trail);
+    }
+  };
+
+  visit(categories);
+  return trailMap;
 };
 
 const getDescendantIds = (category: ICategory): string[] => {
@@ -105,13 +144,25 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
   }, [initial._id, open]);
 
   const flatCategories = useMemo(() => flattenCategories(categories), [categories]);
+  const depthMap = useMemo(() => getCategoryDepthMap(categories), [categories]);
+  const trailMap = useMemo(() => getCategoryTrailMap(categories), [categories]);
   const blockedIds = useMemo(() => {
     if (!initial._id) return new Set<string>();
     const current = flatCategories.find((item) => item._id === initial._id);
     return new Set([initial._id, ...(current ? getDescendantIds(current) : [])] as string[]);
   }, [flatCategories, initial._id]);
 
-  const availableParents = flatCategories.filter((item) => !blockedIds.has(item._id));
+  const currentSubtreeHeight = useMemo(() => {
+    if (!initial._id) return 1;
+    const current = flatCategories.find((item) => item._id === initial._id);
+    return current ? getSubtreeHeight(current) : 1;
+  }, [flatCategories, initial._id]);
+
+  const availableParents = flatCategories.filter((item) => {
+    if (blockedIds.has(item._id)) return false;
+    const parentDepth = depthMap.get(item._id) || 1;
+    return parentDepth + currentSubtreeHeight <= MAX_CATEGORY_DEPTH;
+  });
   const slugPreview = autoSlug(form.name);
 
   const handleSubmit = () => {
@@ -138,7 +189,7 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
         <div className="space-y-3 py-2">
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Tên danh mục</label>
-            <input
+            <Input
               className={inputCls}
               value={form.name}
               onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -167,7 +218,7 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Danh mục cha</label>
-            <select
+            <Select
               className={inputCls}
               value={form.parentId || ''}
               onChange={(e) => setForm((prev) => ({ ...prev, parentId: e.target.value || null }))}
@@ -175,26 +226,29 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
               <option value="">Danh mục gốc</option>
               {availableParents.map((category) => (
                 <option key={category._id} value={category._id}>
-                  {category.name}
+                  {trailMap.get(category._id) || category.name}
                 </option>
               ))}
-            </select>
+            </Select>
+            <p className="mt-1.5 text-xs text-zinc-400">
+              Danh mục chỉ được phép sâu tối đa {MAX_CATEGORY_DEPTH} cấp.
+            </p>
           </div>
         </div>
 
         <DialogFooter>
-          <button
+          <Button
             onClick={() => onOpenChange(false)}
             className="px-4 py-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
           >
             Hủy
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit}
             className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-md shadow-primary/20"
           >
             <Save className="w-4 h-4" /> Lưu
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -230,6 +284,9 @@ const CategoryRow: React.FC<{
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{cat.name}</p>
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+              Cấp {depth + 1}
+            </span>
             <span className={`px-2 py-0.5 rounded-full text-xs ${cat.isActive ? 'bg-emerald-100 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
               {cat.isActive ? 'Hoạt động' : 'Tắt'}
             </span>
@@ -402,13 +459,13 @@ export const CategoryManager: React.FC = () => {
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Quản lý Danh mục</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Thiết lập và phân loại các lĩnh vực học tập.</p>
         </div>
-        <button
+        <Button
           id="btn-add-category"
           onClick={handleOpenAdd}
           className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
         >
           <Plus className="w-4 h-4" /> Thêm Danh mục
-        </button>
+        </Button>
       </div>
 
       {error ? (

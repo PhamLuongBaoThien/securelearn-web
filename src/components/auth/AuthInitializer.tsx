@@ -6,6 +6,7 @@
 import { useEffect } from 'react';
 import { useAppDispatch } from '@/app/hooks';
 import { setUser, clearUser } from '@/features/auth/authSlice';
+import { clearAdminUser } from '@/features/auth/adminAuthSlice';
 import { setAccessToken } from '@/services/apiClient';
 import { useInitializeAuth } from '@/hooks/useAuth';
 
@@ -29,9 +30,24 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
 
   // Lắng nghe event khi refresh token cũng hết hạn (session expired hoàn toàn)
   useEffect(() => {
-    const handleSessionExpired = () => {
-      setAccessToken(null);
+    const handleSessionExpired = (event: Event) => {
+      const customEvent = event as CustomEvent<{ context?: 'user' | 'admin' }>;
+      const context = customEvent.detail?.context ?? 'user';
+
+      setAccessToken(null, context);
+
+      if (context === 'admin') {
+        dispatch(clearAdminUser());
+        if (window.location.pathname.startsWith('/admin') && window.location.pathname !== '/admin/login') {
+          window.location.replace('/admin/login');
+        }
+        return;
+      }
+
       dispatch(clearUser());
+      if (!window.location.pathname.startsWith('/auth/')) {
+        window.location.replace('/auth/login');
+      }
     };
 
     window.addEventListener('auth:session-expired', handleSessionExpired);

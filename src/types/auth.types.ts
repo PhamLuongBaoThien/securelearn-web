@@ -33,6 +33,11 @@ export interface IUser {
   subscriptionStatus: SubscriptionStatus;
   phone?: string;
   profile?: IUserProfile;
+  // --- Admin properties ---
+  avatarUrl?: string;
+  bio?: string;
+  department?: string;
+  // ----------------------
   /** Cho biết user đã có mật khẩu cục bộ hay chưa (false = đăng nhập Google-only) */
   hasPassword?: boolean;
   createdAt: string;

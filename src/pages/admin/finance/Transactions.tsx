@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Search, Filter, DollarSign, CreditCard, Download, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
 import type { ITransaction, PaymentProvider, TransactionStatus } from '@/types/admin.types';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 
 const MOCK_TRANSACTIONS: ITransaction[] = [
   { _id: 't1', transactionId: 'VNP-2026042100123', user: { _id: 'u1', email: 'nguyenvana@gmail.com', fullName: 'Nguyễn Văn A' }, course: { _id: 'c1', title: 'Ethical Hacking: Từ Zero đến Chuyên Gia' }, amount: 899000, provider: 'VNPAY', status: 'SUCCESS', paymentMethod: 'ATM/VISA', ipnReceivedAt: '2026-04-21T10:32:00Z', createdAt: '2026-04-21T10:30:00Z', updatedAt: '2026-04-21T10:32:00Z' },
@@ -48,9 +51,9 @@ export const Transactions: React.FC = () => {
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Lịch sử Giao dịch</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Theo dõi thanh toán qua VNPay/MoMo và trạng thái xử lý sự kiện từ RabbitMQ.</p>
         </div>
-        <button id="btn-export-transactions" className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
+        <Button id="btn-export-transactions" variant="outline" className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
           <Download className="w-4 h-4" /> Xuất CSV
-        </button>
+        </Button>
       </div>
 
       {/* Summary Stats */}
@@ -73,23 +76,23 @@ export const Transactions: React.FC = () => {
       <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm flex flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-48 px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl">
           <Search className="w-4 h-4 text-zinc-400 shrink-0" />
-          <input className="bg-transparent text-sm flex-1 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400" placeholder="Mã GD, tên, email..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="bg-transparent text-sm flex-1 border-0 shadow-none px-0 py-0 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus-visible:ring-0" placeholder="Mã GD, tên, email..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-zinc-400" />
-          <select className="px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none text-zinc-700 dark:text-zinc-300" value={providerFilter} onChange={(e) => setProviderFilter(e.target.value)}>
+          <Select className="w-[140px] px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none text-zinc-700 dark:text-zinc-300" value={providerFilter} onChange={(e) => setProviderFilter(e.target.value)}>
             <option value="">Tất cả cổng</option>
             <option value="VNPAY">VNPay</option>
             <option value="MOMO">MoMo</option>
             <option value="STRIPE">Stripe</option>
-          </select>
-          <select className="px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none text-zinc-700 dark:text-zinc-300" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          </Select>
+          <Select className="w-[160px] px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none text-zinc-700 dark:text-zinc-300" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">Tất cả TT</option>
             <option value="SUCCESS">Thành công</option>
             <option value="FAILED">Thất bại</option>
             <option value="PENDING">Đang xử lý</option>
             <option value="REFUNDED">Hoàn tiền</option>
-          </select>
+          </Select>
         </div>
       </div>
 

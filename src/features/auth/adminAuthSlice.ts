@@ -24,6 +24,13 @@ const adminAuthSlice = createSlice({
       state.isAuthenticated = true;
     },
 
+    /** Update admin user (chỉ cập nhật thông tin user, giữ nguyên token) */
+    updateAdminUser: (state, action: PayloadAction<{ user: IUser }>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload.user };
+      }
+    },
+
     /** Xóa admin auth state khi logout hoặc session expired */
     clearAdminUser: (state) => {
       state.user = null;
@@ -33,5 +40,5 @@ const adminAuthSlice = createSlice({
   },
 });
 
-export const { setAdminUser, clearAdminUser } = adminAuthSlice.actions;
+export const { setAdminUser, updateAdminUser, clearAdminUser } = adminAuthSlice.actions;
 export default adminAuthSlice.reducer;

@@ -15,6 +15,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const MOCK_COURSES: ICourseReview[] = [
   { _id: 'c1', title: 'Ethical Hacking: Từ Zero đến Chuyên Gia', slug: 'ethical-hacking', description: 'Khóa học toàn diện về kiểm thử bảo mật, bao gồm reconnaissance, exploitation, và reporting. Phù hợp cho người bắt đầu và chuyên gia muốn nâng cao kỹ năng thực chiến.', thumbnailUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400&q=80', instructor: { _id: 'i1', fullName: 'Trần Văn Minh', email: 'minh.instructor@gmail.com' }, category: 'Bảo mật thông tin', level: 'INTERMEDIATE', price: 899000, status: 'PENDING', totalLessons: 45, totalChapters: 8, totalDuration: 1800, submittedAt: '2026-04-20T10:00:00Z', createdAt: '2026-04-01T00:00:00Z' },
@@ -77,19 +79,19 @@ const RejectDialog: React.FC<RejectDialogProps> = ({ open, onOpenChange, onConfi
         </div>
 
         <DialogFooter>
-          <button
+          <Button
             onClick={() => onOpenChange(false)}
             className="px-4 py-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
           >
             Hủy
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleConfirm}
             className="flex items-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors shadow-md shadow-red-500/20"
           >
             <XCircle className="w-4 h-4" />
             Xác nhận từ chối
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -173,7 +175,7 @@ export const CourseReview: React.FC = () => {
       <div className="flex flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-48 px-3 py-2 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
           <Search className="w-4 h-4 text-zinc-400 shrink-0" />
-          <input
+          <Input
             className="bg-transparent text-sm flex-1 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
             placeholder="Tìm khóa học, giảng viên..."
             value={search}
@@ -182,13 +184,14 @@ export const CourseReview: React.FC = () => {
         </div>
         <div className="flex gap-2">
           {(['', 'PENDING', 'PUBLISHED', 'REJECTED'] as const).map((s) => (
-            <button
+            <Button
               key={s}
               onClick={() => setStatusFilter(s)}
+              variant="outline"
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${statusFilter === s ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' : 'bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-primary/30'}`}
             >
               {s === '' ? 'Tất cả' : statusConfig[s as CourseStatus]?.label || s}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -225,12 +228,14 @@ export const CourseReview: React.FC = () => {
                         <span className="flex items-center gap-1"><Layers className="w-3 h-3" />{course.totalChapters} chương · {course.totalLessons} bài · {fmtDuration(course.totalDuration)}</span>
                       </div>
                     </div>
-                    <button
+                    <Button
                       onClick={() => setExpandedId(isExpanded ? null : course._id)}
+                      variant="ghost"
+                      size="icon"
                       className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors shrink-0"
                     >
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Rejection reason */}
@@ -254,20 +259,20 @@ export const CourseReview: React.FC = () => {
               {/* Actions */}
               {course.status === 'PENDING' && (
                 <div className="px-5 pb-5 flex gap-3">
-                  <button
+                  <Button
                     id={`btn-approve-${course._id}`}
                     onClick={() => setApproveTargetId(course._id)}
                     className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20"
                   >
                     <CheckCircle className="w-4 h-4" /> Phê duyệt
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     id={`btn-reject-${course._id}`}
                     onClick={() => { setRejectTargetId(course._id); setRejectDialogOpen(true); }}
                     className="flex items-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors"
                   >
                     <XCircle className="w-4 h-4" /> Từ chối
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>

@@ -8,12 +8,15 @@ import { useAppDispatch } from '@/app/hooks';
 import { setUser } from '@/features/auth/authSlice';
 import { setAccessToken } from '@/services/apiClient';
 import { getMe } from '@/services/authApi';
+import { useQueryClient } from '@tanstack/react-query';
+import { authKeys } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 export function OAuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
   const hasRun = useRef(false);
 
   useEffect(() => {
@@ -39,6 +42,11 @@ export function OAuthCallback() {
         const profileRes = await getMe();
         if (profileRes.status === 'OK' && profileRes.data) {
           dispatch(setUser({ user: profileRes.data, accessToken: token }));
+          queryClient.setQueryData(authKeys.session, {
+            user: profileRes.data,
+            accessToken: token,
+          });
+          queryClient.setQueryData(authKeys.profile, profileRes.data);
           toast.success(profileRes.message || `Chào mừng ${profileRes.data.fullName}!`);
           navigate('/', { replace: true });
         } else {
@@ -52,7 +60,7 @@ export function OAuthCallback() {
     };
 
     handleOAuth();
-  }, [searchParams, navigate, dispatch]);
+  }, [searchParams, navigate, dispatch, queryClient]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

@@ -47,6 +47,10 @@ export function useLogin() {
     },
     onSuccess: (data) => {
       dispatch(setUser({ user: data.user, accessToken: data.accessToken }));
+      queryClient.setQueryData(authKeys.session, {
+        user: data.user,
+        accessToken: data.accessToken,
+      });
       queryClient.setQueryData(authKeys.profile, data.user);
     },
   });
@@ -115,7 +119,7 @@ export function useInitializeAuth(options?: { enabled?: boolean }) {
     },
     retry: false,
     staleTime: Infinity,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: false, // không tự động fetch lại khi chuyển tab
     enabled: options?.enabled ?? true,
   });
 }
@@ -168,6 +172,9 @@ export function useDeleteAccount() {
 
 // ===== useChangePassword =====
 export function useChangePassword() {
+  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (payload: { oldPassword?: string; newPassword?: string }) => {
       const response = await changePassword(payload);
@@ -175,6 +182,30 @@ export function useChangePassword() {
         throw new Error(response.message);
       }
       return response;
+    },
+    onSuccess: () => {
+      const currentSession = queryClient.getQueryData(authKeys.session) as
+        | { user?: any; accessToken?: string }
+        | undefined;
+      const currentProfile = queryClient.getQueryData(authKeys.profile) as any;
+      const baseUser = currentSession?.user ?? currentProfile;
+
+      if (!baseUser) return;
+
+      const nextUser = {
+        ...baseUser,
+        hasPassword: true,
+      };
+
+      queryClient.setQueryData(authKeys.profile, nextUser);
+
+      if (currentSession?.accessToken) {
+        queryClient.setQueryData(authKeys.session, {
+          ...currentSession,
+          user: nextUser,
+        });
+        dispatch(setUser({ user: nextUser, accessToken: currentSession.accessToken }));
+      }
     },
   });
 }
@@ -229,15 +260,30 @@ export function useSwitchToInstructor() {
       if (response.status === 'ERR') {
         throw new Error(response.message);
       }
-      return response.data!; // The updated User profile
-    },
-    onSuccess: (updatedUser) => {
-      queryClient.setQueryData(authKeys.profile, updatedUser);
-      // Sync Redux state
-      const currentSession = queryClient.getQueryData(authKeys.session) as any;
-      if (currentSession?.accessToken) {
-        dispatch(setUser({ user: updatedUser, accessToken: currentSession.accessToken }));
+
+      // Sau khi đổi role, refresh lại access token để token mới mang đúng role.
+      const refreshRes = await refreshToken();
+      if (refreshRes.status === 'ERR' || !refreshRes.access_token) {
+        throw new Error(refreshRes.message || 'Không thể cập nhật phiên đăng nhập sau khi chuyển vai trò.');
       }
+
+      setAccessToken(refreshRes.access_token, 'user');
+
+      const profileRes = await getMe();
+      if (profileRes.status === 'ERR' || !profileRes.data) {
+        throw new Error(profileRes.message || 'Không thể tải lại thông tin tài khoản sau khi chuyển vai trò.');
+      }
+
+      return {
+        user: profileRes.data,
+        accessToken: refreshRes.access_token,
+      };
+    },
+    onSuccess: ({ user, accessToken }) => {
+      queryClient.setQueryData(authKeys.profile, user);
+      queryClient.setQueryData(authKeys.session, { user, accessToken });
+      dispatch(setUser({ user, accessToken }));
+      queryClient.invalidateQueries({ queryKey: ['instructor'] });
     },
   });
 }

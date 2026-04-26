@@ -60,6 +60,9 @@ export interface ICategory {
 export type UserRole = 'STUDENT' | 'INSTRUCTOR' | 'ADMIN';
 export type UserStatus = 'ACTIVE' | 'LOCKED' | 'UNVERIFIED';
 
+// Admin staff roles (sub-roles của ADMIN)
+export type AdminRole = 'SUPER_ADMIN' | 'CONTENT_MANAGER' | 'FINANCE_MANAGER' | 'SUPPORT_AGENT';
+
 export interface IAdminUser {
   _id: string;
   email: string;
@@ -76,6 +79,21 @@ export interface IAdminUser {
   lastLoginAt?: string;
 }
 
+// Admin Staff (nhân viên) — chỉ có ADMIN role
+export interface IAdminStaff {
+  _id: string;
+  email: string;
+  fullName: string;
+  adminRole: AdminRole;       // Sub-role của admin
+  status: UserStatus;
+  permissions: string[];      // Danh sách permission IDs
+  phone?: string;
+  department?: string;        // Nhóm/Phòng ban
+  createdAt: string;
+  lastLoginAt?: string;
+  createdBy?: string;         // ID của super admin tạo
+}
+
 export interface IPermission {
   action: string;
   resource: string;
@@ -84,7 +102,7 @@ export interface IPermission {
 
 export interface IRolePermission {
   role: UserRole;
-  permissions: string[]; // Array of "resource:action"
+  permissions: string[];
 }
 
 // ===== Courses =====

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { Camera, Save, Trash2, User, Mail, FileText, Briefcase, Loader2, AlertCircle, Eye, Shield, Key, Phone, Calendar, CheckCircle, Clock } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useAppSelector } from '@/app/hooks';
 import { useUpdateProfile, useDeleteAccount, useChangePassword, authKeys } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
+import { FadeIn } from '@/components/animations/FadeIn';
+import { AnimatedTabContent } from '@/components/animations/TabTransition';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/button';
@@ -120,7 +121,7 @@ export function Profile() {
       });
       toast.success(user.hasPassword ? 'Mật khẩu đã được thay đổi thành công!' : 'Tạo mật khẩu thành công! Bạn có thể đăng nhập bằng email/mật khẩu.');
       resetPasswordForm();
-      // Re-fetch profile để cập nhật hasPassword
+      queryClient.invalidateQueries({ queryKey: authKeys.profile });
       queryClient.invalidateQueries({ queryKey: authKeys.session });
     } catch (error: any) {
       toast.error(error.message || 'Có lỗi xảy ra khi đổi mật khẩu.');
@@ -163,11 +164,7 @@ export function Profile() {
   return (
     <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
       {/* Header Info Banner */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-card rounded-2xl shadow-sm border border-border p-8 mb-8"
-      >
+      <FadeIn direction="down" distance={20} duration={0.35} className="bg-card rounded-2xl shadow-sm border border-border p-8 mb-8">
         <div className="flex flex-col md:flex-row items-center gap-6">
           <UserAvatar user={user} className="w-24 h-24 text-4xl border-2 border-primary/20 shadow-md" />
           <div className="flex-1 text-center md:text-left">
@@ -178,7 +175,7 @@ export function Profile() {
             </p>
           </div>
         </div>
-      </motion.div>
+      </FadeIn>
 
       <div className="flex flex-col md:flex-row gap-8">
         
@@ -208,18 +205,8 @@ export function Profile() {
 
         {/* Dynamic Content Area */}
         <div className="flex-1 min-w-0">
-          <AnimatePresence mode="wait">
-            
-            {/* TAB: PUBLIC PROFILE */}
-            {activeTab === 'public' && (
-              <motion.div
-                key="public"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-6"
-              >
+          {activeTab === 'public' && (
+            <AnimatedTabContent activeKey="public" className="space-y-6">
                 <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
                   <h2 className="text-2xl font-bold text-foreground mb-6">Hồ sơ công khai</h2>
                   <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -274,18 +261,11 @@ export function Profile() {
                     </div>
                   </div>
                 </div>
-              </motion.div>
-            )}
+            </AnimatedTabContent>
+          )}
 
-            {/* TAB: EDIT PROFILE */}
-            {activeTab === 'edit-profile' && (
-              <motion.div
-                key="edit-profile"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-              >
+          {activeTab === 'edit-profile' && (
+            <AnimatedTabContent activeKey="edit-profile">
                 <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
                   <h2 className="text-2xl font-bold text-foreground mb-6">Chỉnh sửa hồ sơ</h2>
                   <form onSubmit={handleSubmit(onSubmitProfile)} className="space-y-6 max-w-2xl">
@@ -373,18 +353,11 @@ export function Profile() {
                     </button>
                   </form>
                 </div>
-              </motion.div>
-            )}
+            </AnimatedTabContent>
+          )}
 
-            {/* TAB: AVATAR */}
-            {activeTab === 'avatar' && (
-              <motion.div
-                key="avatar"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-              >
+          {activeTab === 'avatar' && (
+            <AnimatedTabContent activeKey="avatar">
                 <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
                   <h2 className="text-2xl font-bold text-foreground mb-6">Ảnh đại diện</h2>
                   <div className="flex flex-col items-start gap-8">
@@ -427,19 +400,11 @@ export function Profile() {
                     </button>
                   </div>
                 </div>
-              </motion.div>
-            )}
+            </AnimatedTabContent>
+          )}
 
-            {/* TAB: SECURITY */}
-            {activeTab === 'security' && (
-              <motion.div
-                key="security"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-6"
-              >
+          {activeTab === 'security' && (
+            <AnimatedTabContent activeKey="security" className="space-y-6">
                 {/* Đổi mật khẩu */}
                 <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
                   <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
@@ -533,10 +498,8 @@ export function Profile() {
                     }
                   />
                 </div>
-              </motion.div>
-            )}
-
-          </AnimatePresence>
+            </AnimatedTabContent>
+          )}
         </div>
       </div>
     </div>

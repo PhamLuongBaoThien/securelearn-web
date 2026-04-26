@@ -5,6 +5,7 @@ import {
   updateCategory,
   setCategoryStatus,
 } from '@/services/adminApi';
+import { categoryKeys } from '@/hooks/usePublicCourseCategories';
 import type { ICategory } from '@/types/admin.types';
 
 export const adminCategoryKeys = {
@@ -43,6 +44,7 @@ export function useCreateAdminCategory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminCategoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all });
     },
   });
 }
@@ -69,6 +71,7 @@ export function useUpdateAdminCategory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminCategoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all });
     },
   });
 }
@@ -86,6 +89,7 @@ export function useSetAdminCategoryStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminCategoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all });
     },
   });
 }

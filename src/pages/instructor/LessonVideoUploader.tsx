@@ -14,6 +14,7 @@ import {
   Play,
 } from 'lucide-react';
 import type { ILesson, VideoProcessingStatus } from '@/services/courseApi';
+import { Button } from '@/components/ui/button';
 
 // ===== Props =====
 interface LessonVideoUploaderProps {
@@ -267,13 +268,16 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
           </div>
           <p className="text-xs text-green-500 dark:text-green-600 mt-0.5">Sẵn sàng phát · Đã mã hóa AES-128</p>
         </div>
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           onClick={handleRemove}
           className="p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-green-500/20 text-green-400 hover:text-green-600 transition-colors shrink-0"
           title="Xóa video"
         >
           <X className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
     );
   }
@@ -292,19 +296,24 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
           <p className="text-xs text-red-500 mt-0.5 truncate">{lesson.videoFileName}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button
+          <Button
+            type="button"
+            variant="ghost"
             onClick={handleRetry}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-500/30 rounded-lg transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             Thử lại
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             onClick={handleRemove}
             className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-500/20 text-red-400 hover:text-red-600 transition-colors"
           >
             <X className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </div>
     );

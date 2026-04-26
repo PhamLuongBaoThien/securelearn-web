@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Search, Filter, HardDrive, FileVideo, FileText, Image, File, Download, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ICourseResource, ResourceType } from '@/types/admin.types';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const MOCK_RESOURCES: ICourseResource[] = [
   { _id: 'r1', fileName: 'intro-to-ethical-hacking.mp4', fileType: 'VIDEO', fileSize: 524288000, mimeType: 'video/mp4', url: '#', courseId: 'c1', courseTitle: 'Ethical Hacking: Từ Zero đến Chuyên Gia', lessonTitle: 'Bài 1: Giới thiệu', uploadedBy: 'Trần Văn Minh', createdAt: '2026-04-10T10:00:00Z' },
@@ -76,7 +78,7 @@ export const ResourceManager: React.FC = () => {
       <div className="flex flex-wrap gap-3 bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm">
         <div className="flex items-center gap-2 flex-1 min-w-48 px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl">
           <Search className="w-4 h-4 text-zinc-400 shrink-0" />
-          <input className="bg-transparent text-sm flex-1 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400" placeholder="Tìm theo tên file, khóa học..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="bg-transparent text-sm flex-1 border-0 shadow-none px-0 py-0 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus-visible:ring-0" placeholder="Tìm theo tên file, khóa học..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-zinc-400" />
@@ -120,7 +122,7 @@ export const ResourceManager: React.FC = () => {
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <a href={r.url} title="Tải xuống" className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 text-blue-500 transition-colors"><Download className="w-4 h-4" /></a>
-                        <button onClick={() => handleDelete(r._id)} title="Xóa" className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleDelete(r._id)} title="Xóa" className="h-8 w-8 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></Button>
                       </div>
                     </td>
                   </tr>

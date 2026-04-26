@@ -32,7 +32,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <AppRouter />
           </AuthInitializer>
           {/* Toast container — tích hợp shadcn */}
-          <Toaster position="top-center" closeButton duration={4000} richColors />
+          <Toaster closeButton duration={4000} richColors />
         </QueryClientProvider>
       </ThemeProvider>
     </Provider>
