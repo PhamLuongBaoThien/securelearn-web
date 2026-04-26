@@ -8,7 +8,7 @@ export function AuthLayout() {
       {/* Left side - Branding / Image */}
       <FadeIn direction="right" distance={40} className="hidden md:flex flex-col items-center justify-center p-10 bg-zinc-950 text-white relative overflow-hidden h-full">
         
-        {/* Decorative elements - Glowing Orbs & Grid */} 
+        {/* Đóm sáng */}
         <div className="absolute top-1/4 -left-20 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] animate-pulse"></div>
         <div className="absolute bottom-1/4 -right-20 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
         
@@ -18,7 +18,7 @@ export function AuthLayout() {
           - bg-[size:40px_40px]: Bắt buộc 2 nét này lặp lại liên tục mỗi 40px, đan chéo nhau tạo thành các ô vuông caro.
           - mask-image: radial-gradient(...): Tạo mặt nạ hình tròn. Ở tâm (40%) hiển thị rõ nhất, càng ra rìa (đến 80%) càng mờ dần thành trong suốt, tạo cảm giác không gian sâu thẳm.
         */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]"></div>
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:30px_30px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]"></div>
 
         {/* Center Content */}
         <Link to="/" className="relative z-10 flex flex-col items-center group cursor-pointer">

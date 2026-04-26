@@ -269,7 +269,17 @@ const CategoryRow: React.FC<{
 
   return (
     <>
-      <div className={`flex items-center gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group ${depth > 0 ? 'pl-10 border-l-2 border-zinc-100 dark:border-zinc-800 ml-4' : ''}`}>
+      <div 
+        className="flex items-center gap-3 pr-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group relative"
+        style={{ paddingLeft: `${depth * 2.5 + 1}rem` }}
+      >
+        {Array.from({ length: depth }).map((_, i) => (
+          <div 
+            key={i} 
+            className="absolute top-0 bottom-0 border-l-2 border-zinc-100 dark:border-zinc-800/50 pointer-events-none"
+            style={{ left: `calc(${i * 2.5 + 1.75}rem - 1px)` }} // Khoảng cách lề: $2.5rem cho mỗi cấp + $1.75rem cho icon + $1px cho độ dày đường viền
+          />
+        ))}
         <button
           onClick={() => hasChildren && onToggleExpand(cat._id)}
           className={`p-1 rounded-lg transition-colors ${hasChildren ? 'hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer' : 'opacity-0 cursor-default'}`}
