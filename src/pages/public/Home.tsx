@@ -5,7 +5,7 @@ import { SlideUp } from '../../components/animations/SlideUp';
 import { StaggerContainer, StaggerItem } from '../../components/animations/Stagger';
 import { CourseCarousel } from '../../components/ui/CourseCarousel';
 import { buttonVariants } from '../../components/ui/button';
-import { ChevronLeft, ChevronRight, ShieldCheck, Network, Lock, Server, PlayCircle, Fingerprint, Zap, CreditCard } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShieldCheck, Lock,Zap, CreditCard } from 'lucide-react';
 
 // ========================
 // Banner Slides Data
