@@ -5,7 +5,7 @@ import { SlideUp } from '../../components/animations/SlideUp';
 import { StaggerContainer, StaggerItem } from '../../components/animations/Stagger';
 import { CourseCarousel } from '../../components/ui/CourseCarousel';
 import { buttonVariants } from '../../components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShieldCheck, Network, Lock, Server, PlayCircle, Fingerprint, Zap, CreditCard } from 'lucide-react';
 
 // ========================
 // Banner Slides Data
@@ -75,16 +75,16 @@ export const Home = () => {
     <>
       {/* Hero Banner Slider */}
       <section
-        className="relative px-0 md:px-6 max-w-[1340px] mx-auto"
+        className="relative w-full h-screen -mt-[90px] z-0 overflow-hidden"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
-        <div className="relative w-full aspect-[21/9] md:aspect-[3/1] md:rounded-2xl overflow-hidden">
+        <div className="relative w-full h-full">
           {/* Slides */}
           {bannerSlides.map((slide, index) => (
             <div
               key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
                 index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
               }`}
             >
@@ -94,23 +94,24 @@ export const Home = () => {
                 className="w-full h-full object-cover"
               />
               {/* Overlay gradient */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+              <div className="absolute inset-0 bg-black/20" />
             </div>
           ))}
 
           {/* Text Content */}
-          <div className="absolute inset-0 z-20 flex items-end pb-10 md:pb-14 px-6 md:px-12 lg:px-16">
+          <div className="absolute inset-0 z-20 flex flex-col justify-center px-6 md:px-16 lg:px-24 pt-[90px] max-w-[1440px] mx-auto w-full">
             <FadeIn key={currentSlide} delay={0.1} direction="up" distance={30}>
-              <div className="max-w-xl">
-                <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-3 leading-tight drop-shadow-lg">
+              <div className="max-w-2xl">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-xl">
                   {bannerSlides[currentSlide].title}
                 </h1>
-                <p className="text-white/80 text-sm sm:text-base md:text-lg mb-5 drop-shadow-md">
+                <p className="text-white/90 text-lg sm:text-xl md:text-2xl mb-8 drop-shadow-md">
                   {bannerSlides[currentSlide].subtitle}
                 </p>
                 <Link
                   to={bannerSlides[currentSlide].link}
-                  className="inline-flex items-center px-6 py-2.5 bg-white text-black font-semibold text-sm rounded-full hover:bg-white/90 transition-colors shadow-lg"
+                  className="inline-flex items-center px-8 py-4 bg-primary text-primary-foreground font-bold text-lg rounded-full hover:bg-primary/90 transition-all shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:shadow-[0_0_30px_rgba(var(--primary),0.6)] hover:scale-105"
                 >
                   Khám phá ngay
                 </Link>
@@ -121,29 +122,29 @@ export const Home = () => {
           {/* Navigation Arrows */}
           <button
             onClick={prevSlide}
-            className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 backdrop-blur-sm transition-colors"
+            className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/30 text-white hover:bg-black/60 backdrop-blur-md transition-all hover:scale-110"
             aria-label="Slide trước"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-6 w-6" />
           </button>
           <button
             onClick={nextSlide}
-            className="absolute right-3 md:right-5 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 backdrop-blur-sm transition-colors"
+            className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/30 text-white hover:bg-black/60 backdrop-blur-md transition-all hover:scale-110"
             aria-label="Slide tiếp"
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-6 w-6" />
           </button>
 
           {/* Dot Indicators */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3">
             {bannerSlides.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentSlide(index)}
-                className={`h-2 rounded-full transition-all duration-300 ${
+                className={`h-2.5 rounded-full transition-all duration-300 ${
                   index === currentSlide
-                    ? 'w-6 bg-white'
-                    : 'w-2 bg-white/50 hover:bg-white/80'
+                    ? 'w-8 bg-white'
+                    : 'w-2.5 bg-white/50 hover:bg-white/80'
                 }`}
                 aria-label={`Đi đến slide ${index + 1}`}
               />
@@ -152,75 +153,136 @@ export const Home = () => {
         </div>
       </section>
 
-        {/* Trusted By */}
-        <section className="bg-secondary/20 py-16 px-6 mt-16 text-center">
-          <SlideUp>
-            <p className="text-xl text-muted-foreground font-semibold mb-8">Được tin cậy bởi các tổ chức công nghệ và chuyên gia giáo dục hàng đầu</p>
-          </SlideUp>
-          <StaggerContainer className="flex flex-wrap justify-center gap-12 sm:gap-16 items-center opacity-60">
-            {/* Fake startup tech partners */}
-            <StaggerItem><span className="text-2xl font-bold font-serif">CTU</span></StaggerItem>
-            <StaggerItem><span className="text-2xl font-bold font-sans tracking-tighter">CTUM</span></StaggerItem>
-            <StaggerItem><span className="text-2xl font-bold font-mono tracking-widest">VNG</span></StaggerItem>
-            <StaggerItem><span className="text-2xl font-bold font-serif italic">MoMo</span></StaggerItem>
-            <StaggerItem><span className="text-2xl font-bold">VNPT</span></StaggerItem>
-            <StaggerItem><span className="text-2xl font-bold font-sans hidden md:block">Tiki</span></StaggerItem>
-          </StaggerContainer>
-        </section>
+        {/* Core Architecture */}
+        <section className="bg-secondary/10 py-12 px-6 mt-16 overflow-hidden">
+          <div className="max-w-[1340px] mx-auto">
+            <SlideUp>
+              <div className="text-center mb-10">
+                <h2 className="text-2xl md:text-3xl font-bold mb-3 font-sans tracking-tight">Hệ Sinh Thái Dành Cho Bạn</h2>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                  Được thiết kế để mang lại trải nghiệm học tập hoàn hảo và bảo vệ tuyệt đối thành quả lao động của giảng viên.
+                </p>
+              </div>
+            </SlideUp>
 
-        {/* Broad Selection of Courses */}
-        <section className="px-6 py-16 max-w-[1340px] mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 font-serif">Nội dung chất lượng, Bản quyền 100%</h2>
-          <p className="text-xl text-muted-foreground mb-8">Hơn 500+ khóa học công nghệ sâu được bảo vệ bằng chuẩn mã hóa DRM AES-128. Quyền lợi của người dạy và người học luôn được đặt lên hàng đầu.</p>
-          
-          <div className="flex gap-6 mb-0 overflow-x-auto pb-0 scrollbar-hide border-b border-border/50">
-            <button className="text-base font-bold text-foreground border-b-2 border-foreground pb-2 whitespace-nowrap">Lập trình lõi</button>
-            <button className="text-base font-bold text-muted-foreground hover:text-foreground transition-colors pb-2 whitespace-nowrap">Bảo mật (Cybersec)</button>
-            <button className="text-base font-bold text-muted-foreground hover:text-foreground transition-colors pb-2 whitespace-nowrap">DevOps & Cloud</button>
-            <button className="text-base font-bold text-muted-foreground hover:text-foreground transition-colors pb-2 whitespace-nowrap">AI / Machine Learning</button>
-            <button className="text-base font-bold text-muted-foreground hover:text-foreground transition-colors pb-2 whitespace-nowrap">Thiết kế hệ thống</button>
-          </div>
-          
-          <div className="border border-border p-8 bg-card shadow-sm pt-8">
-             <h3 className="text-2xl font-bold mb-3">Làm chủ Công nghệ và An toàn thông tin</h3>
-             <p className="text-muted-foreground mb-6 max-w-3xl leading-relaxed">Nâng cấp kỹ năng chuyên sâu với các khóa thực chiến từ những kỹ sư cấp cao. Mọi video bài giảng đều được stream độc quyền, không bao giờ lo gián đoạn hay bị thất thoát sao chép trái phép.</p>
-             <Link to="/explore/security" className={buttonVariants({ variant: 'udemy_outline', className: "mb-8 rounded-none font-bold" })}>
-               Khám phá Chương trình đào tạo
-             </Link>
-             
-             {/* Carousel Component */}
-             <CourseCarousel courses={mockCourses} />
+            <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                { icon: ShieldCheck, title: "Bảo Vệ Bản Quyền", desc: "Nội dung khóa học luôn được an toàn, tự động ngăn chặn mọi hành vi sao chép hay quay lén trái phép." },
+                { icon: Zap, title: "Học Tập Mượt Mà", desc: "Trải nghiệm xem video bài giảng với tốc độ cao, không giật lag kể cả khi có hàng ngàn người truy cập." },
+                { icon: CreditCard, title: "Thanh Toán Tiện Lợi", desc: "Đa dạng phương thức thanh toán an toàn, dễ dàng mua đứt từng khóa hoặc đăng ký học trọn gói theo tháng." },
+                { icon: Lock, title: "An Tâm Tuyệt Đối", desc: "Hệ thống bảo mật thông tin chuẩn quốc tế, giúp bạn tập trung hoàn toàn vào việc giảng dạy và học tập." },
+              ].map((feature, i) => (
+                <StaggerItem key={i}>
+                  <div className="group h-full p-6 rounded-2xl bg-background border border-border/50 shadow-sm hover:shadow-lg hover:border-primary/50 transition-all duration-300 flex flex-col items-center text-center">
+                    <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:-translate-y-1 group-hover:bg-primary group-hover:text-primary-foreground text-primary transition-all duration-300">
+                      <feature.icon className="h-6 w-6 transition-colors duration-300" />
+                    </div>
+                    <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors">{feature.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
+                  </div>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
           </div>
         </section>
 
-        {/* Top Categories */}
-        <section className="px-6 py-12 max-w-[1340px] mx-auto mb-16">
+        {/* Featured Courses */}
+        <section className="px-6 py-20 max-w-[1340px] mx-auto">
           <SlideUp>
-            <h2 className="text-2xl lg:text-3xl font-bold mb-8 font-serif">Danh mục hàng đầu</h2>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+              <div className="max-w-3xl">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4 font-sans tracking-tight">Khóa Học Nổi Bật</h2>
+                <p className="text-lg md:text-xl text-muted-foreground">
+                  Khám phá các khóa học được đánh giá cao nhất. Nâng cấp kỹ năng của bạn ngay hôm nay với lộ trình bài bản từ cơ bản đến chuyên sâu.
+                </p>
+              </div>
+              <Link to="/courses" className={buttonVariants({ variant: 'outline', className: "rounded-full font-semibold px-8 shrink-0 border-primary/50 hover:bg-primary/5 hover:text-primary" })}>
+                Xem tất cả
+              </Link>
+            </div>
           </SlideUp>
-          <StaggerContainer className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-             {[
-               { id: "design", name: "Thiết kế", img: "https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&q=80&w=500" },
-               { id: "development", name: "Phát triển Phần mềm", img: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=500" },
-               { id: "marketing", name: "Marketing", img: "https://images.unsplash.com/photo-1533750516457-a7f992034fec?auto=format&fit=crop&q=80&w=500" },
-               { id: "it-and-software", name: "CNTT và Phần mềm", img: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=500" },
-               { id: "personal-development", name: "Phát triển cá nhân", img: "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?auto=format&fit=crop&q=80&w=500" },
-               { id: "business", name: "Kinh doanh", img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=500" },
-               { id: "photography", name: "Nhiếp ảnh", img: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=500" },
-               { id: "music", name: "Âm nhạc", img: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&q=80&w=500" }
-             ].map((cat, i) => (
-               <StaggerItem key={i}>
-                 <Link to={`/category/${cat.id}`} className="group cursor-pointer block">
-                   <div className="w-full aspect-square md:aspect-[4/3] bg-secondary/30 mb-3 overflow-hidden rounded bg-muted">
-                     <img src={cat.img} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                   </div>
-                   <h3 className="font-bold group-hover:text-primary transition-colors text-lg">{cat.name}</h3>
-                 </Link>
-               </StaggerItem>
-             ))}
-          </StaggerContainer>
+          
+          <FadeIn delay={0.2} distance={40} direction="up">
+            {/* Category Tabs Array (Dễ dàng thay bằng dữ liệu API sau này) */}
+            <div className="flex gap-8 mb-8 overflow-x-auto pb-1 scrollbar-hide border-b border-border/30">
+              {[
+                { id: 'all', name: 'Tất cả khóa học' },
+                { id: 'programming', name: 'Lập trình Lõi' },
+                { id: 'security', name: 'An toàn Thông tin' },
+                { id: 'cloud', name: 'DevOps & Cloud' },
+                { id: 'ai', name: 'Trí tuệ Nhân tạo' },
+              ].map((cat, idx) => (
+                <button 
+                  key={cat.id}
+                  className={`text-base font-bold pb-3 whitespace-nowrap border-b-2 transition-all ${
+                    idx === 0 
+                      ? 'text-primary border-primary' 
+                      : 'text-muted-foreground hover:text-foreground border-transparent'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+            
+            <div className="relative pt-4">
+               {/* Background glowing effect */}
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 rounded-full bg-primary/5 blur-[120px] pointer-events-none -z-10" />
+               
+               {/* Carousel Component */}
+               <CourseCarousel courses={mockCourses} />
+            </div>
+          </FadeIn>
         </section>
-      {/* End */}
+
+        {/* CTA Section (Subscription Push) */}
+        <section className="relative px-6 py-24 overflow-hidden bg-primary text-primary-foreground">
+          {/* Abstract background shapes */}
+          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-[400px] h-[400px] bg-white/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-[300px] h-[300px] bg-black/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 max-w-[800px] mx-auto text-center">
+            <FadeIn direction="up" distance={40}>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 text-white font-bold text-sm mb-6 uppercase tracking-wider backdrop-blur-md">
+                Gói Hội Viên Cao Cấp
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Học Tập Không Giới Hạn</h2>
+              <p className="text-xl md:text-2xl text-primary-foreground/90 mb-10 max-w-2xl mx-auto">
+                Nâng cấp gói thuê bao ngay hôm nay để mở khóa toàn bộ hệ sinh thái khóa học. Tiết kiệm chi phí và chủ động định hình lộ trình phát triển của riêng bạn.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center">
+                <Link to="/pricing" className="px-8 py-4 bg-background text-foreground font-bold text-lg rounded-full hover:bg-secondary transition-all shadow-xl hover:scale-105 w-full sm:w-auto flex items-center justify-center gap-2">
+                  Xem Bảng Giá Gói
+                </Link>
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* Partners & Integrations (Startup Friendly) */}
+        <section className="pt-16 pb-0 max-w-[1340px] mx-auto mb-0 px-6">
+          <FadeIn>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-10">
+                Đồng hành cùng các đối tác giáo dục và giải pháp công nghệ
+              </p>
+              <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-60 hover:opacity-100 grayscale hover:grayscale-0 transition-all duration-500">
+                {/* CTU */}
+                <div className="text-3xl font-black tracking-widest text-blue-700 select-none">CTU</div>
+                {/* CTUMP (ĐH Y Dược Cần Thơ) */}
+                <div className="text-3xl font-black tracking-widest text-teal-600 select-none">CTUMP</div>
+                {/* VNPay */}
+                <div className="text-2xl font-black tracking-tight select-none">
+                  <span className="text-red-600">VN</span><span className="text-blue-800">PAY</span>
+                </div>
+                {/* MoMo */}
+                <div className="text-3xl font-bold lowercase tracking-tighter text-pink-600 select-none">momo</div>
+                {/* Google */}
+                <div className="text-2xl font-black tracking-tighter select-none">Google</div>
+              </div>
+            </div>
+          </FadeIn>
+        </section>
     </>
   );
 };

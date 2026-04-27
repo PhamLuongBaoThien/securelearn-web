@@ -38,7 +38,7 @@ import { AdminProfile } from '../pages/admin/AdminProfile';
 // Admin — System & CMS (System & Content Management System dịch sang tiếng việt là quản lý hệ thống và quản lý nội dung ) 
 import { WebsiteConfig } from '../pages/admin/system/WebsiteConfig';
 import { BannerManager } from '../pages/admin/system/BannerManager';
-import { CategoryManager } from '../pages/admin/system/CategoryManager';
+import { CategoryManager } from '../pages/admin/system/categories';
 
 // Admin — Users & RBAC (RBAC là viết tắt của Role Based Access Control có nghĩa là quản lý vai trò và quyền)
 import { UserList } from '../pages/admin/users/UserList';
