@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Navbar } from './Navbar';
+import { Navbar } from './Header';
 import { FadeIn } from '../animations/FadeIn';
 
 export const DashboardLayout = ({ children }: { children: ReactNode }) => {

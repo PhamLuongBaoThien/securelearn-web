@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { FadeIn } from '../../components/animations/FadeIn';
-import { SlideUp } from '../../components/animations/SlideUp';
-import { StaggerContainer, StaggerItem } from '../../components/animations/Stagger';
+import { HorizontalStaggerContainer, HorizontalStaggerItem } from '../../components/animations/HorizontalStagger';
+import { SectionReveal, SectionSequence, SectionSequenceItem } from '../../components/animations/SectionReveal';
 import { CourseCarousel } from '../../components/ui/CourseCarousel';
 import { buttonVariants } from '../../components/ui/button';
 import { ChevronLeft, ChevronRight, ShieldCheck, Lock,Zap, CreditCard } from 'lucide-react';
@@ -51,7 +51,6 @@ const mockCourses = [
 ];
 
 const SLIDE_INTERVAL = 5000; // 5 giây mỗi slide
-
 export const Home = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -91,7 +90,9 @@ export const Home = () => {
               <img
                 src={slide.image}
                 alt={slide.title}
-                className="w-full h-full object-cover"
+                className={`w-full h-full object-cover transition-transform duration-[10000ms] ease-out ${
+                  index === currentSlide ? 'scale-110' : 'scale-100'
+                }`}
               />
               {/* Overlay gradient */}
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
@@ -100,23 +101,27 @@ export const Home = () => {
           ))}
 
           {/* Text Content */}
-          <div className="absolute inset-0 z-20 flex flex-col justify-center px-6 md:px-16 lg:px-24 pt-[90px] max-w-[1440px] mx-auto w-full">
-            <FadeIn key={currentSlide} delay={0.1} direction="up" distance={30}>
-              <div className="max-w-2xl">
+          <div className="absolute inset-0 z-20 flex flex-col justify-center px-6 md:px-16 lg:px-24 pt-[90px] max-w-[1440px] mx-auto w-full pointer-events-none">
+            <SectionSequence key={currentSlide} className="max-w-2xl pointer-events-auto">
+              <SectionSequenceItem>
                 <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-xl">
                   {bannerSlides[currentSlide].title}
                 </h1>
+              </SectionSequenceItem>
+              <SectionSequenceItem>
                 <p className="text-white/90 text-lg sm:text-xl md:text-2xl mb-8 drop-shadow-md">
                   {bannerSlides[currentSlide].subtitle}
                 </p>
+              </SectionSequenceItem>
+              <SectionSequenceItem>
                 <Link
                   to={bannerSlides[currentSlide].link}
                   className="inline-flex items-center px-8 py-4 bg-primary text-primary-foreground font-bold text-lg rounded-full hover:bg-primary/90 transition-all shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:shadow-[0_0_30px_rgba(var(--primary),0.6)] hover:scale-105"
                 >
                   Khám phá ngay
                 </Link>
-              </div>
-            </FadeIn>
+              </SectionSequenceItem>
+            </SectionSequence>
           </div>
 
           {/* Navigation Arrows */}
@@ -153,26 +158,26 @@ export const Home = () => {
         </div>
       </section>
 
-        {/* Core Architecture */}
+        {/* Dành cho bạn */}
         <section className="bg-secondary/10 py-12 px-6 mt-16 overflow-hidden">
           <div className="max-w-[1340px] mx-auto">
-            <SlideUp>
+            <SectionReveal>
               <div className="text-center mb-10">
                 <h2 className="text-2xl md:text-3xl font-bold mb-3 font-sans tracking-tight">Hệ Sinh Thái Dành Cho Bạn</h2>
                 <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                   Được thiết kế để mang lại trải nghiệm học tập hoàn hảo và bảo vệ tuyệt đối thành quả lao động của giảng viên.
                 </p>
               </div>
-            </SlideUp>
+            </SectionReveal>
 
-            <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <HorizontalStaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 { icon: ShieldCheck, title: "Bảo Vệ Bản Quyền", desc: "Nội dung khóa học luôn được an toàn, tự động ngăn chặn mọi hành vi sao chép hay quay lén trái phép." },
                 { icon: Zap, title: "Học Tập Mượt Mà", desc: "Trải nghiệm xem video bài giảng với tốc độ cao, không giật lag kể cả khi có hàng ngàn người truy cập." },
                 { icon: CreditCard, title: "Thanh Toán Tiện Lợi", desc: "Đa dạng phương thức thanh toán an toàn, dễ dàng mua đứt từng khóa hoặc đăng ký học trọn gói theo tháng." },
                 { icon: Lock, title: "An Tâm Tuyệt Đối", desc: "Hệ thống bảo mật thông tin chuẩn quốc tế, giúp bạn tập trung hoàn toàn vào việc giảng dạy và học tập." },
               ].map((feature, i) => (
-                <StaggerItem key={i}>
+                <HorizontalStaggerItem key={i}>
                   <div className="group h-full p-6 rounded-2xl bg-background border border-border/50 shadow-sm hover:shadow-lg hover:border-primary/50 transition-all duration-300 flex flex-col items-center text-center">
                     <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:-translate-y-1 group-hover:bg-primary group-hover:text-primary-foreground text-primary transition-all duration-300">
                       <feature.icon className="h-6 w-6 transition-colors duration-300" />
@@ -180,15 +185,15 @@ export const Home = () => {
                     <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors">{feature.title}</h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
                   </div>
-                </StaggerItem>
+                </HorizontalStaggerItem>
               ))}
-            </StaggerContainer>
+            </HorizontalStaggerContainer>
           </div>
         </section>
 
         {/* Featured Courses */}
         <section className="px-6 py-20 max-w-[1340px] mx-auto">
-          <SlideUp>
+          <SectionReveal>
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
               <div className="max-w-3xl">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4 font-sans tracking-tight">Khóa Học Nổi Bật</h2>
@@ -200,9 +205,9 @@ export const Home = () => {
                 Xem tất cả
               </Link>
             </div>
-          </SlideUp>
+          </SectionReveal>
           
-          <FadeIn delay={0.2} distance={40} direction="up">
+          <SectionReveal delay={0.08}>
             {/* Category Tabs Array (Dễ dàng thay bằng dữ liệu API sau này) */}
             <div className="flex gap-8 mb-8 overflow-x-auto pb-1 scrollbar-hide border-b border-border/30">
               {[
@@ -232,40 +237,39 @@ export const Home = () => {
                {/* Carousel Component */}
                <CourseCarousel courses={mockCourses} />
             </div>
-          </FadeIn>
+          </SectionReveal>
         </section>
 
         {/* CTA Section (Subscription Push) */}
-        <section className="relative px-6 py-24 overflow-hidden bg-primary text-primary-foreground">
-          {/* Abstract background shapes */}
-          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-[400px] h-[400px] bg-white/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-[300px] h-[300px] bg-black/10 rounded-full blur-3xl pointer-events-none" />
-          
-          <div className="relative z-10 max-w-[800px] mx-auto text-center">
-            <FadeIn direction="up" distance={40}>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 text-white font-bold text-sm mb-6 uppercase tracking-wider backdrop-blur-md">
-                Gói Hội Viên Cao Cấp
-              </div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 tracking-tight">Học Tập Không Giới Hạn</h2>
-              <p className="text-xl md:text-2xl text-primary-foreground/90 mb-10 max-w-2xl mx-auto">
-                Nâng cấp gói thuê bao ngay hôm nay để mở khóa toàn bộ hệ sinh thái khóa học. Tiết kiệm chi phí và chủ động định hình lộ trình phát triển của riêng bạn.
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center">
-                <Link to="/pricing" className="px-8 py-4 bg-background text-foreground font-bold text-lg rounded-full hover:bg-secondary transition-all shadow-xl hover:scale-105 w-full sm:w-auto flex items-center justify-center gap-2">
+        <section className="px-6 py-20 bg-zinc-950 dark:bg-zinc-50 text-zinc-50 dark:text-zinc-900 border-t border-border/30">
+          <div className="max-w-[800px] mx-auto text-center">
+            <SectionSequence>
+              <SectionSequenceItem>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4 tracking-tight">Học Tập Không Giới Hạn</h2>
+              </SectionSequenceItem>
+              <SectionSequenceItem>
+                <p className="text-lg text-zinc-400 dark:text-zinc-600 mb-8">
+                  Nâng cấp gói thuê bao ngay hôm nay để mở khóa toàn bộ hệ sinh thái khóa học. Tiết kiệm chi phí và chủ động định hình lộ trình phát triển của riêng bạn.
+                </p>
+              </SectionSequenceItem>
+              <SectionSequenceItem>
+                <Link to="/pricing" className="inline-flex items-center justify-center px-8 py-3.5 bg-white text-zinc-950 dark:bg-zinc-900 dark:text-zinc-50 font-semibold rounded-full hover:opacity-90 transition-opacity shadow-md">
                   Xem Bảng Giá Gói
                 </Link>
-              </div>
-            </FadeIn>
+              </SectionSequenceItem>
+            </SectionSequence>
           </div>
         </section>
 
         {/* Partners & Integrations (Startup Friendly) */}
         <section className="pt-16 pb-0 max-w-[1340px] mx-auto mb-0 px-6">
-          <FadeIn>
-            <div className="text-center">
+          <SectionSequence className="text-center">
+            <SectionSequenceItem>
               <p className="text-sm font-semibold text-muted-foreground uppercase tracking-[0.2em] mb-10">
                 Đồng hành cùng các đối tác giáo dục và giải pháp công nghệ
               </p>
+            </SectionSequenceItem>
+            <SectionSequenceItem>
               <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-60 hover:opacity-100 grayscale hover:grayscale-0 transition-all duration-500">
                 {/* CTU */}
                 <div className="text-3xl font-black tracking-widest text-blue-700 select-none">CTU</div>
@@ -280,8 +284,8 @@ export const Home = () => {
                 {/* Google */}
                 <div className="text-2xl font-black tracking-tighter select-none">Google</div>
               </div>
-            </div>
-          </FadeIn>
+            </SectionSequenceItem>
+          </SectionSequence>
         </section>
     </>
   );
