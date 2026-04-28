@@ -1,0 +1,1 @@
+export { InstructorPerformance } from './Performance';
