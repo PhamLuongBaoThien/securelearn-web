@@ -5,8 +5,8 @@
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import { Home } from '../pages/public/Home';
 
-import { StudentDashboard } from '../pages/dashboard/StudentDashboard';
-import { LearningInterface } from '../pages/learning/LearningInterface';
+import { StudentDashboard } from '../pages/student/dashboard';
+import { LearningInterface } from '../pages/student/learn';
 import { Profile } from '../pages/user/Profile';
 
 // Public & Auth Imports
@@ -60,12 +60,11 @@ import { Inbox } from '../pages/admin/notifications/Inbox';
 
 // Instructor Components
 import { InstructorLayout } from '../components/layout/InstructorLayout';
-import { InstructorDashboard } from '../pages/instructor/Dashboard';
-import { InstructorCourses } from '../pages/instructor/Courses';
-import { CourseEditor } from '../pages/instructor/CourseEditor';
-import { InstructorPerformance } from '../pages/instructor/Performance';
-import { InstructorCommunication } from '../pages/instructor/Communication';
-import { InstructorNotifications } from '../pages/instructor/Notifications';
+import { InstructorDashboard } from '../pages/instructor/dashboard';
+import { InstructorCourses, CourseEditor } from '../pages/instructor/courses';
+import { InstructorPerformance } from '../pages/instructor/performance';
+import { InstructorCommunication } from '../pages/instructor/communication';
+import { InstructorNotifications } from '../pages/instructor/notifications';
 
 // Tạo một RootLayout chung bọc bên ngoài toàn bộ các route
 // Nhờ đó, ScrollToTop luôn tồn tại trong App và hoạt động mỗi lần chuyển Route
