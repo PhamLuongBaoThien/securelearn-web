@@ -2,7 +2,7 @@
 // Navbar: Thanh điều hướng chính
 // Hiển thị user menu + chức năng đăng xuất khi đã đăng nhập.
 // ========================
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../../app/hooks';
 import { toggleTheme } from '../../../features/dashboard/uiSlice';
@@ -21,6 +21,7 @@ import {
   NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu';
 import { usePublicCourseCategories } from '@/hooks/usePublicCourseCategories';
+import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 import brandLogo from '@/assets/logoweb.png';
 
@@ -57,6 +58,16 @@ export const Navbar = () => {
   const [activeRootId, setActiveRootId] = useState<string | null>(null);
   const [activeChildId, setActiveChildId] = useState<string | null>(null);
   const [activeGrandchildId, setActiveGrandchildId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
+  useEffect(() => {
+    // Chỉ gọi API tìm kiếm sau khi user ngừng gõ 500ms
+    if (debouncedSearchQuery.trim()) {
+      console.log('Tiến hành gọi API tìm kiếm với từ khóa:', debouncedSearchQuery);
+      // Bạn có thể xử lý logic filter hoặc gọi API tìm kiếm ở đây...
+    }
+  }, [debouncedSearchQuery]);
 
   // ─── Mega menu derived state ──────────────────────────────────
   const activeRoot = activeRootId ? navCategories.find((c) => c._id === activeRootId) : null;
@@ -193,6 +204,8 @@ export const Navbar = () => {
               <Search className="absolute left-4 h-4 w-4 text-muted-foreground group-focus-within:text-foreground transition-colors z-10" />
               <Input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm kiếm khóa học..."
                 className="w-full h-[36px] pl-11 pr-4 bg-secondary/60 border-transparent rounded-full focus-visible:ring-1 focus-visible:ring-primary/30 transition-all text-sm"
               />
@@ -301,6 +314,8 @@ export const Navbar = () => {
               <Search className="absolute left-4 h-4 w-4 text-muted-foreground z-10" />
               <Input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm kiếm nâng cao..."
                 className="w-full h-12 pl-12 pr-4 bg-transparent border-transparent rounded-full focus-visible:ring-0 text-sm"
               />

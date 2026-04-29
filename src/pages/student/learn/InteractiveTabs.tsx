@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   BookOpen,
   Download,
@@ -182,21 +183,22 @@ function QAPanel() {
 
 function NotesPanel() {
   const [notes, setNotes] = useState('');
-  const [saved, setSaved] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const [hasEdited, setHasEdited] = useState(false);
+  const debouncedNotes = useDebounce(notes, 1500);
+  
+  // Trạng thái đã lưu: khi user đã bắt đầu gõ và notes hiện tại khớp với debouncedNotes
+  const isSaved = hasEdited && notes === debouncedNotes;
 
   const handleChange = (val: string) => {
     setNotes(val);
-    setSaved(false);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setSaved(true), 1500);
+    if (!hasEdited) setHasEdited(true);
   };
 
   return (
     <div className="p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between text-xs text-zinc-400">
         <span>Ghi chú tại <span className="font-mono text-primary font-semibold">25:10</span></span>
-        {saved && <span className="text-emerald-500 font-medium">✓ Đã lưu</span>}
+        {isSaved && <span className="text-emerald-500 font-medium">✓ Đã lưu</span>}
       </div>
       <textarea
         value={notes}
