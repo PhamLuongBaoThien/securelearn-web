@@ -35,7 +35,6 @@ export interface ICourse {
   level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
   price: number;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-  totalStudents: number;
   totalDuration: number;    // Tổng thời lượng (giây)
   totalLessons: number;     // Tổng số bài học
   enrollmentCount: number;  // Số lượt ghi danh
@@ -73,9 +72,13 @@ export interface ILesson {
 export interface IEnrollment {
   _id: string;
   userId: string;
-  courseId: ICourse;
-  progress: number;
+  courseId: string | (Pick<ICourse, '_id' | 'title' | 'slug' | 'thumbnail' | 'instructorName' | 'level' | 'totalDuration' | 'totalLessons' | 'enrollmentCount'> & {
+    categoryId?: string | ICourseCategory | null;
+  });
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   enrolledAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface ApiResponse<T = any> {

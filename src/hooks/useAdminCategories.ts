@@ -4,6 +4,7 @@ import {
   createCategory,
   updateCategory,
   setCategoryStatus,
+  deleteCategory,
 } from '@/services/adminApi';
 import { categoryKeys } from '@/hooks/usePublicCourseCategories';
 import type { ICategory } from '@/types/admin.types';
@@ -86,6 +87,23 @@ export function useSetAdminCategoryStatus() {
         throw new Error(response.message);
       }
       return response.data as ICategory;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminCategoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all });
+    },
+  });
+}
+
+export function useDeleteAdminCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await deleteCategory(id);
+      if (response.status === 'ERR') {
+        throw new Error(response.message || 'Xóa danh mục thất bại');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminCategoryKeys.all });

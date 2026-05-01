@@ -2,7 +2,15 @@
 // API Service: Quản lý Authentication dành cho Admin
 // ========================
 import apiClient from './apiClient';
-import type { LoginPayload, ApiResponse, LoginResponseData, RefreshTokenResponse } from '@/types/auth.types';
+import type {
+  LoginPayload,
+  ApiResponse,
+  AdminLoginResponseData,
+  RefreshTokenResponse,
+  IAdminUser,
+} from '@/types/auth.types';
+
+const PROFILE_UPLOAD_TIMEOUT_MS = 30_000;
 
 // Các endpoint riêng cho Admin
 const ADMIN_API_PREFIX = '/api/admin/auth';
@@ -11,16 +19,16 @@ const ADMIN_API_PREFIX = '/api/admin/auth';
  * Gọi API Đăng nhập Admin.
  * @param payload - Chứa email, password.
  */
-export const loginAdmin = async (payload: LoginPayload): Promise<ApiResponse<LoginResponseData>> => {
-  const response = await apiClient.post<ApiResponse<LoginResponseData>>(`${ADMIN_API_PREFIX}/login`, payload);
+export const loginAdmin = async (payload: LoginPayload): Promise<ApiResponse<AdminLoginResponseData>> => {
+  const response = await apiClient.post<ApiResponse<AdminLoginResponseData>>(`${ADMIN_API_PREFIX}/login`, payload);
   return response.data;
 };
 
 /**
  * Lấy thông tin Admin đang đăng nhập.
  */
-export const getAdminMe = async (): Promise<ApiResponse<any>> => {
-  const response = await apiClient.get<ApiResponse<any>>(`${ADMIN_API_PREFIX}/me`);
+export const getAdminMe = async (): Promise<ApiResponse<IAdminUser>> => {
+  const response = await apiClient.get<ApiResponse<IAdminUser>>(`${ADMIN_API_PREFIX}/me`);
   return response.data;
 };
 
@@ -44,8 +52,9 @@ export const refreshAdminToken = async (): Promise<RefreshTokenResponse> => {
 /**
  * Cập nhật thông tin và avatar Admin
  */
-export const updateAdminProfile = async (formData: FormData): Promise<ApiResponse<any>> => {
-  const response = await apiClient.put<ApiResponse<any>>(`${ADMIN_API_PREFIX}/profile`, formData, {
+export const updateAdminProfile = async (formData: FormData): Promise<ApiResponse<IAdminUser>> => {
+  const response = await apiClient.put<ApiResponse<IAdminUser>>(`${ADMIN_API_PREFIX}/profile`, formData, {
+    timeout: PROFILE_UPLOAD_TIMEOUT_MS,
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -56,7 +65,7 @@ export const updateAdminProfile = async (formData: FormData): Promise<ApiRespons
 /**
  * Thay đổi mật khẩu Admin
  */
-export const changeAdminPassword = async (payload: any): Promise<ApiResponse<any>> => {
-  const response = await apiClient.put<ApiResponse<any>>(`${ADMIN_API_PREFIX}/password`, payload);
+export const changeAdminPassword = async (payload: { oldPassword?: string; newPassword?: string }): Promise<ApiResponse> => {
+  const response = await apiClient.put<ApiResponse>(`${ADMIN_API_PREFIX}/password`, payload);
   return response.data;
 };

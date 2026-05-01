@@ -39,7 +39,23 @@ export interface IUser {
   department?: string;
   // ----------------------
   /** Cho biết user đã có mật khẩu cục bộ hay chưa (false = đăng nhập Google-only) */
-  hasPassword?: boolean;
+  hasPassword: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AuthUser = Pick<IUser, '_id' | 'email' | 'fullName' | 'role'> &
+  Partial<Omit<IUser, '_id' | 'email' | 'fullName' | 'role'>>;
+
+export interface IAdminUser {
+  _id: string;
+  email: string;
+  fullName: string;
+  permissions: string[];
+  phone?: string;
+  department?: string;
+  bio?: string;
+  avatarUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -101,6 +117,16 @@ export interface LoginResponseData {
   access_token: string;
 }
 
+export interface AdminLoginResponseData {
+  admin: {
+    _id: string;
+    email: string;
+    fullName: string;
+    permissions: string[];
+  };
+  access_token: string;
+}
+
 /** Data trả về khi đăng ký thành công — POST /api/auth/register */
 export interface RegisterResponseData {
   _id: string;
@@ -123,9 +149,15 @@ export interface RefreshTokenResponse {
 /** Trạng thái authentication trong Redux */
 export interface AuthState {
   /** Thông tin user đã đăng nhập (null = chưa đăng nhập) */
-  user: IUser | null;
+  user: AuthUser | null;
   /** Access token JWT (lưu trong memory, KHÔNG lưu localStorage) */
   accessToken: string | null;
   /** Trạng thái xác thực */
+  isAuthenticated: boolean;
+}
+
+export interface AdminAuthState {
+  user: IAdminUser | null;
+  accessToken: string | null;
   isAuthenticated: boolean;
 }

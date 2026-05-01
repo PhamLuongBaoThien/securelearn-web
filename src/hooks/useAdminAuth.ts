@@ -106,6 +106,9 @@ export function useUpdateAdminProfile() {
       if (response.status === 'ERR') {
         throw new Error(response.message);
       }
+      if (!response.data) {
+        throw new Error('Không nhận được dữ liệu admin sau khi cập nhật hồ sơ.');
+      }
       return response.data;
     },
     onSuccess: (updatedUser) => {

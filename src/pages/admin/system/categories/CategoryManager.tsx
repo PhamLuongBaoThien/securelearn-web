@@ -10,6 +10,7 @@ import {
   useCreateAdminCategory,
   useSetAdminCategoryStatus,
   useUpdateAdminCategory,
+  useDeleteAdminCategory,
   adminCategoryKeys,
 } from '@/hooks/useAdminCategories';
 import { flattenCategories, findSiblingContext } from './category.utils';
@@ -22,12 +23,14 @@ export const CategoryManager: React.FC = () => {
   const createMutation = useCreateAdminCategory();
   const updateMutation = useUpdateAdminCategory();
   const statusMutation = useSetAdminCategoryStatus();
+  const deleteMutation = useDeleteAdminCategory();
   const queryClient = useQueryClient();
 
   const [expandedIds, setExpandedIds] = useState<string[]>([]); // State này dùng để lưu trữ ID của các danh mục đang được mở rộng, danh mục mở rộng là các danh mục cha đang hiển thị danh mục con 
   const [dialogOpen, setDialogOpen] = useState(false); // State này dùng để kiểm soát trạng thái mở/đóng của dialog
   const [editItem, setEditItem] = useState<Partial<ICategory>>({}); // State này dùng để lưu trữ thông tin của danh mục đang được chỉnh sửa
   const [statusTarget, setStatusTarget] = useState<ICategory | null>(null); // State này dùng để lưu trữ thông tin của danh mục đang được thay đổi trạng thái
+  const [deleteTarget, setDeleteTarget] = useState<ICategory | null>(null); // State này lưu thông tin danh mục cần xóa
   const [movingId, setMovingId] = useState<string | null>(null); // State này dùng để lưu trữ ID của danh mục đang được di chuyển
 
   React.useEffect(() => {
@@ -47,10 +50,10 @@ export const CategoryManager: React.FC = () => {
   };
 
   const handleOpenAdd = () => {
-    const nextRootOrder = categories.length > 0
-      ? Math.max(...categories.map((category) => category.order ?? 0)) + 1
+    const nextRootSortOrder = categories.length > 0
+      ? Math.max(...categories.map((category) => category.sortOrder ?? 0)) + 1
       : 0;
-    setEditItem({ order: nextRootOrder });
+    setEditItem({ sortOrder: nextRootSortOrder });
     setDialogOpen(true);
   };
 
@@ -68,7 +71,7 @@ export const CategoryManager: React.FC = () => {
             name: data.name,
             description: data.description,
             parentId: data.parentId,
-            sortOrder: Number(data.order),
+            sortOrder: Number(data.sortOrder),
           },
         },
         {
@@ -84,7 +87,7 @@ export const CategoryManager: React.FC = () => {
         name: data.name,
         description: data.description,
         parentId: data.parentId,
-        sortOrder: Number(data.order),
+        sortOrder: Number(data.sortOrder),
       },
       {
         onSuccess: (created) => {
@@ -110,8 +113,8 @@ export const CategoryManager: React.FC = () => {
     reordered.splice(nextIndex, 0, moved);
 
     const updates = reordered
-      .map((item, index) => ({ id: item._id, sortOrder: index, currentOrder: item.order ?? 0 }))
-      .filter((item) => item.currentOrder !== item.sortOrder);
+      .map((item, index) => ({ id: item._id, sortOrder: index, currentSortOrder: item.sortOrder ?? 0 }))
+      .filter((item) => item.currentSortOrder !== item.sortOrder);
 
     if (updates.length === 0) {
       toast.info('Thứ tự hiện tại đã đúng.');
@@ -135,7 +138,7 @@ export const CategoryManager: React.FC = () => {
         const newIdx = direction === 'up' ? newContext.index - 1 : newContext.index + 1;
         newContext.siblings.splice(newIdx, 0, movedNode);
         newContext.siblings.forEach((item, idx) => {
-          item.order = idx;
+          item.sortOrder = idx;
         });
       }
       return newTree;
@@ -188,8 +191,23 @@ export const CategoryManager: React.FC = () => {
     );
   };
 
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+
+    deleteMutation.mutate(deleteTarget._id, {
+      onSuccess: () => {
+        toast.success(`Đã xóa danh mục "${deleteTarget.name}".`);
+        setDeleteTarget(null);
+      },
+      onError: (err: any) => {
+        toast.error(err.message || 'Không thể xóa danh mục.');
+        setDeleteTarget(null);
+      },
+    });
+  };
+
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-in-out space-y-6">
+    <div className="w-full space-y-6">
       <CategoryFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -208,6 +226,16 @@ export const CategoryManager: React.FC = () => {
         onConfirm={handleDisable}
       />
 
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="Xóa Danh mục vĩnh viễn?"
+        description={`Bạn đang chuẩn bị xóa danh mục "${deleteTarget?.name}". Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa?`}
+        confirmText="Xóa"
+        isDestructive
+        onConfirm={handleDelete}
+      />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Quản lý Danh mục</h1>
@@ -216,7 +244,7 @@ export const CategoryManager: React.FC = () => {
         <Button
           id="btn-add-category"
           onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           <Plus className="w-4 h-4" /> Thêm Danh mục
         </Button>
@@ -242,7 +270,7 @@ export const CategoryManager: React.FC = () => {
         ))}
       </div>
 
-      <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
           <Tag className="w-4 h-4 text-primary" />
           <span className="font-semibold text-zinc-900 dark:text-white text-sm">Cấu trúc danh mục</span>
@@ -278,7 +306,7 @@ export const CategoryManager: React.FC = () => {
                     onEdit={handleOpenEdit}
                     onMove={handleMove}
                     onToggleStatus={handleToggleStatus}
-                    onDelete={(item) => setStatusTarget(item)}
+                    onDelete={(item) => setDeleteTarget(item)}
                   />
                 );
               })()

@@ -3,11 +3,15 @@
 // Xử lý tự động gắn token và refresh token khi hết hạn.
 // ========================
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { toast } from 'sonner';
 import type { RefreshTokenResponse } from '@/types/auth.types';
 
 type AuthContext = 'user' | 'admin';
 type SessionExpiredDetail = {
   context: AuthContext;
+};
+type ToastableRequestConfig = InternalAxiosRequestConfig & {
+  _loadingToastId?: string | number;
 };
 
 // ===== Base URL — Gọi qua Kong API Gateway =====
@@ -31,6 +35,34 @@ let silentRefreshTimer: number | null = null; // timer để gọi refresh toke
 
 const SESSION_EXPIRED_EVENT = 'auth:session-expired';
 const SILENT_REFRESH_BUFFER_MS = 60 * 1000; // 1 phút trước khi token hết hạn
+
+const getLoadingMessage = (method?: string) => {
+  switch ((method || '').toUpperCase()) {
+    case 'DELETE':
+      return 'Đang xóa...';
+    case 'PUT':
+    case 'PATCH':
+      return 'Đang cập nhật...';
+    case 'POST':
+      return 'Đang xử lý...';
+    default:
+      return 'Đang tải...';
+  }
+};
+
+const shouldShowLoadingToast = (config: InternalAxiosRequestConfig) => {
+  const method = (config.method || 'GET').toUpperCase();
+
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    return false;
+  }
+
+  if (config.url?.includes('/refresh-token')) {
+    return false;
+  }
+
+  return true;
+};
 
 // Hàm xóa timer refresh token
 const clearSilentRefreshTimer = () => {
@@ -132,6 +164,12 @@ apiClient.interceptors.request.use(
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
+
+    const toastableConfig = config as ToastableRequestConfig;
+    if (shouldShowLoadingToast(config) && !toastableConfig._loadingToastId) {
+      toastableConfig._loadingToastId = toast.loading(getLoadingMessage(config.method));
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -163,11 +201,19 @@ const processQueue = (error: unknown, token: string | null = null) => {
 
 apiClient.interceptors.response.use(
   // Response thành công → trả về luôn
-  (response) => response,
+  (response) => {
+    const toastableConfig = response.config as ToastableRequestConfig;
+    if (toastableConfig._loadingToastId) {
+      toast.dismiss(toastableConfig._loadingToastId);
+      delete toastableConfig._loadingToastId;
+    }
+
+    return response;
+  },
 
   // Response lỗi → kiểm tra 401 để refresh
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as ToastableRequestConfig & { _retry?: boolean };
 
     // Chỉ xử lý 401 và request chưa retry
     // Không retry cho chính request refresh-token và các đường dẫn login (tránh vòng lặp vô hạn)
@@ -229,6 +275,13 @@ apiClient.interceptors.response.use(
     // Trích xuất error message từ backend (nếu có) để frontend hiển thị đúng thông báo
     if (error.response?.data && (error.response.data as any).message) {
       error.message = (error.response.data as any).message;
+    } else if (error.code === 'ECONNABORTED') {
+      error.message = 'Yêu cầu xử lý quá lâu. Nếu bạn vừa tải ảnh lên, hãy đợi vài giây rồi kiểm tra lại avatar.';
+    }
+
+    if (originalRequest?._loadingToastId) {
+      toast.dismiss(originalRequest._loadingToastId);
+      delete originalRequest._loadingToastId;
     }
 
     return Promise.reject(error);

@@ -41,32 +41,32 @@ export const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
   onSave,
 }) => {
   const flatCategories = useMemo(() => flattenCategories(categories), [categories]);
-  const getNextOrderForParent = React.useCallback((parentId: string | null, currentId?: string) => {
+  const getNextSortOrderForParent = React.useCallback((parentId: string | null, currentId?: string) => {
     const siblings = flatCategories.filter(
       (item) => (item.parentId ?? null) === parentId && item._id !== currentId
     );
 
     if (siblings.length === 0) return 0;
-    return Math.max(...siblings.map((item) => item.order ?? 0)) + 1;
+    return Math.max(...siblings.map((item) => item.sortOrder ?? 0)) + 1;
   }, [flatCategories]);
 
   const [form, setForm] = useState<FormState>({
     name: initial.name || '',
     description: initial.description || '',
     parentId: initial.parentId ?? null,
-    order: String(initial.order ?? getNextOrderForParent(initial.parentId ?? null, initial._id)),
+    sortOrder: String(initial.sortOrder ?? getNextSortOrderForParent(initial.parentId ?? null, initial._id)),
   });
-  const [orderTouched, setOrderTouched] = useState(false);
+  const [sortOrderTouched, setSortOrderTouched] = useState(false);
 
   React.useEffect(() => {
     setForm({
       name: initial.name || '',
       description: initial.description || '',
       parentId: initial.parentId ?? null,
-      order: String(initial.order ?? getNextOrderForParent(initial.parentId ?? null, initial._id)),
+      sortOrder: String(initial.sortOrder ?? getNextSortOrderForParent(initial.parentId ?? null, initial._id)),
     });
-    setOrderTouched(false);
-  }, [getNextOrderForParent, initial._id, initial.description, initial.name, initial.order, initial.parentId, open]);
+    setSortOrderTouched(false);
+  }, [getNextSortOrderForParent, initial._id, initial.description, initial.name, initial.parentId, initial.sortOrder, open]);
 
   const depthMap = useMemo(() => getCategoryDepthMap(categories), [categories]);
   const trailMap = useMemo(() => getCategoryTrailMap(categories), [categories]);
@@ -95,8 +95,8 @@ export const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
       return;
     }
 
-    const normalizedOrder = Number(form.order);
-    if (!Number.isInteger(normalizedOrder) || normalizedOrder < 0) {
+    const normalizedSortOrder = Number(form.sortOrder);
+    if (!Number.isInteger(normalizedSortOrder) || normalizedSortOrder < 0) {
       toast.error('Thứ tự hiển thị phải là số nguyên từ 0 trở lên.');
       return;
     }
@@ -105,7 +105,7 @@ export const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
       name: form.name.trim(),
       description: form.description.trim(),
       parentId: form.parentId || null,
-      order: String(normalizedOrder),
+      sortOrder: String(normalizedSortOrder),
     });
     onOpenChange(false);
   };
@@ -161,9 +161,9 @@ export const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
                 setForm((prev) => ({
                   ...prev,
                   parentId: nextParentId,
-                  order: !initial._id && !orderTouched
-                    ? String(getNextOrderForParent(nextParentId))
-                    : prev.order,
+                  sortOrder: !initial._id && !sortOrderTouched
+                    ? String(getNextSortOrderForParent(nextParentId))
+                    : prev.sortOrder,
                 }));
               }}
             >
@@ -186,10 +186,10 @@ export const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
               type="number"
               min={0}
               step={1}
-              value={form.order}
+              value={form.sortOrder}
               onChange={(e) => {
-                setOrderTouched(true);
-                setForm((prev) => ({ ...prev, order: e.target.value }));
+                setSortOrderTouched(true);
+                setForm((prev) => ({ ...prev, sortOrder: e.target.value }));
               }}
               placeholder="0"
             />

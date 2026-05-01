@@ -107,13 +107,18 @@ export const setCategoryStatus = async (id: string, isActive: boolean): Promise<
   };
 };
 
+export const deleteCategory = async (id: string): Promise<AdminApiResponse> => {
+  const res = await apiClient.delete<{ status: 'OK' | 'ERR'; message: string }>(`/api/categories/${id}`);
+  return res.data;
+};
+
 const mapCategoryNode = (category: any): ICategory => ({
   _id: category._id,
   name: category.name,
   slug: category.slug,
   description: category.description || '',
   parentId: category.parentId ?? null,
-  order: category.sortOrder ?? 0,
+  sortOrder: category.sortOrder ?? 0,
   isActive: category.isActive ?? true,
   courseCount: category.courseCount ?? 0,
   children: (category.children || []).map(mapCategoryNode),
@@ -122,6 +127,31 @@ const mapCategoryNode = (category: any): ICategory => ({
 });
 
 // ===== Users & RBAC =====
+
+export const getAdminStaff = async (): Promise<AdminApiResponse<any[]>> => {
+  const res = await apiClient.get(`${ADMIN}/auth/staff`);
+  return res.data;
+};
+
+export const createAdminStaff = async (data: any): Promise<AdminApiResponse<any>> => {
+  const res = await apiClient.post(`${ADMIN}/auth/staff`, data);
+  return res.data;
+};
+
+export const updateAdminStaff = async (id: string, data: any): Promise<AdminApiResponse<any>> => {
+  const res = await apiClient.put(`${ADMIN}/auth/staff/${id}`, data);
+  return res.data;
+};
+
+export const deleteAdminStaff = async (id: string): Promise<AdminApiResponse> => {
+  const res = await apiClient.delete(`${ADMIN}/auth/staff/${id}`);
+  return res.data;
+};
+
+export const resetAdminStaffPassword = async (id: string, password: string): Promise<AdminApiResponse> => {
+  const res = await apiClient.patch(`${ADMIN}/auth/staff/${id}/password`, { password });
+  return res.data;
+};
 
 export const getUsers = async (params?: {
   role?: string;

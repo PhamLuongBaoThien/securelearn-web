@@ -15,7 +15,7 @@ export interface FormState {
   name: string;
   description: string;
   parentId: string | null;
-  order: string;
+  sortOrder: string;
 }
 
 // ===== Utility Functions =====

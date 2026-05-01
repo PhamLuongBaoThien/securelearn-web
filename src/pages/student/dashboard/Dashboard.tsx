@@ -262,7 +262,6 @@ function CertificateRow({ cert, delay }: { cert: Certificate; delay: number }) {
 
 // ─── Main ─────────────────────────────────────
 export function StudentDashboard() {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('my-courses');
   const [sortKey, setSortKey] = useState<SortKey>('recent');
 

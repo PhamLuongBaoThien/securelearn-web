@@ -4,7 +4,7 @@
 // Các admin khác: xem quyền của mình
 // ========================
 import React, { useState } from 'react';
-import { Shield, Check, Info, Save, BookOpen, Users, DollarSign, Lock, Settings, Plus, X, Crown } from 'lucide-react';
+import { Check, Info, Save, BookOpen, Users, DollarSign, Lock, Settings, Plus, X, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import type { AdminRole } from '@/types/admin.types';
 import { Input } from '@/components/ui/input';
@@ -105,7 +105,7 @@ export const RbacManager: React.FC = () => {
   };
 
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-6">
+    <div className="w-full space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -173,10 +173,10 @@ export const RbacManager: React.FC = () => {
                 variant="ghost"
                 className={`w-full p-4 rounded-2xl border-2 flex items-center gap-3 transition-all duration-200 text-left ${selectedRole === role ? cfg.color + ' shadow-sm' : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900/40'}`}
               >
-                {role === 'SUPER_ADMIN'
+                {/* {role === 'SUPER_ADMIN'
                   ? <Crown className={`w-5 h-5 shrink-0 ${selectedRole === role ? 'text-red-500' : 'text-zinc-400'}`} />
                   : <Shield className={`w-5 h-5 shrink-0 ${selectedRole === role ? 'text-primary' : 'text-zinc-400'}`} />
-                }
+                } */}
                 <div className="min-w-0">
                   <span className={`block text-sm font-semibold truncate ${selectedRole === role ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300'}`}>{cfg.label}</span>
                   <span className="block text-xs text-zinc-400 mt-0.5 truncate">{permissions[role].length} quyền · {cfg.desc}</span>

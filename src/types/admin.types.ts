@@ -47,7 +47,7 @@ export interface ICategory {
   description?: string;
   icon?: string;
   parentId?: string | null;
-  order: number;
+  sortOrder: number;
   isActive: boolean;
   courseCount: number;
   children?: ICategory[];

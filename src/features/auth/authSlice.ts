@@ -3,12 +3,15 @@
 // Chỉ giữ sync reducers. Mọi API call giờ do React Query hooks xử lý.
 // ========================
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { AuthState, IUser } from '@/types/auth.types';
+import type { AuthState, AuthUser } from '@/types/auth.types';
 
 // ===== localStorage helpers =====
 // Chỉ lưu user profile (public info), KHÔNG lưu accessToken (bảo mật)
-const AUTH_USER_KEY   = 'sl_auth_user';
+const AUTH_USER_KEY = 'sl_auth_user';
 const AUTH_STATUS_KEY = 'sl_auth_status';
+
+type PersistedAuthUser = Pick<AuthUser, '_id' | 'email' | 'fullName' | 'role'> &
+  Partial<Pick<AuthUser, 'subscriptionStatus' | 'profile'>>;
 
 /**
  * Đọc trạng thái khởi đầu từ localStorage một cách đồng bộ.
@@ -18,7 +21,7 @@ const AUTH_STATUS_KEY = 'sl_auth_status';
  *  - { user: null, status: 'guest'  } — đã đăng xuất chủ động → render nút đăng nhập ngay
  *  - null                             — lần đầu vào web / chưa xác định → cần gọi API check
  */
-function loadAuthFromStorage(): { user: IUser | null; status: 'authenticated' | 'guest' } | null {
+function loadAuthFromStorage(): { user: PersistedAuthUser | null; status: 'authenticated' | 'guest' } | null {
   try {
     const status = localStorage.getItem(AUTH_STATUS_KEY) as 'authenticated' | 'guest' | null;
     if (!status) return null; // Chưa từng đăng nhập/đăng xuất — unknown state
@@ -30,18 +33,37 @@ function loadAuthFromStorage(): { user: IUser | null; status: 'authenticated' | 
     // status === 'authenticated' → đọc user data
     const raw = localStorage.getItem(AUTH_USER_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as IUser;
-    if (!parsed?._id || !parsed?.email) return null;
-    return { user: parsed, status: 'authenticated' };
+    const parsed = JSON.parse(raw) as PersistedAuthUser;
+    if (!parsed?._id || !parsed?.email || !parsed?.fullName || !parsed?.role) return null;
+    return {
+      user: {
+        _id: parsed._id,
+        email: parsed.email,
+        fullName: parsed.fullName,
+        role: parsed.role,
+        ...(parsed.subscriptionStatus && { subscriptionStatus: parsed.subscriptionStatus }),
+        ...(parsed.profile?.avatarUrl && { profile: { avatarUrl: parsed.profile.avatarUrl } }),
+      },
+      status: 'authenticated',
+    };
   } catch {
     return null;
   }
 }
 
-function saveAuthToStorage(user: IUser): void {
+function saveAuthToStorage(user: AuthUser): void {
   try {
+    const persistedUser: PersistedAuthUser = {
+      _id: user._id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      ...(user.subscriptionStatus && { subscriptionStatus: user.subscriptionStatus }),
+      ...(user.profile?.avatarUrl && { profile: { avatarUrl: user.profile.avatarUrl } }),
+    };
+
     localStorage.setItem(AUTH_STATUS_KEY, 'authenticated');
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(persistedUser));
   } catch { /* bỏ qua lỗi private/incognito mode */ }
 }
 
@@ -58,8 +80,8 @@ function clearAuthFromStorage(): void {
 const persisted = loadAuthFromStorage(); // loadAuthFromStorage() sẽ trả về null khi user chưa đăng nhập, đăng xuất hoặc chưa từng tương tác với web
 
 const initialState: AuthState = {
-  user:            persisted?.user ?? null,
-  accessToken:     null, // Access token KHÔNG lưu localStorage (bảo mật)
+  user: persisted?.user ?? null,
+  accessToken: null, // Access token KHÔNG lưu localStorage (bảo mật)
   isAuthenticated: persisted?.status === 'authenticated',
 };
 
@@ -69,7 +91,7 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     /** Set user + token khi React Query mutation thành công (login, OAuth, session recovery) */
-    setUser: (state, action: PayloadAction<{ user: IUser; accessToken: string }>) => {
+    setUser: (state, action: PayloadAction<{ user: AuthUser; accessToken: string }>) => {
       state.user            = action.payload.user;
       state.accessToken     = action.payload.accessToken;
       state.isAuthenticated = true;

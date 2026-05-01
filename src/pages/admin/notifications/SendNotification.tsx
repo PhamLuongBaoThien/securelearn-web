@@ -44,7 +44,7 @@ export const SendNotification: React.FC = () => {
   const labelCls = "block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5";
 
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-6 max-w-4xl mx-auto">
+    <div className="w-full space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Gửi thông báo</h1>
         <p className="text-zinc-500 dark:text-zinc-400">Gửi email hoặc thông báo trực tiếp đến học viên và giảng viên.</p>
@@ -66,7 +66,7 @@ export const SendNotification: React.FC = () => {
                 key={t.id}
                 onClick={() => setTargetType(t.id as TargetType)}
                 variant="outline"
-                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-colors ${
                   targetType === t.id 
                     ? 'border-primary bg-primary/5 text-primary font-semibold' 
                     : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700'
@@ -80,7 +80,7 @@ export const SendNotification: React.FC = () => {
         </div>
 
         {targetType === 'SPECIFIC_USER' && (
-          <div className="animate-in fade-in zoom-in-95 duration-200">
+          <div>
             <label className={labelCls}>Email người nhận</label>
             <Input 
               type="email" 
@@ -138,7 +138,7 @@ export const SendNotification: React.FC = () => {
           <Button
             onClick={handleSend}
             disabled={sending}
-            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-all shadow-lg shadow-primary/20"
+            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors"
           >
             {sending ? (
               <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang gửi...</>

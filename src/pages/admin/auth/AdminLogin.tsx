@@ -75,7 +75,7 @@ export const AdminLogin: React.FC = () => {
         <div className="absolute top-[60%] -right-[10%] w-[40%] h-[60%] rounded-full bg-blue-500/10 blur-[150px]" />
       </div>
 
-      <div className="w-full max-w-md relative z-10 animate-in zoom-in-95 duration-500">
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl mb-6 shadow-xl dark:shadow-2xl transition-colors">
             <img src={brandLogo} alt="SecureLearn Admin" className="w-10 h-10 object-contain drop-shadow-md" />
@@ -106,7 +106,7 @@ export const AdminLogin: React.FC = () => {
                   required
                 />
               </div>
-              {emailError && <p className="text-xs text-red-500 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{emailError}</p>}
+              {emailError && <p className="text-xs text-red-500 mt-1 ml-1">{emailError}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -127,13 +127,13 @@ export const AdminLogin: React.FC = () => {
                   required
                 />
               </div>
-              {passwordError && <p className="text-xs text-red-500 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{passwordError}</p>}
+              {passwordError && <p className="text-xs text-red-500 mt-1 ml-1">{passwordError}</p>}
             </div>
 
             <Button
               type="submit"
               disabled={loginMutation.isPending}
-              className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-2xl text-sm px-5 py-4 text-center transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed group relative overflow-hidden"
+              className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-2xl text-sm px-5 py-4 text-center transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <span className="relative z-10 flex items-center gap-2">
                 {loginMutation.isPending ? (
@@ -144,11 +144,10 @@ export const AdminLogin: React.FC = () => {
                 ) : (
                   <>
                     Đăng nhập hạng quản trị viên
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </span>
-              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out z-0" />
             </Button>
           </form>
         </div>

@@ -139,7 +139,7 @@ export const CourseReview: React.FC = () => {
   };
 
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-in-out space-y-6">
+    <div className="w-full space-y-6">
       {/* Reject Dialog */}
       <RejectDialog
         open={rejectDialogOpen}

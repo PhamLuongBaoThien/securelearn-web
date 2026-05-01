@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Globe, Facebook, Twitter, Youtube, Github, Phone, Mail } from 'lucide-react';
+import { Facebook, Twitter, Youtube, Github, Phone, Mail } from 'lucide-react';
 import logo from '../../assets/logoweb.png';
 
 export const Footer = () => {

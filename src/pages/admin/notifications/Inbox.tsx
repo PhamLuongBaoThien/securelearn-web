@@ -38,7 +38,7 @@ export const Inbox: React.FC = () => {
   };
 
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Hộp thư đến</h1>
@@ -103,7 +103,7 @@ export const Inbox: React.FC = () => {
                 <div 
                   key={m.id}
                   onClick={() => markAsRead(m.id)}
-                  className={`relative p-5 rounded-2xl border transition-all cursor-pointer hover:shadow-md ${
+                  className={`relative p-5 rounded-2xl border transition-colors cursor-pointer ${
                     m.read 
                       ? 'bg-white dark:bg-zinc-900/40 border-zinc-200 dark:border-zinc-800' 
                       : 'bg-white dark:bg-zinc-900 border-primary/30 shadow-sm'

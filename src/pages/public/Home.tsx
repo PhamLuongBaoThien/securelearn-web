@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
-import { FadeIn } from '../../components/animations/FadeIn';
 import { HorizontalStaggerContainer, HorizontalStaggerItem } from '../../components/animations/HorizontalStagger';
 import { SectionReveal, SectionSequence, SectionSequenceItem } from '../../components/animations/SectionReveal';
 import { CourseCarousel } from '../../components/ui/CourseCarousel';

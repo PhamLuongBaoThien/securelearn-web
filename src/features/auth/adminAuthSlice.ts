@@ -3,10 +3,10 @@
 // Chỉ giữ sync reducers. Mọi API call giờ do React Query hooks xử lý.
 // ========================
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { AuthState, IUser } from '@/types/auth.types';
+import type { AdminAuthState, IAdminUser } from '@/types/auth.types';
 
 // ===== Initial State =====
-const initialState: AuthState = {
+const initialState: AdminAuthState = {
   user: null,
   accessToken: null,
   isAuthenticated: false,
@@ -18,14 +18,14 @@ const adminAuthSlice = createSlice({
   initialState,
   reducers: {
     /** Set admin user + token khi React Query mutation thành công */
-    setAdminUser: (state, action: PayloadAction<{ user: IUser; accessToken: string }>) => {
+    setAdminUser: (state, action: PayloadAction<{ user: IAdminUser; accessToken: string }>) => {
       state.user = action.payload.user;
       state.accessToken = action.payload.accessToken;
       state.isAuthenticated = true;
     },
 
     /** Update admin user (chỉ cập nhật thông tin user, giữ nguyên token) */
-    updateAdminUser: (state, action: PayloadAction<{ user: IUser }>) => {
+    updateAdminUser: (state, action: PayloadAction<{ user: IAdminUser }>) => {
       if (state.user) {
         state.user = { ...state.user, ...action.payload.user };
       }

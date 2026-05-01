@@ -94,7 +94,7 @@ export const NotificationConfig: React.FC = () => {
   };
 
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-in-out space-y-6">
+    <div className="w-full space-y-6">
       {/* Preview Dialog */}
       <PreviewDialog
         open={previewItem !== null}

@@ -181,30 +181,23 @@ export function useChangePassword() {
       if (response.status === 'ERR') {
         throw new Error(response.message);
       }
-      return response;
+      if (!response.data) {
+        throw new Error('Không nhận được thông tin người dùng sau khi cập nhật mật khẩu.');
+      }
+      return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
       const currentSession = queryClient.getQueryData(authKeys.session) as
         | { user?: any; accessToken?: string }
         | undefined;
-      const currentProfile = queryClient.getQueryData(authKeys.profile) as any;
-      const baseUser = currentSession?.user ?? currentProfile;
-
-      if (!baseUser) return;
-
-      const nextUser = {
-        ...baseUser,
-        hasPassword: true,
-      };
-
-      queryClient.setQueryData(authKeys.profile, nextUser);
+      queryClient.setQueryData(authKeys.profile, updatedUser);
 
       if (currentSession?.accessToken) {
         queryClient.setQueryData(authKeys.session, {
           ...currentSession,
-          user: nextUser,
+          user: updatedUser,
         });
-        dispatch(setUser({ user: nextUser, accessToken: currentSession.accessToken }));
+        dispatch(setUser({ user: updatedUser, accessToken: currentSession.accessToken }));
       }
     },
   });

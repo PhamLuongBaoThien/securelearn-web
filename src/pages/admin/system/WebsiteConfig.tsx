@@ -33,7 +33,7 @@ const FormField: React.FC<{ label: string; icon?: React.ReactNode; children: Rea
 const inputCls = 'w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all';
 
 const SectionCard: React.FC<{ title: string; description?: string; children: React.ReactNode }> = ({ title, description, children }) => (
-  <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow">
+      <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-sm">
     <div className="mb-5">
       <h2 className="text-lg font-bold text-zinc-900 dark:text-white">{title}</h2>
       {description && <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">{description}</p>}
@@ -58,7 +58,7 @@ export const WebsiteConfig: React.FC = () => {
   };
 
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-in-out space-y-6">
+    <div className="w-full space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

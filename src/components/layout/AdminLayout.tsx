@@ -123,7 +123,7 @@ export const AdminLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-[#0A0A0A] flex text-zinc-900 dark:text-zinc-100 font-sans selection:bg-primary/30 transition-colors duration-300">
+    <div className="min-h-screen bg-zinc-50 dark:bg-[#0A0A0A] flex text-zinc-900 dark:text-zinc-100 font-sans selection:bg-primary/30">
       <Sidebar
         entries={sidebarEntries}
         roleTitle="Trang quản trị"
@@ -149,8 +149,8 @@ export const AdminLayout: React.FC = () => {
 
       {/* Main Content */}
       <main className={`flex-1 transition-[margin-left] duration-200 ease-out relative min-h-screen will-change-[margin-left] ${collapsed ? 'ml-20' : 'ml-72'}`}>
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none -z-10 transition-all duration-500" />
-        <div className="p-8 pb-12 w-full max-w-7xl mx-auto h-full animate-in fade-in duration-500">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none -z-10" />
+        <div className="p-8 pb-12 w-full max-w-7xl mx-auto h-full">
           <Outlet />
         </div>
       </main>

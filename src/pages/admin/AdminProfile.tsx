@@ -134,7 +134,7 @@ export function AdminProfile() {
   const inputDisabledClassName = `${inputClassName} bg-zinc-50 dark:bg-zinc-900/50 cursor-not-allowed opacity-70`;
 
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-8 max-w-6xl mx-auto pb-12">
+    <div className="w-full space-y-8 max-w-6xl mx-auto pb-12">
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Cài đặt tài khoản</h1>

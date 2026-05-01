@@ -16,6 +16,7 @@ import type {
   ResetPasswordPayload,
 } from '@/types/auth.types';
 
+const PROFILE_UPLOAD_TIMEOUT_MS = 30_000;
 
 
 /**
@@ -89,6 +90,7 @@ export const updateProfile = async (formData: FormData) => {
     '/api/auth/profile',
     formData,
     {
+      timeout: PROFILE_UPLOAD_TIMEOUT_MS,
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -111,7 +113,7 @@ export const deleteAccount = async () => {
  * PUT /api/auth/password
  */
 export const changePassword = async (payload: { oldPassword?: string; newPassword?: string }) => {
-  const { data } = await apiClient.put<ApiResponse>('/api/auth/password', payload);
+  const { data } = await apiClient.put<ApiResponse<IUser>>('/api/auth/password', payload);
   return data;
 };
 
@@ -150,4 +152,3 @@ export const switchToInstructor = async () => {
   const { data } = await apiClient.put<ApiResponse<IUser>>('/api/auth/profile/role');
   return data;
 };
-

@@ -72,7 +72,7 @@ export const CategoryRow: React.FC<CategoryRowProps> = ({
           <div className="flex items-center gap-2">
             <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{cat.name}</p>
             <span className="px-2 py-0.5 rounded-full text-[10px] bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300">
-              STT {cat.order}
+              STT {cat.sortOrder}
             </span>
             <span className="px-2 py-0.5 rounded-full text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
               Cấp {depth + 1}
@@ -87,7 +87,7 @@ export const CategoryRow: React.FC<CategoryRowProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => onMove(cat, 'up')}
             disabled={!canMoveUp || isMoving}

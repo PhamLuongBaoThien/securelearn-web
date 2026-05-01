@@ -110,16 +110,22 @@ export function Profile() {
 
   const onSubmitPassword = async (data: PasswordFormData) => {
     if (!user) return;
+    if (typeof user.hasPassword !== 'boolean') {
+      toast.error('Đang đồng bộ trạng thái bảo mật. Vui lòng thử lại sau ít giây.');
+      return;
+    }
+
+    const wasPasswordless = user.hasPassword === false;
     if (data.newPassword !== data.confirmPassword) {
        toast.error('Mật khẩu xác nhận không khớp.');
        return;
     }
     try {
       await changePassword({
-         oldPassword: user.hasPassword ? data.oldPassword : undefined,
+         oldPassword: hasPassword ? data.oldPassword : undefined,
          newPassword: data.newPassword,
       });
-      toast.success(user.hasPassword ? 'Mật khẩu đã được thay đổi thành công!' : 'Tạo mật khẩu thành công! Bạn có thể đăng nhập bằng email/mật khẩu.');
+      toast.success(wasPasswordless ? 'Tạo mật khẩu thành công! Bạn có thể đăng nhập bằng email/mật khẩu.' : 'Mật khẩu đã được thay đổi thành công!');
       resetPasswordForm();
       queryClient.invalidateQueries({ queryKey: authKeys.profile });
       queryClient.invalidateQueries({ queryKey: authKeys.session });
@@ -150,6 +156,10 @@ export function Profile() {
   if (!user) {
     return <div className="min-h-[50vh] flex items-center justify-center text-muted-foreground"><Loader2 className="animate-spin mr-2" /> Đang tải dữ liệu...</div>;
   }
+
+  const hasPassword = user.hasPassword === true;
+  const isPasswordless = user.hasPassword === false;
+  const hasResolvedPasswordState = typeof user.hasPassword === 'boolean';
 
   const tabs = [
     { id: 'public', label: 'Xem hồ sơ công khai', icon: Eye },
@@ -409,11 +419,23 @@ export function Profile() {
                 <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
                   <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
                     <Key className="text-primary" size={24} />
-                    {user.hasPassword ? 'Mật khẩu & Đăng nhập' : 'Tạo mật khẩu'}
+                    {!hasResolvedPasswordState ? 'Bảo mật tài khoản' : hasPassword ? 'Mật khẩu & Đăng nhập' : 'Tạo mật khẩu'}
                   </h2>
 
+                  {!hasResolvedPasswordState && (
+                    <div className="flex items-start gap-3 p-4 mb-6 rounded-xl bg-muted/60 border border-border">
+                      <Loader2 className="h-5 w-5 animate-spin mt-0.5 shrink-0 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Đang đồng bộ trạng thái mật khẩu</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Hệ thống đang tải thông tin bảo mật mới nhất từ phiên đăng nhập của bạn.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Thông báo cho tài khoản Google-only */}
-                  {!user.hasPassword && (
+                  {isPasswordless && (
                     <div className="flex items-start gap-3 p-4 mb-6 rounded-xl bg-blue-500/10 border border-blue-500/20">
                       <svg className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path></svg>
                       <div>
@@ -427,7 +449,7 @@ export function Profile() {
 
                   <form onSubmit={handlePasswordSubmit(onSubmitPassword)} className="space-y-6 max-w-md">
                     {/* Mật khẩu hiện tại — chỉ hiển thị khi user ĐÃ CÓ password */}
-                    {user.hasPassword && (
+                    {hasPassword && (
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Mật khẩu hiện tại</label>
                         <input 
@@ -465,7 +487,7 @@ export function Profile() {
                       className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8"
                     >
                       {isChangingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {user.hasPassword ? 'Đổi Mật Khẩu' : 'Tạo Mật Khẩu'}
+                      {!hasResolvedPasswordState ? 'Đang tải...' : hasPassword ? 'Đổi Mật Khẩu' : 'Tạo Mật Khẩu'}
                     </button>
                   </form>
                 </div>

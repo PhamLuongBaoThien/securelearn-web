@@ -86,7 +86,7 @@ const RecursiveMenuItem: React.FC<{
       <NavLink
         to={item.path}
         className={({ isActive: linkActive }) =>
-          `flex items-center ${isTopLevel ? 'gap-3 px-3 py-2.5 rounded-xl' : 'gap-2.5 px-3 py-2 rounded-lg'} text-sm transition-colors duration-150 relative group ${
+          `flex items-center ${isTopLevel ? 'gap-3 px-3 py-2.5 rounded-xl' : 'gap-2.5 px-3 py-2 rounded-lg'} text-sm transition-colors duration-150 relative ${
             linkActive
               ? 'bg-primary/10 text-primary font-medium'
               : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-800 dark:hover:text-zinc-200'
@@ -95,7 +95,7 @@ const RecursiveMenuItem: React.FC<{
       >
         {({ isActive: linkActive }) => (
           <>
-            <span className={`transition-transform duration-200 shrink-0 ${linkActive && isTopLevel ? 'scale-110' : 'group-hover:scale-110'}`}>
+            <span className={`shrink-0 ${linkActive && isTopLevel ? 'text-primary' : ''}`}>
               {item.icon}
             </span>
             {!collapsed && <span className="break-words line-clamp-2">{item.name}</span>}
@@ -111,7 +111,7 @@ const RecursiveMenuItem: React.FC<{
   return (
     <div className="w-full relative">
       <div
-        className={`w-full flex items-stretch ${isTopLevel ? 'rounded-xl' : 'rounded-lg'} transition-colors duration-150 group ${
+        className={`w-full flex items-stretch ${isTopLevel ? 'rounded-xl' : 'rounded-lg'} transition-colors duration-150 ${
           isActive && collapsed
             ? 'bg-primary/10 text-primary'
             : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-800 dark:hover:text-zinc-200'
@@ -124,7 +124,7 @@ const RecursiveMenuItem: React.FC<{
         >
           {({ isActive: linkActive }) => (
             <>
-              <span className={`transition-transform duration-200 shrink-0 ${linkActive && isTopLevel ? 'scale-110' : 'group-hover:scale-110'}`}>
+              <span className={`shrink-0 ${linkActive && isTopLevel ? 'text-primary' : ''}`}>
                 {item.icon}
               </span>
               {!collapsed && (
@@ -184,13 +184,13 @@ const GroupMenu: React.FC<{
       <button
         onClick={toggleOpen}
         title={collapsed ? group.groupName : ''}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors duration-200 group ${
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors duration-200 ${
           isGroupActive && collapsed
             ? 'bg-primary/10 text-primary'
             : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100'
         } ${collapsed ? 'justify-center' : ''}`}
       >
-        <span className={`transition-transform duration-200 shrink-0 ${isGroupActive ? 'text-primary' : 'group-hover:scale-110'}`}>
+        <span className={`shrink-0 ${isGroupActive ? 'text-primary' : ''}`}>
           {group.groupIcon}
         </span>
         {!collapsed && (
@@ -375,7 +375,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           title={collapsed ? "Đổi giao diện" : ""}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors group ${collapsed ? 'justify-center' : ''}`}
         >
-          <div className="group-hover:scale-110 transition-transform">{getThemeIcon()}</div>
+          <div>{getThemeIcon()}</div>
           {!collapsed && <span className="font-medium whitespace-nowrap text-sm">
             {theme === 'light' ? 'Nền sáng' : theme === 'dark' ? 'Nền tối' : 'Mặc định HT'}
           </span>}
@@ -387,7 +387,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             title={collapsed ? "Đăng xuất" : ""}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-400 transition-colors group ${collapsed ? 'justify-center' : ''}`}
           >
-            <LogOut className="w-5 h-5 shrink-0 group-hover:-translate-x-1 transition-transform" />
+            <LogOut className="w-5 h-5 shrink-0" />
             {!collapsed && <span className="font-medium whitespace-nowrap text-sm">Đăng xuất</span>}
           </button>
         )}

@@ -2,11 +2,10 @@ import React from 'react';
 import { Users, BookOpen, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
 
 const StatCard = ({ title, value, change, isPositive, icon: Icon }: any) => (
-  <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 relative overflow-hidden group shadow-sm dark:shadow-none hover:shadow-md transition-shadow">
-    <div className="absolute -right-6 -top-6 w-24 h-24 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all duration-500" />
+  <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-sm dark:shadow-none">
     
     <div className="flex justify-between items-start mb-4 relative z-10">
-      <div className="p-3 bg-zinc-50 dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 group-hover:text-primary transition-colors">
+      <div className="p-3 bg-zinc-50 dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400">
         <Icon className="w-6 h-6" />
       </div>
       <div className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${isPositive ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-400/10' : 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-400/10'}`}>
@@ -24,7 +23,7 @@ const StatCard = ({ title, value, change, isPositive, icon: Icon }: any) => (
 
 export const Dashboard: React.FC = () => {
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-in-out">
+    <div className="w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">Tổng quan hệ thống</h1>
@@ -71,7 +70,7 @@ export const Dashboard: React.FC = () => {
       {/* Charts & Tables Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Chart Card */}
-        <div className="lg:col-span-2 bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 min-h-[400px] flex flex-col shadow-sm dark:shadow-none hover:shadow-md transition-shadow">
+        <div className="lg:col-span-2 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 min-h-[400px] flex flex-col shadow-sm dark:shadow-none">
           <h2 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Xu hướng doanh thu</h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Hiệu suất thu nhập nền tảng trong 6 tháng qua</p>
           
@@ -84,7 +83,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Recent Activity */}
-        <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 flex flex-col shadow-sm dark:shadow-none hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 flex flex-col shadow-sm dark:shadow-none">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Đăng ký gần đây</h2>
             <button className="text-sm text-primary hover:text-primary/80 transition-colors">Xem tất cả</button>

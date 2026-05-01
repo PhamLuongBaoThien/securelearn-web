@@ -30,14 +30,6 @@ const STATUS_CONFIG: Record<UserStatus, { label: string; color: string }> = {
   UNVERIFIED: { label: 'Chưa xác minh',  color: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500' },
 };
 
-// ─── Mock Data ───
-const MOCK_STAFF: IAdminStaff[] = [
-  { _id: 's1', email: 'superadmin@securelearn.com', fullName: 'Nguyễn Super Admin', adminRole: 'SUPER_ADMIN', status: 'ACTIVE', permissions: [], department: 'Ban Giám đốc', phone: '0900000001', createdAt: '2026-01-01T00:00:00Z', lastLoginAt: '2026-04-23T09:00:00Z' },
-  { _id: 's2', email: 'content@securelearn.com', fullName: 'Trần Văn Content', adminRole: 'CONTENT_MANAGER', status: 'ACTIVE', permissions: ['course:read','course:update','course:approve'], department: 'Nội dung', phone: '0900000002', createdAt: '2026-02-01T00:00:00Z', lastLoginAt: '2026-04-22T14:00:00Z' },
-  { _id: 's3', email: 'finance@securelearn.com', fullName: 'Lê Thị Finance', adminRole: 'FINANCE_MANAGER', status: 'ACTIVE', permissions: ['finance:read','finance:manage'], department: 'Tài chính', phone: '0900000003', createdAt: '2026-02-15T00:00:00Z', lastLoginAt: '2026-04-21T11:00:00Z' },
-  { _id: 's4', email: 'support@securelearn.com', fullName: 'Phạm Support', adminRole: 'SUPPORT_AGENT', status: 'LOCKED', permissions: ['user:read'], department: 'Hỗ trợ', phone: '0900000004', createdAt: '2026-03-01T00:00:00Z' },
-];
-
 // ─── Staff Form Dialog ───
 interface StaffFormProps {
   open: boolean;
@@ -45,6 +37,13 @@ interface StaffFormProps {
   initial?: IAdminStaff | null;
   onSave: (data: Partial<IAdminStaff> & { password?: string }) => void;
 }
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="space-y-1.5">
+    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</label>
+    {children}
+  </div>
+);
 
 const StaffFormDialog: React.FC<StaffFormProps> = ({ open, onOpenChange, initial, onSave }) => {
   const isEdit = !!initial;
@@ -79,19 +78,11 @@ const StaffFormDialog: React.FC<StaffFormProps> = ({ open, onOpenChange, initial
     if (!form.fullName.trim()) { toast.error('Vui lòng nhập họ tên.'); return; }
     if (!form.email.trim()) { toast.error('Vui lòng nhập email.'); return; }
     if (!isEdit && form.password.length < 6) { toast.error('Mật khẩu tối thiểu 6 ký tự.'); return; }
-    setSaving(true);
-    await new Promise(r => setTimeout(r, 800));
-    setSaving(false);
     onSave({ ...form });
     onOpenChange(false);
+    setSaving(false);
   };
 
-  const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-    <div className="space-y-1.5">
-      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</label>
-      {children}
-    </div>
-  );
   const inputCls = "w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
   return (
@@ -157,13 +148,20 @@ const ResetPasswordDialog: React.FC<{ open: boolean; onOpenChange: (v: boolean) 
 
   React.useEffect(() => { if (open) { setPw(''); setShowPw(false); } }, [open]);
 
+  const resetMut = useMutation({
+    mutationFn: (password: string) => resetAdminStaffPassword(staff!._id, password),
+    onSuccess: () => {
+      toast.success(`Đã đặt lại mật khẩu cho ${staff?.email}`);
+      onOpenChange(false);
+    },
+    onError: (err: any) => toast.error(err.message || 'Lỗi đặt lại mật khẩu'),
+    onSettled: () => setSaving(false)
+  });
+
   const handleSave = async () => {
     if (pw.length < 6) { toast.error('Mật khẩu tối thiểu 6 ký tự!'); return; }
     setSaving(true);
-    await new Promise(r => setTimeout(r, 800));
-    setSaving(false);
-    toast.success(`Đã đặt lại mật khẩu cho ${staff?.email}`);
-    onOpenChange(false);
+    resetMut.mutate(pw);
   };
 
   if (!staff) return null;
@@ -193,8 +191,17 @@ const ResetPasswordDialog: React.FC<{ open: boolean; onOpenChange: (v: boolean) 
 };
 
 // ─── Main Page ───
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getAdminStaff, createAdminStaff, updateAdminStaff, deleteAdminStaff, resetAdminStaffPassword } from '@/services/adminApi';
+
 export const StaffList: React.FC = () => {
-  const [staff, setStaff] = useState<IAdminStaff[]>(MOCK_STAFF);
+  const queryClient = useQueryClient();
+  const { data: response, isLoading } = useQuery({
+    queryKey: ['admin_staff'],
+    queryFn: getAdminStaff,
+  });
+
+  const staff = (response?.data || []) as IAdminStaff[];
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<AdminRole | ''>('');
 
@@ -209,33 +216,50 @@ export const StaffList: React.FC = () => {
     return matchSearch && matchRole;
   });
 
-  const handleSave = (data: Partial<IAdminStaff>) => {
-    if (editTarget) {
-      setStaff(prev => prev.map(s => s._id === editTarget._id ? { ...s, ...data } : s));
-      toast.success('Đã cập nhật thông tin nhân viên.');
-    } else {
-      const newStaff: IAdminStaff = {
-        _id: 's' + Date.now(),
-        email: data.email || '',
-        fullName: data.fullName || '',
-        adminRole: data.adminRole || 'SUPPORT_AGENT',
-        status: 'ACTIVE',
-        permissions: [],
-        phone: data.phone,
-        department: data.department,
-        createdAt: new Date().toISOString(),
-      };
-      setStaff(prev => [newStaff, ...prev]);
+  const createMut = useMutation({
+    mutationFn: createAdminStaff,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin_staff'] });
       toast.success('Đã tạo tài khoản nhân viên thành công.');
+    },
+    onError: (err: any) => toast.error(err.message || 'Lỗi khi tạo nhân viên'),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateAdminStaff(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin_staff'] });
+      toast.success('Đã cập nhật thông tin nhân viên.');
+    },
+    onError: (err: any) => toast.error(err.message || 'Lỗi khi cập nhật nhân viên'),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: deleteAdminStaff,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin_staff'] });
+      toast.success('Đã xóa tài khoản nhân viên.');
+      setDeleteTarget(null);
+    },
+    onError: (err: any) => toast.error(err.message || 'Lỗi khi xóa nhân viên'),
+  });
+
+  const handleSave = (data: Partial<IAdminStaff> & { password?: string }) => {
+    if (editTarget) {
+      updateMut.mutate({ id: editTarget._id, data });
+    } else {
+      createMut.mutate(data);
     }
   };
 
   const handleDelete = () => {
     if (!deleteTarget) return;
-    if (deleteTarget.adminRole === 'SUPER_ADMIN') { toast.error('Không thể xóa tài khoản Super Admin.'); setDeleteTarget(null); return; }
-    setStaff(prev => prev.filter(s => s._id !== deleteTarget._id));
-    toast.success(`Đã xóa tài khoản ${deleteTarget.email}.`);
-    setDeleteTarget(null);
+    if (deleteTarget.adminRole === 'SUPER_ADMIN') {
+      toast.error('Không thể xóa tài khoản Super Admin.');
+      setDeleteTarget(null);
+      return;
+    }
+    deleteMut.mutate(deleteTarget._id);
   };
 
   const timeAgo = (d?: string) => {
@@ -247,8 +271,12 @@ export const StaffList: React.FC = () => {
     return `${Math.floor(hrs / 24)} ngày trước`;
   };
 
+  if (isLoading) {
+    return <div className="p-8 text-center text-zinc-500">Đang tải danh sách nhân viên...</div>;
+  }
+
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-6">
+    <div className="w-full space-y-6">
       {/* Dialogs */}
       <StaffFormDialog open={formOpen} onOpenChange={o => { setFormOpen(o); if (!o) setEditTarget(null); }} initial={editTarget} onSave={handleSave} />
       <ResetPasswordDialog open={pwTarget !== null} onOpenChange={o => { if (!o) setPwTarget(null); }} staff={pwTarget} />
@@ -270,7 +298,7 @@ export const StaffList: React.FC = () => {
         </div>
         <Button
           onClick={() => { setEditTarget(null); setFormOpen(true); }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all"
+          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           <Plus className="w-4 h-4" /> Thêm nhân viên
         </Button>
@@ -346,7 +374,7 @@ export const StaffList: React.FC = () => {
                     <td className="px-4 py-3.5 text-sm text-zinc-500">{s.department || '—'}</td>
                     <td className="px-4 py-3.5 text-xs text-zinc-500">{timeAgo(s.lastLoginAt)}</td>
                     <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1">
                         {/* Edit */}
                         <button
                           onClick={() => { setEditTarget(s); setFormOpen(true); }}

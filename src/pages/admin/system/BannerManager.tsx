@@ -168,7 +168,7 @@ export const BannerManager: React.FC = () => {
   };
 
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-in-out space-y-6">
+    <div className="w-full space-y-6">
       {/* Banner Form Dialog */}
       <BannerFormDialog
         open={dialogOpen}
@@ -204,7 +204,7 @@ export const BannerManager: React.FC = () => {
       </div>
 
       {/* Banner List */}
-      <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
         <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
           <span className="text-sm font-medium text-zinc-500">
             {banners.length} banner · {banners.filter((b) => b.isActive).length} đang hiển thị
@@ -244,7 +244,7 @@ export const BannerManager: React.FC = () => {
                 {banner.linkUrl && <p className="text-xs text-primary/70 truncate mt-0.5">{banner.linkUrl}</p>}
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => handleToggle(banner._id)}
                   className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"

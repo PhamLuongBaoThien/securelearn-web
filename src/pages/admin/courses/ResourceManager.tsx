@@ -45,7 +45,7 @@ export const ResourceManager: React.FC = () => {
   };
 
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-in-out space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Quản lý Tài nguyên</h1>
@@ -64,7 +64,7 @@ export const ResourceManager: React.FC = () => {
           const count = resources.filter((r) => r.fileType === type).length;
           const size = resources.filter((r) => r.fileType === type).reduce((s, r) => s + r.fileSize, 0);
           return (
-            <div key={type} onClick={() => setTypeFilter(typeFilter === type ? '' : type)} className={`bg-white dark:bg-zinc-900/40 border rounded-2xl p-4 cursor-pointer transition-all shadow-sm ${typeFilter === type ? 'border-primary/50 shadow-md' : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}>
+            <div key={type} onClick={() => setTypeFilter(typeFilter === type ? '' : type)} className={`bg-white dark:bg-zinc-900/40 border rounded-2xl p-4 cursor-pointer transition-colors shadow-sm ${typeFilter === type ? 'border-primary/50' : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}>
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${cfg.cls}`}>{cfg.icon}</div>
               <p className="text-lg font-bold text-zinc-900 dark:text-white">{count}</p>
               <p className="text-xs text-zinc-500">{cfg.label}</p>
@@ -75,7 +75,7 @@ export const ResourceManager: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm">
+      <div className="flex flex-wrap gap-3 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm">
         <div className="flex items-center gap-2 flex-1 min-w-48 px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl">
           <Search className="w-4 h-4 text-zinc-400 shrink-0" />
           <Input className="bg-transparent text-sm flex-1 border-0 shadow-none px-0 py-0 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus-visible:ring-0" placeholder="Tìm theo tên file, khóa học..." value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -93,7 +93,7 @@ export const ResourceManager: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -120,7 +120,7 @@ export const ResourceManager: React.FC = () => {
                     <td className="px-4 py-3.5 text-xs text-zinc-400 max-w-32 truncate">{r.lessonTitle || '—'}</td>
                     <td className="px-4 py-3.5 text-xs text-zinc-400">{new Date(r.createdAt).toLocaleDateString('vi-VN')}</td>
                     <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1">
                         <a href={r.url} title="Tải xuống" className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 text-blue-500 transition-colors"><Download className="w-4 h-4" /></a>
                         <Button type="button" variant="ghost" size="icon" onClick={() => handleDelete(r._id)} title="Xóa" className="h-8 w-8 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></Button>
                       </div>

@@ -64,7 +64,7 @@ export const UserList: React.FC = () => {
   };
 
   return (
-    <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-700 ease-in-out space-y-6">
+    <div className="w-full space-y-6">
 
 
       {/* Lock/Unlock Confirm Dialog */}
@@ -109,7 +109,7 @@ export const UserList: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 shadow-sm flex flex-wrap gap-3">
+      <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 shadow-sm flex flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-48 px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl">
           <Search className="w-4 h-4 text-zinc-400 shrink-0" />
           <input
@@ -144,7 +144,7 @@ export const UserList: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -181,7 +181,7 @@ export const UserList: React.FC = () => {
                   </td>
                   <td className="px-4 py-3.5 text-xs text-zinc-500">{timeAgo(user.lastLoginAt)}</td>
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1">
                       <button
                         id={`btn-toggle-lock-${user._id}`}
                         onClick={() => setLockTarget(user)}
