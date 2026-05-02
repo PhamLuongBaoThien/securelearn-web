@@ -46,10 +46,3 @@ export const AdminRoleRoute: React.FC<AdminRoleRouteProps> = ({ allowedRoles, ch
 
   return <>{children}</>;
 };
-
-const ROLE_LABELS: Record<AdminRole, string> = {
-  SUPER_ADMIN:     'Super Admin',
-  CONTENT_MANAGER: 'Quản lý nội dung',
-  FINANCE_MANAGER: 'Quản lý tài chính',
-  SUPPORT_AGENT:   'Nhân viên hỗ trợ',
-};
