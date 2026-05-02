@@ -22,7 +22,7 @@ export function AuthLayout() {
 
         {/* Center Content */}
         <Link to="/" className="relative z-10 flex flex-col items-center group cursor-pointer">
-          <div className="relative flex items-center justify-center w-40 h-40 mb-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl transition-all duration-500 group-hover:scale-110 group-hover:bg-white/10 group-hover:shadow-primary/20">
+          <div className="relative flex items-center justify-center w-40 h-40 mb-8 transition-all duration-500 group-hover:scale-110  group-hover:shadow-primary/20">
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 to-transparent rounded-[2.5rem] opacity-50"></div>
             <img 
               src={brandLogo} 

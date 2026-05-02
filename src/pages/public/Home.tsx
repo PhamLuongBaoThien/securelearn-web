@@ -6,10 +6,6 @@ import { CourseCarousel } from '../../components/ui/CourseCarousel';
 import { buttonVariants } from '../../components/ui/button';
 import { ChevronLeft, ChevronRight, ShieldCheck, Lock,Zap, CreditCard } from 'lucide-react';
 
-// ========================
-// Banner Slides Data
-// Sau này admin sẽ quản lý danh sách này từ backend (thêm/xóa/sửa hình, tiêu đề, link)
-// ========================
 const bannerSlides = [
   {
     id: '1',
