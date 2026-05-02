@@ -7,7 +7,7 @@ import { Home } from '../pages/public/Home';
 
 import { StudentDashboard } from '../pages/student/dashboard';
 import { LearningInterface } from '../pages/student/learn';
-import { Profile } from '../pages/user/Profile';
+import { Profile } from '../pages/user/profile';
 
 // Public & Auth Imports
 import { PublicLayout } from '../components/layout/PublicLayout';

@@ -122,14 +122,14 @@ export const Home = () => {
           {/* Navigation Arrows */}
           <button
             onClick={prevSlide}
-            className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/30 text-white hover:bg-black/60 backdrop-blur-md transition-all hover:scale-110"
+            className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 hidden md:inline-flex p-3 rounded-full bg-black/30 text-white hover:bg-black/60 backdrop-blur-md transition-all hover:scale-110"
             aria-label="Slide trước"
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
           <button
             onClick={nextSlide}
-            className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/30 text-white hover:bg-black/60 backdrop-blur-md transition-all hover:scale-110"
+            className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 hidden md:inline-flex p-3 rounded-full bg-black/30 text-white hover:bg-black/60 backdrop-blur-md transition-all hover:scale-110"
             aria-label="Slide tiếp"
           >
             <ChevronRight className="h-6 w-6" />
