@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { Camera, Save, Trash2, User, Mail, FileText, Briefcase, Loader2, AlertCircle, Eye, Shield, Key, Phone, Calendar, CheckCircle, Clock } from 'lucide-react';
+import { Camera, Save, Trash2, User, Mail, FileText, Briefcase, Loader2, AlertCircle, Eye, Shield, Key, Phone, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppSelector } from '@/app/hooks';
 import { useUpdateProfile, useDeleteAccount, useChangePassword, authKeys } from '@/hooks/useAuth';
@@ -247,16 +247,6 @@ export function Profile() {
                        <div>
                          <p className="text-sm font-medium text-muted-foreground mb-1">Ngày tham gia</p>
                          <p className="text-foreground font-medium flex items-center gap-2"><Calendar size={16}/> {formatDate(user.createdAt)}</p>
-                       </div>
-                       <div>
-                         <p className="text-sm font-medium text-muted-foreground mb-1">Trạng thái xác minh</p>
-                         <p className="text-foreground font-medium flex items-center gap-2">
-                           {user.isVerified ? (
-                             <><CheckCircle size={16} className="text-green-500" /> Đã xác minh</>
-                           ) : (
-                             <><Clock size={16} className="text-amber-500" /> Chưa xác minh</>
-                           )}
-                         </p>
                        </div>
                        <div>
                          <p className="text-sm font-medium text-muted-foreground mb-1">Gói đăng ký</p>

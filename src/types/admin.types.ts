@@ -58,7 +58,7 @@ export interface ICategory {
 // ===== Users & RBAC =====
 
 export type UserRole = 'STUDENT' | 'INSTRUCTOR' | 'ADMIN';
-export type UserStatus = 'ACTIVE' | 'LOCKED' | 'UNVERIFIED';
+export type UserStatus = 'ACTIVE' | 'LOCKED';
 
 // Admin staff roles (sub-roles của ADMIN)
 export type AdminRole = 'SUPER_ADMIN' | 'CONTENT_MANAGER' | 'FINANCE_MANAGER' | 'SUPPORT_AGENT';
@@ -69,9 +69,12 @@ export interface IAdminUser {
   fullName: string;
   role: UserRole;
   status: UserStatus;
-  isVerified: boolean;
+  isLocked?: boolean;
   subscriptionStatus: 'ACTIVE' | 'INACTIVE';
   avatarUrl?: string;
+  profile?: {
+    avatarUrl?: string;
+  };
   phone?: string;
   coursesPurchased?: number;
   coursesCreated?: number;
@@ -87,6 +90,7 @@ export interface IAdminStaff {
   adminRole: AdminRole;       // Sub-role của admin
   status: UserStatus;
   permissions: string[];      // Danh sách permission IDs
+  avatarUrl?: string;
   phone?: string;
   department?: string;        // Nhóm/Phòng ban
   createdAt: string;
@@ -101,9 +105,46 @@ export interface IPermission {
 }
 
 export interface IRolePermission {
-  role: UserRole;
+  _id?: string;
+  roleKey: string;       // Key duy nhất (VD: 'CONTENT_MANAGER', 'CUSTOM_ROLE')
+  label: string;         // Tên hiển thị
+  color: string;         // Màu badge (VD: 'violet', 'emerald')
   permissions: string[];
+  isSystem: boolean;     // true = không thể xóa (SUPER_ADMIN)
+  updatedAt?: string;
 }
+
+// Danh sách màu có thể chọn cho badge role
+export const ROLE_COLORS = ['red', 'violet', 'emerald', 'blue', 'amber', 'pink', 'indigo', 'teal', 'orange', 'zinc'] as const;
+export type RoleColor = (typeof ROLE_COLORS)[number];
+
+// Helper: tạo Tailwind class cho badge theo color
+export function getRoleBadgeClass(color: string): string {
+  const map: Record<string, string> = {
+    red:     'bg-red-100 dark:bg-red-400/10 text-red-600 dark:text-red-400',
+    violet:  'bg-violet-100 dark:bg-violet-400/10 text-violet-600 dark:text-violet-400',
+    emerald: 'bg-emerald-100 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400',
+    blue:    'bg-blue-100 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400',
+    amber:   'bg-amber-100 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400',
+    pink:    'bg-pink-100 dark:bg-pink-400/10 text-pink-600 dark:text-pink-400',
+    indigo:  'bg-indigo-100 dark:bg-indigo-400/10 text-indigo-600 dark:text-indigo-400',
+    teal:    'bg-teal-100 dark:bg-teal-400/10 text-teal-600 dark:text-teal-400',
+    orange:  'bg-orange-100 dark:bg-orange-400/10 text-orange-600 dark:text-orange-400',
+    zinc:    'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400',
+  };
+  return map[color] ?? map['zinc'];
+}
+
+// Danh sách tất cả permission IDs trong hệ thống (đồng bộ với BE)
+export const ALL_PERMISSION_IDS = [
+  'course:read', 'course:update', 'course:delete', 'course:approve',
+  'user:read', 'user:lock',
+  'finance:read', 'finance:manage',
+  'notif:read', 'notif:manage',
+  'system:config', 'system:rbac',
+] as const;
+
+export type PermissionId = (typeof ALL_PERMISSION_IDS)[number];
 
 // ===== Courses =====
 

@@ -29,7 +29,6 @@ export interface IUser {
   email: string;
   fullName: string;
   role: Role;
-  isVerified: boolean;
   subscriptionStatus: SubscriptionStatus;
   phone?: string;
   profile?: IUserProfile;
@@ -47,10 +46,14 @@ export interface IUser {
 export type AuthUser = Pick<IUser, '_id' | 'email' | 'fullName' | 'role'> &
   Partial<Omit<IUser, '_id' | 'email' | 'fullName' | 'role'>>;
 
+import type { AdminRole } from './admin.types';
+
 export interface IAdminUser {
   _id: string;
   email: string;
   fullName: string;
+  adminRole: AdminRole;           // ← Vai trò để phân quyền FE
+  status: 'ACTIVE' | 'LOCKED';   // ← Trạng thái tài khoản
   permissions: string[];
   phone?: string;
   department?: string;
@@ -118,12 +121,7 @@ export interface LoginResponseData {
 }
 
 export interface AdminLoginResponseData {
-  admin: {
-    _id: string;
-    email: string;
-    fullName: string;
-    permissions: string[];
-  };
+  admin: IAdminUser;
   access_token: string;
 }
 

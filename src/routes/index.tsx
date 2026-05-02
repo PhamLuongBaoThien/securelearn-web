@@ -32,6 +32,7 @@ import { AdminLogin } from '../pages/admin/auth/AdminLogin';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { AdminGuestRoute } from '../components/auth/AdminGuestRoute';
 import { AdminProtectedRoute } from '../components/auth/AdminProtectedRoute';
+import { AdminRoleRoute } from '../components/auth/AdminRoleRoute';
 import { Dashboard as AdminDashboard } from '../pages/admin/Dashboard';
 import { AdminProfile } from '../pages/admin/AdminProfile';
 
@@ -41,9 +42,9 @@ import { BannerManager } from '../pages/admin/system/BannerManager';
 import { CategoryManager } from '../pages/admin/system/categories';
 
 // Admin — Users & RBAC (RBAC là viết tắt của Role Based Access Control có nghĩa là quản lý vai trò và quyền)
-import { UserList } from '../pages/admin/users/UserList';
-import { StaffList } from '../pages/admin/users/StaffList';
-import { RbacManager } from '../pages/admin/users/RbacManager';
+import { UserList } from '../pages/admin/users/userList';
+import { StaffList } from '../pages/admin/users/staff';
+import { RbacManager } from '../pages/admin/users/rbac';
 
 // Admin — Courses
 import { CourseReview } from '../pages/admin/courses/CourseReview';
@@ -174,8 +175,22 @@ const router = createBrowserRouter([
           { path: 'system/categories', element: <CategoryManager /> },
           // ===== Users & RBAC =====
           { path: 'users/list', element: <UserList /> },
-          { path: 'users/staff', element: <StaffList /> },
-          { path: 'users/rbac', element: <RbacManager /> },
+          {
+            path: 'users/staff',
+            element: (
+              <AdminRoleRoute allowedRoles={['SUPER_ADMIN']}>
+                <StaffList />
+              </AdminRoleRoute>
+            ),
+          },
+          {
+            path: 'users/rbac',
+            element: (
+              <AdminRoleRoute allowedRoles={['SUPER_ADMIN']}>
+                <RbacManager />
+              </AdminRoleRoute>
+            ),
+          },
           // ===== Courses =====
           { path: 'courses/review', element: <CourseReview /> },
           { path: 'courses/resources', element: <ResourceManager /> },

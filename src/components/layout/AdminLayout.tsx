@@ -14,7 +14,7 @@ import {
   Tag,
   UserCheck,
   UserCog,
-  Lock,
+  ShieldCheck,
   CheckSquare,
   FolderOpen,
   DollarSign,
@@ -30,72 +30,86 @@ import sidebarLogo from '@/assets/logoweb.png';
 import { Sidebar } from './Sidebar';
 import type { SidebarEntry } from './Sidebar';
 
-const sidebarEntries: SidebarEntry[] = [
-  {
-    type: 'single',
-    name: 'Bảng điều khiển',
-    path: '/admin/dashboard',
-    icon: <LayoutDashboard className="w-5 h-5 shrink-0" />,
-  },
-  {
-    type: 'group',
-    group: {
+// ===== Hàm tạo sidebar entries động theo role =====
+function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[]): SidebarEntry[] {
+  const hasPerm = (p: string) => isSuperAdmin || permissions.includes(p);
+
+  const rawGroups = [
+    {
       groupName: 'Thiết lập chung',
       groupIcon: <Settings className="w-5 h-5 shrink-0" />,
       items: [
-        { name: 'Cấu hình Website', path: '/admin/system/config', icon: <Globe className="w-4 h-4 shrink-0" /> },
-        { name: 'Banner & Slider', path: '/admin/system/banners', icon: <Image className="w-4 h-4 shrink-0" /> },
-        { name: 'Danh mục', path: '/admin/system/categories', icon: <Tag className="w-4 h-4 shrink-0" /> },
+        { name: 'Cấu hình Website', path: '/admin/system/config', icon: <Globe className="w-4 h-4 shrink-0" />, req: 'system:config' },
+        { name: 'Banner & Slider', path: '/admin/system/banners', icon: <Image className="w-4 h-4 shrink-0" />, req: 'system:config' },
+        { name: 'Danh mục', path: '/admin/system/categories', icon: <Tag className="w-4 h-4 shrink-0" />, req: 'system:config' },
       ],
     },
-  },
-  {
-    type: 'group',
-    group: {
+    {
       groupName: 'Người dùng',
       groupIcon: <Users className="w-5 h-5 shrink-0" />,
       items: [
-        { name: 'Danh sách người dùng', path: '/admin/users/list', icon: <UserCheck className="w-4 h-4 shrink-0" /> },
-        { name: 'Danh sách nhân viên', path: '/admin/users/staff', icon: <UserCog className="w-4 h-4 shrink-0" /> },
-        { name: 'Phân quyền nhân viên', path: '/admin/users/rbac', icon: <Lock className="w-4 h-4 shrink-0" /> },
+        { name: 'Danh sách người dùng', path: '/admin/users/list', icon: <UserCheck className="w-4 h-4 shrink-0" />, req: 'user:read' },
+        { name: 'Danh sách nhân viên', path: '/admin/users/staff', icon: <UserCog className="w-4 h-4 shrink-0" />, req: 'system:rbac' },
+        { name: 'Phân quyền RBAC', path: '/admin/users/rbac', icon: <ShieldCheck className="w-4 h-4 shrink-0" />, req: 'system:rbac' },
       ],
     },
-  },
-  {
-    type: 'group',
-    group: {
+    {
       groupName: 'Nội dung đào tạo',
       groupIcon: <BookOpen className="w-5 h-5 shrink-0" />,
       items: [
-        { name: 'Kiểm duyệt khóa học', path: '/admin/courses/review', icon: <CheckSquare className="w-4 h-4 shrink-0" /> },
-        { name: 'Tài nguyên', path: '/admin/courses/resources', icon: <FolderOpen className="w-4 h-4 shrink-0" /> },
+        { name: 'Kiểm duyệt khóa học', path: '/admin/courses/review', icon: <CheckSquare className="w-4 h-4 shrink-0" />, req: 'course:read' },
+        { name: 'Tài nguyên', path: '/admin/courses/resources', icon: <FolderOpen className="w-4 h-4 shrink-0" />, req: 'course:read' },
       ],
     },
-  },
-  {
-    type: 'group',
-    group: {
+    {
       groupName: 'Tài chính',
       groupIcon: <CreditCard className="w-5 h-5 shrink-0" />,
       items: [
-        { name: 'Giao dịch', path: '/admin/finance/transactions', icon: <DollarSign className="w-4 h-4 shrink-0" /> },
-        { name: 'Gói cước', path: '/admin/finance/plans', icon: <Package className="w-4 h-4 shrink-0" /> },
+        { name: 'Giao dịch', path: '/admin/finance/transactions', icon: <DollarSign className="w-4 h-4 shrink-0" />, req: 'finance:read' },
+        { name: 'Gói cước', path: '/admin/finance/plans', icon: <Package className="w-4 h-4 shrink-0" />, req: 'finance:manage' },
       ],
     },
-  },
-  {
-    type: 'group',
-    group: {
+    {
       groupName: 'Thông báo',
       groupIcon: <Bell className="w-5 h-5 shrink-0" />,
       items: [
-        { name: 'Gửi thông báo', path: '/admin/notifications/send', icon: <Send className="w-4 h-4 shrink-0" /> },
-        { name: 'Hộp thư đến', path: '/admin/notifications/inbox', icon: <Inbox className="w-4 h-4 shrink-0" /> },
-        { name: 'Mẫu thông báo', path: '/admin/notifications/config', icon: <FileText className="w-4 h-4 shrink-0" /> },
+        { name: 'Gửi thông báo', path: '/admin/notifications/send', icon: <Send className="w-4 h-4 shrink-0" />, req: 'notif:manage' },
+        { name: 'Hộp thư đến', path: '/admin/notifications/inbox', icon: <Inbox className="w-4 h-4 shrink-0" />, req: 'notif:read' },
+        { name: 'Mẫu thông báo', path: '/admin/notifications/config', icon: <FileText className="w-4 h-4 shrink-0" />, req: 'notif:manage' },
       ],
     },
-  },
-];
+  ];
+
+  const entries: SidebarEntry[] = [
+    {
+      type: 'single',
+      name: 'Bảng điều khiển',
+      path: '/admin/dashboard',
+      icon: <LayoutDashboard className="w-5 h-5 shrink-0" />,
+    },
+  ];
+
+  for (const g of rawGroups) {
+    const validItems = g.items.filter(item => hasPerm(item.req)).map(item => ({
+      name: item.name,
+      path: item.path,
+      icon: item.icon,
+    }));
+
+    if (validItems.length > 0) {
+      entries.push({
+        type: 'group',
+        group: {
+          groupName: g.groupName,
+          groupIcon: g.groupIcon,
+          items: validItems,
+        },
+      } as SidebarEntry);
+    }
+  }
+
+  return entries;
+}
 
 // ===== Main AdminLayout =====
 export const AdminLayout: React.FC = () => {
@@ -105,6 +119,8 @@ export const AdminLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
 
   const adminLogoutMutation = useAdminLogout();
+
+  const isSuperAdmin = user?.adminRole === 'SUPER_ADMIN';
 
   const handleLogout = () => {
     adminLogoutMutation.mutate(undefined, {
@@ -121,6 +137,9 @@ export const AdminLayout: React.FC = () => {
     else if (theme === 'dark') dispatch(toggleTheme('system'));
     else dispatch(toggleTheme('light'));
   };
+
+  const userPermissions = user?.permissions ?? [];
+  const sidebarEntries = buildSidebarEntries(isSuperAdmin, userPermissions);
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-[#0A0A0A] flex text-zinc-900 dark:text-zinc-100 font-sans selection:bg-primary/30">

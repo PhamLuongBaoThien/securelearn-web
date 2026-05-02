@@ -5,6 +5,7 @@ interface UserAvatarProps {
   user: {
     fullName?: string;
     email?: string;
+    avatarUrl?: string;
     profile?: {
       avatarUrl?: string;
     };
@@ -19,6 +20,7 @@ export function UserAvatar({
   fallbackClassName = "bg-primary text-primary-foreground" 
 }: UserAvatarProps) {
   const [imageError, setImageError] = useState(false); // giúp vẫn có avatar khi ảnh bị lỗi
+  const avatarUrl = user?.profile?.avatarUrl || user?.avatarUrl;
 
   if (!user) {
     return (
@@ -29,10 +31,10 @@ export function UserAvatar({
   }
 
   // 1. If avatar exists and is not structurally broken
-  if (user.profile?.avatarUrl && !imageError && user.profile.avatarUrl.trim() !== '') {
+  if (avatarUrl && !imageError && avatarUrl.trim() !== '') {
     return (
       <img 
-        src={user.profile.avatarUrl} 
+        src={avatarUrl} 
         alt={user.fullName || "Avatar"} 
         className={`rounded-full object-cover shrink-0 ${className}`} 
         onError={() => setImageError(true)}

@@ -44,6 +44,7 @@ export interface SidebarProps {
   userFullName?: string;
   userEmail?: string;
   userAvatarNode?: React.ReactNode;
+  userBadgeNode?: React.ReactNode; // Badge vai trò hiển thị bên dưới email
   profileLink?: string;
   
   // Theme
@@ -228,6 +229,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   userFullName,
   userEmail,
   userAvatarNode,
+  userBadgeNode,
   profileLink,
   theme,
   onThemeChange,
@@ -284,9 +286,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               title="Quản lý tài khoản"
             >
               {userAvatarNode}
-              <div className="flex flex-col overflow-hidden">
+              <div className="flex flex-col overflow-hidden gap-0.5">
                 <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{userFullName}</span>
                 <span className="text-xs text-zinc-500 truncate">{userEmail}</span>
+                {userBadgeNode}
               </div>
             </NavLink>
           )}
@@ -305,9 +308,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!collapsed && (
             <div className="p-4 flex items-center gap-3 shrink-0 rounded-xl mx-3 mt-2 transition-colors duration-150 hover:bg-zinc-100 dark:hover:bg-zinc-900">
               {userAvatarNode}
-              <div className="flex flex-col overflow-hidden">
+              <div className="flex flex-col overflow-hidden gap-0.5">
                 <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{userFullName}</span>
                 <span className="text-xs text-zinc-500 truncate">{userEmail}</span>
+                {userBadgeNode}
               </div>
             </div>
           )}

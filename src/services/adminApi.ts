@@ -19,6 +19,7 @@ import type {
   IActiveSubscription,
   INotificationTemplate,
   ILearningProgress,
+  IRolePermission,
   AdminApiResponse,
 } from '@/types/admin.types';
 
@@ -148,8 +149,36 @@ export const deleteAdminStaff = async (id: string): Promise<AdminApiResponse> =>
   return res.data;
 };
 
-export const resetAdminStaffPassword = async (id: string, password: string): Promise<AdminApiResponse> => {
-  const res = await apiClient.patch(`${ADMIN}/auth/staff/${id}/password`, { password });
+// ===== Role Permissions =====
+
+export const getRolePermissions = async (): Promise<AdminApiResponse<IRolePermission[]>> => {
+  const res = await apiClient.get<AdminApiResponse<IRolePermission[]>>(`${ADMIN}/auth/roles`);
+  return res.data;
+};
+
+export const createRole = async (data: {
+  roleKey: string;
+  label: string;
+  color: string;
+  permissions?: string[];
+}): Promise<AdminApiResponse<IRolePermission>> => {
+  const res = await apiClient.post<AdminApiResponse<IRolePermission>>(`${ADMIN}/auth/roles`, data);
+  return res.data;
+};
+
+export const updateRolePermissions = async (
+  roleKey: string,
+  data: { permissions?: string[]; label?: string; color?: string }
+): Promise<AdminApiResponse<IRolePermission>> => {
+  const res = await apiClient.put<AdminApiResponse<IRolePermission>>(
+    `${ADMIN}/auth/roles/${roleKey}`,
+    data
+  );
+  return res.data;
+};
+
+export const deleteRole = async (roleKey: string): Promise<AdminApiResponse> => {
+  const res = await apiClient.delete<AdminApiResponse>(`${ADMIN}/auth/roles/${roleKey}`);
   return res.data;
 };
 
@@ -160,22 +189,17 @@ export const getUsers = async (params?: {
   page?: number;
   limit?: number;
 }): Promise<AdminApiResponse<{ users: IAdminUser[]; total: number; page: number; totalPages: number }>> => {
-  const res = await apiClient.get(`${ADMIN}/users`, { params });
+  const res = await apiClient.get(`${ADMIN}/auth/users`, { params });
   return res.data;
 };
 
 export const lockUser = async (userId: string): Promise<AdminApiResponse> => {
-  const res = await apiClient.patch<AdminApiResponse>(`${ADMIN}/users/${userId}/lock`);
+  const res = await apiClient.patch(`${ADMIN}/auth/users/${userId}/lock`);
   return res.data;
 };
 
 export const unlockUser = async (userId: string): Promise<AdminApiResponse> => {
-  const res = await apiClient.patch<AdminApiResponse>(`${ADMIN}/users/${userId}/unlock`);
-  return res.data;
-};
-
-export const changeUserPassword = async (userId: string, newPassword: string): Promise<AdminApiResponse> => {
-  const res = await apiClient.patch<AdminApiResponse>(`${ADMIN}/users/${userId}/password`, { newPassword });
+  const res = await apiClient.patch(`${ADMIN}/auth/users/${userId}/unlock`);
   return res.data;
 };
 
