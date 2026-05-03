@@ -1,7 +1,3 @@
-// ========================
-// Router Configuration: Định nghĩa toàn bộ routes cho ứng dụng
-// Bao gồm: Public, Auth, Protected (Student), và OAuth callback.
-// ========================
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import { Home } from '../pages/public/Home';
 

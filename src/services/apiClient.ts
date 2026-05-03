@@ -22,7 +22,6 @@ const API_BASE_URL = import.meta.env.DEV
 // ===== Tạo Axios Instance =====
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // 10 giây này là thời gian mà request sẽ chờ API trả về
   // QUAN TRỌNG: cho phép gửi/nhận HttpOnly cookies (refresh_token)
   withCredentials: true,
 });
@@ -88,7 +87,7 @@ const decodeJwtExp = (token: string): number | null => {
   }
 };
 
-// Hàm phát sự kiện session hết hạn
+// Hàm phát sự kiện session hết hạn, dùng để authSlice nó nghe ngóng và cho đăng xuất, tránh tình trạng token hết hạn mà chưa đăng xuất
 const emitSessionExpired = (context: AuthContext) => {
   window.dispatchEvent(
     new CustomEvent<SessionExpiredDetail>(SESSION_EXPIRED_EVENT, {
