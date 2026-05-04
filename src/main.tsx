@@ -2,7 +2,6 @@
 // Entry Point: Khởi tạo ứng dụng React
 // Bao gồm: Redux Provider, Theme, React Query, Auth, Toast, Router.
 // ========================
-import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
 import { Provider } from 'react-redux'
@@ -24,17 +23,15 @@ const queryClient = new QueryClient({
 })
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthInitializer>
-            <AppRouter />
-          </AuthInitializer>
-          {/* Toast container — tích hợp shadcn */}
-          <Toaster closeButton duration={4000} richColors />
-        </QueryClientProvider>
-      </ThemeProvider>
-    </Provider>
-  </React.StrictMode>,
+  <Provider store={store}>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthInitializer>
+          <AppRouter />
+        </AuthInitializer>
+        {/* Toast container — tích hợp shadcn */}
+        <Toaster closeButton duration={4000} richColors />
+      </QueryClientProvider>
+    </ThemeProvider>
+  </Provider>,
 )

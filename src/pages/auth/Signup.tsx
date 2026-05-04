@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 
 export function Signup() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, authResolved } = useAppSelector((state) => state.auth);
   const registerMutation = useRegister();
 
   const [fullName, setFullName] = useState('');
@@ -57,10 +57,10 @@ export function Signup() {
 
   // Nếu đã đăng nhập → redirect đi
   useEffect(() => {
-    if (isAuthenticated) {
+    if (authResolved && isAuthenticated) {
       navigate('/', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [authResolved, isAuthenticated, navigate]);
 
   // Hiển thị toast khi có error
   useEffect(() => {

@@ -1,7 +1,7 @@
 // ========================
 // React Query Hooks: Authentication (User)
 // Thay thế createAsyncThunk — dùng useMutation/useQuery cho server state.
-// Redux chỉ còn giữ sync state (user, token, isAuthenticated).
+// Redux chỉ còn giữ sync state phục vụ UI (user, isAuthenticated).
 // ========================
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppDispatch } from '@/app/hooks';
@@ -41,16 +41,12 @@ export function useLogin() {
       const profileRes = await getMe();
       return {
         user: profileRes.data!,
-        accessToken: response.data!.access_token,
         message: response.message,
       };
     },
     onSuccess: (data) => {
-      dispatch(setUser({ user: data.user, accessToken: data.accessToken }));
-      queryClient.setQueryData(authKeys.session, {
-        user: data.user,
-        accessToken: data.accessToken,
-      });
+      dispatch(setUser({ user: data.user }));
+      queryClient.setQueryData(authKeys.session, { user: data.user });
       queryClient.setQueryData(authKeys.profile, data.user);
     },
   });
@@ -114,7 +110,6 @@ export function useInitializeAuth(options?: { enabled?: boolean }) {
       const profileRes = await getMe();
       return {
         user: profileRes.data!,
-        accessToken: refreshRes.access_token,
       };
     },
     retry: false,
@@ -139,11 +134,8 @@ export function useUpdateProfile() {
     },
     onSuccess: (updatedUser) => {
       queryClient.setQueryData(authKeys.profile, updatedUser);
-      // Sync Redux state để UI phản ánh thay đổi ngay
-      const currentSession = queryClient.getQueryData(authKeys.session) as any;
-      if (currentSession?.accessToken) {
-        dispatch(setUser({ user: updatedUser, accessToken: currentSession.accessToken }));
-      }
+      queryClient.setQueryData(authKeys.session, { user: updatedUser });
+      dispatch(setUser({ user: updatedUser }));
     },
   });
 }
@@ -187,18 +179,9 @@ export function useChangePassword() {
       return response.data;
     },
     onSuccess: (updatedUser) => {
-      const currentSession = queryClient.getQueryData(authKeys.session) as
-        | { user?: any; accessToken?: string }
-        | undefined;
       queryClient.setQueryData(authKeys.profile, updatedUser);
-
-      if (currentSession?.accessToken) {
-        queryClient.setQueryData(authKeys.session, {
-          ...currentSession,
-          user: updatedUser,
-        });
-        dispatch(setUser({ user: updatedUser, accessToken: currentSession.accessToken }));
-      }
+      queryClient.setQueryData(authKeys.session, { user: updatedUser });
+      dispatch(setUser({ user: updatedUser }));
     },
   });
 }
@@ -269,13 +252,12 @@ export function useSwitchToInstructor() {
 
       return {
         user: profileRes.data,
-        accessToken: refreshRes.access_token,
       };
     },
-    onSuccess: ({ user, accessToken }) => {
+    onSuccess: ({ user }) => {
       queryClient.setQueryData(authKeys.profile, user);
-      queryClient.setQueryData(authKeys.session, { user, accessToken });
-      dispatch(setUser({ user, accessToken }));
+      queryClient.setQueryData(authKeys.session, { user });
+      dispatch(setUser({ user }));
       queryClient.invalidateQueries({ queryKey: ['instructor'] });
     },
   });

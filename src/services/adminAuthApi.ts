@@ -10,8 +10,6 @@ import type {
   IAdminUser,
 } from '@/types/auth.types';
 
-const PROFILE_UPLOAD_TIMEOUT_MS = 30_000;
-
 // Các endpoint riêng cho Admin
 const ADMIN_API_PREFIX = '/api/admin/auth';
 
@@ -54,7 +52,6 @@ export const refreshAdminToken = async (): Promise<RefreshTokenResponse> => {
  */
 export const updateAdminProfile = async (formData: FormData): Promise<ApiResponse<IAdminUser>> => {
   const response = await apiClient.put<ApiResponse<IAdminUser>>(`${ADMIN_API_PREFIX}/profile`, formData, {
-    timeout: PROFILE_UPLOAD_TIMEOUT_MS,
     headers: {
       'Content-Type': 'multipart/form-data',
     },

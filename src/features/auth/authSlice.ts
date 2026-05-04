@@ -81,8 +81,8 @@ const persisted = loadAuthFromStorage(); // loadAuthFromStorage() sẽ trả vê
 
 const initialState: AuthState = {
   user: persisted?.user ?? null,
-  accessToken: null, // Access token KHÔNG lưu localStorage (bảo mật)
   isAuthenticated: persisted?.status === 'authenticated',
+  authResolved: persisted?.status === 'guest',
 };
 
 // ===== Slice =====
@@ -90,11 +90,11 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    /** Set user + token khi React Query mutation thành công (login, OAuth, session recovery) */
-    setUser: (state, action: PayloadAction<{ user: AuthUser; accessToken: string }>) => {
+    /** Set user khi React Query mutation thành công (login, OAuth, session recovery) */
+    setUser: (state, action: PayloadAction<{ user: AuthUser }>) => {
       state.user            = action.payload.user;
-      state.accessToken     = action.payload.accessToken;
       state.isAuthenticated = true;
+      state.authResolved    = true;
       // Persist user vào localStorage để lần load sau render ngay
       saveAuthToStorage(action.payload.user);
     },
@@ -102,8 +102,8 @@ const authSlice = createSlice({
     /** Xóa auth state khi logout hoặc session expired */
     clearUser: (state) => {
       state.user            = null;
-      state.accessToken     = null;
       state.isAuthenticated = false;
+      state.authResolved    = true;
       // Đánh dấu 'guest' → lần load sau biết ngay, render nút đăng nhập không cần chờ API
       clearAuthFromStorage();
     },

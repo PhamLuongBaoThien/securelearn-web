@@ -32,16 +32,12 @@ export function useAdminLogin() {
       const profileRes = await getAdminMe();
       return {
         user: profileRes.data!,
-        accessToken: response.data!.access_token,
         message: response.message,
       };
     },
     onSuccess: (data) => {
-      dispatch(setAdminUser({ user: data.user, accessToken: data.accessToken }));
-      queryClient.setQueryData(adminAuthKeys.session, {
-        user: data.user,
-        accessToken: data.accessToken,
-      });
+      dispatch(setAdminUser({ user: data.user }));
+      queryClient.setQueryData(adminAuthKeys.session, { user: data.user });
       queryClient.setQueryData(adminAuthKeys.profile, data.user);
     },
   });
@@ -71,7 +67,7 @@ export function useAdminLogout() {
 
 // ===== useInitializeAdminAuth =====
 // Component sử dụng hook này cần tự sync data vào Redux qua useEffect.
-export function useInitializeAdminAuth() {
+export function useInitializeAdminAuth(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: adminAuthKeys.session,
     queryFn: async () => {
@@ -85,12 +81,12 @@ export function useInitializeAdminAuth() {
       const profileRes = await getAdminMe();
       return {
         user: profileRes.data!,
-        accessToken: refreshRes.access_token,
       };
     },
     retry: false,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
+    enabled: options?.enabled ?? true,
   });
 }
 

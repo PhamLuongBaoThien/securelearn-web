@@ -1,11 +1,10 @@
 // ========================
 // ProtectedRoute: Bảo vệ các route yêu cầu đăng nhập
 // Nếu chưa xác thực → redirect về /auth/login
-// Dùng React Query loading state thay cho Redux initializing.
+// Chỉ đọc auth state đã được AuthInitializer đồng bộ sẵn vào Redux.
 // ========================
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
-import { useInitializeAuth } from '@/hooks/useAuth';
 import type { Role } from '@/types/auth.types';
 
 interface ProtectedRouteProps {
@@ -15,12 +14,11 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
-  const { isLoading, isSuccess } = useInitializeAuth();
+  const { isAuthenticated, user, authResolved } = useAppSelector((state) => state.auth);
   const location = useLocation();
 
-  // Đang kiểm tra session, hoặc thành công nhưng Redux chưa kịp sync state → hiện loading
-  if (isLoading || (isSuccess && !isAuthenticated)) {
+  // Chặn render sớm khi session từ localStorage chưa được backend xác minh xong.
+  if (!authResolved) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">

@@ -148,14 +148,14 @@ export interface RefreshTokenResponse {
 export interface AuthState {
   /** Thông tin user đã đăng nhập (null = chưa đăng nhập) */
   user: AuthUser | null;
-  /** Access token JWT (lưu trong memory, KHÔNG lưu localStorage) */
-  accessToken: string | null;
   /** Trạng thái xác thực */
   isAuthenticated: boolean;
+  /** Đã xác minh session hiện tại với backend hay chưa */
+  authResolved: boolean;
 }
 
 export interface AdminAuthState {
   user: IAdminUser | null;
-  accessToken: string | null;
   isAuthenticated: boolean;
+  authResolved: boolean;
 }

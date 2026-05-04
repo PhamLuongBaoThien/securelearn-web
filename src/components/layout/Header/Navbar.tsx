@@ -43,12 +43,14 @@ export const Navbar = () => {
   const cartItems = useAppSelector((state) => state.cart.cartItems);
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const { data: categories = [], isLoading: isCategoriesLoading } = usePublicCourseCategories();
+  const showAuthenticatedUI = isAuthenticated && !!user;
+  const resolvedUser = user;
 
-  const isInstructor = user?.role === 'INSTRUCTOR';
+  const isInstructor = resolvedUser?.role === 'INSTRUCTOR';
   const isInstructorView = location.pathname.startsWith('/instructor');
   const isStudentView = location.pathname.startsWith('/student');
   const currentTheme = resolveTheme(theme);
-  const teachBtnProps = getTeachButtonProps(user, isInstructorView, isInstructor);
+  const teachBtnProps = getTeachButtonProps(resolvedUser, isInstructorView, isInstructor);
   const navCategories = categories;
 
   // ─── State ───────────────────────────────────────────────────
@@ -99,8 +101,8 @@ export const Navbar = () => {
   // ─── Mobile Sidebar Entries ───────────────────────────────────
   const mobileSidebarEntries = buildMobileSidebarEntries(
     categories,
-    isAuthenticated,
-    user,
+    showAuthenticatedUI,
+    resolvedUser,
     teachBtnProps,
     {
       bookOpen: <BookOpen className="w-4 h-4" />,
@@ -231,7 +233,7 @@ export const Navbar = () => {
                 <Link to={teachBtnProps.to} className={desktopNavLinkClass(isInstructorView)}>
                   {teachBtnProps.text}
                 </Link>
-                {isAuthenticated && user && (
+                {showAuthenticatedUI && (
                   <Link to="/student/dashboard" className={desktopNavLinkClass(isStudentView)}>
                     Học tập
                   </Link>
@@ -254,9 +256,9 @@ export const Navbar = () => {
                 </Link>
 
                 {/* Auth Section */}
-                {isAuthenticated && user ? (
+                {showAuthenticatedUI ? (
                   <NavUserDropdown
-                    user={user}
+                    user={resolvedUser!}
                     isOpen={isUserMenuOpen}
                     onToggle={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     onClose={() => setIsUserMenuOpen(false)}
@@ -329,8 +331,8 @@ export const Navbar = () => {
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
         entries={mobileSidebarEntries}
-        user={user}
-        isAuthenticated={isAuthenticated}
+        user={resolvedUser}
+        isAuthenticated={showAuthenticatedUI}
         currentTheme={currentTheme}
         onThemeChange={handleThemeToggle}
         onLogout={handleLogout}

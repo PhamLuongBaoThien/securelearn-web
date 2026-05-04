@@ -16,9 +16,6 @@ import type {
   ResetPasswordPayload,
 } from '@/types/auth.types';
 
-const PROFILE_UPLOAD_TIMEOUT_MS = 30_000;
-
-
 /**
  * Đăng ký tài khoản mới.
  * POST /api/auth/register
@@ -90,7 +87,6 @@ export const updateProfile = async (formData: FormData) => {
     '/api/auth/profile',
     formData,
     {
-      timeout: PROFILE_UPLOAD_TIMEOUT_MS,
       headers: {
         'Content-Type': 'multipart/form-data',
       },

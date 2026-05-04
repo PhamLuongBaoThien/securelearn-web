@@ -7,12 +7,16 @@ import { useSwitchToInstructor } from '../../hooks/useAuth';
 import { toast } from 'sonner';
 
 export const Teach = () => {
-  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { user, isAuthenticated, authResolved } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
   const switchToInstructorMutation = useSwitchToInstructor();
 
   const handleStartTeaching = (e: React.MouseEvent) => {
     e.preventDefault();
+    if (!authResolved) {
+      toast.message('Đang xác minh phiên đăng nhập, vui lòng thử lại sau vài giây.');
+      return;
+    }
     if (isAuthenticated && user) {
       if (user.role !== 'INSTRUCTOR') {
         switchToInstructorMutation.mutate(undefined, {

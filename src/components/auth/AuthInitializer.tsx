@@ -6,9 +6,10 @@
 import { useEffect } from 'react';
 import { useAppDispatch } from '@/app/hooks';
 import { setUser, clearUser } from '@/features/auth/authSlice';
-import { clearAdminUser } from '@/features/auth/adminAuthSlice';
+import { setAdminUser, clearAdminUser } from '@/features/auth/adminAuthSlice';
 import { setAccessToken } from '@/services/apiClient';
 import { useInitializeAuth } from '@/hooks/useAuth';
+import { useInitializeAdminAuth } from '@/hooks/useAdminAuth';
 
 interface AuthInitializerProps {
   children: React.ReactNode;
@@ -17,16 +18,26 @@ interface AuthInitializerProps {
 export function AuthInitializer({ children }: AuthInitializerProps) {
   const dispatch = useAppDispatch();
   const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
-  const { data, status } = useInitializeAuth({ enabled: !isAdminPath });
+  const userSession = useInitializeAuth({ enabled: !isAdminPath });
+  const adminSession = useInitializeAdminAuth({ enabled: isAdminPath });
 
-  // Khi session recovery thành công hoặc thất bại → sync vào Redux
+  // Khôi phục session user khi app khởi động ở nhánh user.
   useEffect(() => {
-    if (status === 'success' && data) {
-      dispatch(setUser({ user: data.user, accessToken: data.accessToken }));
-    } else if (status === 'error' && !isAdminPath) {
+    if (userSession.status === 'success' && userSession.data) {
+      dispatch(setUser({ user: userSession.data.user }));
+    } else if (userSession.status === 'error' && !isAdminPath) {
       dispatch(clearUser());
     }
-  }, [status, data, dispatch, isAdminPath]);
+  }, [userSession.status, userSession.data, dispatch, isAdminPath]);
+
+  // Khôi phục session admin khi app khởi động ở nhánh admin.
+  useEffect(() => {
+    if (adminSession.status === 'success' && adminSession.data) {
+      dispatch(setAdminUser({ user: adminSession.data.user }));
+    } else if (adminSession.status === 'error' && isAdminPath) {
+      dispatch(clearAdminUser());
+    }
+  }, [adminSession.status, adminSession.data, dispatch, isAdminPath]);
 
   // Lắng nghe event khi refresh token cũng hết hạn (session expired hoàn toàn)
   useEffect(() => {
@@ -38,16 +49,10 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
 
       if (context === 'admin') {
         dispatch(clearAdminUser());
-        if (window.location.pathname.startsWith('/admin') && window.location.pathname !== '/admin/login') {
-          window.location.replace('/admin/login');
-        }
         return;
       }
 
       dispatch(clearUser());
-      if (!window.location.pathname.startsWith('/auth/')) {
-        window.location.replace('/auth/login');
-      }
     };
 
     window.addEventListener('auth:session-expired', handleSessionExpired);

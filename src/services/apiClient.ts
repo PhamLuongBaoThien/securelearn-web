@@ -1,93 +1,106 @@
-// ========================
-// API Client: Axios Instance + Interceptors
-// Xử lý tự động gắn token và refresh token khi hết hạn.
-// ========================
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
 import type { RefreshTokenResponse } from '@/types/auth.types';
 
 type AuthContext = 'user' | 'admin';
-type SessionExpiredDetail = {
-  context: AuthContext;
-};
 type ToastableRequestConfig = InternalAxiosRequestConfig & {
   _loadingToastId?: string | number;
 };
+type RetryableRequestConfig = ToastableRequestConfig & {
+  _retry?: boolean;
+};
 
-// ===== Base URL — Gọi qua Kong API Gateway =====
-const API_BASE_URL = import.meta.env.DEV
-  ? ''
-  : import.meta.env.VITE_API_BASE_URL;
+type SessionExpiredDetail = { context: AuthContext };
+type QueuedRequest = {
+  request: ToastableRequestConfig;
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+};
 
-// ===== Tạo Axios Instance =====
+const API_BASE_URL = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL;
+const SESSION_EXPIRED_EVENT = 'auth:session-expired';
+const SESSION_EXPIRED_MESSAGE = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+const REFRESH_TOKEN_PATH = '/refresh-token';
+const LOGIN_PATH = '/login';
+const ADMIN_API_PATH = '/api/admin/';
+const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const TOAST_LOADING_MESSAGE: Record<string, string> = {
+  DELETE: 'Đang xóa...',
+  PUT: 'Đang cập nhật...',
+  PATCH: 'Đang cập nhật...',
+  POST: 'Đang xử lý...',
+};
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  // QUAN TRỌNG: cho phép gửi/nhận HttpOnly cookies (refresh_token)
   withCredentials: true,
 });
 
-// ===== Token Manager =====
-// Lưu access_token trong closure (memory) — không dùng localStorage để chống XSS
 let accessToken: string | null = null;
 let accessTokenContext: AuthContext = 'user';
-let silentRefreshTimer: number | null = null; // timer để gọi refresh token trước khi token hết hạn
+let isRefreshing = false;
+let failedQueue: QueuedRequest[] = [];
 
-const SESSION_EXPIRED_EVENT = 'auth:session-expired';
-const SILENT_REFRESH_BUFFER_MS = 60 * 1000; // 1 phút trước khi token hết hạn
+// Chọn text cho loading toast theo HTTP method.
+// Dùng khi request mutation bắt đầu để user biết thao tác đang chạy.
+// Mục đích: hiển thị trạng thái ngắn gọn như "Đang cập nhật..." thay vì toast chung chung.
+const getLoadingMessage = (method?: string) =>
+  TOAST_LOADING_MESSAGE[(method || '').toUpperCase()] || 'Đang tải...';
 
-const getLoadingMessage = (method?: string) => {
-  switch ((method || '').toUpperCase()) {
-    case 'DELETE':
-      return 'Đang xóa...';
-    case 'PUT':
-    case 'PATCH':
-      return 'Đang cập nhật...';
-    case 'POST':
-      return 'Đang xử lý...';
-    default:
-      return 'Đang tải...';
-  }
-};
+// Kiểm tra request hiện tại có thuộc nhánh admin hay không.
+// Dùng khi cần quyết định gọi refresh token của admin hay của user.
+// Mục đích: chọn đúng auth context cho các API `/api/admin/...`.
+const isAdminRequest = (url?: string) =>
+  Boolean(url?.includes(ADMIN_API_PATH) || accessTokenContext === 'admin');
 
+// Chuẩn hóa context auth từ URL request.
+// Dùng trước khi refresh token hoặc phát event session-expired.
+// Mục đích: mọi flow auth chỉ cần dựa vào một giá trị `user | admin` thống nhất.
+const getAuthContext = (url?: string): AuthContext =>
+  isAdminRequest(url) ? 'admin' : 'user';
+
+// Trả về endpoint refresh-token tương ứng với context.
+// Dùng ngay trước khi gọi API refresh.
+// Mục đích: tách logic URL ra khỏi interceptor để code chính ngắn hơn.
+const getRefreshUrl = (context: AuthContext) =>
+  context === 'admin'
+    ? `${API_BASE_URL}/api/admin/auth/refresh-token`
+    : `${API_BASE_URL}/api/auth/refresh-token`;
+
+// Quyết định request nào được hiện loading toast.
+// Dùng ở request interceptor, trước khi gửi request ra ngoài.
+// Mục đích: chỉ hiện toast cho mutation và bỏ qua refresh-token để tránh nhiễu UI.
 const shouldShowLoadingToast = (config: InternalAxiosRequestConfig) => {
   const method = (config.method || 'GET').toUpperCase();
-
-  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-    return false;
-  }
-
-  if (config.url?.includes('/refresh-token')) {
-    return false;
-  }
-
-  return true;
+  return MUTATION_METHODS.has(method) && !config.url?.includes(REFRESH_TOKEN_PATH);
 };
 
-// Hàm xóa timer refresh token
-const clearSilentRefreshTimer = () => {
-  if (silentRefreshTimer !== null) {
-    window.clearTimeout(silentRefreshTimer);
-    silentRefreshTimer = null;
-  }
-};
+// Quyết định lỗi 401 hiện tại có nên thử refresh token hay không.
+// Dùng ở response interceptor khi request thất bại.
+// Mục đích: tránh retry vô hạn với chính API refresh-token hoặc API login.
+const shouldRetryWithRefresh = (error: AxiosError, request?: { _retry?: boolean; url?: string }) =>
+  error.response?.status === 401 &&
+  !request?._retry &&
+  !request?.url?.includes(REFRESH_TOKEN_PATH) &&
+  !request?.url?.includes(LOGIN_PATH);
 
-// Hàm giải mã JWT token để lấy thời gian hết hạn (exp)
-const decodeJwtExp = (token: string): number | null => {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
-    const decoded = JSON.parse(window.atob(padded));
-
-    return typeof decoded.exp === 'number' ? decoded.exp : null;
-  } catch {
-    return null;
+// Đóng loading toast đang gắn với một request nếu có.
+// Dùng khi request thành công, thất bại, hoặc bị hủy giữa chừng do refresh fail.
+// Mục đích: tránh để toast "Đang cập nhật..." bị treo vô thời hạn.
+const dismissLoadingToast = (config?: ToastableRequestConfig) => {
+  if (config?._loadingToastId) {
+    toast.dismiss(config._loadingToastId);
+    delete config._loadingToastId;
   }
 };
 
-// Hàm phát sự kiện session hết hạn, dùng để authSlice nó nghe ngóng và cho đăng xuất, tránh tình trạng token hết hạn mà chưa đăng xuất
+const setAuthorizationHeader = (config: InternalAxiosRequestConfig, token: string) => {
+  config.headers.Authorization = `Bearer ${token}`;
+};
+
+// Phát event toàn cục báo session đã hết hạn hoàn toàn.
+// Dùng khi refresh-token thất bại và app cần clear auth state.
+// Mục đích: tách phần network khỏi phần UI/navigation; nơi khác chỉ cần lắng nghe event này.
 const emitSessionExpired = (context: AuthContext) => {
   window.dispatchEvent(
     new CustomEvent<SessionExpiredDetail>(SESSION_EXPIRED_EVENT, {
@@ -96,14 +109,50 @@ const emitSessionExpired = (context: AuthContext) => {
   );
 };
 
-// Hàm làm mới access token
-const refreshAccessToken = async (context: AuthContext): Promise<string> => {
-  const refreshUrl = context === 'admin'
-    ? `${API_BASE_URL}/api/admin/auth/refresh-token`
-    : `${API_BASE_URL}/api/auth/refresh-token`;
+// Chuẩn hóa lỗi refresh-token về một Error có message phù hợp để hiển thị.
+// Dùng trong nhánh catch của flow refresh token.
+// Mục đích: ưu tiên message backend trả về, tránh để UI thấy lỗi kỹ thuật kiểu "401".
+const normalizeRefreshError = (error: unknown) => {
+  const responseMessage = axios.isAxiosError(error)
+    ? (error.response?.data as { message?: string } | undefined)?.message
+    : undefined;
+  const normalizedError = error instanceof Error ? error : new Error(SESSION_EXPIRED_MESSAGE);
 
+  normalizedError.message = responseMessage || normalizedError.message || SESSION_EXPIRED_MESSAGE;
+  return normalizedError;
+};
+
+const applyApiErrorMessage = (error: AxiosError) => {
+  const responseMessage = (error.response?.data as { message?: string } | undefined)?.message;
+
+  if (responseMessage) {
+    error.message = responseMessage;
+  }
+};
+
+// Giải phóng các request đang chờ trong lúc một request khác đang refresh token.
+// Dùng sau khi refresh thành công hoặc thất bại.
+// Mục đích: nếu refresh thành công thì cho request chờ chạy tiếp, còn nếu thất bại thì reject đồng loạt.
+const processQueue = (error: unknown, token?: string | null) => {
+  failedQueue.forEach(({ request, resolve, reject }) => {
+    if (error) {
+      dismissLoadingToast(request);
+      reject(error);
+      return;
+    }
+
+    resolve(token!);
+  });
+
+  failedQueue = [];
+};
+
+// Gọi API refresh-token để lấy access token mới.
+// Dùng khi request nhận 401 và đủ điều kiện retry.
+// Mục đích: duy trì phiên đăng nhập mà user không phải login lại nếu refresh-token còn hạn.
+const refreshAccessToken = async (context: AuthContext): Promise<string> => {
   const { data } = await axios.post<RefreshTokenResponse>(
-    refreshUrl,
+    getRefreshUrl(context),
     {},
     { withCredentials: true }
   );
@@ -117,174 +166,96 @@ const refreshAccessToken = async (context: AuthContext): Promise<string> => {
   return data.access_token;
 };
 
-// Lên lịch để làm mới access token trước khi nó hết hạn
-const scheduleSilentRefresh = (token: string, context: AuthContext) => {
-  clearSilentRefreshTimer();
-
-  const exp = decodeJwtExp(token);
-  if (!exp) return;
-
-  const refreshAt = exp * 1000 - SILENT_REFRESH_BUFFER_MS;
-  const delay = Math.max(refreshAt - Date.now(), 0);
-
-  silentRefreshTimer = window.setTimeout(async () => {
-    try {
-      const nextToken = await refreshAccessToken(context);
-      scheduleSilentRefresh(nextToken, context);
-    } catch {
-      clearSilentRefreshTimer();
-      accessToken = null;
-      emitSessionExpired(context);
-    }
-  }, delay);
-};
-
-/** Cập nhật access token — được gọi từ authSlice */
+// Cập nhật access token runtime cho toàn bộ apiClient.
+// Dùng sau login, logout, session recovery, hoặc refresh token thành công.
+// Mục đích: request interceptor luôn đọc được token mới nhất từ memory.
 export const setAccessToken = (token: string | null, context: AuthContext = 'user') => {
   accessToken = token;
   accessTokenContext = context;
-
-  clearSilentRefreshTimer();
-  if (token) {
-    scheduleSilentRefresh(token, context);
-  }
 };
 
-/** Lấy access token hiện tại */
+// Trả về access token hiện đang lưu trong memory.
+// Dùng khi nơi khác cần đọc token hiện tại mà không tự quản lý auth state riêng.
+// Mục đích: cung cấp điểm truy cập duy nhất cho token runtime.
 export const getAccessToken = () => accessToken;
 
-/** Lấy base URL của API Gateway */
+// Trả về base URL hiện tại của API gateway.
+// Dùng khi cần dựng URL tuyệt đối từ các module khác.
+// Mục đích: không phải lặp lại logic đọc env ở nhiều nơi.
 export const getApiBaseUrl = () => API_BASE_URL;
 
-// ===== Request Interceptor =====
-// Tự động gắn Authorization header vào mỗi request
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
+// Chạy trước khi request rời frontend.
+// Việc của nó chỉ có 2 thứ: gắn access token hiện tại và mở loading toast cho mutation.
+const handleRequest = (config: InternalAxiosRequestConfig) => {
+  if (accessToken) {
+    setAuthorizationHeader(config, accessToken);
+  }
 
-    const toastableConfig = config as ToastableRequestConfig;
-    if (shouldShowLoadingToast(config) && !toastableConfig._loadingToastId) {
-      toastableConfig._loadingToastId = toast.loading(getLoadingMessage(config.method));
-    }
+  const toastableConfig = config as ToastableRequestConfig;
+  if (shouldShowLoadingToast(config) && !toastableConfig._loadingToastId) {
+    toastableConfig._loadingToastId = toast.loading(getLoadingMessage(config.method));
+  }
 
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// ===== Response Interceptor: Token Refresh Logic =====
-// Khi nhận 401, tự gọi refresh-token rồi retry request ban đầu.
-
-/** Flag tránh gọi refresh nhiều lần cùng lúc */
-let isRefreshing = false;
-
-/** Queue các request đang chờ refresh xong */
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: unknown) => void;
-}> = [];
-
-/** Xử lý queue sau khi refresh xong */
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach(({ resolve, reject }) => {
-    if (error) {
-      reject(error);
-    } else {
-      resolve(token!);
-    }
-  });
-  failedQueue = [];
+  return config;
 };
 
-apiClient.interceptors.response.use(
-  // Response thành công → trả về luôn
-  (response) => {
-    const toastableConfig = response.config as ToastableRequestConfig;
-    if (toastableConfig._loadingToastId) {
-      toast.dismiss(toastableConfig._loadingToastId);
-      delete toastableConfig._loadingToastId;
-    }
+const waitForRefresh = (request: RetryableRequestConfig) =>
+  new Promise((resolve, reject) => {
+    failedQueue.push({
+      request,
+      resolve: (token: string) => {
+        setAuthorizationHeader(request, token);
+        resolve(apiClient(request));
+      },
+      reject,
+    });
+  });
 
-    return response;
-  },
+const retryWithRefresh = async (request: RetryableRequestConfig) => {
+  request._retry = true;
+  isRefreshing = true;
 
-  // Response lỗi → kiểm tra 401 để refresh
-  async (error: AxiosError) => {
-    const originalRequest = error.config as ToastableRequestConfig & { _retry?: boolean };
+  try {
+    const context = getAuthContext(request.url);
+    const nextToken = await refreshAccessToken(context);
 
-    // Chỉ xử lý 401 và request chưa retry
-    // Không retry cho chính request refresh-token và các đường dẫn login (tránh vòng lặp vô hạn)
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry && // để không gọi nếu đã retry
-      !originalRequest.url?.includes('/refresh-token') && // không retry lại khi đang refresh token
-      !originalRequest.url?.includes('/login') // không retry lại khi đang login
-    ) {
-      // Nếu đang refresh → xếp vào hàng chờ
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({
-            resolve: (token: string) => {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-              resolve(apiClient(originalRequest));
-            },
-            reject,
-          });
-        });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const isAdminRoute =
-          originalRequest.url?.includes('/api/admin/') ||
-          accessTokenContext === 'admin';
-        const context: AuthContext = isAdminRoute ? 'admin' : 'user';
-        const nextToken = await refreshAccessToken(context);
-
-        if (nextToken) {
-          // Cập nhật token mới
-          scheduleSilentRefresh(nextToken, context);
-
-          // Xử lý hàng chờ với token mới
-          processQueue(null, nextToken);
-
-          // Retry request ban đầu với token mới (Trường hợp này xảy ra khi refresh token còn hạn)
-          originalRequest.headers.Authorization = `Bearer ${nextToken}`;
-          return apiClient(originalRequest);
-        }
-      } catch (refreshError) {
-        const context: AuthContext =
-          originalRequest.url?.includes('/api/admin/') || accessTokenContext === 'admin'
-            ? 'admin'
-            : 'user';
-        accessToken = null;
-        clearSilentRefreshTimer();
-        processQueue(refreshError, null);
-        emitSessionExpired(context);
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
-    }
-
-    // Trích xuất error message từ backend (nếu có) để frontend hiển thị đúng thông báo
-    if (error.response?.data && (error.response.data as any).message) {
-      error.message = (error.response.data as any).message;
-    } else if (error.code === 'ECONNABORTED') {
-      error.message = 'Yêu cầu xử lý quá lâu. Nếu bạn vừa tải ảnh lên, hãy đợi vài giây rồi kiểm tra lại avatar.';
-    }
-
-    if (originalRequest?._loadingToastId) {
-      toast.dismiss(originalRequest._loadingToastId);
-      delete originalRequest._loadingToastId;
-    }
-
-    return Promise.reject(error);
+    processQueue(null, nextToken);
+    setAuthorizationHeader(request, nextToken);
+    return apiClient(request);
+  } catch (refreshError) {
+    const normalizedError = normalizeRefreshError(refreshError);
+    accessToken = null;
+    dismissLoadingToast(request);
+    processQueue(normalizedError, null);
+    emitSessionExpired(getAuthContext(request.url));
+    return Promise.reject(normalizedError);
+  } finally {
+    isRefreshing = false;
   }
-);
+};
+
+// Chạy khi response thành công.
+// Việc của nó chỉ là đóng loading toast rồi trả response cho nơi gọi.
+const handleResponseSuccess = (response: any) => {
+  dismissLoadingToast(response.config as ToastableRequestConfig);
+  return response;
+};
+
+// Chạy khi response lỗi.
+// Thứ tự xử lý: thử refresh nếu là 401 phù hợp, nếu không thì gắn message đẹp hơn và đóng loading toast.
+const handleResponseError = async (error: AxiosError) => {
+  const originalRequest = error.config as RetryableRequestConfig;
+
+  if (shouldRetryWithRefresh(error, originalRequest)) {
+    return isRefreshing ? waitForRefresh(originalRequest) : retryWithRefresh(originalRequest);
+  }
+
+  applyApiErrorMessage(error);
+  dismissLoadingToast(originalRequest);
+  return Promise.reject(error);
+};
+
+apiClient.interceptors.request.use(handleRequest, Promise.reject);
+apiClient.interceptors.response.use(handleResponseSuccess, handleResponseError);
 
 export default apiClient;

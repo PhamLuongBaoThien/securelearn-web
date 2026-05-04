@@ -41,11 +41,8 @@ export function OAuthCallback() {
         // Lấy profile user
         const profileRes = await getMe();
         if (profileRes.status === 'OK' && profileRes.data) {
-          dispatch(setUser({ user: profileRes.data, accessToken: token }));
-          queryClient.setQueryData(authKeys.session, {
-            user: profileRes.data,
-            accessToken: token,
-          });
+          dispatch(setUser({ user: profileRes.data }));
+          queryClient.setQueryData(authKeys.session, { user: profileRes.data });
           queryClient.setQueryData(authKeys.profile, profileRes.data);
           toast.success(profileRes.message || `Chào mừng ${profileRes.data.fullName}!`);
           navigate('/', { replace: true });
