@@ -1,6 +1,10 @@
 // ========================
-// Course API Service: Tập trung toàn bộ API calls liên quan Khóa học
-// Tất cả đều gọi qua Kong API Gateway → /api/courses
+// File này chứa:
+// - type dùng cho course editor
+// - API gọi course-service cho instructor/student/public
+// - API CRUD section/lesson/quiz và bind asset cho lesson
+// Lưu ý:
+// - frontend editor hiện đang phụ thuộc trực tiếp vào type trong file này
 // ========================
 import apiClient from './apiClient';
 
@@ -50,23 +54,55 @@ export interface ISection {
   lessons: ILesson[];
 }
 
+export type LessonStatus = 'DRAFT' | 'PROCESSING' | 'READY' | 'FAILED';
 export type VideoProcessingStatus = 'NONE' | 'PENDING' | 'PROCESSING' | 'DONE' | 'FAILED';
 
 export interface ILesson {
   _id?: string;
   title: string;
   type: 'VIDEO' | 'DOCUMENT' | 'QUIZ';
-  content?: string;       // URL document hoặc nội dung quiz
+  status?: LessonStatus;
+  summary?: string;
+  content?: string;
   duration?: number;      // Thời lượng (giây)
   order: number;
   isFreePreview?: boolean;
-  // ─── Video fields (chỉ khi type === 'VIDEO') ───
-  videoId?: string;               // ID từ Media Service sau khi upload xong
-  processingStatus?: VideoProcessingStatus; // Trạng thái xử lý HLS
-  processingProgress?: number;    // Tiến độ mã hóa 0-100
-  playbackUrl?: string;           // m3u8 URL khi DONE
+  videoAssetId?: string | null;
+  documentAssetId?: string | null;
+  quizId?: string | null;
+  videoId?: string;
   videoFileName?: string;         // Tên file gốc để hiển thị
   videoDurationSec?: number;      // Thời lượng video (giây)
+  processingProgress?: number;
+  processingStatus?: VideoProcessingStatus;
+  playbackUrl?: string;
+  contentMeta?: {
+    questionCount?: number;
+  } | null;
+}
+
+export interface IQuizQuestionOption {
+  text: string;
+}
+
+export interface IQuizQuestion {
+  questionId?: string;
+  type: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE';
+  prompt: string;
+  options: IQuizQuestionOption[];
+  correctOptionIndexes: number[];
+  explanation?: string;
+  points?: number;
+}
+
+export interface IQuiz {
+  _id: string;
+  title: string;
+  passingScore: number;
+  shuffleQuestions: boolean;
+  shuffleOptions: boolean;
+  timeLimitSec?: number | null;
+  questions: IQuizQuestion[];
 }
 
 export interface IEnrollment {
@@ -135,9 +171,13 @@ export const getCourseForManage = async (courseId: string) => {
  * Cập nhật khóa học (bao gồm sections/lessons).
  * PUT /api/courses/:id
  */
-export const updateCourse = async (courseId: string, payload: Partial<ICourse>) => {
-  const { data } = await apiClient.put<ApiResponse<ICourse>>(`/api/courses/${courseId}`, payload);
-  return data;
+export const updateCourse = async (courseId: string, formData: FormData) => {
+  const response = await apiClient.put<ApiResponse<ICourse>>(`/api/courses/${courseId}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
 };
 
 /**
@@ -146,6 +186,70 @@ export const updateCourse = async (courseId: string, payload: Partial<ICourse>) 
  */
 export const publishCourse = async (courseId: string) => {
   const { data } = await apiClient.patch<ApiResponse<ICourse>>(`/api/courses/${courseId}/publish`);
+  return data;
+};
+
+export const validatePublishCourse = async (courseId: string) => {
+  const { data } = await apiClient.post<ApiResponse<{ ok: boolean; errors: Array<{ field: string; message: string; sectionId?: string; lessonId?: string }> }>>(
+    `/api/courses/${courseId}/publish/validate`
+  );
+  return data;
+};
+
+// Section CRUD cho editor theo hướng item-level.
+export const createCourseSection = async (courseId: string, payload: { title: string; order?: number }) => {
+  const { data } = await apiClient.post<ApiResponse<ISection>>(`/api/courses/${courseId}`, payload);
+  return data;
+};
+
+export const updateCourseSection = async (courseId: string, sectionId: string, payload: { title?: string }) => {
+  const { data } = await apiClient.put<ApiResponse<ISection>>(`/api/courses/${courseId}/${sectionId}`, payload);
+  return data;
+};
+
+export const reorderCourseSections = async (courseId: string, items: Array<{ sectionId: string; order: number }>) => {
+  const { data } = await apiClient.put<ApiResponse>(`/api/courses/${courseId}/reorder`, { items });
+  return data;
+};
+
+export const deleteCourseSection = async (courseId: string, sectionId: string) => {
+  const { data } = await apiClient.delete<ApiResponse>(`/api/courses/${courseId}/${sectionId}`);
+  return data;
+};
+
+// Lesson CRUD cho editor theo hướng item-level.
+export const createCourseLesson = async (
+  courseId: string,
+  sectionId: string,
+  payload: {
+    title: string;
+    type?: ILesson['type'];
+    summary?: string;
+    order?: number;
+    duration?: number;
+    isFreePreview?: boolean;
+  }
+) => {
+  const { data } = await apiClient.post<ApiResponse<ILesson>>(`/api/courses/${courseId}/sections/${sectionId}/lessons`, payload);
+  return data;
+};
+
+export const updateCourseLesson = async (
+  courseId: string,
+  lessonId: string,
+  payload: Partial<Pick<ILesson, 'title' | 'type' | 'summary' | 'duration' | 'isFreePreview' | 'status'>>
+) => {
+  const { data } = await apiClient.put<ApiResponse<ILesson>>(`/api/courses/${courseId}/lessons/${lessonId}`, payload);
+  return data;
+};
+
+export const reorderCourseLessons = async (courseId: string, sectionId: string, items: Array<{ lessonId: string; order: number }>) => {
+  const { data } = await apiClient.put<ApiResponse>(`/api/courses/${courseId}/sections/${sectionId}/lessons/reorder`, { items });
+  return data;
+};
+
+export const deleteCourseLesson = async (courseId: string, lessonId: string) => {
+  const { data } = await apiClient.delete<ApiResponse>(`/api/courses/${courseId}/lessons/${lessonId}`);
   return data;
 };
 
@@ -214,5 +318,42 @@ export const getPublishedCourses = async (params?: {
  */
 export const getCourseBySlug = async (slug: string) => {
   const { data } = await apiClient.get<ApiResponse<ICourse>>(`/api/courses/${slug}`);
+  return data;
+};
+
+// Quiz hiện là domain riêng gắn với lesson type QUIZ.
+export const createLessonQuiz = async (courseId: string, lessonId: string, payload: Omit<IQuiz, '_id'>) => {
+  const { data } = await apiClient.post<ApiResponse<IQuiz>>(`/api/courses/${courseId}/lessons/${lessonId}/quiz`, payload);
+  return data;
+};
+
+export const updateLessonQuiz = async (courseId: string, lessonId: string, payload: Partial<Omit<IQuiz, '_id'>>) => {
+  const { data } = await apiClient.put<ApiResponse<IQuiz>>(`/api/courses/${courseId}/lessons/${lessonId}/quiz`, payload);
+  return data;
+};
+
+export const getLessonQuiz = async (courseId: string, lessonId: string) => {
+  const { data } = await apiClient.get<ApiResponse<IQuiz | null>>(`/api/courses/${courseId}/lessons/${lessonId}/quiz`);
+  return data;
+};
+
+// Bind asset là bước nối giữa media-service và lesson của course-service.
+export const bindVideoAssetToLesson = async (courseId: string, lessonId: string, videoAssetId: string) => {
+  const { data } = await apiClient.post<ApiResponse<ILesson>>(`/api/courses/${courseId}/lessons/${lessonId}/video-asset`, { videoAssetId });
+  return data;
+};
+
+export const bindDocumentAssetToLesson = async (courseId: string, lessonId: string, documentAssetId: string) => {
+  const { data } = await apiClient.post<ApiResponse<ILesson>>(`/api/courses/${courseId}/lessons/${lessonId}/document-asset`, { documentAssetId });
+  return data;
+};
+
+export const removeVideoAssetFromLesson = async (courseId: string, lessonId: string) => {
+  const { data } = await apiClient.delete<ApiResponse<ILesson>>(`/api/courses/${courseId}/lessons/${lessonId}/video-asset`);
+  return data;
+};
+
+export const removeDocumentAssetFromLesson = async (courseId: string, lessonId: string) => {
+  const { data } = await apiClient.delete<ApiResponse<ILesson>>(`/api/courses/${courseId}/lessons/${lessonId}/document-asset`);
   return data;
 };

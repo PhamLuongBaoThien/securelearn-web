@@ -4,46 +4,62 @@
 // ========================
 import React, { useRef, useState, useCallback } from 'react';
 import { ImagePlus, X, UploadCloud } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ThumbnailUploaderProps {
   value: string;          // URL hiện tại (rỗng nếu chưa có)
-  onChange: (url: string) => void;
+  onChange: (previewUrl: string, file: File | null) => void;
+  disabled?: boolean;
 }
 
-export const ThumbnailUploader: React.FC<ThumbnailUploaderProps> = ({ value, onChange }) => {
+export const ThumbnailUploader: React.FC<ThumbnailUploaderProps> = ({ value, onChange, disabled = false }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const processFile = useCallback((file: File) => {
+  const processFile = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
+      toast.error('Vui lòng chọn file ảnh hợp lệ.');
       return;
     }
-    setIsLoading(true);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      onChange(e.target?.result as string);
+    try {
+      setIsLoading(true);
+      const previewUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve((event.target?.result as string) || '');
+        reader.onerror = () => reject(new Error('Không thể đọc file ảnh.'));
+        reader.readAsDataURL(file);
+      });
+      onChange(previewUrl, file);
+    } catch (error: any) {
+      toast.error(error.message || 'Không thể xem trước thumbnail.');
+    } finally {
       setIsLoading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   }, [onChange]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) processFile(file);
+    if (file) {
+      await processFile(file);
+    }
     // Reset input để có thể chọn cùng file lại
     e.target.value = '';
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
+    if (disabled || isLoading) return;
     const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
+    if (file) {
+      await processFile(file);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    if (disabled || isLoading) return;
     setIsDragOver(true);
   };
 
@@ -51,7 +67,7 @@ export const ThumbnailUploader: React.FC<ThumbnailUploaderProps> = ({ value, onC
 
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onChange('');
+    onChange('', null);
   };
 
   return (
@@ -62,7 +78,8 @@ export const ThumbnailUploader: React.FC<ThumbnailUploaderProps> = ({ value, onC
         type="file"
         accept="image/jpeg,image/png,image/webp,image/gif"
         className="hidden"
-        onChange={handleFileChange}
+        onChange={(event) => { void handleFileChange(event); }}
+        disabled={disabled || isLoading}
       />
 
       {value ? (
@@ -77,14 +94,16 @@ export const ThumbnailUploader: React.FC<ThumbnailUploaderProps> = ({ value, onC
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
             <button
               type="button"
+              disabled={disabled || isLoading}
               onClick={() => inputRef.current?.click()}
               className="flex items-center gap-2 px-4 py-2 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm text-zinc-900 dark:text-white rounded-xl text-sm font-medium hover:bg-white dark:hover:bg-zinc-800 transition-colors shadow"
             >
               <ImagePlus className="w-4 h-4" />
-              Thay ảnh
+              {isLoading ? 'Đang xử lý...' : 'Thay ảnh'}
             </button>
             <button
               type="button"
+              disabled={disabled || isLoading}
               onClick={handleRemove}
               className="flex items-center gap-2 px-4 py-2 bg-red-500/90 backdrop-blur-sm text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors shadow"
             >
@@ -100,8 +119,10 @@ export const ThumbnailUploader: React.FC<ThumbnailUploaderProps> = ({ value, onC
       ) : (
         /* Drop zone */
         <div
-          onClick={() => inputRef.current?.click()}
-          onDrop={handleDrop}
+          onClick={() => {
+            if (!disabled && !isLoading) inputRef.current?.click();
+          }}
+          onDrop={(event) => { void handleDrop(event); }}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           className={`
@@ -128,7 +149,7 @@ export const ThumbnailUploader: React.FC<ThumbnailUploaderProps> = ({ value, onC
                   {isDragOver ? 'Thả ảnh vào đây' : 'Kéo & thả hoặc click để upload'}
                 </p>
                 <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                  JPG, PNG, WebP · Tỉ lệ 16:9 được khuyến nghị
+                  JPG, PNG, WebP · Xem trước trước khi lưu · Tỉ lệ 16:9 được khuyến nghị
                 </p>
               </div>
             </>

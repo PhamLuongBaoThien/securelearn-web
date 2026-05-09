@@ -1,5 +1,5 @@
 // ========================
-// Instructor Courses: Danh sách khóa học (Real API)
+// Instructor Courses: Danh sách khóa học
 // ========================
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -46,7 +46,7 @@ export const InstructorCourses: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null); // state dùng để lưu thông tin course cần xóa (tên và id) và mở dialog confirm xóa.
 
   // React Query Hooks
   const { data: courses = [], isLoading, error } = useGetMyCourses();
@@ -222,9 +222,7 @@ export const InstructorCourses: React.FC = () => {
                       >
                         <Edit className="w-4 h-4" /> Chỉnh sửa
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2 cursor-pointer">
-                        <Eye className="w-4 h-4" /> Xem trước
-                      </DropdownMenuItem>
+
                       {course.status === 'DRAFT' && (
                         <>
                           <DropdownMenuItem 
