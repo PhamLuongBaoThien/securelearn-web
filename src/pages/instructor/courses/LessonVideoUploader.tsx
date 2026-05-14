@@ -1,9 +1,7 @@
-// File này là UI upload video thật cho lesson type VIDEO.
-// Flow:
-// - initiate asset
-// - upload file
-// - bind asset vào lesson
-// - poll media-service để cập nhật processing status
+// File này là UI upload video cho lesson type VIDEO.
+// #1 #2 #3 — Tối ưu xử lý FFmpeg và HLS upload đã ở backend (videoProcessor.ts + videoAsset.service.ts)
+// #5 — Exponential backoff polling: 3s → 4.2s → ... → 15s (thay setInterval cố định)
+// Bonus: Real upload progress qua axios onUploadProgress (dù file đi qua backend)
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Upload,
@@ -24,7 +22,8 @@ interface LessonVideoUploaderProps {
   courseId: string;
   lessonId?: string;
   lesson: ILesson;
-  onUpdate: (field: keyof ILesson, value: any) => void;
+  onUpdate: (field: keyof ILesson, value: ILesson[keyof ILesson]) => void;
+  onRefresh?: () => Promise<void>;
 }
 
 const formatDuration = (seconds: number) => {
@@ -37,34 +36,61 @@ const mapAssetStatus = (status?: string): VideoProcessingStatus => {
   if (status === 'READY') return 'DONE';
   if (status === 'FAILED') return 'FAILED';
   if (status === 'PROCESSING') return 'PROCESSING';
-  if (status === 'UPLOADING' || status === 'INITIATED') return 'PENDING';
+  if (status === 'INITIATED') return 'PENDING';
   return 'NONE';
 };
+
+// #5 — Exponential backoff config
+const POLL_INITIAL_MS = 3000;   // Bắt đầu poll sau 3s
+const POLL_MULTIPLIER = 1.4;    // Tăng x1.4 mỗi lần
+const POLL_MAX_MS = 15000;      // Tối đa 15s / lần
 
 export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
   courseId,
   lessonId,
   lesson,
   onUpdate,
+  onRefresh,
 }) => {
   const status: VideoProcessingStatus = lesson.processingStatus ?? 'NONE';
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollDelayRef = useRef(POLL_INITIAL_MS);
+  const hasHydratedRef = useRef(false);
 
   useEffect(() => {
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
   }, []);
 
-  // Poll trạng thái asset để phản ánh tiến trình encode HLS lên UI editor.
+  useEffect(() => {
+    if (!lesson.videoAssetId) {
+      hasHydratedRef.current = false;
+      return;
+    }
+
+    const shouldHydrate =
+      !hasHydratedRef.current ||
+      lesson.processingStatus === undefined ||
+      lesson.processingStatus === 'PENDING' ||
+      lesson.processingStatus === 'PROCESSING';
+
+    if (!shouldHydrate) return;
+
+    hasHydratedRef.current = true;
+    void syncAssetState(lesson.videoAssetId);
+
+    if (lesson.processingStatus === 'PENDING' || lesson.processingStatus === 'PROCESSING') {
+      startPolling(lesson.videoAssetId);
+    }
+  }, [lesson.videoAssetId, lesson.processingStatus]);
+
   const syncAssetState = async (videoAssetId: string) => {
     const response = await getVideoAsset(videoAssetId);
-    if (response.status === 'ERR' || !response.data) {
-      throw new Error(response.message || 'Không thể lấy trạng thái video.');
-    }
+    if (response.status === 'ERR' || !response.data) return;
 
     const asset = response.data;
     onUpdate('videoAssetId', asset._id);
@@ -74,22 +100,36 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
     onUpdate('processingStatus', mapAssetStatus(asset.status));
 
     if (asset.status === 'READY' || asset.status === 'FAILED') {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+        pollTimerRef.current = null;
       }
     }
   };
 
+  // #5 — Exponential backoff: 3s → 4.2s → 5.9s → ... → 15s max
   const startPolling = (videoAssetId: string) => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(() => {
-      void syncAssetState(videoAssetId);
-    }, 2500);
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    pollDelayRef.current = POLL_INITIAL_MS;
+
+    const schedulePoll = () => {
+      pollTimerRef.current = setTimeout(async () => {
+        try {
+          await syncAssetState(videoAssetId);
+        } catch (_) { /* bỏ qua lỗi mạng tạm thời */ }
+
+        const currentStatus = lesson.processingStatus;
+        if (currentStatus !== 'DONE' && currentStatus !== 'FAILED' && pollTimerRef.current !== null) {
+          pollDelayRef.current = Math.min(pollDelayRef.current * POLL_MULTIPLIER, POLL_MAX_MS);
+          schedulePoll();
+        }
+      }, pollDelayRef.current);
+    };
+
+    schedulePoll();
   };
 
-  // Đây là chỗ thay thế flow simulate upload trước đây.
-  const uploadRealVideo = async (file: File) => {
+  const uploadVideo = async (file: File) => {
     if (!lessonId) {
       toast.error('Bạn cần lưu khóa học trước khi tải video lên.');
       return;
@@ -97,23 +137,25 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
 
     onUpdate('processingStatus', 'PENDING');
     onUpdate('videoFileName', file.name);
-    setUploadProgress(15);
+    setUploadProgress(0);
 
+    // Bước 1: Tạo asset record
     const initiateResponse = await initiateVideoUpload({ courseId, lessonId });
     if (initiateResponse.status === 'ERR' || !initiateResponse.data?._id) {
       throw new Error(initiateResponse.message || 'Không thể khởi tạo upload video.');
     }
-
     const videoAssetId = initiateResponse.data._id;
     onUpdate('videoAssetId', videoAssetId);
 
-    setUploadProgress(50);
-    const uploadResponse = await completeVideoUpload(videoAssetId, file);
-    if (uploadResponse.status === 'ERR' || !uploadResponse.data?._id) {
-      throw new Error(uploadResponse.message || 'Không thể tải video lên.');
+    // Bước 2: Upload file qua backend với real progress
+    const completeResponse = await completeVideoUpload(videoAssetId, file, (pct) => {
+      setUploadProgress(pct);
+    });
+    if (completeResponse.status === 'ERR') {
+      throw new Error(completeResponse.message || 'Upload video thất bại.');
     }
 
-    setUploadProgress(100);
+    // Bước 3: Bind video vào lesson
     const bindResponse = await bindVideoAssetToLesson(courseId, lessonId, videoAssetId);
     if (bindResponse.status === 'ERR') {
       throw new Error(bindResponse.message || 'Không thể gắn video vào bài học.');
@@ -121,6 +163,7 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
 
     onUpdate('processingStatus', 'PROCESSING');
     onUpdate('processingProgress', 10);
+    await onRefresh?.();
     startPolling(videoAssetId);
   };
 
@@ -129,21 +172,19 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
       toast.error('Vui lòng chọn file video hợp lệ.');
       return;
     }
-
     try {
-      await uploadRealVideo(file);
+      await uploadVideo(file);
       toast.success('Đã nhận video, hệ thống đang mã hóa.');
-    } catch (error: any) {
+    } catch (error: unknown) {
       onUpdate('processingStatus', 'FAILED');
-      toast.error(error.message || 'Upload video thất bại.');
+      setUploadProgress(0);
+      toast.error(error instanceof Error ? error.message : 'Upload video thất bại.');
     }
   };
 
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      await handleFileSelect(file);
-    }
+    if (file) await handleFileSelect(file);
     e.target.value = '';
   };
 
@@ -151,15 +192,13 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file) {
-      await handleFileSelect(file);
-    }
+    if (file) await handleFileSelect(file);
   };
 
   const resetLocalState = () => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
+    if (pollTimerRef.current) {
+      clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
     }
     onUpdate('processingStatus', 'NONE');
     onUpdate('videoAssetId', undefined);
@@ -175,36 +214,27 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
       resetLocalState();
       return;
     }
-
     try {
       const response = await removeVideoAssetFromLesson(courseId, lessonId);
-      if (response.status === 'ERR') {
-        throw new Error(response.message || 'Không thể gỡ video khỏi bài học.');
-      }
-
+      if (response.status === 'ERR') throw new Error(response.message);
       resetLocalState();
+      await onRefresh?.();
       toast.success('Đã gỡ video khỏi bài học.');
-    } catch (error: any) {
-      toast.error(error.message || 'Gỡ video thất bại.');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Gỡ video thất bại.');
     }
   };
 
-  const handleRetry = async () => {
-    if (!lesson.videoFileName || !fileInputRef.current) {
-      await handleRemove();
-      return;
-    }
-    fileInputRef.current.click();
-  };
-
+  // --- Render: chưa có lessonId ---
   if (!lessonId) {
     return (
       <div className="mt-2 rounded-xl border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
-        Lưu khóa học trước để hệ thống tạo `lessonId`, sau đó bạn mới có thể tải video thật lên.
+        Lưu khóa học trước để có thể tải video lên.
       </div>
     );
   }
 
+  // --- Render: chưa có video ---
   if (status === 'NONE') {
     return (
       <div
@@ -223,7 +253,7 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
           type="file"
           accept="video/*"
           className="hidden"
-          onChange={(event) => { void handleInputChange(event); }}
+          onChange={(e) => { void handleInputChange(e); }}
         />
         <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 group-hover:bg-primary/10 rounded-lg flex items-center justify-center shrink-0 transition-colors">
           <Upload className="w-4 h-4 text-zinc-400 group-hover:text-primary transition-colors" />
@@ -238,6 +268,7 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
     );
   }
 
+  // --- Render: đang upload lên server ---
   if (status === 'PENDING') {
     return (
       <div className="mt-2 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20">
@@ -247,51 +278,51 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
             <p className="text-sm font-medium text-blue-700 dark:text-blue-400 truncate">
               Đang tải lên: {lesson.videoFileName}
             </p>
-            <p className="text-xs text-blue-500 dark:text-blue-500/80">
-              Upload tới Media Service...
-            </p>
+            <p className="text-xs text-blue-500">Uploading to server...</p>
           </div>
           <span className="text-sm font-bold text-blue-600 dark:text-blue-400 shrink-0">
             {Math.round(uploadProgress)}%
           </span>
         </div>
         <div className="w-full bg-blue-100 dark:bg-blue-500/20 rounded-full h-1.5">
-          <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-150" style={{ width: `${uploadProgress}%` }} />
+          <div
+            className="bg-blue-500 h-1.5 rounded-full transition-all duration-150"
+            style={{ width: `${uploadProgress}%` }}
+          />
         </div>
       </div>
     );
   }
 
+  // --- Render: FFmpeg đang xử lý (progress thực từ DB — #3) ---
   if (status === 'PROCESSING') {
     const prog = lesson.processingProgress ?? 0;
     return (
       <div className="mt-2 px-4 py-3 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-4 h-4 shrink-0">
-            <svg className="animate-spin text-indigo-500 w-4 h-4" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-          </div>
+          <svg className="animate-spin text-indigo-500 w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-indigo-700 dark:text-indigo-400 truncate">
               Đang mã hóa HLS: {lesson.videoFileName}
             </p>
-            <p className="text-xs text-indigo-500 dark:text-indigo-500/80">
-              Phân đoạn .ts · AES-128 encryption
-            </p>
+            <p className="text-xs text-indigo-500">Phân đoạn .ts · AES-128 · Copy mode nếu H.264</p>
           </div>
-          <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 shrink-0">
-            {Math.round(prog)}%
-          </span>
+          <span className="text-sm font-bold text-indigo-600 shrink-0">{Math.round(prog)}%</span>
         </div>
         <div className="w-full bg-indigo-100 dark:bg-indigo-500/20 rounded-full h-1.5">
-          <div className="bg-indigo-500 h-1.5 rounded-full transition-all duration-150" style={{ width: `${prog}%` }} />
+          <div
+            className="bg-indigo-500 h-1.5 rounded-full transition-all duration-500"
+            style={{ width: `${prog}%` }}
+          />
         </div>
       </div>
     );
   }
 
+  // --- Render: Xử lý xong ---
   if (status === 'DONE') {
     const dur = lesson.videoDurationSec;
     return (
@@ -304,17 +335,17 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
             <p className="text-sm font-medium text-green-700 dark:text-green-400 truncate max-w-[240px]">
               {lesson.videoFileName}
             </p>
-            <span className="text-xs text-green-600 dark:text-green-500 bg-green-100 dark:bg-green-500/20 px-2 py-0.5 rounded-full shrink-0">
+            <span className="text-xs text-green-600 bg-green-100 dark:bg-green-500/20 px-2 py-0.5 rounded-full shrink-0">
               HLS · AES-128
             </span>
             {dur ? (
-              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-500">
+              <span className="flex items-center gap-1 text-xs text-green-600">
                 <Play className="w-3 h-3" />
                 {formatDuration(dur)}
               </span>
             ) : null}
           </div>
-          <p className="text-xs text-green-500 dark:text-green-600 mt-0.5">Sẵn sàng phát · Đã mã hóa AES-128</p>
+          <p className="text-xs text-green-500 mt-0.5">Sẵn sàng phát · Đã mã hóa</p>
         </div>
         <Button
           type="button"
@@ -330,23 +361,22 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
     );
   }
 
+  // --- Render: Thất bại ---
   return (
     <div className="mt-2 px-4 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 flex items-center gap-3">
       <div className="w-8 h-8 bg-red-500/20 rounded-lg flex items-center justify-center shrink-0">
         <AlertCircle className="w-4 h-4 text-red-600" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-red-700 dark:text-red-400">
-          Xử lý video thất bại
-        </p>
+        <p className="text-sm font-medium text-red-700 dark:text-red-400">Xử lý video thất bại</p>
         <p className="text-xs text-red-500 mt-0.5 truncate">{lesson.videoFileName}</p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <Button
           type="button"
           variant="ghost"
-          onClick={() => void handleRetry()}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-500/30 rounded-lg transition-colors"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           Thử lại
@@ -366,7 +396,7 @@ export const LessonVideoUploader: React.FC<LessonVideoUploaderProps> = ({
         type="file"
         accept="video/*"
         className="hidden"
-        onChange={(event) => { void handleInputChange(event); }}
+        onChange={(e) => { void handleInputChange(e); }}
       />
     </div>
   );

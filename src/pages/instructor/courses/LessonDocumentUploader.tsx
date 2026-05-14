@@ -2,11 +2,11 @@
 // Flow hiện tại:
 // - upload file sang media-service
 // - bind documentAssetId vào lesson ở course-service
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileText, Loader2, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { uploadDocumentAsset } from '@/services/mediaApi';
+import { getDocumentAsset, uploadDocumentAsset } from '@/services/mediaApi';
 import { bindDocumentAssetToLesson, removeDocumentAssetFromLesson, type ILesson } from '@/services/courseApi';
 
 interface LessonDocumentUploaderProps {
@@ -15,11 +15,37 @@ interface LessonDocumentUploaderProps {
   lesson: ILesson;
   onUploaded?: (documentAssetId: string) => void;
   onRemoved?: () => void;
+  onRefresh?: () => Promise<void>;
 }
 
-export function LessonDocumentUploader({ courseId, lessonId, lesson, onUploaded, onRemoved }: LessonDocumentUploaderProps) {
+export function LessonDocumentUploader({ courseId, lessonId, lesson, onUploaded, onRemoved, onRefresh }: LessonDocumentUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [documentName, setDocumentName] = useState<string | null>(null);
+  const hydratedAssetIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!lesson.documentAssetId) {
+      hydratedAssetIdRef.current = null;
+      setDocumentName(null);
+      return;
+    }
+
+    if (hydratedAssetIdRef.current === lesson.documentAssetId) return;
+    hydratedAssetIdRef.current = lesson.documentAssetId;
+
+    void (async () => {
+      try {
+        const response = await getDocumentAsset(lesson.documentAssetId!);
+        if (response.status === 'ERR' || !response.data) {
+          throw new Error(response.message || 'Không thể lấy thông tin tài liệu.');
+        }
+        setDocumentName(response.data.originalFileName || null);
+      } catch {
+        setDocumentName(null);
+      }
+    })();
+  }, [lesson.documentAssetId]);
 
   const handleSelectFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -37,10 +63,13 @@ export function LessonDocumentUploader({ courseId, lessonId, lesson, onUploaded,
         throw new Error(bindResponse.message || 'Không thể gắn tài liệu vào bài học.');
       }
 
+      setDocumentName(response.data.originalFileName || file.name);
       onUploaded?.(response.data._id);
+      await onRefresh?.();
       toast.success('Đã tải tài liệu lên thành công.');
-    } catch (error: any) {
-      toast.error(error.message || 'Upload tài liệu thất bại.');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Upload tài liệu thất bại.';
+      toast.error(errorMessage);
     } finally {
       setIsUploading(false);
       event.target.value = '';
@@ -57,10 +86,13 @@ export function LessonDocumentUploader({ courseId, lessonId, lesson, onUploaded,
         throw new Error(response.message || 'Không thể gỡ tài liệu khỏi bài học.');
       }
 
+      setDocumentName(null);
       onRemoved?.();
+      await onRefresh?.();
       toast.success('Đã gỡ tài liệu khỏi bài học.');
-    } catch (error: any) {
-      toast.error(error.message || 'Gỡ tài liệu thất bại.');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Gỡ tài liệu thất bại.';
+      toast.error(errorMessage);
     } finally {
       setIsRemoving(false);
     }
@@ -78,7 +110,9 @@ export function LessonDocumentUploader({ courseId, lessonId, lesson, onUploaded,
               {lesson.documentAssetId ? 'Tài liệu đã được gắn' : 'Tải tài liệu lên'}
             </p>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              PDF, DOCX, PPTX hoặc tài liệu học tập khác
+              {lesson.documentAssetId
+                ? documentName || 'Tài liệu đã sẵn sàng cho bài học này'
+                : 'PDF, DOCX, PPTX hoặc tài liệu học tập khác'}
             </p>
           </div>
         </div>

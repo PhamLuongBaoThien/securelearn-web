@@ -154,7 +154,7 @@ export const CourseEditor: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("info");
   const [title, setTitle] = useState("");
   const [shortDescription, setShortDescription] = useState("");
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState<string>("");
   const [thumbnail, setThumbnail] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [whatYouWillLearn, setWhatYouWillLearn] = useState<string[]>([""]);
@@ -171,7 +171,7 @@ export const CourseEditor: React.FC = () => {
   // Lưu snapshot giá trị đã lưu thành công để so sánh khi cần Discard
   const savedSnapshotRef = React.useRef<ReturnType<typeof getInitialCourseEditorValues> | null>(null);
 
-  // "idle" | "saving" | "saved" | "error" — chỉ dùng cho tab Giáo trình
+  // "idle" | "saving" | "saved" | "error" — chỉ dùng cho tab Nội dung khóa học
   const [curriculumSaveStatus, setCurriculumSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const curriculumSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -180,12 +180,13 @@ export const CourseEditor: React.FC = () => {
     if (curriculumSaveTimerRef.current) clearTimeout(curriculumSaveTimerRef.current);
     setCurriculumSaveStatus("saving");
     try {
-      await fn();
+      void await fn();
       setCurriculumSaveStatus("saved");
       curriculumSaveTimerRef.current = setTimeout(() => setCurriculumSaveStatus("idle"), 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setCurriculumSaveStatus("error");
-      toast.error(error.message || "Thao tác thất bại.");
+      const errorMessage = error instanceof Error ? error.message : "Thao tác thất bại.";
+      toast.error(errorMessage || "Thao tác thất bại.");
       curriculumSaveTimerRef.current = setTimeout(() => setCurriculumSaveStatus("idle"), 3000);
       throw error;
     }
@@ -234,7 +235,11 @@ export const CourseEditor: React.FC = () => {
   const toggleSection = (index: number) => {
     setExpandedSections((prev) => {
       const next = new Set(prev);
-      next.has(index) ? next.delete(index) : next.add(index);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
       return next;
     });
   };
@@ -267,8 +272,9 @@ export const CourseEditor: React.FC = () => {
       };
       setHasUnsavedChanges(false);
       toast.success("Đã lưu khóa học!");
-    } catch (err: any) {
-      toast.error(err.message || "Lưu thất bại.");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Lưu thất bại.";
+      toast.error(errorMessage);
     }
   };
 
@@ -316,10 +322,10 @@ export const CourseEditor: React.FC = () => {
             toast.success("Khóa học đã được xuất bản!");
             navigate("/instructor/courses");
           },
-          onError: (err: any) => toast.error(err.message),
+          onError: (err: Error) => toast.error(err.message),
         });
       },
-      onError: (err: any) => toast.error(err.message || "Không thể kiểm tra điều kiện xuất bản."),
+      onError: (err: Error) => toast.error(err.message || "Không thể kiểm tra điều kiện xuất bản."),
     });
   };
 
@@ -433,7 +439,7 @@ export const CourseEditor: React.FC = () => {
     });
   };
 
-  const handleLessonFieldChange = (sectionIndex: number, lessonIndex: number, field: keyof ILesson, value: any) => {
+  const handleLessonFieldChange = (sectionIndex: number, lessonIndex: number, field: keyof ILesson, value: ILesson[keyof ILesson]) => {
     setSections((prev) => {
       const next = [...prev];
       const lessons = [...next[sectionIndex].lessons];
@@ -487,13 +493,6 @@ export const CourseEditor: React.FC = () => {
   const handleLessonTypeChange = async (sectionIndex: number, lessonIndex: number, type: string) => {
     const lesson = sections[sectionIndex]?.lessons[lessonIndex];
     if (!lesson?._id) return;
-
-    handleLessonFieldChange(sectionIndex, lessonIndex, "type", type);
-    handleLessonFieldChange(sectionIndex, lessonIndex, "status", "DRAFT");
-    handleLessonFieldChange(sectionIndex, lessonIndex, "videoAssetId", null);
-    handleLessonFieldChange(sectionIndex, lessonIndex, "documentAssetId", null);
-    handleLessonFieldChange(sectionIndex, lessonIndex, "quizId", null);
-    handleLessonFieldChange(sectionIndex, lessonIndex, "processingStatus", type === "VIDEO" ? "NONE" : undefined);
 
     const lessonId = lesson._id; // capture trước closure
     await withCurriculumSave(async () => {
@@ -554,7 +553,7 @@ export const CourseEditor: React.FC = () => {
 
       {/* ===== TAB NAV ===== */}
       <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-        {([{id: "info", label: "Thông tin khóa học"}, {id: "curriculum", label: "Giáo trình"}] as {id: Tab; label: string}[]).map((tab) => (
+        {([{id: "info", label: "Thông tin khóa học"}, {id: "curriculum", label: "Nội dung khóa học"}] as {id: Tab; label: string}[]).map((tab) => (
           <Button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -637,7 +636,7 @@ export const CourseEditor: React.FC = () => {
               </div>
               <div className="space-y-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Yêu cầu & Điều kiện tiên quyết</h3>
+                  <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Yêu cầu trước khi học</h3>
                   <p className="text-xs text-muted-foreground mt-0.5 mb-3">Những kiến thức hoặc công cụ cần có trước khi học</p>
                   <BulletListEditor items={requirements} onChange={(v) => { setRequirements(v); setHasUnsavedChanges(true); }} placeholder="Ví dụ: Biết cơ bản về HTML/CSS..." addLabel="Thêm yêu cầu" />
                 </div>
@@ -657,7 +656,7 @@ export const CourseEditor: React.FC = () => {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Giáo trình</h2>
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Nội dung khóa học</h2>
               {hasBlockingVideos && (
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                   <Clock className="w-3 h-3" />{pendingVideos.length} video đang mã hóa
@@ -759,6 +758,7 @@ export const CourseEditor: React.FC = () => {
                           lesson={lesson}
                           canMoveUp={lessonIndex > 0}
                           canMoveDown={lessonIndex < section.lessons.length - 1}
+                          onRefresh={refreshCourse}
                           onUpdateField={(field, value) => handleLessonFieldChange(sectionIndex, lessonIndex, field, value)}
                           onTitleBlur={() => void handleLessonTitleBlur(sectionIndex, lessonIndex)}
                           onChangeType={(type) => void handleLessonTypeChange(sectionIndex, lessonIndex, type)}
@@ -828,7 +828,8 @@ interface LessonRowProps {
   lesson: ILesson;
   canMoveUp: boolean;
   canMoveDown: boolean;
-  onUpdateField: (field: keyof ILesson, value: any) => void;
+  onRefresh: () => Promise<void>;
+  onUpdateField: (field: keyof ILesson, value: ILesson[keyof ILesson]) => void;
   onTitleBlur: () => void;
   onChangeType: (type: string) => void;
   onMoveUp: () => void;
@@ -836,7 +837,7 @@ interface LessonRowProps {
   onRemove: () => void;
 }
 
-const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canMoveDown, onUpdateField, onTitleBlur, onChangeType, onMoveUp, onMoveDown, onRemove }) => {
+const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canMoveDown, onRefresh, onUpdateField, onTitleBlur, onChangeType, onMoveUp, onMoveDown, onRemove }) => {
   const isVideo = lesson.type === "VIDEO";
   const isDocument = lesson.type === "DOCUMENT";
   const isQuiz = lesson.type === "QUIZ";
@@ -934,12 +935,12 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
         <>
           {isVideo && (
             <div className="px-4 pb-4 pt-1 bg-white dark:bg-zinc-900/50">
-              <LessonVideoUploader courseId={courseId} lessonId={lesson._id} lesson={lesson} onUpdate={(field, value) => onUpdateField(field as keyof ILesson, value)} />
+              <LessonVideoUploader courseId={courseId} lessonId={lesson._id} lesson={lesson} onUpdate={(field, value) => onUpdateField(field as keyof ILesson, value)} onRefresh={onRefresh} />
             </div>
           )}
           {isDocument && (
             <div className="px-4 pb-4 pt-1 bg-white dark:bg-zinc-900/50">
-              <LessonDocumentUploader courseId={courseId} lessonId={lesson._id} lesson={lesson} onUploaded={(documentAssetId) => onUpdateField("documentAssetId", documentAssetId)} onRemoved={() => {
+              <LessonDocumentUploader courseId={courseId} lessonId={lesson._id} lesson={lesson} onRefresh={onRefresh} onUploaded={(documentAssetId) => onUpdateField("documentAssetId", documentAssetId)} onRemoved={() => {
                 onUpdateField("documentAssetId", null);
                 onUpdateField("status", "DRAFT");
               }} />

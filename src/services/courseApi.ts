@@ -70,12 +70,10 @@ export interface ILesson {
   videoAssetId?: string | null;
   documentAssetId?: string | null;
   quizId?: string | null;
-  videoId?: string;
-  videoFileName?: string;         // Tên file gốc để hiển thị
-  videoDurationSec?: number;      // Thời lượng video (giây)
-  processingProgress?: number;
-  processingStatus?: VideoProcessingStatus;
-  playbackUrl?: string;
+  videoFileName?: string;         // Tên file gốc để hiển thị (virtual, poll từ media-service)
+  videoDurationSec?: number;      // Thời lượng video (giây) (virtual, poll từ media-service)
+  processingProgress?: number;    // Tiến độ xử lý (virtual, poll từ media-service)
+  processingStatus?: VideoProcessingStatus; // Trạng thái xử lý (virtual, map từ media-service)
   contentMeta?: {
     questionCount?: number;
   } | null;
