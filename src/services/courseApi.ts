@@ -60,15 +60,14 @@ export type VideoProcessingStatus = 'NONE' | 'PENDING' | 'PROCESSING' | 'DONE' |
 export interface ILesson {
   _id?: string;
   title: string;
-  type: 'VIDEO' | 'DOCUMENT' | 'QUIZ';
+  type: 'VIDEO' | 'QUIZ';         // Chỉ 2 type: VIDEO và QUIZ
   status?: LessonStatus;
-  summary?: string;
-  content?: string;
-  duration?: number;      // Thời lượng (giây)
+  content?: string;               // Mô tả chi tiết bài học (rich text HTML)
+  duration?: number;              // Thời lượng (giây)
   order: number;
   isFreePreview?: boolean;
   videoAssetId?: string | null;
-  documentAssetId?: string | null;
+  attachments?: string[];         // Tài liệu đính kèm — áp dụng cho cả VIDEO lẫn QUIZ
   quizId?: string | null;
   videoFileName?: string;         // Tên file gốc để hiển thị (virtual, poll từ media-service)
   videoDurationSec?: number;      // Thời lượng video (giây) (virtual, poll từ media-service)
@@ -222,7 +221,7 @@ export const createCourseLesson = async (
   payload: {
     title: string;
     type?: ILesson['type'];
-    summary?: string;
+    content?: string;
     order?: number;
     duration?: number;
     isFreePreview?: boolean;
@@ -235,7 +234,7 @@ export const createCourseLesson = async (
 export const updateCourseLesson = async (
   courseId: string,
   lessonId: string,
-  payload: Partial<Pick<ILesson, 'title' | 'type' | 'summary' | 'duration' | 'isFreePreview' | 'status'>>
+  payload: Partial<Pick<ILesson, 'title' | 'type' | 'content' | 'duration' | 'isFreePreview' | 'status'>>
 ) => {
   const { data } = await apiClient.put<ApiResponse<ILesson>>(`/api/courses/${courseId}/lessons/${lessonId}`, payload);
   return data;
@@ -341,17 +340,25 @@ export const bindVideoAssetToLesson = async (courseId: string, lessonId: string,
   return data;
 };
 
-export const bindDocumentAssetToLesson = async (courseId: string, lessonId: string, documentAssetId: string) => {
-  const { data } = await apiClient.post<ApiResponse<ILesson>>(`/api/courses/${courseId}/lessons/${lessonId}/document-asset`, { documentAssetId });
-  return data;
-};
-
 export const removeVideoAssetFromLesson = async (courseId: string, lessonId: string) => {
   const { data } = await apiClient.delete<ApiResponse<ILesson>>(`/api/courses/${courseId}/lessons/${lessonId}/video-asset`);
   return data;
 };
 
-export const removeDocumentAssetFromLesson = async (courseId: string, lessonId: string) => {
-  const { data } = await apiClient.delete<ApiResponse<ILesson>>(`/api/courses/${courseId}/lessons/${lessonId}/document-asset`);
+// Attachment API — tài liệu đính kèm cho cả VIDEO lẫn QUIZ
+export const addAttachmentToLesson = async (courseId: string, lessonId: string, documentAssetId: string) => {
+  const { data } = await apiClient.post<ApiResponse<ILesson>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/attachments`,
+    { documentAssetId },
+    { _suppressLoadingToast: true } as any
+  );
+  return data;
+};
+
+export const removeAttachmentFromLesson = async (courseId: string, lessonId: string, documentAssetId: string) => {
+  const { data } = await apiClient.delete<ApiResponse<ILesson>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/attachments/${documentAssetId}`,
+    { _suppressLoadingToast: true } as any
+  );
   return data;
 };

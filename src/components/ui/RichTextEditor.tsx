@@ -26,6 +26,7 @@ import {
 interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
+  onBlur?: () => void;
   placeholder?: string;
   minHeight?: string;
 }
@@ -73,6 +74,7 @@ const Divider = () => (
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
+  onBlur,
   placeholder = 'Nhập nội dung...',
   minHeight = '200px',
 }) => {
@@ -95,6 +97,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorProps: {
       attributes: {
         class: 'prose dark:prose-invert max-w-none focus:outline-none px-4 py-3 text-sm leading-relaxed',
+      },
+      handleDOMEvents: {
+        blur: () => {
+          onBlur?.();
+          return false;
+        },
       },
     },
   });

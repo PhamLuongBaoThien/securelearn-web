@@ -240,7 +240,7 @@ export function useCreateCourseLesson() {
       payload: {
         title: string;
         type?: ILesson['type'];
-        summary?: string;
+        content?: string;
         order?: number;
         duration?: number;
         isFreePreview?: boolean;
@@ -267,7 +267,7 @@ export function useUpdateCourseLesson() {
     }: {
       courseId: string;
       lessonId: string;
-      payload: Partial<Pick<ILesson, 'title' | 'type' | 'summary' | 'duration' | 'isFreePreview' | 'status'>>;
+      payload: Partial<Pick<ILesson, 'title' | 'type' | 'content' | 'duration' | 'isFreePreview' | 'status'>>;
     }) => {
       const response = await updateCourseLesson(courseId, lessonId, payload);
       if (response.status === 'ERR') throw new Error(response.message);

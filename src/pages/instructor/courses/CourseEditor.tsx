@@ -2,7 +2,7 @@
 // Nó đang ghép 3 lớp logic:
 // - metadata khóa học
 // - curriculum dạng section/lesson
-// - content theo từng loại lesson: video, document, quiz
+// - content theo từng loại lesson: video, quiz và tài liệu đính kèm
 // Lưu ý:
 // - editor hiện dùng CRUD item-level thật
 // - publish bị chặn nếu còn video pending/processing hoặc validate backend không pass
@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
-  FileText,
   GripVertical,
   Loader2,
   Plus,
@@ -54,7 +53,7 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { ThumbnailUploader } from "@/components/ui/ThumbnailUploader";
-import { LessonDocumentUploader } from "./LessonDocumentUploader";
+import { LessonAttachmentManager, type AttachmentOperation } from "./LessonAttachmentManager";
 import { LessonQuizBuilder } from "./LessonQuizBuilder";
 import { LessonVideoUploader } from "./LessonVideoUploader";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -133,6 +132,22 @@ const getInitialCourseEditorValues = (course: ICourse): CourseEditorValues => ({
   price: course.price,
 });
 
+const getVideoDisplayStatus = (lesson: ILesson) => {
+  if (lesson.processingStatus) return lesson.processingStatus;
+  if (!lesson.videoAssetId) return "NONE";
+  if (lesson.status === "READY") return "DONE";
+  if (lesson.status === "FAILED") return "FAILED";
+  if (lesson.status === "PROCESSING") return "PROCESSING";
+  return "NONE";
+};
+
+const getAttachmentOperationLabel = (operation?: AttachmentOperation) => {
+  if (!operation) return "";
+  if (operation.phase === "uploading") return "Đang tải tài liệu";
+  if (operation.phase === "binding") return "Đang gắn tài liệu";
+  return "Đang gỡ tài liệu";
+};
+
 export const CourseEditor: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
@@ -165,6 +180,7 @@ export const CourseEditor: React.FC = () => {
   const [sections, setSections] = useState<ISection[]>([]);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
   const [isMutatingCurriculum, setIsMutatingCurriculum] = useState(false);
+  const [attachmentOperations, setAttachmentOperations] = useState<Record<string, AttachmentOperation>>({});
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -224,8 +240,14 @@ export const CourseEditor: React.FC = () => {
   }, [course, isInitialized]);
 
   const categoryOptions = flattenCategoryOptions(categories);
-  const pendingVideos = sections.flatMap((section) => section.lessons).filter((lesson) => lesson.type === "VIDEO" && (lesson.processingStatus === "PENDING" || lesson.processingStatus === "PROCESSING"));
+  const pendingVideos = sections.flatMap((section) => section.lessons).filter((lesson) => {
+    const videoStatus = getVideoDisplayStatus(lesson);
+    return lesson.type === "VIDEO" && (videoStatus === "PENDING" || videoStatus === "PROCESSING");
+  });
   const hasBlockingVideos = pendingVideos.length > 0;
+  const activeAttachmentOperations = Object.entries(attachmentOperations);
+  const activeAttachmentCount = activeAttachmentOperations.length;
+  const primaryAttachmentOperation = activeAttachmentOperations[0]?.[1];
 
   // Refetch course detail sau khi CRUD section/lesson để UI luôn bám state thật của backend.
   const refreshCourse = async () => {
@@ -449,6 +471,19 @@ export const CourseEditor: React.FC = () => {
     });
   };
 
+  const handleAttachmentOperationChange = (lessonId: string | undefined, operation: AttachmentOperation | null) => {
+    if (!lessonId) return;
+    setAttachmentOperations((prev) => {
+      const next = { ...prev };
+      if (operation) {
+        next[lessonId] = operation;
+      } else {
+        delete next[lessonId];
+      }
+      return next;
+    });
+  };
+
   const handleLessonTitleBlur = async (sectionIndex: number, lessonIndex: number) => {
     const lesson = sections[sectionIndex]?.lessons[lessonIndex];
     if (!lesson?._id) return;
@@ -458,6 +493,20 @@ export const CourseEditor: React.FC = () => {
         courseId: courseId!,
         lessonId,
         payload: { title: lesson.title },
+      });
+      await refreshCourse();
+    });
+  };
+
+  const handleLessonContentBlur = async (sectionIndex: number, lessonIndex: number) => {
+    const lesson = sections[sectionIndex]?.lessons[lessonIndex];
+    if (!lesson?._id) return;
+    const lessonId = lesson._id; // capture trước closure
+    await withCurriculumSave(async () => {
+      await updateLessonMutation.mutateAsync({
+        courseId: courseId!,
+        lessonId,
+        payload: { content: lesson.content || "" },
       });
       await refreshCourse();
     });
@@ -659,31 +708,41 @@ export const CourseEditor: React.FC = () => {
               <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Nội dung khóa học</h2>
               {hasBlockingVideos && (
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />{pendingVideos.length} video đang mã hóa
+                  <Clock className="w-3 h-3" />{pendingVideos.length} video đang xử lý nền
                 </p>
               )}
             </div>
             <div className="flex items-center gap-3">
               {/* Auto-save indicator */}
-              {curriculumSaveStatus === "saving" && (
+              {activeAttachmentCount > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>
+                    {activeAttachmentCount > 1
+                      ? `${activeAttachmentCount} tài liệu đang xử lý`
+                      : getAttachmentOperationLabel(primaryAttachmentOperation)}
+                  </span>
+                </div>
+              )}
+              {activeAttachmentCount === 0 && curriculumSaveStatus === "saving" && (
                 <div className="flex items-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-500">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Đang lưu...</span>
                 </div>
               )}
-              {curriculumSaveStatus === "saved" && (
+              {activeAttachmentCount === 0 && curriculumSaveStatus === "saved" && (
                 <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400" style={{ animation: "fadeIn 0.2s ease" }}>
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Đã lưu</span>
                 </div>
               )}
-              {curriculumSaveStatus === "error" && (
+              {activeAttachmentCount === 0 && curriculumSaveStatus === "error" && (
                 <div className="flex items-center gap-1.5 text-xs text-red-500">
                   <AlertTriangle className="w-3.5 h-3.5" />
                   <span>Lưu thất bại</span>
                 </div>
               )}
-              {curriculumSaveStatus === "idle" && (
+              {activeAttachmentCount === 0 && curriculumSaveStatus === "idle" && (
                 <div className="flex items-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-600">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Tự động lưu</span>
@@ -711,6 +770,12 @@ export const CourseEditor: React.FC = () => {
                       className="h-8 text-sm font-medium border-none bg-transparent p-0 focus-visible:ring-0"
                     />
                     <Badge variant="secondary" className="shrink-0 text-xs">{section.lessons.length} bài</Badge>
+                    {section.lessons.some((lesson) => Boolean(lesson._id && attachmentOperations[lesson._id])) && (
+                      <Badge className="shrink-0 gap-1 bg-blue-500/10 text-blue-600 hover:bg-blue-500/15 border-blue-500/20 text-xs">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        {section.lessons.filter((lesson) => Boolean(lesson._id && attachmentOperations[lesson._id])).length} tài liệu
+                      </Badge>
+                    )}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "up"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={isMutatingCurriculum || sectionIndex === 0}>
@@ -732,7 +797,7 @@ export const CourseEditor: React.FC = () => {
                         <span>
                           <ConfirmDialog
                             title="Xóa chương này?"
-                            description={`Toàn bộ ${section.lessons.length} bài giảng (bao gồm video, tài liệu, quiz) bên trong sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.`}
+                            description={`Toàn bộ ${section.lessons.length} bài giảng (bao gồm video, quiz và tài liệu đính kèm) bên trong sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.`}
                             confirmText="Xóa chương"
                             cancelText="Giữ lại"
                             isDestructive
@@ -758,9 +823,12 @@ export const CourseEditor: React.FC = () => {
                           lesson={lesson}
                           canMoveUp={lessonIndex > 0}
                           canMoveDown={lessonIndex < section.lessons.length - 1}
+                          attachmentOperation={lesson._id ? attachmentOperations[lesson._id] : undefined}
                           onRefresh={refreshCourse}
                           onUpdateField={(field, value) => handleLessonFieldChange(sectionIndex, lessonIndex, field, value)}
                           onTitleBlur={() => void handleLessonTitleBlur(sectionIndex, lessonIndex)}
+                          onContentBlur={() => void handleLessonContentBlur(sectionIndex, lessonIndex)}
+                          onAttachmentOperationChange={(operation) => handleAttachmentOperationChange(lesson._id, operation)}
                           onChangeType={(type) => void handleLessonTypeChange(sectionIndex, lessonIndex, type)}
                           onMoveUp={() => void handleMoveLesson(sectionIndex, lessonIndex, "up")}
                           onMoveDown={() => void handleMoveLesson(sectionIndex, lessonIndex, "down")}
@@ -828,29 +896,26 @@ interface LessonRowProps {
   lesson: ILesson;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  attachmentOperation?: AttachmentOperation;
   onRefresh: () => Promise<void>;
   onUpdateField: (field: keyof ILesson, value: ILesson[keyof ILesson]) => void;
   onTitleBlur: () => void;
+  onContentBlur: () => void;
+  onAttachmentOperationChange: (operation: AttachmentOperation | null) => void;
   onChangeType: (type: string) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
 }
 
-const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canMoveDown, onRefresh, onUpdateField, onTitleBlur, onChangeType, onMoveUp, onMoveDown, onRemove }) => {
+const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canMoveDown, attachmentOperation, onRefresh, onUpdateField, onTitleBlur, onContentBlur, onAttachmentOperationChange, onChangeType, onMoveUp, onMoveDown, onRemove }) => {
   const isVideo = lesson.type === "VIDEO";
-  const isDocument = lesson.type === "DOCUMENT";
   const isQuiz = lesson.type === "QUIZ";
-  const status = lesson.processingStatus;
+  const status = getVideoDisplayStatus(lesson);
 
-  // Mở rộng mặc định nếu bài học chưa có nội dung để người dùng dễ thao tác
-  const [isExpanded, setIsExpanded] = useState(() => {
-    if (isVideo && !lesson.videoAssetId) return true;
-    if (isDocument && !lesson.documentAssetId) return true;
-    // Đối với quiz, mở mặc định vì thường xuyên phải chỉnh sửa nhiều câu hỏi
-    if (isQuiz) return false; 
-    return false;
-  });
+  // Mặc định luôn mở để người dùng thấy trạng thái video và tài liệu đính kèm ngay khi vào trang.
+  // Trước đây collapse nếu đã có asset → ẩn mất trạng thái đang xử lý khi reload trang.
+  const [isExpanded, setIsExpanded] = useState(true);
   const [pendingType, setPendingType] = useState<string | null>(null);
 
   return (
@@ -860,7 +925,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <GripVertical className="w-4 h-4 text-zinc-400 shrink-0" onClick={(e) => e.stopPropagation()} />
-        {isVideo ? <div className={`w-5 h-5 shrink-0 ${status === "DONE" ? "text-green-500" : status === "PROCESSING" || status === "PENDING" ? "text-indigo-500" : status === "FAILED" ? "text-red-500" : "text-blue-400"}`}><Video className="w-4 h-4" /></div> : isDocument ? <FileText className="w-4 h-4 text-emerald-500 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" />}
+        {isVideo ? <div className={`w-5 h-5 shrink-0 ${status === "DONE" ? "text-green-500" : status === "PROCESSING" || status === "PENDING" ? "text-indigo-500" : status === "FAILED" ? "text-red-500" : "text-blue-400"}`}><Video className="w-4 h-4" /></div> : <CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" />}
         <Input 
           value={lesson.title} 
           onChange={(e) => onUpdateField("title", e.target.value)} 
@@ -871,7 +936,13 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
         />
         {isVideo && status && status !== "NONE" && (
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 hidden sm:inline-block ${status === "DONE" ? "bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400" : status === "FAILED" ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400" : "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400"}`}>
-            {status === "DONE" ? "✓ Sẵn sàng" : status === "FAILED" ? "✗ Lỗi" : status === "PROCESSING" ? "⟳ Mã hóa..." : "↑ Đang tải..."}
+            {status === "DONE" ? "✓ Sẵn sàng" : status === "FAILED" ? "✗ Lỗi" : status === "PROCESSING" ? "Đang xử lý" : "Đang tải video"}
+          </span>
+        )}
+        {attachmentOperation && (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            {getAttachmentOperationLabel(attachmentOperation)}
           </span>
         )}
         <Tooltip>
@@ -893,7 +964,6 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
         <div className="w-[120px] shrink-0" onClick={(e) => e.stopPropagation()}>
           <Select value={lesson.type} onChange={(e) => setPendingType(e.target.value)} className="h-8 w-full px-2 text-xs rounded-lg bg-background border border-zinc-200 dark:border-zinc-800">
             <option value="VIDEO">Video</option>
-            <option value="DOCUMENT">Tài liệu</option>
             <option value="QUIZ">Quiz</option>
           </Select>
         </div>
@@ -902,7 +972,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
             <span>
               <ConfirmDialog
                 title="Xóa bài giảng này?"
-                description="Video, tài liệu hoặc quiz đã gắn với bài giảng sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác."
+                description="Video, quiz và tài liệu đính kèm của bài giảng sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác."
                 confirmText="Xóa bài giảng"
                 cancelText="Giữ lại"
                 isDestructive
@@ -920,7 +990,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
         {/* ConfirmDialog đổi loại bài học (controlled) */}
         <ConfirmDialog
           title="Đổi loại bài giảng?"
-          description="Nội dung hiện tại (video, tài liệu hoặc quiz) sẽ bị xóa khi chuyển sang loại khác. Hành động này không thể hoàn tác."
+          description="Video hoặc quiz hiện tại sẽ bị xóa khi chuyển sang loại khác. Tài liệu đính kèm vẫn được giữ lại."
           confirmText="Đổi loại"
           cancelText="Hủy"
           isDestructive
@@ -933,24 +1003,40 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
 
       {isExpanded && (
         <>
+          <div className="px-4 py-4 bg-white dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800/60">
+            <div className="mb-3">
+              <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Mô tả chi tiết</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">Nội dung giới thiệu, ghi chú hoặc hướng dẫn trước khi học bài này</p>
+            </div>
+            <RichTextEditor
+              value={lesson.content || ""}
+              onChange={(value) => onUpdateField("content", value)}
+              onBlur={onContentBlur}
+              placeholder="Viết mô tả chi tiết cho bài học..."
+              minHeight="180px"
+            />
+          </div>
           {isVideo && (
             <div className="px-4 pb-4 pt-1 bg-white dark:bg-zinc-900/50">
               <LessonVideoUploader courseId={courseId} lessonId={lesson._id} lesson={lesson} onUpdate={(field, value) => onUpdateField(field as keyof ILesson, value)} onRefresh={onRefresh} />
             </div>
           )}
-          {isDocument && (
-            <div className="px-4 pb-4 pt-1 bg-white dark:bg-zinc-900/50">
-              <LessonDocumentUploader courseId={courseId} lessonId={lesson._id} lesson={lesson} onRefresh={onRefresh} onUploaded={(documentAssetId) => onUpdateField("documentAssetId", documentAssetId)} onRemoved={() => {
-                onUpdateField("documentAssetId", null);
-                onUpdateField("status", "DRAFT");
-              }} />
-            </div>
-          )}
           {isQuiz && (
-            <div className="px-4 pb-4 pt-1 bg-white dark:bg-zinc-900/50">
+            <div className="px-4 pb-1 pt-1 bg-white dark:bg-zinc-900/50">
               <LessonQuizBuilder courseId={courseId} lessonId={lesson._id} />
             </div>
           )}
+          {/* Tài liệu đính kèm hiển thị cho cả VIDEO lẫn QUIZ */}
+          <div className="px-4 pb-4 pt-1 bg-white dark:bg-zinc-900/50">
+            <LessonAttachmentManager
+              courseId={courseId}
+              lessonId={lesson._id}
+              lesson={lesson}
+              onRefresh={onRefresh}
+              onAttachmentsChange={(attachments) => onUpdateField("attachments", attachments)}
+              onOperationChange={onAttachmentOperationChange}
+            />
+          </div>
         </>
       )}
     </div>

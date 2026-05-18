@@ -5,6 +5,7 @@ import type { RefreshTokenResponse } from '@/types/auth.types';
 type AuthContext = 'user' | 'admin';
 type ToastableRequestConfig = InternalAxiosRequestConfig & {
   _loadingToastId?: string | number;
+  _suppressLoadingToast?: boolean;
 };
 type RetryableRequestConfig = ToastableRequestConfig & {
   _retry?: boolean;
@@ -72,7 +73,8 @@ const getRefreshUrl = (context: AuthContext) =>
 // Mục đích: chỉ hiện toast cho mutation và bỏ qua refresh-token để tránh nhiễu UI.
 const shouldShowLoadingToast = (config: InternalAxiosRequestConfig) => {
   const method = (config.method || 'GET').toUpperCase();
-  return MUTATION_METHODS.has(method) && !config.url?.includes(REFRESH_TOKEN_PATH);
+  const toastableConfig = config as ToastableRequestConfig;
+  return MUTATION_METHODS.has(method) && !toastableConfig._suppressLoadingToast && !config.url?.includes(REFRESH_TOKEN_PATH);
 };
 
 // Quyết định lỗi 401 hiện tại có nên thử refresh token hay không.
