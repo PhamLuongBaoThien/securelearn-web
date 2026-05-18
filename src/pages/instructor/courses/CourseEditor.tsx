@@ -353,12 +353,18 @@ export const CourseEditor: React.FC = () => {
 
   // CRUD section theo từng item thay vì update nguyên mảng curriculum.
   const handleAddSection = async () => {
+    const nextSectionIndex = sections.length;
     await withCurriculumSave(async () => {
       setIsMutatingCurriculum(true);
       try {
         await createSectionMutation.mutateAsync({
           courseId: courseId!,
           payload: { title: `Chương ${sections.length + 1}: Chưa đặt tên`, order: sections.length + 1 },
+        });
+        setExpandedSections((prev) => {
+          const next = new Set(prev);
+          next.add(nextSectionIndex);
+          return next;
         });
         await refreshCourse();
       } finally {
@@ -700,7 +706,7 @@ export const CourseEditor: React.FC = () => {
         </div>
       )}
 
-      {/* ===== TAB: GIÁO TRÌNH ===== */}
+      {/* ===== TAB: Nội dung khóa học ===== */}
       {activeTab === "curriculum" && (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 space-y-6">
           <div className="flex items-center justify-between">

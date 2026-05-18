@@ -486,10 +486,10 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   // Chưa có video: hiển thị dropzone.
   if (status === 'NONE') return (
     <div
-      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-      onDragLeave={() => setIsDragging(false)}
-      onDrop={(e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) void handleFile(f); }}
-      onClick={() => fileInputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} // Khi kéo vào ngăn chặn trình duyệt mở video
+      onDragLeave={() => setIsDragging(false)} // Khi kéo ra thì reset lại trạng thái
+      onDrop={(e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) void handleFile(f); }} // Khi thả vào thì xử lý file
+      onClick={() => fileInputRef.current?.click()} // Khi click vào thì mở file explorer
       className={`mt-2 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 transition-all duration-200 group ${isDragging ? 'border-primary bg-primary/5' : 'border-zinc-200 hover:border-primary/50 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800/50'}`}
     >
       {fileInput}
