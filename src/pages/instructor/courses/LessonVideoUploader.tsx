@@ -4,6 +4,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Upload, CheckCircle2, AlertCircle, RotateCcw, X, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 import type { ILesson, LessonStatus, VideoProcessingStatus } from '@/services/courseApi';
 import { bindVideoAssetToLesson, removeVideoAssetFromLesson } from '@/services/courseApi';
 import {
@@ -642,14 +643,25 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <button type="button" onClick={() => fileInputRef.current?.click()}
-          className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-green-700 transition-colors hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-500/20">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          className="h-8 rounded-lg px-2.5 text-xs text-green-700 hover:bg-green-100 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-500/20 dark:hover:text-green-400"
+        >
           Đổi video
-        </button>
-        <button type="button" onClick={() => void handleRemove()} title="Xóa video"
-          className="rounded-lg p-1.5 text-green-400 transition-colors hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-500/20">
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => void handleRemove()}
+          title="Xóa video"
+          className="h-8 w-8 rounded-lg text-green-400 hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-500/20"
+        >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -668,14 +680,25 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <button type="button" onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-1.5 rounded-lg bg-red-100 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-200 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          className="h-8 gap-1.5 rounded-lg bg-red-100 px-3 text-xs text-red-600 hover:bg-red-200 hover:text-red-600 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30 dark:hover:text-red-400"
+        >
           <RotateCcw className="h-3.5 w-3.5" /> Thử lại
-        </button>
-        <button type="button" onClick={() => void handleRemove()} title="Xóa"
-          className="rounded-lg p-1.5 text-red-400 transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-500/20">
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => void handleRemove()}
+          title="Xóa"
+          className="h-8 w-8 rounded-lg text-red-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-500/20"
+        >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );

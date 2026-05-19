@@ -211,9 +211,14 @@ export const InstructorCourses: React.FC = () => {
                 <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="h-8 w-8 bg-white/90 dark:bg-black/80 backdrop-blur-sm rounded-full flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 transition-colors">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full bg-white/90 text-zinc-700 backdrop-blur-sm hover:bg-white dark:bg-black/80 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      >
                         <MoreVertical className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
                       <DropdownMenuItem 
