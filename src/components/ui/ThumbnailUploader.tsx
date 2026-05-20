@@ -31,8 +31,8 @@ export const ThumbnailUploader: React.FC<ThumbnailUploaderProps> = ({ value, onC
         reader.readAsDataURL(file);
       });
       onChange(previewUrl, file);
-    } catch (error: any) {
-      toast.error(error.message || 'Không thể xem trước thumbnail.');
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Không thể xem trước thumbnail.');
     } finally {
       setIsLoading(false);
     }

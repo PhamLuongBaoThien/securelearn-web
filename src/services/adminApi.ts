@@ -21,9 +21,23 @@ import type {
   ILearningProgress,
   IRolePermission,
   AdminApiResponse,
+  IAdminStaff,
 } from '@/types/admin.types';
 
 const ADMIN = '/api/admin';
+
+type CategoryNodeResponse = Omit<ICategory, 'children'> & {
+  children?: CategoryNodeResponse[];
+};
+
+export type AdminStaffPayload = {
+  fullName: string;
+  email: string;
+  phone?: string;
+  department?: string;
+  adminRole: string;
+  password?: string;
+};
 
 // ===== System & CMS =====
 
@@ -58,7 +72,7 @@ export const deleteBanner = async (id: string): Promise<AdminApiResponse> => {
 };
 
 export const getCategories = async (): Promise<AdminApiResponse<ICategory[]>> => {
-  const res = await apiClient.get<{ status: 'OK' | 'ERR'; message?: string; data?: any[] }>('/api/categories/admin/all');
+  const res = await apiClient.get<{ status: 'OK' | 'ERR'; message?: string; data?: CategoryNodeResponse[] }>('/api/categories/admin/all');
 
   return {
     status: res.data.status,
@@ -73,7 +87,7 @@ export const createCategory = async (data: {
   parentId?: string | null;
   sortOrder?: number;
 }): Promise<AdminApiResponse<ICategory>> => {
-  const res = await apiClient.post<{ status: 'OK' | 'ERR'; message: string; data?: any }>('/api/categories', data);
+  const res = await apiClient.post<{ status: 'OK' | 'ERR'; message: string; data?: CategoryNodeResponse }>('/api/categories', data);
   return {
     status: res.data.status,
     message: res.data.message,
@@ -91,7 +105,7 @@ export const updateCategory = async (
     isActive?: boolean;
   }
 ): Promise<AdminApiResponse<ICategory>> => {
-  const res = await apiClient.put<{ status: 'OK' | 'ERR'; message: string; data?: any }>(`/api/categories/${id}`, data);
+  const res = await apiClient.put<{ status: 'OK' | 'ERR'; message: string; data?: CategoryNodeResponse }>(`/api/categories/${id}`, data);
   return {
     status: res.data.status,
     message: res.data.message,
@@ -100,7 +114,7 @@ export const updateCategory = async (
 };
 
 export const setCategoryStatus = async (id: string, isActive: boolean): Promise<AdminApiResponse<ICategory>> => {
-  const res = await apiClient.patch<{ status: 'OK' | 'ERR'; message: string; data?: any }>(`/api/categories/${id}/status`, { isActive });
+  const res = await apiClient.patch<{ status: 'OK' | 'ERR'; message: string; data?: CategoryNodeResponse }>(`/api/categories/${id}/status`, { isActive });
   return {
     status: res.data.status,
     message: res.data.message,
@@ -113,7 +127,7 @@ export const deleteCategory = async (id: string): Promise<AdminApiResponse> => {
   return res.data;
 };
 
-const mapCategoryNode = (category: any): ICategory => ({
+const mapCategoryNode = (category: CategoryNodeResponse): ICategory => ({
   _id: category._id,
   name: category.name,
   slug: category.slug,
@@ -129,18 +143,18 @@ const mapCategoryNode = (category: any): ICategory => ({
 
 // ===== Users & RBAC =====
 
-export const getAdminStaff = async (): Promise<AdminApiResponse<any[]>> => {
-  const res = await apiClient.get(`${ADMIN}/auth/staff`);
+export const getAdminStaff = async (): Promise<AdminApiResponse<IAdminStaff[]>> => {
+  const res = await apiClient.get<AdminApiResponse<IAdminStaff[]>>(`${ADMIN}/auth/staff`);
   return res.data;
 };
 
-export const createAdminStaff = async (data: any): Promise<AdminApiResponse<any>> => {
-  const res = await apiClient.post(`${ADMIN}/auth/staff`, data);
+export const createAdminStaff = async (data: AdminStaffPayload): Promise<AdminApiResponse<IAdminStaff>> => {
+  const res = await apiClient.post<AdminApiResponse<IAdminStaff>>(`${ADMIN}/auth/staff`, data);
   return res.data;
 };
 
-export const updateAdminStaff = async (id: string, data: any): Promise<AdminApiResponse<any>> => {
-  const res = await apiClient.put(`${ADMIN}/auth/staff/${id}`, data);
+export const updateAdminStaff = async (id: string, data: AdminStaffPayload): Promise<AdminApiResponse<IAdminStaff>> => {
+  const res = await apiClient.put<AdminApiResponse<IAdminStaff>>(`${ADMIN}/auth/staff/${id}`, data);
   return res.data;
 };
 

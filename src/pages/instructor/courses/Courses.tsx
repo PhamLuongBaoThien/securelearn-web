@@ -69,8 +69,8 @@ export const InstructorCourses: React.FC = () => {
           toast.success('Đã tạo khóa học mới!');
           navigate(`/instructor/courses/${newCourse._id}/edit`);
         },
-        onError: (err: any) => {
-          toast.error(err.message || 'Không thể tạo khóa học.');
+        onError: (err: unknown) => {
+          toast.error((err as Error).message || 'Không thể tạo khóa học.');
         },
       }
     );
@@ -83,8 +83,8 @@ export const InstructorCourses: React.FC = () => {
         toast.success(`Đã xóa khóa học "${deleteTarget.title}".`);
         setDeleteTarget(null);
       },
-      onError: (err: any) => {
-        toast.error(err.message || 'Không thể xóa khóa học.');
+      onError: (err: unknown) => {
+        toast.error((err as Error).message || 'Không thể xóa khóa học.');
         setDeleteTarget(null);
       },
     });
@@ -95,8 +95,8 @@ export const InstructorCourses: React.FC = () => {
       onSuccess: () => {
         toast.success('Khóa học đã được xuất bản!');
       },
-      onError: (err: any) => {
-        toast.error(err.message || 'Không thể xuất bản khóa học.');
+      onError: (err: unknown) => {
+        toast.error((err as Error).message || 'Không thể xuất bản khóa học.');
       },
     });
   };

@@ -49,9 +49,9 @@ export function OAuthCallback() {
         } else {
           throw new Error(profileRes.message || 'Không lấy được thông tin profile.');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         setAccessToken(null);
-        toast.error(err.message || 'Xảy ra lỗi khi xác thực. Vui lòng thử lại.');
+        toast.error((err as Error).message || 'Xảy ra lỗi khi xác thực. Vui lòng thử lại.');
         navigate('/auth/login', { replace: true });
       }
     };

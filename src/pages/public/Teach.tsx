@@ -24,8 +24,8 @@ export const Teach = () => {
              toast.success('Chào mừng bạn đến với trang Giảng viên!');
              navigate('/instructor/dashboard');
           },
-          onError: (error: any) => {
-             toast.error(error.message || 'Có lỗi xảy ra khi chuyển sang Giảng viên');
+          onError: (error: unknown) => {
+             toast.error((error as Error).message || 'Có lỗi xảy ra khi chuyển sang Giảng viên');
           }
         });
       } else {
@@ -39,18 +39,16 @@ export const Teach = () => {
   return (
     <div className="w-full">
       {/* Hero Section */}
-      <section className="relative w-full aspect-[21/9] md:aspect-[3/1] min-h-[400px] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0">
-          <img src="https://images.unsplash.com/photo-1580828343064-fde4cad202b5?auto=format&fit=crop&q=80&w=2000" alt="Teaching" className="w-full h-full object-cover grayscale-[30%] dark:grayscale-[50%] dark:opacity-80" />
-          <div className="absolute inset-0 bg-black/50"></div>
-        </div>
-        <div className="relative z-10 text-center px-4">
+      <section className="relative -mt-[88px] flex min-h-[520px] w-full items-center justify-center bg-gradient-to-br from-sky-50 via-blue-100 to-blue-200 px-6 pb-20 pt-36 text-slate-950 dark:from-slate-950 dark:via-blue-950 dark:to-slate-900 dark:text-white">
+        <div className="relative z-10 max-w-3xl text-center">
           <SlideUp>
-            <h1 className="text-4xl md:text-6xl font-bold font-serif text-white mb-6">Đến lúc truyền cảm hứng</h1>
-            <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto mb-8 leading-snug">
+            <h1 className="mb-6 font-serif text-4xl font-bold md:text-6xl">
+              Đến lúc truyền cảm hứng
+            </h1>
+            <p className="mx-auto mb-8 max-w-2xl text-xl leading-snug text-slate-700 md:text-2xl dark:text-white/85">
               Trở thành giảng viên trên SecureLearn và tiếp cận hàng triệu học viên toàn thế giới. Nền tảng của chúng tôi cung cấp hệ thống bảo mật bảo vệ triệt để chất xám của bạn.
             </p>
-            <button onClick={handleStartTeaching} disabled={switchToInstructorMutation.isPending} className={buttonVariants({ variant: 'default', className: 'h-14 px-8 text-lg font-bold rounded-none bg-blue-600 hover:bg-blue-700 text-white border-0' })}>
+            <button onClick={handleStartTeaching} disabled={switchToInstructorMutation.isPending} className={buttonVariants({ variant: 'default', className: 'h-14 px-8 text-lg font-bold rounded-none bg-blue-600 text-white hover:bg-blue-700 border-0 dark:bg-white dark:text-blue-700 dark:hover:bg-white/90' })}>
               {switchToInstructorMutation.isPending ? 'Đang chuyển...' : 'Bắt đầu giảng dạy'}
             </button>
           </SlideUp>

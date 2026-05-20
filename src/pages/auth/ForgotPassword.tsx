@@ -39,8 +39,8 @@ export function ForgotPassword() {
         toast.success(`Đã gửi OTP đến email ${email}. Vui lòng kiểm tra hộp thư.`);
         setStep(2); // Chuyển sang bước 2: nhập OTP
       },
-      onError: (err: any) => {
-        toast.error(err.message || 'Lỗi gửi yêu cầu.');
+      onError: (err: unknown) => {
+        toast.error((err as Error).message || 'Lỗi gửi yêu cầu.');
       }
     });
   };
@@ -57,8 +57,8 @@ export function ForgotPassword() {
         toast.success('Mã OTP chính xác. Vui lòng tạo mật khẩu mới.');
         setStep(3); // Đúng OTP thì tới bước 3
       },
-      onError: (err: any) => {
-        toast.error(err.message || 'Mã OTP không hợp lệ hoặc đã hết hạn.');
+      onError: (err: unknown) => {
+        toast.error((err as Error).message || 'Mã OTP không hợp lệ hoặc đã hết hạn.');
       }
     });
   };
@@ -83,9 +83,9 @@ export function ForgotPassword() {
         toast.success('Lấy lại mật khẩu thành công!');
         setStep(4); // Bước 4: thành công
       },
-      onError: (err: any) => {
+      onError: (err: unknown) => {
         // Trường hợp API lỗi, quay trở lại bước 2 để nhập OTP lấy lại từ đầu
-        toast.error(err.message || 'Lỗi hệ thống, vui lòng thử lại.');
+        toast.error((err as Error).message || 'Lỗi hệ thống, vui lòng thử lại.');
       }
     });
   };

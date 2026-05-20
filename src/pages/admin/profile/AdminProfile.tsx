@@ -17,6 +17,7 @@ export function AdminProfile() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const displayedAvatarPreview = avatarPreview ?? adminUser?.avatarUrl ?? null;
 
   const { mutateAsync: updateAdminProfile, isPending: isUpdating } = useUpdateAdminProfile();
   const { mutateAsync: changeAdminPassword, isPending: isChangingPassword } = useChangeAdminPassword();
@@ -47,9 +48,6 @@ export function AdminProfile() {
     setValue('phone', adminUser?.phone || '');
     setValue('bio', adminUser?.bio || '');
     setValue('department', adminUser?.department || '');
-    if (adminUser?.avatarUrl) {
-      setAvatarPreview(adminUser.avatarUrl);
-    }
   }, [adminUser, setValue]);
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,8 +75,9 @@ export function AdminProfile() {
       await updateAdminProfile(formData);
       toast.success('Ảnh đại diện đã được cập nhật!');
       setAvatarFile(null);
-    } catch (error: any) {
-      toast.error(error.message || 'Cập nhật ảnh thất bại.');
+      setAvatarPreview(null);
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Cập nhật ảnh thất bại.');
     }
   };
 
@@ -92,8 +91,8 @@ export function AdminProfile() {
 
       await updateAdminProfile(formData);
       toast.success('Hồ sơ quản trị đã được cập nhật thành công!');
-    } catch (error: any) {
-      toast.error(error.message || 'Có lỗi xảy ra khi cập nhật hồ sơ');
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Có lỗi xảy ra khi cập nhật hồ sơ');
     }
   };
 
@@ -110,8 +109,8 @@ export function AdminProfile() {
       });
       toast.success('Mật khẩu đã được thay đổi thành công!');
       resetPasswordForm();
-    } catch (error: any) {
-      toast.error(error.message || 'Có lỗi xảy ra khi đổi mật khẩu.');
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Có lỗi xảy ra khi đổi mật khẩu.');
     }
   };
 
@@ -147,7 +146,7 @@ export function AdminProfile() {
           {activeTab === 'avatar' && (
             <AdminProfileAvatarPanel
               adminUser={adminUser}
-              avatarPreview={avatarPreview}
+              avatarPreview={displayedAvatarPreview}
               avatarFile={avatarFile}
               isUpdating={isUpdating}
               fileInputRef={fileInputRef}

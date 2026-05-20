@@ -8,6 +8,7 @@ import { setAdminUser, updateAdminUser, clearAdminUser } from '@/features/auth/a
 import { setAccessToken } from '@/services/apiClient';
 import { loginAdmin, getAdminMe, logoutAdmin, refreshAdminToken } from '@/services/adminAuthApi';
 import type { LoginPayload } from '@/types/auth.types';
+import type { AdminPasswordFormData } from '@/pages/admin/profile/adminProfile.types';
 
 // ===== Query Keys =====
 export const adminAuthKeys = {
@@ -118,7 +119,7 @@ export function useUpdateAdminProfile() {
 // ===== useChangeAdminPassword =====
 export function useChangeAdminPassword() {
   return useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: Pick<AdminPasswordFormData, 'oldPassword' | 'newPassword'>) => {
       const { changeAdminPassword } = await import('@/services/adminAuthApi');
       const response = await changeAdminPassword(payload);
       if (response.status === 'ERR') {

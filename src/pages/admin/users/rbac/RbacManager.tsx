@@ -2,7 +2,7 @@
 // RbacManager: File đầu mối sau khi đã tách nhỏ thành các sub-components và constants riêng.
 // Giữ phần điều phối state, query, và luồng thao tác phân quyền tại đây.
 // ========================
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Info, Loader2, Plus, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAdminRoles } from '@/hooks/useAdminRoles';
@@ -16,7 +16,7 @@ import { RoleFormDialog } from './RoleFormDialog';
 import { RoleListItem } from './RoleListItem';
 
 export const RbacManager: React.FC = () => {
-  const { roles, response, isLoading, invalidate, updateMut, deleteMut } = useAdminRoles();
+  const { roles, isLoading, invalidate, updateMut, deleteMut } = useAdminRoles();
   const [selectedKey, setSelectedKey] = useState('CONTENT_MANAGER');
   const [localPerms, setLocalPerms] = useState<Record<string, string[]>>({});
   const [dirtyRoles, setDirtyRoles] = useState<Set<string>>(new Set());
@@ -24,25 +24,12 @@ export const RbacManager: React.FC = () => {
   const [editRole, setEditRole] = useState<IRolePermission | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  useEffect(() => {
-    const nextRoles = response?.data;
-    if (!nextRoles) return;
-
-    setLocalPerms((prev) => {
-      const nextMap = { ...prev };
-      nextRoles.forEach((role) => {
-        if (!dirtyRoles.has(role.roleKey)) {
-          nextMap[role.roleKey] = role.permissions;
-        }
-      });
-      return nextMap;
-    });
-  }, [dirtyRoles, response?.data]);
-
   const selected = roles.find((role) => role.roleKey === selectedKey);
-  const currentPerms = localPerms[selectedKey] ?? [];
   const isSystem = selected?.isSystem ?? false;
   const isDirty = dirtyRoles.has(selectedKey);
+  const currentPerms = isDirty
+    ? localPerms[selectedKey] ?? selected?.permissions ?? []
+    : selected?.permissions ?? [];
 
   const handleSavePerms = () => {
     updateMut.mutate(
@@ -56,7 +43,7 @@ export const RbacManager: React.FC = () => {
             return next;
           });
         },
-        onError: (error: any) => toast.error(error.message),
+        onError: (error: unknown) => toast.error((error as Error).message || 'Không thể lưu phân quyền.'),
       }
     );
   };
@@ -68,12 +55,11 @@ export const RbacManager: React.FC = () => {
     }
 
     setLocalPerms((prev) => {
-      const current = prev[selectedKey] ?? [];
       return {
         ...prev,
-        [selectedKey]: current.includes(permissionId)
-          ? current.filter((item) => item !== permissionId)
-          : [...current, permissionId],
+        [selectedKey]: currentPerms.includes(permissionId)
+          ? currentPerms.filter((item) => item !== permissionId)
+          : [...currentPerms, permissionId],
       };
     });
     setDirtyRoles((prev) => new Set(prev).add(selectedKey));
@@ -89,8 +75,8 @@ export const RbacManager: React.FC = () => {
     setLocalPerms((prev) => ({
       ...prev,
       [selectedKey]: allSelected
-        ? (prev[selectedKey] ?? []).filter((permissionId) => !permissionIds.includes(permissionId as (typeof permissionIds)[number]))
-        : [...new Set([...(prev[selectedKey] ?? []), ...permissionIds])],
+        ? currentPerms.filter((permissionId) => !permissionIds.includes(permissionId as (typeof permissionIds)[number]))
+        : [...new Set([...currentPerms, ...permissionIds])],
     }));
     setDirtyRoles((prev) => new Set(prev).add(selectedKey));
   };
@@ -161,7 +147,7 @@ export const RbacManager: React.FC = () => {
               key={role.roleKey}
               role={role}
               isSelected={selectedKey === role.roleKey}
-              permissionCount={(localPerms[role.roleKey] ?? role.permissions).length}
+              permissionCount={(dirtyRoles.has(role.roleKey) ? localPerms[role.roleKey] ?? role.permissions : role.permissions).length}
               onSelect={setSelectedKey}
               onEdit={setEditRole}
               onDelete={setDeleteTarget}
@@ -197,6 +183,7 @@ export const RbacManager: React.FC = () => {
       </div>
 
       <RoleFormDialog
+        key={editRole?.roleKey ?? (createOpen ? 'create-open' : 'create-closed')}
         open={createOpen || editRole !== null}
         onOpenChange={(open) => {
           if (!open) {

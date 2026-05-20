@@ -26,6 +26,7 @@ export function Profile() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const displayedAvatarPreview = avatarPreview ?? user?.profile?.avatarUrl ?? null;
 
   const {
     register,
@@ -55,10 +56,6 @@ export function Profile() {
     setValue('phone', user.phone || '');
     setValue('bio', user.profile?.bio || '');
     setValue('headline', user.profile?.headline || '');
-
-    if (user.profile?.avatarUrl) {
-      setAvatarPreview(user.profile.avatarUrl);
-    }
   }, [setValue, user]);
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,8 +83,9 @@ export function Profile() {
       await updateProfile(formData);
       toast.success('Ảnh đại diện đã được cập nhật!');
       setAvatarFile(null);
-    } catch (error: any) {
-      toast.error(error.message || 'Cập nhật ảnh thất bại.');
+      setAvatarPreview(null);
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Cập nhật ảnh thất bại.');
     }
   };
 
@@ -101,8 +99,8 @@ export function Profile() {
 
       await updateProfile(formData);
       toast.success('Hồ sơ của bạn đã được cập nhật thành công!');
-    } catch (error: any) {
-      toast.error(error.message || 'Có lỗi xảy ra khi cập nhật hồ sơ');
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Có lỗi xảy ra khi cập nhật hồ sơ');
     }
   };
 
@@ -134,8 +132,8 @@ export function Profile() {
       resetPasswordForm();
       queryClient.invalidateQueries({ queryKey: authKeys.profile });
       queryClient.invalidateQueries({ queryKey: authKeys.session });
-    } catch (error: any) {
-      toast.error(error.message || 'Có lỗi xảy ra khi đổi mật khẩu.');
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Có lỗi xảy ra khi đổi mật khẩu.');
     }
   };
 
@@ -143,8 +141,8 @@ export function Profile() {
     try {
       await deleteAccount();
       toast.success('Tài khoản đã được xóa.');
-    } catch (error: any) {
-      toast.error(error.message || 'Có lỗi xảy ra khi xóa tài khoản');
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Có lỗi xảy ra khi xóa tài khoản');
     }
   };
 
@@ -189,7 +187,7 @@ export function Profile() {
           {activeTab === 'avatar' && (
             <ProfileAvatarPanel
               user={user}
-              avatarPreview={avatarPreview}
+              avatarPreview={displayedAvatarPreview}
               avatarFile={avatarFile}
               isUpdating={isUpdating}
               fileInputRef={fileInputRef}

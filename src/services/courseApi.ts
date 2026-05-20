@@ -114,7 +114,7 @@ export interface IEnrollment {
   updatedAt?: string;
 }
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = undefined> {
   status: string;
   message?: string;
   data?: T;
@@ -349,16 +349,14 @@ export const removeVideoAssetFromLesson = async (courseId: string, lessonId: str
 export const addAttachmentToLesson = async (courseId: string, lessonId: string, documentAssetId: string) => {
   const { data } = await apiClient.post<ApiResponse<ILesson>>(
     `/api/courses/${courseId}/lessons/${lessonId}/attachments`,
-    { documentAssetId },
-    { _suppressLoadingToast: true } as any
+    { documentAssetId }
   );
   return data;
 };
 
 export const removeAttachmentFromLesson = async (courseId: string, lessonId: string, documentAssetId: string) => {
   const { data } = await apiClient.delete<ApiResponse<ILesson>>(
-    `/api/courses/${courseId}/lessons/${lessonId}/attachments/${documentAssetId}`,
-    { _suppressLoadingToast: true } as any
+    `/api/courses/${courseId}/lessons/${lessonId}/attachments/${documentAssetId}`
   );
   return data;
 };

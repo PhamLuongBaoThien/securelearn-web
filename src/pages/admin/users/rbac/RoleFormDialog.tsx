@@ -1,7 +1,7 @@
 // ========================
 // RoleFormDialog: Dialog tạo/sửa role, tách riêng khỏi RbacManager để gọn luồng chính.
 // ========================
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Loader2, Plus, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAdminRoles } from '@/hooks/useAdminRoles';
@@ -33,15 +33,9 @@ export const RoleFormDialog: React.FC<RoleFormDialogProps> = ({
   initialData,
 }) => {
   const isEdit = !!initialData;
-  const [label, setLabel] = useState('');
-  const [color, setColor] = useState('blue');
+  const [label, setLabel] = useState(initialData?.label ?? '');
+  const [color, setColor] = useState(initialData?.color ?? 'blue');
   const { createMut, updateMut } = useAdminRoles();
-
-  useEffect(() => {
-    if (!open) return;
-    setLabel(initialData?.label ?? '');
-    setColor(initialData?.color ?? 'blue');
-  }, [initialData, open]);
 
   const roleKey = isEdit
     ? initialData!.roleKey
@@ -57,7 +51,7 @@ export const RoleFormDialog: React.FC<RoleFormDialogProps> = ({
             onSuccess();
             onOpenChange(false);
           },
-          onError: (error: any) => toast.error(error.message || 'Lỗi xử lý'),
+          onError: (error: unknown) => toast.error((error as Error).message || 'Lỗi xử lý'),
         }
       );
       return;
@@ -71,7 +65,7 @@ export const RoleFormDialog: React.FC<RoleFormDialogProps> = ({
           onSuccess();
           onOpenChange(false);
         },
-        onError: (error: any) => toast.error(error.message || 'Lỗi xử lý'),
+        onError: (error: unknown) => toast.error((error as Error).message || 'Lỗi xử lý'),
       }
     );
   };

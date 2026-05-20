@@ -27,7 +27,7 @@ export const useAdminUsers = (filters: UserFilters = {}) => {
       queryClient.invalidateQueries({ queryKey: ['admin_users'] });
       toast.success('Đã khóa tài khoản.');
     },
-    onError: (e: any) => toast.error(e.message || 'Lỗi khóa tài khoản'),
+    onError: (e: unknown) => toast.error((e as Error).message || 'Lỗi khóa tài khoản'),
   });
 
   const unlockMut = useMutation({
@@ -36,7 +36,7 @@ export const useAdminUsers = (filters: UserFilters = {}) => {
       queryClient.invalidateQueries({ queryKey: ['admin_users'] });
       toast.success('Đã mở khóa tài khoản.');
     },
-    onError: (e: any) => toast.error(e.message || 'Lỗi mở khóa tài khoản'),
+    onError: (e: unknown) => toast.error((e as Error).message || 'Lỗi mở khóa tài khoản'),
   });
 
   const users = (query.data?.data?.users ?? []).map((user) => ({

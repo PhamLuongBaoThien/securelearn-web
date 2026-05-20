@@ -4,7 +4,7 @@
 import apiClient from './apiClient';
 import type { AxiosProgressEvent } from 'axios';
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = undefined> {
   status: string;
   message?: string;
   data?: T;
@@ -125,8 +125,7 @@ export const uploadDocumentAsset = async (payload: {
           onProgress(Math.round((event.loaded / event.total) * 100));
         }
       },
-      _suppressLoadingToast: true,
-    } as any,
+    },
   );
   return data;
 };

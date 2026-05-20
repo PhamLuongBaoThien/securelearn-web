@@ -3,17 +3,16 @@
 // Giữ phần điều phối state, query, filter, và thao tác quản lý nhân sự tại đây.
 // ========================
 import React, { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
-import type { IAdminStaff, IRolePermission } from '@/types/admin.types';
+import type { IAdminStaff } from '@/types/admin.types';
 import {
-  createAdminStaff,
-  deleteAdminStaff,
-  getAdminStaff,
-  getRolePermissions,
-  updateAdminStaff,
-} from '@/services/adminApi';
+  useAdminStaff,
+  useCreateAdminStaff,
+  useDeleteAdminStaff,
+  useUpdateAdminStaff,
+} from '@/hooks/useAdminStaff';
+import { useAdminRoles } from '@/hooks/useAdminRoles';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,19 +22,13 @@ import { StaffTableRow } from './StaffTableRow';
 import type { StaffFormValues } from './staff.utils';
 
 export const StaffList: React.FC = () => {
-  const queryClient = useQueryClient();
-  const { data: response, isLoading } = useQuery({
-    queryKey: ['admin_staff'],
-    queryFn: getAdminStaff,
-  });
-  const { data: rolesResponse } = useQuery({
-    queryKey: ['role_permissions'],
-    queryFn: getRolePermissions,
-  });
+  const { staff, isLoading } = useAdminStaff();
+  const { roles: rolesData } = useAdminRoles();
+  const createMutation = useCreateAdminStaff();
+  const updateMutation = useUpdateAdminStaff();
+  const deleteMutation = useDeleteAdminStaff();
 
-  const rolesData = (rolesResponse?.data || []) as IRolePermission[];
   const availableRoles = rolesData.filter((role) => role.roleKey !== 'SUPER_ADMIN');
-  const staff = (response?.data || []) as IAdminStaff[];
 
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -43,34 +36,6 @@ export const StaffList: React.FC = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<IAdminStaff | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<IAdminStaff | null>(null);
-
-  const createMutation = useMutation({
-    mutationFn: createAdminStaff,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin_staff'] });
-      toast.success('Đã tạo tài khoản nhân viên thành công.');
-    },
-    onError: (error: any) => toast.error(error.message || 'Lỗi khi tạo nhân viên'),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => updateAdminStaff(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin_staff'] });
-      toast.success('Đã cập nhật thông tin nhân viên.');
-    },
-    onError: (error: any) => toast.error(error.message || 'Lỗi khi cập nhật nhân viên'),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteAdminStaff,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin_staff'] });
-      toast.success('Đã xóa tài khoản nhân viên.');
-      setDeleteTarget(null);
-    },
-    onError: (error: any) => toast.error(error.message || 'Lỗi khi xóa nhân viên'),
-  });
 
   const filteredStaff = staff.filter((item) => {
     const searchLower = search.toLowerCase();
@@ -99,7 +64,7 @@ export const StaffList: React.FC = () => {
       return;
     }
 
-    deleteMutation.mutate(deleteTarget._id);
+    deleteMutation.mutate(deleteTarget._id, { onSuccess: () => setDeleteTarget(null) });
   };
 
   const roleStats =
@@ -117,6 +82,7 @@ export const StaffList: React.FC = () => {
   return (
     <div className="w-full space-y-6">
       <StaffFormDialog
+        key={editTarget?._id ?? (formOpen ? 'create-open' : 'create-closed')}
         open={formOpen}
         onOpenChange={(open) => {
           setFormOpen(open);

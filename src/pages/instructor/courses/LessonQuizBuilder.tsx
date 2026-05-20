@@ -2,17 +2,22 @@
 // Lưu ý:
 // - nếu lesson đã có quiz thì load lên để sửa
 // - UI hiện đang thiên về single choice, dù backend model có hỗ trợ thêm type khác
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { useGetLessonQuiz, useSaveLessonQuiz } from '@/hooks/useInstructorCourses';
-import { type IQuizQuestion } from '@/services/courseApi';
+import { type IQuiz, type IQuizQuestion } from '@/services/courseApi';
 
 interface LessonQuizBuilderProps {
   courseId: string;
   lessonId?: string;
+}
+
+interface LessonQuizFormProps extends LessonQuizBuilderProps {
+  initialQuiz?: IQuiz | null;
 }
 
 const createEmptyQuestion = (): IQuizQuestion => ({
@@ -26,26 +31,28 @@ const createEmptyQuestion = (): IQuizQuestion => ({
 
 export function LessonQuizBuilder({ courseId, lessonId }: LessonQuizBuilderProps) {
   const { data: quiz } = useGetLessonQuiz(courseId, lessonId);
+
+  return (
+    <LessonQuizForm
+      key={quiz?._id ?? `new-${lessonId ?? 'lesson'}`}
+      courseId={courseId}
+      lessonId={lessonId}
+      initialQuiz={quiz}
+    />
+  );
+}
+
+function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps) {
   const saveQuizMutation = useSaveLessonQuiz();
-  const [title, setTitle] = useState('Quiz');
-  const [passingScore, setPassingScore] = useState(70);
-  const [shuffleQuestions, setShuffleQuestions] = useState(false);
-  const [shuffleOptions, setShuffleOptions] = useState(false);
-  const [timeLimitSec, setTimeLimitSec] = useState<number | ''>('');
-  const [questions, setQuestions] = useState<IQuizQuestion[]>([createEmptyQuestion()]);
-  const [quizId, setQuizId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!quiz) return;
-
-    setQuizId(quiz._id);
-    setTitle(quiz.title);
-    setPassingScore(quiz.passingScore);
-    setShuffleQuestions(quiz.shuffleQuestions ?? false);
-    setShuffleOptions(quiz.shuffleOptions ?? false);
-    setTimeLimitSec(quiz.timeLimitSec ?? '');
-    setQuestions(quiz.questions.length > 0 ? quiz.questions : [createEmptyQuestion()]);
-  }, [quiz]);
+  const [title, setTitle] = useState(initialQuiz?.title ?? 'Quiz');
+  const [passingScore, setPassingScore] = useState(initialQuiz?.passingScore ?? 70);
+  const [shuffleQuestions, setShuffleQuestions] = useState(initialQuiz?.shuffleQuestions ?? false);
+  const [shuffleOptions, setShuffleOptions] = useState(initialQuiz?.shuffleOptions ?? false);
+  const [timeLimitSec, setTimeLimitSec] = useState<number | ''>(initialQuiz?.timeLimitSec ?? '');
+  const [questions, setQuestions] = useState<IQuizQuestion[]>(
+    initialQuiz && initialQuiz.questions.length > 0 ? initialQuiz.questions : [createEmptyQuestion()]
+  );
+  const [quizId, setQuizId] = useState<string | null>(initialQuiz?._id ?? null);
 
   const updateQuestion = (index: number, partial: Partial<IQuizQuestion>) => {
     setQuestions((prev) => prev.map((question, questionIndex) => (
@@ -57,7 +64,7 @@ export function LessonQuizBuilder({ courseId, lessonId }: LessonQuizBuilderProps
     if (!lessonId) return;
 
     try {
-      const payload = {
+      const payload: Omit<IQuiz, '_id'> = {
         title,
         passingScore,
         shuffleQuestions,
@@ -70,13 +77,13 @@ export function LessonQuizBuilder({ courseId, lessonId }: LessonQuizBuilderProps
         courseId,
         lessonId,
         quizId,
-        payload: payload as any,
+        payload,
       });
 
       setQuizId(savedQuiz._id);
       toast.success('Đã lưu bài tập.');
-    } catch (error: any) {
-      toast.error(error.message || 'Lưu bài tập thất bại.');
+    } catch (error: unknown) {
+      toast.error((error as Error).message || 'Lưu bài tập thất bại.');
     }
   };
 
@@ -118,7 +125,7 @@ export function LessonQuizBuilder({ courseId, lessonId }: LessonQuizBuilderProps
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                   {index + 1}
                 </span>
-                <select
+                <Select
                   value={question.type}
                   onChange={(e) => {
                     const newType = e.target.value as IQuizQuestion['type'];
@@ -128,12 +135,12 @@ export function LessonQuizBuilder({ courseId, lessonId }: LessonQuizBuilderProps
                     }
                     updateQuestion(index, partial);
                   }}
-                  className="h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="h-8 rounded-lg border-zinc-200 bg-white px-2 py-1 text-xs font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:border-zinc-700 dark:bg-zinc-900"
                 >
                   <option value="SINGLE_CHOICE">Một đáp án</option>
                   <option value="MULTIPLE_CHOICE">Nhiều đáp án</option>
                   <option value="TRUE_FALSE">Đúng / Sai</option>
-                </select>
+                </Select>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-zinc-500">Điểm:</span>
                   <Input type="number" value={question.points ?? 1} onChange={(e) => updateQuestion(index, { points: Number(e.target.value) || 0 })} className="h-8 w-16 text-xs text-center px-1" min={0} />

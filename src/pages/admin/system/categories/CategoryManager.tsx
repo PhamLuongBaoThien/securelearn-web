@@ -76,7 +76,7 @@ export const CategoryManager: React.FC = () => {
         },
         {
           onSuccess: () => toast.success('Đã cập nhật danh mục.'),
-          onError: (err: any) => toast.error(err.message || 'Không thể cập nhật danh mục.'),
+          onError: (err: unknown) => toast.error((err as Error).message || 'Không thể cập nhật danh mục.'),
         }
       );
       return;
@@ -96,7 +96,7 @@ export const CategoryManager: React.FC = () => {
             setExpandedIds((prev) => prev.includes(created._id) ? prev : [...prev, created._id]);
           }
         },
-        onError: (err: any) => toast.error(err.message || 'Không thể tạo danh mục.'),
+        onError: (err: unknown) => toast.error((err as Error).message || 'Không thể tạo danh mục.'),
       }
     );
   };
@@ -153,11 +153,11 @@ export const CategoryManager: React.FC = () => {
         });
       }
       toast.success(direction === 'up' ? 'Đã đưa danh mục lên trên.' : 'Đã đưa danh mục xuống dưới.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (previousCategories) {
         queryClient.setQueryData(adminCategoryKeys.all, previousCategories);
       }
-      toast.error(err.message || 'Không thể cập nhật thứ tự danh mục.');
+      toast.error((err as Error).message || 'Không thể cập nhật thứ tự danh mục.');
     } finally {
       setMovingId(null);
     }
@@ -168,7 +168,7 @@ export const CategoryManager: React.FC = () => {
       { id: category._id, isActive: !category.isActive },
       {
         onSuccess: () => toast.success(category.isActive ? 'Đã vô hiệu hóa danh mục.' : 'Đã kích hoạt danh mục.'),
-        onError: (err: any) => toast.error(err.message || 'Không thể cập nhật trạng thái danh mục.'),
+        onError: (err: unknown) => toast.error((err as Error).message || 'Không thể cập nhật trạng thái danh mục.'),
       }
     );
   };
@@ -183,8 +183,8 @@ export const CategoryManager: React.FC = () => {
           toast.success(`Đã vô hiệu hóa danh mục "${statusTarget.name}".`);
           setStatusTarget(null);
         },
-        onError: (err: any) => {
-          toast.error(err.message || 'Không thể vô hiệu hóa danh mục.');
+        onError: (err: unknown) => {
+          toast.error((err as Error).message || 'Không thể vô hiệu hóa danh mục.');
           setStatusTarget(null);
         },
       }
@@ -199,8 +199,8 @@ export const CategoryManager: React.FC = () => {
         toast.success(`Đã xóa danh mục "${deleteTarget.name}".`);
         setDeleteTarget(null);
       },
-      onError: (err: any) => {
-        toast.error(err.message || 'Không thể xóa danh mục.');
+      onError: (err: unknown) => {
+        toast.error((err as Error).message || 'Không thể xóa danh mục.');
         setDeleteTarget(null);
       },
     });

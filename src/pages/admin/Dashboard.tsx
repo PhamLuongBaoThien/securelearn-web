@@ -1,7 +1,15 @@
 import React from 'react';
-import { Users, BookOpen, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
+import { Users, BookOpen, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Activity, type LucideIcon } from 'lucide-react';
 
-const StatCard = ({ title, value, change, isPositive, icon: Icon }: any) => (
+type StatCardProps = {
+  title: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+  icon: LucideIcon;
+};
+
+const StatCard = ({ title, value, change, isPositive, icon: Icon }: StatCardProps) => (
   <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-sm dark:shadow-none">
     
     <div className="flex justify-between items-start mb-4 relative z-10">

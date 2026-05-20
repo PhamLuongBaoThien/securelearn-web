@@ -33,7 +33,7 @@ export const useAdminRoles = () => {
       queryClient.invalidateQueries({ queryKey: ['role_permissions'] });
       toast.success('Đã xóa vai trò.');
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: unknown) => toast.error((e as Error).message || 'Lỗi xử lý'),
   });
 
   return {

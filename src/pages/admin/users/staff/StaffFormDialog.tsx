@@ -1,7 +1,7 @@
 // ========================
 // StaffFormDialog: Dialog tạo/sửa staff, tách riêng khỏi StaffList để giữ luồng chính gọn hơn.
 // ========================
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Eye, EyeOff, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import type { IAdminStaff, IRolePermission } from '@/types/admin.types';
@@ -51,20 +51,6 @@ export const StaffFormDialog: React.FC<StaffFormDialogProps> = ({
     adminRole: initial?.adminRole || availableRoles[0]?.roleKey || 'SUPPORT_AGENT',
     password: '',
   });
-
-  useEffect(() => {
-    if (!open) return;
-
-    setForm({
-      fullName: initial?.fullName || '',
-      email: initial?.email || '',
-      phone: initial?.phone || '',
-      department: initial?.department || '',
-      adminRole: initial?.adminRole || availableRoles[0]?.roleKey || 'SUPPORT_AGENT',
-      password: '',
-    });
-    setShowPassword(false);
-  }, [availableRoles, initial, open]);
 
   const setField = (key: keyof StaffFormValues, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));

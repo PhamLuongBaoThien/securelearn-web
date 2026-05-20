@@ -12,6 +12,14 @@ import { useLogin } from '@/hooks/useAuth';
 import { googleLogin } from '@/services/authApi';
 import { toast } from 'sonner';
 
+type LoginLocationState = {
+  from?: string | {
+    pathname?: string;
+    search?: string;
+    hash?: string;
+  };
+};
+
 export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -49,7 +57,7 @@ export function Login() {
   };
 
   // Lấy URL trước đó để redirect sau khi đăng nhập (giữ nguyên query param và hash)
-  const state = location.state as any // để lưu URL trước đó
+  const state = location.state as LoginLocationState | null; // để lưu URL trước đó
   let from = '/';
   if (state?.from) {
     if (typeof state.from === 'string') {
