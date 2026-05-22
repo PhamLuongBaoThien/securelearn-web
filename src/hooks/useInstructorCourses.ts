@@ -71,6 +71,10 @@ export function useGetCourseForManage(courseId: string) {
       return response.data as ICourse;
     },
     enabled: !!courseId, // Chỉ fetch khi có courseId
+    // Luôn fetch lại khi mount để tránh hiển thị trạng thái video cũ (ví dụ: PROCESSING)
+    // khi thực tế backend đã xử lý xong (READY). Nếu không, user sẽ thấy cảnh báo
+    // "video đang xử lý" giả khi quay lại trang chỉnh sửa.
+    staleTime: 0,
   });
 }
 

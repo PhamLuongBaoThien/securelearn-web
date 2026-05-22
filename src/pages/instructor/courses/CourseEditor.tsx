@@ -8,6 +8,7 @@
 // - publish bị chặn nếu còn video pending/processing hoặc validate backend không pass
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowDown,
@@ -39,6 +40,7 @@ import {
   useUpdateCourseLesson,
   useUpdateCourseSection,
   useValidatePublishCourse,
+  instructorKeys,
 } from "@/hooks/useInstructorCourses";
 import { usePublicCourseCategories } from "@/hooks/usePublicCourseCategories";
 import {
@@ -151,6 +153,7 @@ const getAttachmentOperationLabel = (operation?: AttachmentOperation) => {
 export const CourseEditor: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: course, isLoading, error, refetch } = useGetCourseForManage(courseId!);
   const { data: categories = [], isLoading: isCategoriesLoading } = usePublicCourseCategories();
@@ -249,10 +252,13 @@ export const CourseEditor: React.FC = () => {
   const activeAttachmentCount = activeAttachmentOperations.length;
   const primaryAttachmentOperation = activeAttachmentOperations[0]?.[1];
 
-  // Refetch course detail sau khi CRUD section/lesson để UI luôn bám state thật của backend.
+  // Refetch course detail + invalidate danh sách khóa học để duration/thông tin mới nhất
+  // hiển thị đúng cả ở trang editor lẫn trang danh sách.
   const refreshCourse = async () => {
     await refetch();
-  };
+    // Invalidate cache myCourses để trang danh sách hiển thị totalDuration mới nhất
+    void queryClient.invalidateQueries({ queryKey: instructorKeys.myCourses }); // queryClient.invalidateQueries là hàm trong React Query dùng để làm mới lại cache
+   };
 
   const toggleSection = (index: number) => {
     setExpandedSections((prev) => {

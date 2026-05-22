@@ -83,9 +83,8 @@ export function useLogout() {
     },
     onSuccess: () => {
       dispatch(clearUser());
-      // Xóa toàn bộ cache React Query liên quan auth
-      queryClient.removeQueries({ queryKey: authKeys.session });
-      queryClient.removeQueries({ queryKey: authKeys.profile });
+      // Xóa TOÀN BỘ React Query cache để tài khoản mới không thấy dữ liệu cũ
+      queryClient.clear();
     },
   });
 }

@@ -90,15 +90,15 @@ type UploadSnapshot = {
 // Store progress upload ở cấp module để không mất tiến độ khi component bị unmount.
 // Ví dụ: user thu nhỏ lesson row rồi mở lại trong khi browser vẫn đang PUT lên MinIO.
 // Store này chỉ sống trong cùng tab hiện tại, không dùng để resume sau khi refresh trang.
-const uploadSnapshots = new Map<string, UploadSnapshot>();
-const uploadListeners = new Map<string, Set<(snapshot: UploadSnapshot | null) => void>>();
+const uploadSnapshots = new Map<string, UploadSnapshot>(); // key là lessonId, value là snapshot tiến độ upload hiện tại của bài học đó
+const uploadListeners = new Map<string, Set<(snapshot: UploadSnapshot | null) => void>>(); // key là lessonId, value là tập hợp các callback đang subscribe để nhận thông báo khi snapshot của bài học đó thay đổi
 
 // Cập nhật snapshot upload và thông báo cho mọi instance LessonVideoUploader
 // đang subscribe cùng lessonId.
 const emitUploadSnapshot = (key: string, snapshot: UploadSnapshot | null) => {
   if (snapshot) uploadSnapshots.set(key, snapshot);
-  else uploadSnapshots.delete(key);
-  uploadListeners.get(key)?.forEach((listener) => listener(snapshot));
+  else uploadSnapshots.delete(key); // Nếu snapshot = null nghĩa là upload đã xong hoặc bị hủy, xóa luôn khỏi store để tránh nhầm lẫn khi mở lại component mới sau này.
+  uploadListeners.get(key)?.forEach((listener) => listener(snapshot)); // Khi có snapshot mới, gọi tất cả callback đang đăng ký để họ cập nhật giao diện
 };
 
 // Khi component mount lại, hàm này trả ngay snapshot hiện có nếu upload vẫn chạy.
@@ -239,10 +239,13 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     const ls = assetToLessonStatus(a.status);
     if (ls) onUpdate('status', ls); // Chuyển status của Lesson thành READY nếu video xử lý xong
     
-    // Nếu xử lý xong hoặc lỗi hẳn, tắt polling API đi
+    // Nếu xử lý xong hoặc lỗi hẳn, tắt polling API đi và refresh course data
     if (a.status === 'READY' || a.status === 'FAILED') {
       isPollingRef.current = false;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+      // Refresh course data để backend trả về duration, status mới nhất
+      // và đồng thời invalidate cache danh sách khóa học (myCourses)
+      void onRefresh?.(); // hàm onRefresh này được truyền từ CourseEditor
     }
     return mapAssetStatus(a.status);
   };
@@ -282,10 +285,10 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     if (!lessonId) { toast.error('Lưu khóa học trước khi tải video lên.'); return; }
 
     const uploadKey = lessonId;
-    let assetId: string | undefined;
-    let confirmed = false;
-    let bound = false;
-    
+    let assetId: string | undefined; // Sau bước initiateVideoUpload, backend trả về VideoAsset._id
+    let confirmed = false; // chưa confirm upload với media-service, dùng cho cleanup khi lỗi
+    let bound = false; // chưa gắn asset vào lesson (chưa gọi bindVideoAssetToLesson), cũng dùng cho cleanup
+
     // Snapshot dùng để khôi phục trạng thái nếu user chuyển tab
     let currentSnapshot: UploadSnapshot = {
       fileName: file.name,
@@ -298,8 +301,8 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
 
     const updateUploadSnapshot = (patch: Partial<UploadSnapshot>) => {
       currentSnapshot = { ...currentSnapshot, ...patch };
-      emitUploadSnapshot(uploadKey, currentSnapshot);
-    };
+      emitUploadSnapshot(uploadKey, currentSnapshot); // để lưu snapshot và báo cho UI
+    }; // khi có assetId thì updateUploadSnapshot({ assetId });
 
     // Reset giao diện về trạng thái chuẩn bị upload
     setAssetMeta({ _id: '', status: 'UPLOADING', originalFileName: file.name, mimeType: file.type,
@@ -311,11 +314,11 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     onUpdate('processingStatus', 'PENDING');
     onUpdate('videoFileName', file.name);
     updateUploadSnapshot({ progress: 0, speedBps: 0, etaSec: null });
-    isPollingRef.current = false;
-    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    isPollingRef.current = false; // Tắt cờ polling đề phòng trường hợp user chọn file mới khi đang có 1 upload chưa xong, tránh việc 2 luồng upload cùng chạy song song
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current); // Dọn dẹp bộ hẹn giờ polling cũ nếu có, đề phòng trường hợp user chọn file mới khi đang có 1 upload chưa xong, tránh việc 2 luồng upload cùng chạy song song
 
     try {
-      const totalStartedAt = performance.now();
+      const totalStartedAt = performance.now(); // performance là API của trình duyệt để đo thời gian chính xác hơn Date.now()
       let phaseStartedAt = totalStartedAt;
       
       // Hàm ghi log đo lường xem mỗi giai đoạn tốn bao nhiêu thời gian (chỉ chạy ở dev mode)

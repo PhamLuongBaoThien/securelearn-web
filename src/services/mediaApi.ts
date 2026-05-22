@@ -33,7 +33,6 @@ export interface IDocumentAsset {
   sizeBytes?: number;
   filePath?: string;
   pageCount?: number;
-  errorMessage?: string | null;
 }
 
 // --- VIDEO ---
