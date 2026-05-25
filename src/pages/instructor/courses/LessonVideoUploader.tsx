@@ -1,16 +1,28 @@
-// Component upload video cho bài học của instructor.
-// Luồng: FE xin multipart session → batch presign URLs → PUT chunks song song
-// → bind asset vào lesson → confirm → media-service xử lý HLS → FE poll trạng thái.
+// Component upload video cho 1 bài học của instructor.
+// Thứ tự flow chính:
+// 1. User chọn file → handleFile validate nhẹ và enqueue job vào videoUploadQueue.
+// 2. Queue tới lượt → uploadVideo chạy initiate → batch presign URLs → PUT chunks song song.
+// 3. PUT xong → bind asset vào lesson → confirm multipart upload.
+// 4. Backend xử lý HLS → startPolling/syncAssetState cập nhật trạng thái READY/FAILED.
+// 5. User hủy → cancelVideoUpload abort XHR, cleanup multipart nếu đã tạo asset.
 import React, { useEffect, useRef, useState } from 'react';
 import { Upload, CheckCircle2, AlertCircle, RotateCcw, X, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ILesson, LessonStatus, VideoProcessingStatus } from '@/services/courseApi';
 import { bindVideoAssetToLesson, removeVideoAssetFromLesson } from '@/services/courseApi';
 import {
   getVideoAsset, initiateVideoUpload, getBatchPartPresignedUrls,
   confirmVideoUpload, abortVideoUpload, type IVideoAsset,
 } from '@/services/mediaApi';
+import {
+  cancelVideoUpload, // hủy job đang chờ hoặc đang upload.
+  enqueueVideoUpload, // đưa file vào hàng đợi.
+  subscribeVideoUploadQueue, // component lắng nghe queue để biết job nào đang chạy.
+  updateVideoUploadQueueJob, // component lắng nghe queue để biết job nào đang chạy.
+  type VideoUploadQueueJobSnapshot,
+} from './videoUploadQueue';
 
 // Các hàm format nhỏ chỉ phục vụ hiển thị trên UI.
 const fmt = {
@@ -82,6 +94,7 @@ type UploadSnapshot = {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
+  phase: 'queued' | 'uploading'; // queued: chờ lượt trong FE queue; uploading: đang PUT chunks lên storage
   progress: number;
   speedBps: number;
   etaSec: number | null;
@@ -129,6 +142,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   const [assetMeta, setAssetMeta] = useState<AssetMeta | null>(null);
   // uploadProgress: Phần trăm quá trình trình duyệt đẩy file lên MinIO (0-100%)
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<'queued' | 'uploading'>('uploading');
   // uploadSpeedBps: Tốc độ mạng đang tải lên (Byte / giây)
   const [uploadSpeedBps, setUploadSpeedBps] = useState(0);
   // uploadEtaSec: Thời gian ước tính còn lại để tải xong (Giây)
@@ -137,6 +151,8 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   const [processingElapsed, setProcessingElapsed] = useState(0);
   // isDragging: Trạng thái UI khi người dùng đang giữ chuột kéo file lơ lửng trên vùng dropzone
   const [isDragging, setIsDragging] = useState(false);
+  // Snapshot queue toàn tab. Component chỉ dùng job của lesson hiện tại để lấy progress và jobId khi hủy.
+  const [queueJobs, setQueueJobs] = useState<VideoUploadQueueJobSnapshot[]>([]);
 
   // --- REFS LƯU TRỮ GIÁ TRỊ (KHÔNG LÀM RENDER LẠI COMPONENT) ---
   const fileInputRef = useRef<HTMLInputElement>(null); // Dùng để gọi click() mở hộp thoại chọn file ẩn
@@ -157,6 +173,9 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   useEffect(() => {
     onUpdateRef.current = onUpdate;
   }, [onUpdate]);
+
+  // Theo dõi queue store để khung upload biết job hiện tại đang queued/uploading và có thể hủy.
+  useEffect(() => subscribeVideoUploadQueue(setQueueJobs), []);
 
   // EFFECT 1: ĐĂNG KÝ THEO DÕI TIẾN ĐỘ UPLOAD TOÀN CỤC (GLOBAL SUBSCRIPTION)
   // Rất quan trọng: Nếu user đang upload mà nhấn thu nhỏ bài học (unmount component) rồi mở lại,
@@ -181,6 +200,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         updatedAt: undefined,
       });
       setUploadProgress(snapshot.progress);
+      setUploadPhase(snapshot.phase);
       setUploadSpeedBps(snapshot.speedBps);
       setUploadEtaSec(snapshot.etaSec);
       if (snapshot.assetId) onUpdateRef.current('videoAssetId', snapshot.assetId);
@@ -279,10 +299,11 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   };
 
   // QUY TRÌNH UPLOAD CHÍNH (MAIN UPLOAD FLOW)
-  // Đây là trái tim của file, chịu trách nhiệm cho cả một quy trình gồm nhiều bước phức tạp:
-  // Khởi tạo DB -> Lấy Presigned URL -> Đẩy file song song lên Cloud -> Gắn ID vào bài học -> Báo Backend xác nhận hoàn thành
-  const uploadVideo = async (file: File) => {
+  // Hàm này chỉ chạy khi queue gọi tới lượt job.
+  // signal dùng để hủy giữa chừng: trước/sau mỗi API call đều kiểm tra, còn XMLHttpRequest thì abort trực tiếp.
+  const uploadVideo = async (file: File, queueJobId: string, signal: AbortSignal) => {
     if (!lessonId) { toast.error('Lưu khóa học trước khi tải video lên.'); return; }
+    if (signal.aborted) throw new Error('Đã hủy upload.');
 
     const uploadKey = lessonId;
     let assetId: string | undefined; // Sau bước initiateVideoUpload, backend trả về VideoAsset._id
@@ -294,6 +315,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       fileName: file.name,
       mimeType: file.type,
       sizeBytes: file.size,
+      phase: 'uploading',
       progress: 0,
       speedBps: 0,
       etaSec: null,
@@ -302,18 +324,25 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     const updateUploadSnapshot = (patch: Partial<UploadSnapshot>) => {
       currentSnapshot = { ...currentSnapshot, ...patch };
       emitUploadSnapshot(uploadKey, currentSnapshot); // để lưu snapshot và báo cho UI
+      updateVideoUploadQueueJob(queueJobId, {
+        progress: currentSnapshot.progress,
+        speedBps: currentSnapshot.speedBps,
+        etaSec: currentSnapshot.etaSec,
+        status: currentSnapshot.phase === 'queued' ? 'queued' : 'uploading',
+      });
     }; // khi có assetId thì updateUploadSnapshot({ assetId });
 
     // Reset giao diện về trạng thái chuẩn bị upload
     setAssetMeta({ _id: '', status: 'UPLOADING', originalFileName: file.name, mimeType: file.type,
       sourceSizeBytes: file.size, durationSec: 0, processingProgress: 0,
       errorMessage: null, uploadCompletedAt: null, updatedAt: undefined });
+    setUploadPhase('uploading');
     setUploadProgress(0);
     setUploadSpeedBps(0);
     setUploadEtaSec(null);
     onUpdate('processingStatus', 'PENDING');
     onUpdate('videoFileName', file.name);
-    updateUploadSnapshot({ progress: 0, speedBps: 0, etaSec: null });
+    updateUploadSnapshot({ phase: 'uploading', progress: 0, speedBps: 0, etaSec: null });
     isPollingRef.current = false; // Tắt cờ polling đề phòng trường hợp user chọn file mới khi đang có 1 upload chưa xong, tránh việc 2 luồng upload cùng chạy song song
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current); // Dọn dẹp bộ hẹn giờ polling cũ nếu có, đề phòng trường hợp user chọn file mới khi đang có 1 upload chưa xong, tránh việc 2 luồng upload cùng chạy song song
 
@@ -338,6 +367,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
 
       // BƯỚC 1: KHỞI TẠO (INITIATE)
       // Nói với backend: "Tui chuẩn bị đẩy file này lên nè, tạo record trong DB và cho tui cái ID đi"
+      if (signal.aborted) throw new Error('Đã hủy upload.');
       const initRes = await initiateVideoUpload({
         courseId,
         lessonId,
@@ -393,10 +423,11 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       };
 
       // BƯỚC 2: XIN ĐƯỜNG DẪN PRESIGNED VÀ TIẾN HÀNH UPLOAD
-      const storageUploadStartedAt = performance.now();
+      const storageUploadStartedAt = performance.now(); // Dùng để đo tổng thời gian upload lên MinIO
       const totalParts = Math.ceil(file.size / CHUNK_SIZE);
       
       // Xin backend tạo 40 cái URLs nếu file có 40 parts (giả sử)
+      if (signal.aborted) throw new Error('Đã hủy upload.');
       const batchRes = await getBatchPartPresignedUrls(assetId, totalParts);
       if (batchRes.status === 'ERR' || !batchRes.data?.urls?.length) throw new Error('Không lấy được URL upload.');
       const urls = batchRes.data.urls;
@@ -425,9 +456,19 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       // Hàm uploadPart: Bắn 1 part (chunk) trực tiếp lên MinIO thông qua Presigned URL bằng XMLHttpRequest (để track progress)
       // Lưu ý: Không set Content-Type ở đây để tránh làm sai lệch chữ ký (signature) của URL
       const uploadPart = async (i: number) => {
+        if (signal.aborted) throw new Error('Đã hủy upload.');
         const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
         const etag = await new Promise<string>((res, rej) => {
           const xhr = new XMLHttpRequest();
+          const abort = () => {
+            xhr.abort();
+            rej(new Error('Đã hủy upload.'));
+          };
+          if (signal.aborted) {
+            abort();
+            return;
+          }
+          signal.addEventListener('abort', abort, { once: true });
           xhr.open('PUT', urls[i], true);
           xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) tickPart(i, e.loaded);
@@ -435,11 +476,18 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
           xhr.onload = () => {
             if (xhr.status >= 200 && xhr.status < 300) {
               const etag = xhr.getResponseHeader('etag'); // Lấy chữ ký nhận dạng của đoạn file trên server (bắt buộc)
+              signal.removeEventListener('abort', abort);
               if (etag) { tickPart(i, chunk.size); res(etag); }
               else rej(new Error(`Part ${i + 1} thiếu ETag.`));
-            } else rej(new Error(`Part ${i + 1} lỗi HTTP ${xhr.status}.`));
+            } else {
+              signal.removeEventListener('abort', abort);
+              rej(new Error(`Part ${i + 1} lỗi HTTP ${xhr.status}.`));
+            }
           };
-          xhr.onerror = () => rej(new Error(`Part ${i + 1}: lỗi mạng.`));
+          xhr.onerror = () => {
+            signal.removeEventListener('abort', abort);
+            rej(new Error(`Part ${i + 1}: lỗi mạng.`));
+          };
           xhr.send(chunk);
         });
         // Ghi chú lại ETag để xíu nữa gửi về cho BE kiểm tra tính toàn vẹn
@@ -449,8 +497,9 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       // TẠO WORKER POOL ĐỂ UPLOAD SONG SONG
       // Giới hạn CONCURRENCY = 5 (tối đa 5 request chạy cùng lúc để không làm cháy mạng của trình duyệt)
       let next = 0;
-      const worker = async () => { while (next < totalParts) { const i = next++; await uploadPart(i); } };
+      const worker = async () => { while (!signal.aborted && next < totalParts) { const i = next++; await uploadPart(i); } };
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, totalParts) }, worker));
+      if (signal.aborted) throw new Error('Đã hủy upload.');
       if (parts.some((p) => !p)) throw new Error('Upload chưa hoàn tất đủ parts.');
 
       const storageUploadMs = performance.now() - storageUploadStartedAt;
@@ -462,6 +511,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
 
       // BƯỚC 3: GẮN (BIND) VIDEO VÀO BÀI HỌC
       // Làm trước khi confirm để nhỡ server convert cực nhanh, bắn event về thì FE cũng biết là video này thuộc bài học này.
+      if (signal.aborted) throw new Error('Đã hủy upload.');
       const bindRes = await bindVideoAssetToLesson(courseId, lessonId, assetId);
       if (bindRes.status === 'ERR') throw new Error(bindRes.message || 'Không thể gắn video vào bài học.');
       bound = true;
@@ -470,6 +520,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       // BƯỚC 4: XÁC NHẬN (CONFIRM) HOÀN TẤT
       // Gửi danh sách ETag về cho BE. BE sẽ lệnh cho MinIO ghép 40 parts lại thành 1 file .mp4 duy nhất.
       // Sau đó BE đẩy file sang RabbitMQ để gọi worker chạy FFmpeg convert ra HLS.
+      if (signal.aborted) throw new Error('Đã hủy upload.');
       const confirmRes = await confirmVideoUpload(assetId, parts);
       if (confirmRes.status === 'ERR') throw new Error(confirmRes.message || 'Confirm upload thất bại.');
       confirmed = true;
@@ -478,6 +529,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       onUpdate('processingStatus', 'PROCESSING');
       setAssetMeta((p) => p ? { ...p, status: 'UPLOADED', processingProgress: 5 } : p);
       emitUploadSnapshot(uploadKey, null);
+      updateVideoUploadQueueJob(queueJobId, { progress: 100, speedBps: 0, etaSec: null });
       startPolling(assetId, true);
       void onRefresh?.();
     } catch (err) {
@@ -488,21 +540,49 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         if (bound) await removeVideoAssetFromLesson(courseId, lessonId).catch(() => {});
         onUpdate('videoAssetId', undefined);
       }
+      onUpdate('processingStatus', signal.aborted ? 'NONE' : 'FAILED');
+      setUploadProgress(0);
       throw err;
     }
   };
 
-  // Validate file được chọn rồi chạy upload.
+  // Bước user chọn file: chỉ validate nhẹ + đưa vào queue.
+  // Chưa gọi initiate-upload ở đây để tránh tạo multipart session khi job vẫn đang chờ.
   const handleFile = async (file: File) => {
+//     enqueueVideoUpload
+//     chờ tới lượt
+//     queue gọi uploadVideo
+//     lúc đó mới initiate-upload
     if (!file.type.startsWith('video/')) { toast.error('Vui lòng chọn file video hợp lệ.'); return; }
-    try {
-      await uploadVideo(file);
-      toast.success('Đã tải video lên, hệ thống sẽ xử lý nền.');
-    } catch (e: unknown) {
-      onUpdate('processingStatus', 'FAILED');
-      setUploadProgress(0);
-      toast.error(e instanceof Error ? e.message : 'Upload video thất bại.');
-    }
+    if (!lessonId) { toast.error('Lưu khóa học trước khi tải video lên.'); return; }
+
+    const queuedSnapshot: UploadSnapshot = {
+      fileName: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      phase: 'queued',
+      progress: 0,
+      speedBps: 0,
+      etaSec: null,
+    };
+    setAssetMeta({ _id: '', status: 'UPLOADING', originalFileName: file.name, mimeType: file.type,
+      sourceSizeBytes: file.size, durationSec: 0, processingProgress: 0,
+      errorMessage: null, uploadCompletedAt: null, updatedAt: undefined });
+    setUploadPhase('queued');
+    setUploadProgress(0);
+    setUploadSpeedBps(0);
+    setUploadEtaSec(null);
+    onUpdate('processingStatus', 'PENDING');
+    onUpdate('videoFileName', file.name);
+    emitUploadSnapshot(lessonId, queuedSnapshot);
+
+    // Đưa file vào hàng đợi
+    enqueueVideoUpload({
+      lessonId,
+      file,
+      run: (jobId, signal) => uploadVideo(file, jobId, signal),
+    });
+    toast.info('Đã thêm video vào hàng đợi upload.');
   };
 
   // Gỡ video khỏi lesson. Course-service sẽ phát cleanup event để media-service xóa file.
@@ -526,6 +606,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     if (lessonId) emitUploadSnapshot(lessonId, null);
     setAssetMeta(null);
+    setUploadPhase('uploading');
     setUploadProgress(0);
     hydratedAssetIdRef.current = null;
     onUpdate('processingStatus', 'NONE');
@@ -534,6 +615,24 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     onUpdate('processingProgress', undefined);
     onUpdate('videoDurationSec', undefined);
     onUpdate('status', 'DRAFT');
+  };
+
+  // Queue store có thể giữ cả job done/failed/canceled để debug nội bộ,
+  // nhưng UI lesson chỉ cần biết job đang chờ/đang upload để hiển thị progress và nút hủy.
+  const visibleQueueJobs = queueJobs.filter(
+    (job) =>
+      job.lessonId === lessonId &&
+      (job.status === 'queued' || job.status === 'uploading'),
+  );
+  const activeQueueJob = visibleQueueJobs.find((job) => job.status === 'queued' || job.status === 'uploading');
+
+  // Hủy từ UI: dừng queue job, xóa snapshot local và đưa lesson về dropzone nếu đang pending.
+  const handleCancelQueueJob = (jobId: string) => {
+    cancelVideoUpload(jobId);
+    if (lessonId) emitUploadSnapshot(lessonId, null);
+    if (status === 'PENDING') {
+      resetState();
+    }
   };
 
   // Input file ẩn được dùng lại cho upload mới, đổi video và thử lại.
@@ -562,49 +661,68 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
 
   // Chưa có video: hiển thị dropzone.
   if (status === 'NONE') return (
-    <div
-      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} // Khi kéo vào ngăn chặn trình duyệt mở video
-      onDragLeave={() => setIsDragging(false)} // Khi kéo ra thì reset lại trạng thái
-      onDrop={(e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) void handleFile(f); }} // Khi thả vào thì xử lý file
-      onClick={() => fileInputRef.current?.click()} // Khi click vào thì mở file explorer
-      className={`mt-2 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 transition-all duration-200 group ${isDragging ? 'border-primary bg-primary/5' : 'border-zinc-200 hover:border-primary/50 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800/50'}`}
-    >
-      {fileInput}
-      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${isDragging ? 'bg-primary/15' : 'bg-zinc-100 group-hover:bg-primary/10 dark:bg-zinc-800'}`}>
-        <Upload className={`h-4 w-4 transition-colors ${isDragging ? 'text-primary' : 'text-zinc-400 group-hover:text-primary'}`} />
+    <>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} // Khi kéo vào ngăn chặn trình duyệt mở video
+        onDragLeave={() => setIsDragging(false)} // Khi kéo ra thì reset lại trạng thái
+        onDrop={(e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) void handleFile(f); }} // Khi thả vào thì xử lý file
+        onClick={() => fileInputRef.current?.click()} // Khi click vào thì mở file explorer
+        className={`mt-2 flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 transition-all duration-200 group ${isDragging ? 'border-primary bg-primary/5' : 'border-zinc-200 hover:border-primary/50 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800/50'}`}
+      >
+        {fileInput}
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${isDragging ? 'bg-primary/15' : 'bg-zinc-100 group-hover:bg-primary/10 dark:bg-zinc-800'}`}>
+          <Upload className={`h-4 w-4 transition-colors ${isDragging ? 'text-primary' : 'text-zinc-400 group-hover:text-primary'}`} />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-zinc-600 transition-colors group-hover:text-zinc-900 dark:text-zinc-400 dark:group-hover:text-white">
+            {isDragging ? 'Thả video vào đây...' : 'Tải video lên'}
+          </p>
+          <p className="mt-0.5 text-xs text-zinc-400">MP4, MOV, AVI, MKV</p>
+        </div>
       </div>
-      <div>
-        <p className="text-sm font-medium text-zinc-600 transition-colors group-hover:text-zinc-900 dark:text-zinc-400 dark:group-hover:text-white">
-          {isDragging ? 'Thả video vào đây...' : 'Tải video lên'}
-        </p>
-        <p className="mt-0.5 text-xs text-zinc-400">MP4, MOV, AVI, MKV</p>
-      </div>
-    </div>
+    </>
   );
 
   // Đang upload từ browser lên MinIO.
   if (status === 'PENDING') {
-    const spd = fmt.speed(uploadSpeedBps);
-    const eta = uploadEtaSec && uploadEtaSec > 0 ? fmt.eta(uploadEtaSec) : null;
+    const isQueued = uploadPhase === 'queued' || activeQueueJob?.status === 'queued';
+    const displayedProgress = activeQueueJob ? activeQueueJob.progress : uploadProgress;
+    const spd = fmt.speed(activeQueueJob?.speedBps ?? uploadSpeedBps);
+    const etaValue = activeQueueJob?.etaSec ?? uploadEtaSec;
+    const eta = etaValue && etaValue > 0 ? fmt.eta(etaValue) : null;
     return (
-      <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/20 dark:bg-blue-500/10">
-        <div className="flex items-center gap-3">
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-sm font-medium text-blue-700 dark:text-blue-300">Đang tải lên — {Math.round(uploadProgress)}%</p>
-              {spd && <span className="shrink-0 text-xs text-blue-500">{spd}{eta ? ` · còn ${eta}` : ''}</span>}
+      <>
+        <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/20 dark:bg-blue-500/10">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-sm font-medium text-blue-700 dark:text-blue-300">
+                  {isQueued ? 'Đang chờ trong hàng đợi' : `Đang tải lên — ${Math.round(displayedProgress)}%`}
+                </p>
+                {!isQueued && spd && <span className="shrink-0 text-xs text-blue-500">{spd}{eta ? ` · còn ${eta}` : ''}</span>}
+              </div>
+              <p className="mt-0.5 truncate text-xs text-blue-500">{name}{size ? ` · ${size}` : ''}</p>
             </div>
-            <p className="mt-0.5 truncate text-xs text-blue-500">{name}{size ? ` · ${size}` : ''}</p>
+            {activeQueueJob && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => handleCancelQueueJob(activeQueueJob.id)} className="h-8 w-8 shrink-0 rounded-lg text-blue-400 hover:bg-blue-100 hover:text-red-500 dark:hover:bg-blue-500/20">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Hủy upload</TooltipContent>
+              </Tooltip>
+            )}
           </div>
+          <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-blue-100 dark:bg-blue-500/20">
+            <div className="h-full rounded-full bg-blue-500 transition-all duration-200 ease-out" style={{ width: `${displayedProgress}%` }} />
+          </div>
+          <p className="mt-2 text-xs text-blue-400">
+            {isQueued ? 'Video sẽ tự bắt đầu khi lượt upload hiện tại hoàn tất.' : 'Đừng đóng tab này trong khi đang tải lên.'}
+          </p>
         </div>
-        <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-blue-100 dark:bg-blue-500/20">
-          <div className="h-full rounded-full bg-blue-500 transition-all duration-200 ease-out" style={{ width: `${uploadProgress}%` }} />
-        </div>
-        <p className="mt-2 text-xs text-blue-400">
-          Đừng đóng tab này trong khi đang tải lên.
-        </p>
-      </div>
+      </>
     );
   }
 
@@ -655,16 +773,20 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         >
           Đổi video
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => void handleRemove()}
-          title="Xóa video"
-          className="h-8 w-8 rounded-lg text-green-400 hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-500/20"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => void handleRemove()}
+              className="h-8 w-8 rounded-lg text-green-400 hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-500/20"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Xóa video</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );
@@ -692,16 +814,20 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         >
           <RotateCcw className="h-3.5 w-3.5" /> Thử lại
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => void handleRemove()}
-          title="Xóa"
-          className="h-8 w-8 rounded-lg text-red-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-500/20"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => void handleRemove()}
+              className="h-8 w-8 rounded-lg text-red-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-500/20"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Xóa video lỗi</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );
