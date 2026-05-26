@@ -830,7 +830,7 @@ export const CourseEditor: React.FC = () => {
                     <div className="p-4 space-y-3 border-t border-zinc-200 dark:border-zinc-800">
                       {section.lessons.map((lesson, lessonIndex) => (
                         <LessonRow
-                          key={lesson._id || lessonIndex}
+                          key={`${lesson._id || lessonIndex}-${lesson.type}`}
                           courseId={courseId!}
                           lesson={lesson}
                           canMoveUp={lessonIndex > 0}
@@ -1015,29 +1015,29 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
 
       {isExpanded && (
         <>
+          {isVideo && (
+            <div className="px-4 pb-4 pt-4 bg-white dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800/60">
+              <LessonVideoUploader courseId={courseId} lessonId={lesson._id} lesson={lesson} onUpdate={(field, value) => onUpdateField(field as keyof ILesson, value)} onRefresh={onRefresh} />
+            </div>
+          )}
+          {isQuiz && (
+            <div className="px-4 pb-1 pt-4 bg-white dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800/60">
+              <LessonQuizBuilder courseId={courseId} lessonId={lesson._id} />
+            </div>
+          )}
           <div className="px-4 py-4 bg-white dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800/60">
             <div className="mb-3">
-              <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Mô tả chi tiết</h4>
+              <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Mô tả tổng quan bài học</h4>
               <p className="text-xs text-muted-foreground mt-0.5">Nội dung giới thiệu, ghi chú hoặc hướng dẫn trước khi học bài này</p>
             </div>
             <RichTextEditor
               value={lesson.content || ""}
               onChange={(value) => onUpdateField("content", value)}
               onBlur={onContentBlur}
-              placeholder="Viết mô tả chi tiết cho bài học..."
+              placeholder="Viết mô tả tổng quan cho bài học..."
               minHeight="180px"
             />
           </div>
-          {isVideo && (
-            <div className="px-4 pb-4 pt-1 bg-white dark:bg-zinc-900/50">
-              <LessonVideoUploader courseId={courseId} lessonId={lesson._id} lesson={lesson} onUpdate={(field, value) => onUpdateField(field as keyof ILesson, value)} onRefresh={onRefresh} />
-            </div>
-          )}
-          {isQuiz && (
-            <div className="px-4 pb-1 pt-1 bg-white dark:bg-zinc-900/50">
-              <LessonQuizBuilder courseId={courseId} lessonId={lesson._id} />
-            </div>
-          )}
           {/* Tài liệu đính kèm hiển thị cho cả VIDEO lẫn QUIZ */}
           <div className="px-4 pb-4 pt-1 bg-white dark:bg-zinc-900/50">
             <LessonAttachmentManager

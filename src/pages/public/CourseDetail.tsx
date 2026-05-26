@@ -44,9 +44,9 @@ export function CourseDetail() {
   };
 
   return (
-    <div className="bg-background min-h-screen pb-20 relative">
+    <div className="bg-background min-h-screen pb-20 relative -mt-[88px]">
       {/* Dark Theme Header Banner — không có margin/padding top để sát header */}
-      <FadeIn className="bg-zinc-900 text-zinc-50 py-8 lg:py-12 px-6">
+      <FadeIn className="bg-zinc-900 text-zinc-50 pt-[120px] pb-8 lg:pt-[136px] lg:pb-12 px-6">
         <div className="max-w-[1340px] mx-auto flex flex-col lg:flex-row gap-8 relative">
           
           <FadeIn direction="up" delay={0.2} className="lg:w-2/3 pr-0 lg:pr-10 space-y-4">

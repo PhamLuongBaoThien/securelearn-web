@@ -44,6 +44,18 @@ const fmt = {
     if (s >= 60) return `${Math.floor(s / 60)}p ${s % 60}s`;
     return `${s}s`;
   },
+  dateTime: (value?: string | null) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return new Intl.DateTimeFormat('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(date);
+  },
 };
 
 const clamp = (v?: number) =>
@@ -78,9 +90,7 @@ const assetToLessonStatus = (s?: IVideoAsset['status']): LessonStatus | null => 
 };
 
 // Cấu hình polling và multipart upload.
-const POLL_INITIAL_MS = 3000;
-const POLL_MULT = 1.4;
-const POLL_MAX_MS = 15000;
+const POLL_INITIAL_MS = 3000; // Cứ 3 giây hỏi trạng thái xử lý video một lần.
 const CHUNK_SIZE = 25 * 1024 * 1024;   // 25 MB — MinIO yêu cầu part ≥ 5MB (trừ part cuối)
 const CONCURRENCY = 5;                  // Số chunks upload song song tối đa
 
@@ -157,7 +167,6 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   // --- REFS LƯU TRỮ GIÁ TRỊ (KHÔNG LÀM RENDER LẠI COMPONENT) ---
   const fileInputRef = useRef<HTMLInputElement>(null); // Dùng để gọi click() mở hộp thoại chọn file ẩn
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Lưu ID của bộ hẹn giờ polling API
-  const pollDelayRef = useRef(POLL_INITIAL_MS); // Khoảng thời gian chờ giữa 2 lần gọi API polling (sẽ tự động tăng dần)
   const isPollingRef = useRef(false); // Cờ cắm đánh dấu "đang trong quá trình poll hay không"
   const onUpdateRef = useRef(onUpdate); // Lưu callback onUpdate mới nhất để gọi trong useEffect mà không bị cảnh báo lặp
   
@@ -256,7 +265,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     onUpdate('processingProgress', clamp(a.processingProgress));
     onUpdate('processingStatus', mapAssetStatus(a.status));
     
-    const ls = assetToLessonStatus(a.status);
+    const ls = assetToLessonStatus(a.status); // Chuyển status kỹ thuật của asset sang status hiển thị của lesson để cập nhật badge, publish gate, row state...
     if (ls) onUpdate('status', ls); // Chuyển status của Lesson thành READY nếu video xử lý xong
     
     // Nếu xử lý xong hoặc lỗi hẳn, tắt polling API đi và refresh course data
@@ -267,30 +276,27 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       // và đồng thời invalidate cache danh sách khóa học (myCourses)
       void onRefresh?.(); // hàm onRefresh này được truyền từ CourseEditor
     }
-    return mapAssetStatus(a.status);
+    return mapAssetStatus(a.status); // trả về status đã map để hàm gọi biết có cần tiếp tục polling hay không
   };
 
   // HÀM POLLING: KIỂM TRA TRẠNG THÁI LIÊN TỤC
   // Sau khi video tải lên thành công, Backend bắt đầu convert (HLS). 
   // Frontend phải hỏi BE liên tục: "Xong chưa? Xong chưa?"
-  // Áp dụng thuật toán Exponential Backoff: Khoảng cách giữa các lần hỏi sẽ giãn dần ra (3s -> 4.2s -> 6s -> ... max 15s) 
-  // để chống sập server do bị spam request.
+  // Poll cố định mỗi POLL_INITIAL_MS để UI cập nhật đều, dễ theo dõi tiến trình xử lý.
   const startPolling = (id: string, immediate = false) => {
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     isPollingRef.current = true; // Bật cờ cho phép chạy
-    pollDelayRef.current = POLL_INITIAL_MS; // Reset bộ đếm về 3 giây ban đầu
     
     const schedule = () => {
       pollTimerRef.current = setTimeout(async () => {
         let next: VideoProcessingStatus | null = null;
         try { next = await syncAssetState(id); } catch { next = 'PROCESSING'; }
         
-        // Nếu vẫn đang xử lý, tăng delay lên 1.4 lần và tự gọi lại chính nó
+        // Nếu vẫn đang xử lý thì tiếp tục hỏi lại sau một khoảng cố định.
         if (isPollingRef.current && next === 'PROCESSING') {
-          pollDelayRef.current = Math.min(pollDelayRef.current * POLL_MULT, POLL_MAX_MS);
           schedule();
         }
-      }, pollDelayRef.current);
+      }, POLL_INITIAL_MS);
     };
     
     // immediate = true nghĩa là gọi API ngay lập tức 1 lần trước khi hẹn giờ chạy lặp
@@ -343,7 +349,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     onUpdate('processingStatus', 'PENDING');
     onUpdate('videoFileName', file.name);
     updateUploadSnapshot({ phase: 'uploading', progress: 0, speedBps: 0, etaSec: null });
-    isPollingRef.current = false; // Tắt cờ polling đề phòng trường hợp user chọn file mới khi đang có 1 upload chưa xong, tránh việc 2 luồng upload cùng chạy song song
+    isPollingRef.current = false; // Tắt cờ polling (poll là việc kiểm tra trạng thái upload định kỳ) đề phòng trường hợp user chọn file mới khi đang có 1 upload chưa xong, tránh việc 2 luồng upload cùng chạy song song
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current); // Dọn dẹp bộ hẹn giờ polling cũ nếu có, đề phòng trường hợp user chọn file mới khi đang có 1 upload chưa xong, tránh việc 2 luồng upload cùng chạy song song
 
     try {
@@ -453,29 +459,39 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         tick(delta); 
       };
 
-      // Hàm uploadPart: Bắn 1 part (chunk) trực tiếp lên MinIO thông qua Presigned URL bằng XMLHttpRequest (để track progress)
-      // Lưu ý: Không set Content-Type ở đây để tránh làm sai lệch chữ ký (signature) của URL
+      // Hàm uploadPart: upload 1 part (chunk/phần nhỏ của file) trực tiếp lên MinIO qua presigned URL.
+      // Dùng XMLHttpRequest/XHR (API request cũ của browser) thay vì fetch vì XHR có xhr.upload.onprogress
+      // để biết chính xác part này đã upload được bao nhiêu byte.
+      // Lưu ý: Không set Content-Type ở đây để tránh làm sai lệch chữ ký (signature/chữ ký bảo mật) của URL.
       const uploadPart = async (i: number) => {
         if (signal.aborted) throw new Error('Đã hủy upload.');
         const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
         const etag = await new Promise<string>((res, rej) => {
+          // Tạo một HTTP request thủ công. XHR chạy theo event/callback, nên ta bọc bằng Promise
+          // để uploadPart có thể dùng await như code async bình thường.
           const xhr = new XMLHttpRequest();
           const abort = () => {
-            xhr.abort();
+            xhr.abort(); // Hủy request ngay lập tức. Nếu request đang chạy, sẽ kích hoạt onerror hoặc onload với trạng thái lỗi.
             rej(new Error('Đã hủy upload.'));
           };
           if (signal.aborted) {
             abort();
             return;
           }
-          signal.addEventListener('abort', abort, { once: true });
-          xhr.open('PUT', urls[i], true);
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) tickPart(i, e.loaded);
+          signal.addEventListener('abort', abort, { once: true }); // Đăng ký sự kiện hủy: nếu user hủy upload trong khi request này đang chạy, sẽ gọi hàm abort để dập tắt request và trả về lỗi.
+          // Mở request PUT tới presigned URL. true nghĩa là chạy async (không khóa UI).
+          xhr.open('PUT', urls[i], true); // xhr.open(method, url, async) - method là HTTP method (PUT), url là presigned URL được backend trả về, async=true nghĩa là request sẽ chạy bất đồng bộ (không chặn UI)
+          // onprogress bắn nhiều lần trong lúc browser đang gửi bytes lên storage.
+          // e.loaded là số byte đã upload được của RIÊNG part này.
+          xhr.upload.onprogress = (e) => { //xhr.upload.onprogress là sự kiện được kích hoạt liên tục khi trình duyệt đang tải lên dữ liệu, e.loaded là số byte đã tải lên được tính đến thời điểm hiện tại của part này
+            if (e.lengthComputable) tickPart(i, e.loaded); // e.lengthComputable là cờ cho biết trình duyệt có thể tính được tổng số byte của part này hay không (thường là có), nếu có thì gọi tickPart để cập nhật tiến độ upload của part này và tổng thể
           };
-          xhr.onload = () => {
+          // onload chạy khi request kết thúc và đã có HTTP status từ storage.
+          xhr.onload = () => { //xhr.onload là sự kiện được kích hoạt khi request đã hoàn tất (dù thành công hay lỗi), xhr.status là mã HTTP trả về từ server
             if (xhr.status >= 200 && xhr.status < 300) {
-              const etag = xhr.getResponseHeader('etag'); // Lấy chữ ký nhận dạng của đoạn file trên server (bắt buộc)
+              // ETag (entity tag/mã định danh object part) là mã storage trả về cho part đã upload.
+              // BE cần ETag + PartNumber để gọi CompleteMultipartUpload ghép các part lại.
+              const etag = xhr.getResponseHeader('etag');
               signal.removeEventListener('abort', abort);
               if (etag) { tickPart(i, chunk.size); res(etag); }
               else rej(new Error(`Part ${i + 1} thiếu ETag.`));
@@ -484,10 +500,12 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
               rej(new Error(`Part ${i + 1} lỗi HTTP ${xhr.status}.`));
             }
           };
+          // onerror chạy khi lỗi mạng/CORS/storage khiến request không hoàn tất bình thường.
           xhr.onerror = () => {
             signal.removeEventListener('abort', abort);
             rej(new Error(`Part ${i + 1}: lỗi mạng.`));
           };
+          // Gửi Blob (khối dữ liệu nhị phân của chunk) lên storage.
           xhr.send(chunk);
         });
         // Ghi chú lại ETag để xíu nữa gửi về cho BE kiểm tra tính toàn vẹn
@@ -500,7 +518,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       const worker = async () => { while (!signal.aborted && next < totalParts) { const i = next++; await uploadPart(i); } };
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, totalParts) }, worker));
       if (signal.aborted) throw new Error('Đã hủy upload.');
-      if (parts.some((p) => !p)) throw new Error('Upload chưa hoàn tất đủ parts.');
+      if (parts.some((p) => !p)) throw new Error('Upload chưa hoàn tất đủ parts.'); // Phòng trường hợp có worker nào đó bị lỗi mà không kịp cập nhật phần tử vào mảng parts, dẫn đến thiếu ETag khi confirm upload
 
       const storageUploadMs = performance.now() - storageUploadStartedAt;
       const averageBps = file.size / Math.max(storageUploadMs / 1000, 0.001);
@@ -514,7 +532,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       if (signal.aborted) throw new Error('Đã hủy upload.');
       const bindRes = await bindVideoAssetToLesson(courseId, lessonId, assetId);
       if (bindRes.status === 'ERR') throw new Error(bindRes.message || 'Không thể gắn video vào bài học.');
-      bound = true;
+      bound = true; // đánh dấu đã gắn videoAsset vào lesson thành công
       logTiming('bind-video-asset');
 
       // BƯỚC 4: XÁC NHẬN (CONFIRM) HOÀN TẤT
@@ -644,6 +662,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   // Các giá trị hiển thị được gom lại để JSX phía dưới ngắn hơn.
   const name = assetMeta?.originalFileName || lesson.videoFileName || 'Video bài học';
   const size = fmt.size(assetMeta?.sourceSizeBytes);
+  const uploadedAt = fmt.dateTime(assetMeta?.uploadCompletedAt);
   const progress = clamp(assetMeta?.processingProgress ?? lesson.processingProgress);
   const duration = assetMeta?.durationSec || lesson.videoDurationSec || lesson.duration || 0;
   const helperText = processingElapsed >= 180
@@ -761,6 +780,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
           <span>Sẵn sàng phát</span>
           {duration > 0 && <><span className="opacity-40">·</span><span className="flex items-center gap-1"><Play className="h-2.5 w-2.5" />{fmt.duration(duration)}</span></>}
           {size && <><span className="opacity-40">·</span><span>{size}</span></>}
+          {uploadedAt && <><span className="opacity-40">·</span><span>Tải lên lúc {uploadedAt}</span></>}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
