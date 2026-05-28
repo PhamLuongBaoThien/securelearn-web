@@ -26,7 +26,7 @@ const eventLabel: Record<TemplateEvent, string> = {
   PAYMENT_SUCCESS: 'Thanh toán thành công',
   PAYMENT_FAILED: 'Thanh toán thất bại',
   COURSE_APPROVED: 'Khóa học được duyệt',
-  COURSE_REJECTED: 'Khóa học bị từ chối',
+  COURSE_REJECTED: 'Khóa học cần chỉnh sửa',
   WELCOME: 'Chào mừng người dùng',
   PASSWORD_RESET: 'Đặt lại mật khẩu',
 };

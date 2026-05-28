@@ -33,7 +33,7 @@ import {
   useDeleteCourseLesson,
   useDeleteCourseSection,
   useGetCourseForManage,
-  usePublishCourse,
+  useSubmitCourseForReview,
   useReorderCourseLessons,
   useReorderCourseSections,
   useUpdateCourse,
@@ -69,10 +69,12 @@ interface BulletListEditorProps {
   onChange: (items: string[]) => void;
   placeholder?: string;
   addLabel?: string;
+  disabled?: boolean;
 }
 
-const BulletListEditor: React.FC<BulletListEditorProps> = ({ items, onChange, placeholder = "Nhập nội dung...", addLabel = "Thêm mục" }) => {
+const BulletListEditor: React.FC<BulletListEditorProps> = ({ items, onChange, placeholder = "Nhập nội dung...", addLabel = "Thêm mục", disabled = false }) => {
   const update = (i: number, v: string) => {
+    if (disabled) return;
     const next = [...items];
     next[i] = v;
     onChange(next);
@@ -83,13 +85,13 @@ const BulletListEditor: React.FC<BulletListEditorProps> = ({ items, onChange, pl
       {items.map((item, i) => (
         <div key={i} className="flex items-center gap-2">
           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{i + 1}</span>
-          <Input value={item} onChange={(e) => update(i, e.target.value)} placeholder={placeholder} className="h-9 rounded-lg flex-1" />
-          <Button type="button" variant="ghost" size="icon" onClick={() => onChange(items.filter((_, idx) => idx !== i))} className="h-8 w-8 p-1.5 text-zinc-400 hover:text-red-500 transition-colors shrink-0">
+          <Input value={item} onChange={(e) => update(i, e.target.value)} placeholder={placeholder} className="h-9 rounded-lg flex-1" disabled={disabled} />
+          <Button type="button" variant="ghost" size="icon" onClick={() => !disabled && onChange(items.filter((_, idx) => idx !== i))} className="h-8 w-8 p-1.5 text-zinc-400 hover:text-red-500 transition-colors shrink-0" disabled={disabled}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       ))}
-      <Button type="button" variant="ghost" size="sm" onClick={() => onChange([...items, ""])} className="gap-2 text-xs text-muted-foreground mt-1">
+      <Button type="button" variant="ghost" size="sm" onClick={() => !disabled && onChange([...items, ""])} className="gap-2 text-xs text-muted-foreground mt-1" disabled={disabled}>
         <Plus className="h-3.5 w-3.5" /> {addLabel}
       </Button>
     </div>
@@ -134,6 +136,21 @@ const getInitialCourseEditorValues = (course: ICourse): CourseEditorValues => ({
   price: course.price,
 });
 
+const normalizeStringList = (items: string[]) => items.map((item) => item || "");
+const normalizeRichText = (value: string) =>
+  value.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim() ? value : "";
+
+const areCourseEditorValuesEqual = (a: CourseEditorValues, b: CourseEditorValues) =>
+  a.title === b.title &&
+  a.shortDescription === b.shortDescription &&
+  normalizeRichText(a.description) === normalizeRichText(b.description) &&
+  a.thumbnail === b.thumbnail &&
+  a.categoryId === b.categoryId &&
+  a.level === b.level &&
+  Number(a.price) === Number(b.price) &&
+  JSON.stringify(normalizeStringList(a.whatYouWillLearn)) === JSON.stringify(normalizeStringList(b.whatYouWillLearn)) &&
+  JSON.stringify(normalizeStringList(a.requirements)) === JSON.stringify(normalizeStringList(b.requirements));
+
 const getVideoDisplayStatus = (lesson: ILesson) => {
   if (lesson.processingStatus) return lesson.processingStatus;
   if (!lesson.videoAssetId) return "NONE";
@@ -158,7 +175,7 @@ export const CourseEditor: React.FC = () => {
   const { data: course, isLoading, error, refetch } = useGetCourseForManage(courseId!);
   const { data: categories = [], isLoading: isCategoriesLoading } = usePublicCourseCategories();
   const updateMutation = useUpdateCourse();
-  const publishMutation = usePublishCourse();
+  const submitReviewMutation = useSubmitCourseForReview();
   const validatePublishMutation = useValidatePublishCourse();
   const createSectionMutation = useCreateCourseSection();
   const updateSectionMutation = useUpdateCourseSection();
@@ -187,8 +204,11 @@ export const CourseEditor: React.FC = () => {
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hasEditedInSession, setHasEditedInSession] = useState(false);
   // Lưu snapshot giá trị đã lưu thành công để so sánh khi cần Discard
   const savedSnapshotRef = React.useRef<ReturnType<typeof getInitialCourseEditorValues> | null>(null);
+  // Giữ nội dung bài học đang gõ để các refetch nền (ví dụ video READY) không ghi đè draft trước khi blur lưu DB.
+  const lessonContentDraftsRef = React.useRef<Map<string, string>>(new Map());
 
   // "idle" | "saving" | "saved" | "error" — chỉ dùng cho tab Nội dung khóa học
   const [curriculumSaveStatus, setCurriculumSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -200,6 +220,7 @@ export const CourseEditor: React.FC = () => {
     setCurriculumSaveStatus("saving");
     try {
       void await fn();
+      setHasEditedInSession(true);
       setCurriculumSaveStatus("saved");
       curriculumSaveTimerRef.current = setTimeout(() => setCurriculumSaveStatus("idle"), 2000);
     } catch (error: unknown) {
@@ -214,13 +235,23 @@ export const CourseEditor: React.FC = () => {
   // Reset cờ khởi tạo khi chuyển sang khóa học khác
   useEffect(() => {
     setIsInitialized(false);
+    setHasEditedInSession(false);
+    lessonContentDraftsRef.current.clear();
   }, [courseId]);
 
   useEffect(() => {
     if (!course) return;
 
-    // Luôn bám sát dữ liệu giáo trình (sections) vì nó được cập nhật qua các màn hình khác nhau
-    setSections(course.sections || []);
+    // Luôn bám sát dữ liệu giáo trình, nhưng giữ lại content draft đang gõ để refetch nền không làm mất chữ.
+    const nextSections = (course.sections || []).map((section) => ({
+      ...section,
+      lessons: section.lessons.map((lesson) => {
+        if (!lesson._id) return lesson;
+        const draft = lessonContentDraftsRef.current.get(lesson._id);
+        return draft === undefined ? lesson : { ...lesson, content: draft };
+      }),
+    }));
+    setSections(nextSections);
 
     // Chỉ gán giá trị mặc định cho form vào lần đầu tiên để tránh ghi đè dữ liệu đang gõ dở
     if (!isInitialized) {
@@ -238,9 +269,26 @@ export const CourseEditor: React.FC = () => {
       setExpandedSections(new Set(course.sections?.map((_, i) => i) || []));
       setIsInitialized(true);
       setHasUnsavedChanges(false);
+      setHasEditedInSession(false);
       savedSnapshotRef.current = initialValues;
     }
   }, [course, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized || !savedSnapshotRef.current) return;
+    const currentValues: CourseEditorValues = {
+      title,
+      shortDescription,
+      description,
+      thumbnail,
+      whatYouWillLearn,
+      requirements,
+      categoryId,
+      level: level as ICourse["level"],
+      price,
+    };
+    setHasUnsavedChanges(!areCourseEditorValuesEqual(currentValues, savedSnapshotRef.current));
+  }, [isInitialized, title, shortDescription, description, thumbnail, whatYouWillLearn, requirements, categoryId, level, price]);
 
   const categoryOptions = flattenCategoryOptions(categories);
   const pendingVideos = sections.flatMap((section) => section.lessons).filter((lesson) => {
@@ -251,6 +299,13 @@ export const CourseEditor: React.FC = () => {
   const activeAttachmentOperations = Object.entries(attachmentOperations);
   const activeAttachmentCount = activeAttachmentOperations.length;
   const primaryAttachmentOperation = activeAttachmentOperations[0]?.[1];
+  const hasAnySavedContent =
+    sections.length > 0 ||
+    Boolean(thumbnail?.trim()) ||
+    Boolean(categoryId) ||
+    Boolean(description?.replace(/<[^>]*>/g, "").trim()) ||
+    whatYouWillLearn.some((item) => item.trim()) ||
+    requirements.some((item) => item.trim());
 
   // Refetch course detail + invalidate danh sách khóa học để duration/thông tin mới nhất
   // hiển thị đúng cả ở trang editor lẫn trang danh sách.
@@ -273,6 +328,10 @@ export const CourseEditor: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (course && (course.status === "PENDING" || course.status === "PUBLISHED")) {
+      toast.error("Khóa học hiện không thể chỉnh sửa trực tiếp.");
+      return;
+    }
     try {
       const payload = new FormData();
       payload.append("title", title);
@@ -299,6 +358,7 @@ export const CourseEditor: React.FC = () => {
         whatYouWillLearn, requirements, categoryId, level: level as ICourse["level"], price,
       };
       setHasUnsavedChanges(false);
+      setHasEditedInSession(true);
       toast.success("Đã lưu khóa học!");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Lưu thất bại.";
@@ -329,10 +389,25 @@ export const CourseEditor: React.FC = () => {
     setHasUnsavedChanges(false);
   };
 
-  // Publish có 2 lớp chặn:
+  // Gửi duyệt có 2 lớp chặn:
   // - frontend chặn nếu còn video đang xử lý
   // - backend validate toàn bộ rule publish
-  const handlePublish = () => {
+  const handleSubmitReview = () => {
+    if (!hasAnySavedContent) {
+      toast.error("Hãy thêm nội dung khóa học trước khi gửi duyệt.");
+      return;
+    }
+
+    if (hasUnsavedChanges) {
+      toast.error("Vui lòng lưu thay đổi trước khi gửi duyệt.");
+      return;
+    }
+
+    if (isRevisionDraft && !hasEditedInSession) {
+      toast.error("Bản cập nhật chưa có thay đổi so với khóa học đang xuất bản.");
+      return;
+    }
+
     if (hasBlockingVideos) {
       toast.error(`Còn ${pendingVideos.length} video đang xử lý.`);
       return;
@@ -341,13 +416,13 @@ export const CourseEditor: React.FC = () => {
     validatePublishMutation.mutate(courseId!, {
       onSuccess: (result) => {
         if (!result.ok) {
-          toast.error(result.errors[0]?.message || "Khóa học chưa thể xuất bản.");
+          toast.error(result.message || result.errors[0]?.message || "Khóa học chưa thể gửi duyệt.");
           return;
         }
 
-        publishMutation.mutate(courseId!, {
+        submitReviewMutation.mutate(courseId!, {
           onSuccess: () => {
-            toast.success("Khóa học đã được xuất bản!");
+            toast.success("Khóa học đã được gửi duyệt!");
             navigate("/instructor/courses");
           },
           onError: (err: Error) => toast.error(err.message),
@@ -474,6 +549,10 @@ export const CourseEditor: React.FC = () => {
   };
 
   const handleLessonFieldChange = (sectionIndex: number, lessonIndex: number, field: keyof ILesson, value: ILesson[keyof ILesson]) => {
+    const lessonId = sections[sectionIndex]?.lessons[lessonIndex]?._id;
+    if (field === "content" && lessonId) {
+      lessonContentDraftsRef.current.set(lessonId, String(value ?? ""));
+    }
     setSections((prev) => {
       const next = [...prev];
       const lessons = [...next[sectionIndex].lessons];
@@ -520,6 +599,7 @@ export const CourseEditor: React.FC = () => {
         lessonId,
         payload: { content: lesson.content || "" },
       });
+      lessonContentDraftsRef.current.delete(lessonId);
       await refreshCourse();
     });
   };
@@ -579,6 +659,29 @@ export const CourseEditor: React.FC = () => {
     );
   }
 
+  const isReadOnly = course.status === "PENDING" || course.status === "PUBLISHED";
+  const isRevisionDraft = Boolean(course.courseId && course.courseId !== course._id);
+  const hasReviewChanges = !isRevisionDraft || hasEditedInSession;
+  const submitDisabledReason = isReadOnly
+    ? "Khóa học hiện không thể gửi duyệt."
+    : hasBlockingVideos
+      ? `Còn ${pendingVideos.length} video đang xử lý.`
+      : hasUnsavedChanges
+        ? "Vui lòng lưu thay đổi trước khi gửi duyệt."
+      : !hasAnySavedContent
+        ? "Hãy thêm nội dung khóa học trước khi gửi duyệt."
+        : !hasReviewChanges
+          ? "Bản cập nhật chưa có thay đổi so với khóa học đang xuất bản."
+          : undefined;
+  const isSubmitDisabled =
+    isReadOnly ||
+    hasBlockingVideos ||
+    hasUnsavedChanges ||
+    !hasAnySavedContent ||
+    !hasReviewChanges ||
+    submitReviewMutation.isPending ||
+    validatePublishMutation.isPending;
+
   return (
     <TooltipProvider delayDuration={300}>
     <div className="space-y-6 pb-12">
@@ -595,6 +698,11 @@ export const CourseEditor: React.FC = () => {
               {getStatusBadge(course.status)}
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">ID: {courseId}</p>
+            {isReadOnly && (
+              <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                {course.status === "PENDING" ? "Khóa học đang chờ admin duyệt, tạm khóa chỉnh sửa." : "Khóa học đã xuất bản. Hãy tạo bản cập nhật từ danh sách khóa học để chỉnh sửa."}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -603,9 +711,14 @@ export const CourseEditor: React.FC = () => {
               <Clock className="w-3.5 h-3.5 animate-pulse" />{pendingVideos.length} video đang xử lý
             </div>
           )}
-          {course.status === "DRAFT" && (
-            <Button onClick={handlePublish} disabled={publishMutation.isPending || validatePublishMutation.isPending} className={`gap-2 rounded-xl ${hasBlockingVideos ? "opacity-60" : ""}`}>
-              {(publishMutation.isPending || validatePublishMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} Xuất bản
+          {(course.status === "DRAFT" || course.status === "REJECTED") && (
+            <Button
+              onClick={handleSubmitReview}
+              disabled={isSubmitDisabled}
+              title={submitDisabledReason}
+              className={`gap-2 rounded-xl ${hasBlockingVideos ? "opacity-60" : ""}`}
+            >
+              {(submitReviewMutation.isPending || validatePublishMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} Gửi duyệt
               {hasBlockingVideos && <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />}
             </Button>
           )}
@@ -641,7 +754,7 @@ export const CourseEditor: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Tên khóa học</label>
-                  <Input value={title} onChange={(e) => { setTitle(e.target.value); setHasUnsavedChanges(true); }} className="h-11 rounded-xl" placeholder="Nhập tên khóa học..." />
+                  <Input value={title} onChange={(e) => { setTitle(e.target.value); setHasUnsavedChanges(true); }} className="h-11 rounded-xl" placeholder="Nhập tên khóa học..." disabled={isReadOnly} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
@@ -649,6 +762,7 @@ export const CourseEditor: React.FC = () => {
                     <span className={`text-xs ${shortDescription.length > 200 ? "text-red-500" : "text-zinc-400"}`}>{shortDescription.length}/200</span>
                   </label>
                   <textarea value={shortDescription} onChange={(e) => { setShortDescription(e.target.value); setHasUnsavedChanges(true); }} maxLength={220} rows={3}
+                    disabled={isReadOnly}
                     className="w-full p-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
                     placeholder="Một câu giới thiệu ngắn, sẽ hiển thị ngay dưới tên khóa học..." />
                 </div>
@@ -656,7 +770,7 @@ export const CourseEditor: React.FC = () => {
                   <div>
                     <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Danh mục</label>
                     <Select value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setHasUnsavedChanges(true); }}
-                      className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm" disabled={isCategoriesLoading}>
+                      className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm" disabled={isCategoriesLoading || isReadOnly}>
                       <option value="">{isCategoriesLoading ? "Đang tải..." : "Chọn danh mục"}</option>
                       {categoryOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </Select>
@@ -664,7 +778,7 @@ export const CourseEditor: React.FC = () => {
                   <div>
                     <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Trình độ</label>
                     <Select value={level} onChange={(e) => { setLevel(e.target.value); setHasUnsavedChanges(true); }}
-                      className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm">
+                      className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm" disabled={isReadOnly}>
                       <option value="BEGINNER">Cơ bản</option>
                       <option value="INTERMEDIATE">Trung cấp</option>
                       <option value="ADVANCED">Nâng cao</option>
@@ -673,12 +787,12 @@ export const CourseEditor: React.FC = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Giá (VND)</label>
-                  <Input type="number" value={price} onChange={(e) => { setPrice(Number(e.target.value)); setHasUnsavedChanges(true); }} className="h-11 rounded-xl" min={0} step={1000} />
+                  <Input type="number" value={price} onChange={(e) => { setPrice(Number(e.target.value)); setHasUnsavedChanges(true); }} className="h-11 rounded-xl" min={0} step={1000} disabled={isReadOnly} />
                 </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Ảnh quảng cáo khóa học</label>
-                <ThumbnailUploader value={thumbnail} onChange={handleThumbnailChange} disabled={updateMutation.isPending} />
+                <ThumbnailUploader value={thumbnail} onChange={handleThumbnailChange} disabled={updateMutation.isPending || isReadOnly} />
                 <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5">Khuyến nghị tỉ lệ 16:9, tối thiểu 1280×720px</p>
               </div>
             </div>
@@ -692,20 +806,20 @@ export const CourseEditor: React.FC = () => {
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Học viên sẽ học được gì</h3>
                   <p className="text-xs text-muted-foreground mt-0.5 mb-3">Liệt kê những kỹ năng, kiến thức đạt được sau khóa học</p>
-                  <BulletListEditor items={whatYouWillLearn} onChange={(v) => { setWhatYouWillLearn(v); setHasUnsavedChanges(true); }} placeholder="Ví dụ: Xây dựng REST API với Node.js..." addLabel="Thêm mục tiêu" />
+                  <BulletListEditor items={whatYouWillLearn} onChange={(v) => { setWhatYouWillLearn(v); setHasUnsavedChanges(true); }} placeholder="Ví dụ: Xây dựng REST API với Node.js..." addLabel="Thêm mục tiêu" disabled={isReadOnly} />
                 </div>
               </div>
               <div className="space-y-3">
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Yêu cầu trước khi học</h3>
                   <p className="text-xs text-muted-foreground mt-0.5 mb-3">Những kiến thức hoặc công cụ cần có trước khi học</p>
-                  <BulletListEditor items={requirements} onChange={(v) => { setRequirements(v); setHasUnsavedChanges(true); }} placeholder="Ví dụ: Biết cơ bản về HTML/CSS..." addLabel="Thêm yêu cầu" />
+                  <BulletListEditor items={requirements} onChange={(v) => { setRequirements(v); setHasUnsavedChanges(true); }} placeholder="Ví dụ: Biết cơ bản về HTML/CSS..." addLabel="Thêm yêu cầu" disabled={isReadOnly} />
                 </div>
               </div>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Mô tả chi tiết</h3>
-              <RichTextEditor value={description} onChange={(v) => { setDescription(v); setHasUnsavedChanges(true); }} placeholder="Viết mô tả chi tiết về khóa học..." minHeight="280px" />
+              <RichTextEditor value={description} onChange={(v) => { setDescription(v); setHasUnsavedChanges(true); }} placeholder="Viết mô tả chi tiết về khóa học..." minHeight="280px" disabled={isReadOnly} />
             </div>
           </div>
 
@@ -760,7 +874,7 @@ export const CourseEditor: React.FC = () => {
                   <span>Tự động lưu</span>
                 </div>
               )}
-              <Button variant="outline" onClick={() => void handleAddSection()} className="gap-2 rounded-xl text-sm" disabled={isMutatingCurriculum}>
+              <Button variant="outline" onClick={() => void handleAddSection()} className="gap-2 rounded-xl text-sm" disabled={isMutatingCurriculum || isReadOnly}>
                 <Plus className="w-4 h-4" /> Thêm chương
               </Button>
             </div>
@@ -779,6 +893,7 @@ export const CourseEditor: React.FC = () => {
                       onChange={(e) => handleSectionTitleChange(sectionIndex, e.target.value)}
                       onBlur={() => void handleSectionTitleBlur(sectionIndex)}
                       onClick={(e) => e.stopPropagation()}
+                      disabled={isReadOnly}
                       className="h-8 text-sm font-medium border-none bg-transparent p-0 focus-visible:ring-0"
                     />
                     <Badge variant="secondary" className="shrink-0 text-xs">{section.lessons.length} bài</Badge>
@@ -790,7 +905,7 @@ export const CourseEditor: React.FC = () => {
                     )}
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "up"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={isMutatingCurriculum || sectionIndex === 0}>
+                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "up"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={isMutatingCurriculum || isReadOnly || sectionIndex === 0}>
                           <ArrowUp className="w-4 h-4" />
                         </Button>
                       </TooltipTrigger>
@@ -798,7 +913,7 @@ export const CourseEditor: React.FC = () => {
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "down"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={isMutatingCurriculum || sectionIndex === sections.length - 1}>
+                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "down"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={isMutatingCurriculum || isReadOnly || sectionIndex === sections.length - 1}>
                           <ArrowDown className="w-4 h-4" />
                         </Button>
                       </TooltipTrigger>
@@ -837,6 +952,7 @@ export const CourseEditor: React.FC = () => {
                           canMoveDown={lessonIndex < section.lessons.length - 1}
                           attachmentOperation={lesson._id ? attachmentOperations[lesson._id] : undefined}
                           onRefresh={refreshCourse}
+                          isReadOnly={isReadOnly}
                           onUpdateField={(field, value) => handleLessonFieldChange(sectionIndex, lessonIndex, field, value)}
                           onTitleBlur={() => void handleLessonTitleBlur(sectionIndex, lessonIndex)}
                           onContentBlur={() => void handleLessonContentBlur(sectionIndex, lessonIndex)}
@@ -847,7 +963,7 @@ export const CourseEditor: React.FC = () => {
                           onRemove={() => void handleRemoveLesson(lesson._id)}
                         />
                       ))}
-                      <Button variant="ghost" size="sm" onClick={() => void handleAddLesson(sectionIndex)} className="gap-2 text-xs text-muted-foreground" disabled={isMutatingCurriculum}>
+                      <Button variant="ghost" size="sm" onClick={() => void handleAddLesson(sectionIndex)} className="gap-2 text-xs text-muted-foreground" disabled={isMutatingCurriculum || isReadOnly}>
                         <Plus className="w-3.5 h-3.5" /> Thêm bài giảng
                       </Button>
                     </div>
@@ -909,6 +1025,7 @@ interface LessonRowProps {
   canMoveUp: boolean;
   canMoveDown: boolean;
   attachmentOperation?: AttachmentOperation;
+  isReadOnly?: boolean;
   onRefresh: () => Promise<void>;
   onUpdateField: (field: keyof ILesson, value: ILesson[keyof ILesson]) => void;
   onTitleBlur: () => void;
@@ -920,7 +1037,7 @@ interface LessonRowProps {
   onRemove: () => void;
 }
 
-const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canMoveDown, attachmentOperation, onRefresh, onUpdateField, onTitleBlur, onContentBlur, onAttachmentOperationChange, onChangeType, onMoveUp, onMoveDown, onRemove }) => {
+const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canMoveDown, attachmentOperation, isReadOnly = false, onRefresh, onUpdateField, onTitleBlur, onContentBlur, onAttachmentOperationChange, onChangeType, onMoveUp, onMoveDown, onRemove }) => {
   const isVideo = lesson.type === "VIDEO";
   const isQuiz = lesson.type === "QUIZ";
   const status = getVideoDisplayStatus(lesson);
@@ -943,6 +1060,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
           onChange={(e) => onUpdateField("title", e.target.value)} 
           onBlur={onTitleBlur} 
           onClick={(e) => e.stopPropagation()}
+          disabled={isReadOnly}
           className="h-8 text-sm border-none bg-transparent p-0 focus-visible:ring-0 flex-1" 
           placeholder="Tên bài giảng..." 
         />
@@ -959,7 +1077,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
         )}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onMoveUp(); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={!canMoveUp}>
+            <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onMoveUp(); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={!canMoveUp || isReadOnly}>
               <ArrowUp className="w-3.5 h-3.5" />
             </Button>
           </TooltipTrigger>
@@ -967,14 +1085,14 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onMoveDown(); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={!canMoveDown}>
+            <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onMoveDown(); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={!canMoveDown || isReadOnly}>
               <ArrowDown className="w-3.5 h-3.5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Di chuyển xuống</TooltipContent>
         </Tooltip>
         <div className="w-[120px] shrink-0" onClick={(e) => e.stopPropagation()}>
-          <Select value={lesson.type} onChange={(e) => setPendingType(e.target.value)} className="h-8 w-full px-2 text-xs rounded-lg bg-background border border-zinc-200 dark:border-zinc-800">
+          <Select value={lesson.type} onChange={(e) => setPendingType(e.target.value)} className="h-8 w-full px-2 text-xs rounded-lg bg-background border border-zinc-200 dark:border-zinc-800" disabled={isReadOnly}>
             <option value="VIDEO">Video</option>
             <option value="QUIZ">Quiz</option>
           </Select>
@@ -1017,12 +1135,12 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
         <>
           {isVideo && (
             <div className="px-4 pb-4 pt-4 bg-white dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800/60">
-              <LessonVideoUploader courseId={courseId} lessonId={lesson._id} lesson={lesson} onUpdate={(field, value) => onUpdateField(field as keyof ILesson, value)} onRefresh={onRefresh} />
+              <LessonVideoUploader courseId={courseId} lessonId={lesson._id} lesson={lesson} onUpdate={(field, value) => onUpdateField(field as keyof ILesson, value)} onRefresh={onRefresh} isReadOnly={isReadOnly} />
             </div>
           )}
           {isQuiz && (
             <div className="px-4 pb-1 pt-4 bg-white dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800/60">
-              <LessonQuizBuilder courseId={courseId} lessonId={lesson._id} />
+              {isReadOnly ? <p className="text-xs text-muted-foreground">Quiz đang ở chế độ chỉ xem vì khóa học không mở chỉnh sửa.</p> : <LessonQuizBuilder courseId={courseId} lessonId={lesson._id} />}
             </div>
           )}
           <div className="px-4 py-4 bg-white dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800/60">
@@ -1036,6 +1154,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
               onBlur={onContentBlur}
               placeholder="Viết mô tả tổng quan cho bài học..."
               minHeight="180px"
+              disabled={isReadOnly}
             />
           </div>
           {/* Tài liệu đính kèm hiển thị cho cả VIDEO lẫn QUIZ */}
@@ -1047,6 +1166,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
               onRefresh={onRefresh}
               onAttachmentsChange={(attachments) => onUpdateField("attachments", attachments)}
               onOperationChange={onAttachmentOperationChange}
+              isReadOnly={isReadOnly}
             />
           </div>
         </>
@@ -1057,6 +1177,8 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
 
 const getStatusBadge = (status: string) => {
   if (status === "PUBLISHED") return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20 text-xs">Đã xuất bản</Badge>;
+  if (status === "PENDING") return <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20 text-xs">Chờ duyệt</Badge>;
+  if (status === "REJECTED") return <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20 text-xs">Cần chỉnh sửa</Badge>;
   if (status === "DRAFT") return <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 text-xs">Bản nháp</Badge>;
   return null;
 };

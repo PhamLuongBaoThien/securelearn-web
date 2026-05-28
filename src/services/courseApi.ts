@@ -25,6 +25,7 @@ export interface ICourseCategoryNode extends ICourseCategory {
 
 export interface ICourse {
   _id: string;
+  courseId?: string;              // ID khóa cha public; _id có thể là version id trong editor/review
   title: string;
   slug: string;
   description?: string;           // Mô tả chi tiết (rich text HTML)
@@ -38,7 +39,18 @@ export interface ICourse {
   category?: ICourseCategory | null;
   level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
   price: number;
-  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  status: 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+  reviewedBy?: string;
+  rejectionReason?: string;
+  activeRevision?: {
+    _id: string;
+    status: 'DRAFT' | 'PENDING' | 'REJECTED';
+    rejectionReason?: string;
+    submittedAt?: string | null;
+    updatedAt: string;
+  } | null;
   totalDuration: number;    // Tổng thời lượng (giây)
   totalLessons: number;     // Tổng số bài học
   enrollmentCount: number;  // Số lượt ghi danh
@@ -178,16 +190,25 @@ export const updateCourse = async (courseId: string, formData: FormData) => {
 };
 
 /**
- * Publish khóa học (chuyển từ DRAFT → PUBLISHED).
- * PATCH /api/courses/:id/publish
+ * Gửi khóa học cho admin duyệt.
+ * POST /api/courses/:id/submit-review
  */
-export const publishCourse = async (courseId: string) => {
-  const { data } = await apiClient.patch<ApiResponse<ICourse>>(`/api/courses/${courseId}/publish`);
+export const submitCourseForReview = async (courseId: string) => {
+  const { data } = await apiClient.post<ApiResponse<ICourse>>(`/api/courses/${courseId}/submit-review`);
+  return data;
+};
+
+export const createOrGetCourseRevision = async (courseId: string) => {
+  const { data } = await apiClient.post<ApiResponse<ICourse>>(`/api/courses/${courseId}/revisions`);
   return data;
 };
 
 export const validatePublishCourse = async (courseId: string) => {
-  const { data } = await apiClient.post<ApiResponse<{ ok: boolean; errors: Array<{ field: string; message: string; sectionId?: string; lessonId?: string }> }>>(
+  const { data } = await apiClient.post<ApiResponse<{
+    ok: boolean;
+    message?: string;
+    errors: Array<{ field: string; message: string; sectionId?: string; lessonId?: string }>;
+  }>>(
     `/api/courses/${courseId}/publish/validate`
   );
   return data;
@@ -195,22 +216,22 @@ export const validatePublishCourse = async (courseId: string) => {
 
 // Section CRUD cho editor theo hướng item-level.
 export const createCourseSection = async (courseId: string, payload: { title: string; order?: number }) => {
-  const { data } = await apiClient.post<ApiResponse<ISection>>(`/api/courses/${courseId}`, payload);
+  const { data } = await apiClient.post<ApiResponse<ISection>>(`/api/courses/${courseId}/sections`, payload);
   return data;
 };
 
 export const updateCourseSection = async (courseId: string, sectionId: string, payload: { title?: string }) => {
-  const { data } = await apiClient.put<ApiResponse<ISection>>(`/api/courses/${courseId}/${sectionId}`, payload);
+  const { data } = await apiClient.put<ApiResponse<ISection>>(`/api/courses/${courseId}/sections/${sectionId}`, payload);
   return data;
 };
 
 export const reorderCourseSections = async (courseId: string, items: Array<{ sectionId: string; order: number }>) => {
-  const { data } = await apiClient.put<ApiResponse>(`/api/courses/${courseId}/reorder`, { items });
+  const { data } = await apiClient.put<ApiResponse>(`/api/courses/${courseId}/sections/reorder`, { items });
   return data;
 };
 
 export const deleteCourseSection = async (courseId: string, sectionId: string) => {
-  const { data } = await apiClient.delete<ApiResponse>(`/api/courses/${courseId}/${sectionId}`);
+  const { data } = await apiClient.delete<ApiResponse>(`/api/courses/${courseId}/sections/${sectionId}`);
   return data;
 };
 

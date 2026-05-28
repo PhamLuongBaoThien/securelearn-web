@@ -39,6 +39,7 @@ interface LessonAttachmentManagerProps {
   onRefresh?: () => Promise<void>;
   onAttachmentsChange?: (attachments: string[]) => void;
   onOperationChange?: (operation: AttachmentOperation | null) => void;
+  isReadOnly?: boolean;
 }
 
 // Chọn icon phù hợp theo mimeType
@@ -62,6 +63,7 @@ export function LessonAttachmentManager({
   onRefresh,
   onAttachmentsChange,
   onOperationChange,
+  isReadOnly,
 }: LessonAttachmentManagerProps) {
   const [attachmentInfos, setAttachmentInfos] = useState<AttachmentInfo[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -204,14 +206,14 @@ export function LessonAttachmentManager({
             type="file"
             className="hidden"
             onChange={handleSelectFile}
-            disabled={isUploading || !lessonId}
+            disabled={isReadOnly || isUploading || !lessonId}
           />
           <Button
             type="button"
             variant="outline"
             size="sm"
             className="gap-1.5 rounded-lg h-8 text-xs pointer-events-none"
-            disabled={isUploading || !lessonId}
+            disabled={isReadOnly || isUploading || !lessonId}
             tabIndex={-1}
           >
             {isUploading ? (
@@ -263,20 +265,22 @@ export function LessonAttachmentManager({
               <span className="flex-1 text-sm text-zinc-700 dark:text-zinc-300 truncate min-w-0">
                 {attachment.name}
               </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 shrink-0 text-zinc-300 hover:text-red-500 dark:text-zinc-600 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg"
-                disabled={removingId === attachment.id}
-                onClick={() => void handleRemove(attachment.id)}
-              >
-                {removingId === attachment.id ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="h-3.5 w-3.5" />
-                )}
-              </Button>
+              {!isReadOnly && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0 text-zinc-300 hover:text-red-500 dark:text-zinc-600 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all rounded-lg"
+                  disabled={removingId === attachment.id}
+                  onClick={() => void handleRemove(attachment.id)}
+                >
+                  {removingId === attachment.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              )}
             </li>
           ))}
         </ul>

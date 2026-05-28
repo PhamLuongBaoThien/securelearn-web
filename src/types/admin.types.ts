@@ -148,7 +148,7 @@ export type PermissionId = (typeof ALL_PERMISSION_IDS)[number];
 
 // ===== Courses =====
 
-export type CourseStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED';
+export type CourseStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';
 export type CourseLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 
 export interface ICourseReview {
@@ -172,6 +172,8 @@ export interface ICourseReview {
   totalDuration?: number; // phút
   submittedAt: string;
   rejectionReason?: string;
+  isRevision?: boolean;
+  courseId?: string;
   createdAt: string;
 }
 

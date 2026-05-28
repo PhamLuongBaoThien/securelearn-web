@@ -99,6 +99,8 @@ type AssetMeta = Pick<IVideoAsset,
   '_id' | 'status' | 'originalFileName' | 'mimeType' | 'sourceSizeBytes' |
   'durationSec' | 'processingProgress' | 'errorMessage' | 'uploadCompletedAt' | 'updatedAt'>;
 
+const assetMetaCache = new Map<string, AssetMeta>();
+
 type UploadSnapshot = {
   assetId?: string;
   fileName: string;
@@ -141,15 +143,18 @@ interface Props {
   courseId: string;
   lessonId?: string;
   lesson: ILesson;
+  isReadOnly?: boolean;
   onUpdate: (field: keyof ILesson, value: ILesson[keyof ILesson]) => void;
   onRefresh?: () => Promise<void>;
 }
 
 // Component chính.
-export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesson, onUpdate, onRefresh }) => {
+export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesson, isReadOnly, onUpdate, onRefresh }) => {
   // --- STATE QUẢN LÝ GIAO DIỆN VÀ DỮ LIỆU ---
   // assetMeta: Lưu toàn bộ thông tin chi tiết của video (tên, dung lượng, % xử lý...) kéo từ media-service về.
-  const [assetMeta, setAssetMeta] = useState<AssetMeta | null>(null);
+  const [assetMeta, setAssetMeta] = useState<AssetMeta | null>(() =>
+    lesson.videoAssetId ? assetMetaCache.get(lesson.videoAssetId) ?? null : null,
+  );
   // uploadProgress: Phần trăm quá trình trình duyệt đẩy file lên MinIO (0-100%)
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadPhase, setUploadPhase] = useState<'queued' | 'uploading'>('uploading');
@@ -253,10 +258,12 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     const res = await getVideoAsset(id);
     if (res.status === 'ERR' || !res.data) return null;
     const a = res.data;
-    setAssetMeta({ _id: a._id, status: a.status, originalFileName: a.originalFileName,
+    const nextMeta: AssetMeta = { _id: a._id, status: a.status, originalFileName: a.originalFileName,
       mimeType: a.mimeType, sourceSizeBytes: a.sourceSizeBytes, durationSec: a.durationSec,
       processingProgress: a.processingProgress, errorMessage: a.errorMessage,
-      uploadCompletedAt: a.uploadCompletedAt, updatedAt: a.updatedAt });
+      uploadCompletedAt: a.uploadCompletedAt, updatedAt: a.updatedAt };
+    assetMetaCache.set(a._id, nextMeta);
+    setAssetMeta(nextMeta);
     
     // Bắn dữ liệu cập nhật ngược lại form tổng (CourseEditor)
     onUpdate('videoAssetId', a._id);
@@ -623,6 +630,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     isPollingRef.current = false;
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     if (lessonId) emitUploadSnapshot(lessonId, null);
+    if (lesson.videoAssetId) assetMetaCache.delete(lesson.videoAssetId);
     setAssetMeta(null);
     setUploadPhase('uploading');
     setUploadProgress(0);
@@ -679,7 +687,15 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   );
 
   // Chưa có video: hiển thị dropzone.
-  if (status === 'NONE') return (
+  if (status === 'NONE') {
+    if (isReadOnly) {
+      return (
+        <div className="mt-2 rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-3 py-2.5 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
+          Chưa tải lên video.
+        </div>
+      );
+    }
+    return (
     <>
       <div
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} // Khi kéo vào ngăn chặn trình duyệt mở video
@@ -700,7 +716,8 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         </div>
       </div>
     </>
-  );
+    );
+  }
 
   // Đang upload từ browser lên MinIO.
   if (status === 'PENDING') {
@@ -784,17 +801,20 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          className="h-8 rounded-lg px-2.5 text-xs text-green-700 hover:bg-green-100 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-500/20 dark:hover:text-green-400"
-        >
-          Đổi video
-        </Button>
-        <Tooltip>
-          <TooltipTrigger asChild>
+        {!isReadOnly && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="h-8 rounded-lg px-2.5 text-xs text-green-700 hover:bg-green-100 hover:text-green-700 dark:text-green-400 dark:hover:bg-green-500/20 dark:hover:text-green-400"
+          >
+            Đổi video
+          </Button>
+        )}
+        {!isReadOnly && (
+          <Tooltip>
+            <TooltipTrigger asChild>
             <Button
               type="button"
               variant="ghost"
@@ -807,6 +827,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
           </TooltipTrigger>
           <TooltipContent>Xóa video</TooltipContent>
         </Tooltip>
+        )}
       </div>
     </div>
   );
@@ -825,17 +846,20 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          className="h-8 gap-1.5 rounded-lg bg-red-100 px-3 text-xs text-red-600 hover:bg-red-200 hover:text-red-600 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30 dark:hover:text-red-400"
-        >
-          <RotateCcw className="h-3.5 w-3.5" /> Thử lại
-        </Button>
-        <Tooltip>
-          <TooltipTrigger asChild>
+        {!isReadOnly && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="h-8 gap-1.5 rounded-lg bg-red-100 px-3 text-xs text-red-600 hover:bg-red-200 hover:text-red-600 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30 dark:hover:text-red-400"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Thử lại
+          </Button>
+        )}
+        {!isReadOnly && (
+          <Tooltip>
+            <TooltipTrigger asChild>
             <Button
               type="button"
               variant="ghost"
@@ -848,6 +872,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
           </TooltipTrigger>
           <TooltipContent>Xóa video lỗi</TooltipContent>
         </Tooltip>
+        )}
       </div>
     </div>
   );

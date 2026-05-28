@@ -7,7 +7,7 @@ export const ALL_PERMISSIONS = [
   { id: 'course:read', resource: 'course', label: 'Xem khóa học', desc: 'Truy cập danh sách và chi tiết khóa học' },
   { id: 'course:update', resource: 'course', label: 'Sửa khóa học', desc: 'Chỉnh sửa nội dung và cấu trúc khóa học' },
   { id: 'course:delete', resource: 'course', label: 'Xóa khóa học', desc: 'Xóa vĩnh viễn khóa học khỏi hệ thống' },
-  { id: 'course:approve', resource: 'course', label: 'Duyệt khóa học', desc: 'Phê duyệt hoặc từ chối xuất bản khóa học' },
+  { id: 'course:approve', resource: 'course', label: 'Duyệt khóa học', desc: 'Phê duyệt hoặc yêu cầu chỉnh sửa khóa học' },
   { id: 'user:read', resource: 'user', label: 'Xem người dùng', desc: 'Tra cứu thông tin tài khoản học viên/giảng viên' },
   { id: 'user:lock', resource: 'user', label: 'Khóa/Mở tài khoản', desc: 'Đình chỉ hoặc khôi phục tài khoản người dùng' },
   { id: 'finance:read', resource: 'finance', label: 'Xem tài chính', desc: 'Xem giao dịch và báo cáo doanh thu' },

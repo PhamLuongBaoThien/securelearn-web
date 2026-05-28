@@ -3,6 +3,7 @@
 // Giao tiếp qua Kong API Gateway — prefix /api/admin/
 // ========================
 import apiClient from './apiClient';
+import type { ICourse } from './courseApi';
 import type {
   IWebsiteConfig,
   IBanner,
@@ -224,8 +225,13 @@ export const getCoursesForReview = async (params?: {
   search?: string;
   page?: number;
   limit?: number;
-}): Promise<AdminApiResponse<{ courses: ICourseReview[]; total: number }>> => {
+}): Promise<AdminApiResponse<{ courses: ICourseReview[]; total: number; page: number; totalPages: number }>> => {
   const res = await apiClient.get(`${ADMIN}/courses/review`, { params });
+  return res.data;
+};
+
+export const getCourseReviewDetail = async (courseId: string): Promise<AdminApiResponse<ICourse>> => {
+  const res = await apiClient.get<AdminApiResponse<ICourse>>(`${ADMIN}/courses/${courseId}/review`);
   return res.data;
 };
 

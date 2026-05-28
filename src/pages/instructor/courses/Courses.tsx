@@ -3,7 +3,7 @@
 // ========================
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, Edit, Trash2, Upload, Loader2 } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Upload, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from '@/components/ui/badge';
-import { useGetMyCourses, useCreateCourse, useDeleteCourse, usePublishCourse } from '@/hooks/useInstructorCourses';
+import { useGetMyCourses, useCreateCourse, useDeleteCourse, useSubmitCourseForReview, useCreateOrGetCourseRevision } from '@/hooks/useInstructorCourses';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
@@ -21,6 +21,10 @@ const getStatusBadge = (status: string) => {
   switch (status) {
     case 'PUBLISHED':
       return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-500/20">Đã xuất bản</Badge>;
+    case 'PENDING':
+      return <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20">Chờ duyệt</Badge>;
+    case 'REJECTED':
+      return <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20">Cần chỉnh sửa</Badge>;
     case 'DRAFT':
       return <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">Bản nháp</Badge>;
     case 'ARCHIVED':
@@ -52,7 +56,8 @@ export const InstructorCourses: React.FC = () => {
   const { data: courses = [], isLoading, error } = useGetMyCourses();
   const createCourseMutation = useCreateCourse();
   const deleteCourseMutation = useDeleteCourse();
-  const publishCourseMutation = usePublishCourse();
+  const submitReviewMutation = useSubmitCourseForReview();
+  const revisionMutation = useCreateOrGetCourseRevision();
 
   // Filter logic
   const filteredCourses = courses.filter((course) => {
@@ -90,13 +95,29 @@ export const InstructorCourses: React.FC = () => {
     });
   };
 
-  const handlePublishCourse = (courseId: string) => {
-    publishCourseMutation.mutate(courseId, {
+  const handleSubmitReview = (courseId: string) => {
+    submitReviewMutation.mutate(courseId, {
       onSuccess: () => {
-        toast.success('Khóa học đã được xuất bản!');
+        toast.success('Khóa học đã được gửi duyệt!');
       },
       onError: (err: unknown) => {
-        toast.error((err as Error).message || 'Không thể xuất bản khóa học.');
+        toast.error((err as Error).message || 'Không thể gửi duyệt khóa học.');
+      },
+    });
+  };
+
+  const handleEditCourse = (course: typeof courses[number]) => {
+    if (course.status !== 'PUBLISHED') {
+      navigate(`/instructor/courses/${course._id}/edit`);
+      return;
+    }
+
+    revisionMutation.mutate(course._id, {
+      onSuccess: (revision) => {
+        navigate(`/instructor/courses/${revision._id}/edit`);
+      },
+      onError: (err: unknown) => {
+        toast.error((err as Error).message || 'Không thể mở bản cập nhật.');
       },
     });
   };
@@ -155,6 +176,13 @@ export const InstructorCourses: React.FC = () => {
              className="h-11 rounded-xl text-sm"
            >
              Bản nháp
+           </Button>
+           <Button
+             variant={statusFilter === 'PENDING' ? 'default' : 'outline'}
+             onClick={() => setStatusFilter('PENDING')}
+             className="h-11 rounded-xl text-sm"
+           >
+             Chờ duyệt
            </Button>
         </div>
       </div>
@@ -223,18 +251,18 @@ export const InstructorCourses: React.FC = () => {
                     <DropdownMenuContent align="end" className="w-44">
                       <DropdownMenuItem 
                         className="gap-2 cursor-pointer"
-                        onClick={() => navigate(`/instructor/courses/${course._id}/edit`)}
+                        onClick={() => handleEditCourse(course)}
                       >
-                        <Edit className="w-4 h-4" /> Chỉnh sửa
+                        <Edit className="w-4 h-4" /> {course.status === 'PUBLISHED' ? 'Tạo bản cập nhật' : 'Chỉnh sửa'}
                       </DropdownMenuItem>
 
-                      {course.status === 'DRAFT' && (
+                      {(course.status === 'DRAFT' || course.status === 'REJECTED') && (
                         <>
                           <DropdownMenuItem 
                             className="gap-2 cursor-pointer"
-                            onClick={() => handlePublishCourse(course._id)}
+                            onClick={() => handleSubmitReview(course._id)}
                           >
-                            <Upload className="w-4 h-4" /> Xuất bản
+                            <Upload className="w-4 h-4" /> Gửi duyệt
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="gap-2 cursor-pointer text-red-500 focus:text-red-500"
@@ -252,11 +280,41 @@ export const InstructorCourses: React.FC = () => {
               {/* Content */}
               <div 
                 className="p-5 flex flex-col flex-1 cursor-pointer"
-                onClick={() => navigate(`/instructor/courses/${course._id}/edit`)}
+                onClick={() => handleEditCourse(course)}
               >
                 <h3 className="font-bold text-lg text-zinc-900 dark:text-white line-clamp-2 leading-snug group-hover:text-primary transition-colors">
                   {course.title}
                 </h3>
+                {course.status === 'PENDING' && !course.activeRevision && (
+                  <div className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                    <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>Khóa học đang chờ duyệt</span>
+                  </div>
+                )}
+                {course.status === 'REJECTED' && !course.activeRevision && course.rejectionReason && (
+                  <div className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>Yêu cầu chỉnh sửa: {course.rejectionReason}</span>
+                  </div>
+                )}
+                {course.activeRevision && (
+                  <div className={`mt-3 flex items-start gap-2 rounded-xl px-3 py-2 text-xs ${
+                    course.activeRevision.status === 'PENDING'
+                      ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400'
+                      : course.activeRevision.status === 'REJECTED'
+                        ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400'
+                        : 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400'
+                  }`}>
+                    {course.activeRevision.status === 'PENDING' ? <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+                    <span>
+                      {course.activeRevision.status === 'PENDING'
+                        ? 'Bản cập nhật đang chờ duyệt'
+                        : course.activeRevision.status === 'REJECTED'
+                        ? `Bản cập nhật cần chỉnh sửa${course.activeRevision.rejectionReason ? `: ${course.activeRevision.rejectionReason}` : ''}`
+                          : 'Có bản nháp cập nhật'}
+                    </span>
+                  </div>
+                )}
                 
                 <div className="mt-4 flex flex-col gap-2">
                   <div className="flex items-center justify-between text-sm">

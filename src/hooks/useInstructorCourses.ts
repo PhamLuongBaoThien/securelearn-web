@@ -21,9 +21,10 @@ import {
   updateCourseLesson,
   updateCourseSection,
   updateLessonQuiz,
-  publishCourse,
+  submitCourseForReview,
   deleteCourse,
   validatePublishCourse,
+  createOrGetCourseRevision,
   type ICourse,
   type ILesson,
   type IQuiz,
@@ -122,20 +123,38 @@ export function useUpdateCourse() {
   });
 }
 
-// ===== usePublishCourse =====
-export function usePublishCourse() {
+export function useSubmitCourseForReview() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (courseId: string) => {
-      const response = await publishCourse(courseId);
+      const response = await submitCourseForReview(courseId);
       if (response.status === 'ERR') {
         throw new Error(response.message);
       }
       return response.data as ICourse;
     },
-    onSuccess: () => {
+    onSuccess: (course) => {
       queryClient.invalidateQueries({ queryKey: instructorKeys.myCourses });
+      queryClient.setQueryData(instructorKeys.courseDetail(course._id), course);
+    },
+  });
+}
+
+export function useCreateOrGetCourseRevision() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (courseId: string) => {
+      const response = await createOrGetCourseRevision(courseId);
+      if (response.status === 'ERR') {
+        throw new Error(response.message);
+      }
+      return response.data as ICourse;
+    },
+    onSuccess: (revision) => {
+      queryClient.invalidateQueries({ queryKey: instructorKeys.myCourses });
+      queryClient.setQueryData(instructorKeys.courseDetail(revision._id), revision);
     },
   });
 }
