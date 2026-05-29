@@ -208,13 +208,13 @@ export const getUsers = async (params?: {
   return res.data;
 };
 
-export const lockUser = async (userId: string): Promise<AdminApiResponse> => {
-  const res = await apiClient.patch(`${ADMIN}/auth/users/${userId}/lock`);
+export const lockUser = async (userId: string, reason: string): Promise<AdminApiResponse> => {
+  const res = await apiClient.patch(`${ADMIN}/auth/users/${userId}/lock`, { reason });
   return res.data;
 };
 
-export const unlockUser = async (userId: string): Promise<AdminApiResponse> => {
-  const res = await apiClient.patch(`${ADMIN}/auth/users/${userId}/unlock`);
+export const unlockUser = async (userId: string, reason?: string): Promise<AdminApiResponse> => {
+  const res = await apiClient.patch(`${ADMIN}/auth/users/${userId}/unlock`, { reason });
   return res.data;
 };
 

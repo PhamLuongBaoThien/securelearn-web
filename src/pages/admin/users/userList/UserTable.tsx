@@ -20,6 +20,12 @@ interface UserTableProps {
 
 const COLS = ['Người dùng', 'Vai trò', 'Trạng thái', 'Thông tin', 'Đăng nhập gần nhất', 'Hành động'];
 
+const getAdminLabel = (admin?: { fullName?: string; email?: string } | null, fallback?: string) => {
+  if (admin?.fullName) return admin.fullName;
+  if (admin?.email) return admin.email;
+  return fallback || 'Không rõ admin';
+};
+
 export const UserTable: React.FC<UserTableProps> = ({
   users,
   total,
@@ -80,9 +86,31 @@ export const UserTable: React.FC<UserTableProps> = ({
 
               {/* Status */}
               <td className="px-4 py-3.5">
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[user.status]}`}>
-                  {STATUS_LABEL[user.status]}
-                </span>
+                <div className="space-y-1.5">
+                  <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[user.status]}`}>
+                    {STATUS_LABEL[user.status]}
+                  </span>
+                  {user.status === 'LOCKED' && (
+                    <div className="max-w-[220px] text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                      <p>
+                        Bị khóa bởi {getAdminLabel(user.lockedByAdmin, user.lockedBy)}
+                      </p>
+                      <p>  
+                        {user.lockedAt ? ` ${timeAgo(user.lockedAt)}` : ''}
+                      </p>
+                      {user.lockReason && (
+                        <p className="mt-0.5 truncate" title={user.lockReason}>
+                          Lý do: {user.lockReason}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {user.status !== 'LOCKED' && user.unlockedAt && (
+                    <p className="max-w-[220px] text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                      Mở khóa bởi {getAdminLabel(user.unlockedByAdmin, user.unlockedBy)} {timeAgo(user.unlockedAt)}
+                    </p>
+                  )}
+                </div>
               </td>
 
               {/* Info */}

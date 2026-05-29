@@ -22,7 +22,7 @@ export const useAdminUsers = (filters: UserFilters = {}) => {
   });
 
   const lockMut = useMutation({
-    mutationFn: lockUser,
+    mutationFn: ({ userId, reason }: { userId: string; reason: string }) => lockUser(userId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin_users'] });
       toast.success('Đã khóa tài khoản.');
@@ -31,7 +31,7 @@ export const useAdminUsers = (filters: UserFilters = {}) => {
   });
 
   const unlockMut = useMutation({
-    mutationFn: unlockUser,
+    mutationFn: ({ userId, reason }: { userId: string; reason?: string }) => unlockUser(userId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin_users'] });
       toast.success('Đã mở khóa tài khoản.');

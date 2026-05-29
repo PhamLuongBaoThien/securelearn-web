@@ -76,6 +76,22 @@ export interface IAdminUser {
     avatarUrl?: string;
   };
   phone?: string;
+  lockedAt?: string;
+  lockedBy?: string;
+  lockReason?: string;
+  unlockedAt?: string;
+  unlockedBy?: string;
+  unlockReason?: string;
+  lockedByAdmin?: {
+    _id: string;
+    fullName: string;
+    email: string;
+  };
+  unlockedByAdmin?: {
+    _id: string;
+    fullName: string;
+    email: string;
+  };
   coursesPurchased?: number;
   coursesCreated?: number;
   createdAt: string;

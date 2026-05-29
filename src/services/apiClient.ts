@@ -17,6 +17,7 @@ type ApiErrorBody = { message?: string };
 const API_BASE_URL = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL;
 const SESSION_EXPIRED_EVENT = 'auth:session-expired';
 const SESSION_EXPIRED_MESSAGE = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+const ACCOUNT_LOCKED_MESSAGE = 'Tài khoản đã bị khóa';
 const REFRESH_TOKEN_PATH = '/refresh-token';
 const LOGIN_PATH = '/login';
 const ADMIN_API_PATH = '/api/admin/';
@@ -60,6 +61,11 @@ const shouldRetryWithRefresh = (error: AxiosError, request?: RetryableRequestCon
   !request?._retry &&
   !request?.url?.includes(REFRESH_TOKEN_PATH) &&
   !request?.url?.includes(LOGIN_PATH);
+
+const isLockedAccountError = (error: AxiosError) => {
+  const message = getApiErrorMessage(error);
+  return error.response?.status === 403 && message.includes(ACCOUNT_LOCKED_MESSAGE);
+};
 
 const setAuthorizationHeader = (config: InternalAxiosRequestConfig, token: string) => {
   config.headers.Authorization = `Bearer ${token}`;
@@ -205,6 +211,13 @@ const handleResponseSuccess = (response: AxiosResponse) => response;
 // Thứ tự xử lý: thử refresh nếu là 401 phù hợp, nếu không thì gắn message đẹp hơn.
 const handleResponseError = async (error: AxiosError) => {
   const originalRequest = error.config as RetryableRequestConfig | undefined;
+
+  if (isLockedAccountError(error)) {
+    applyApiErrorMessage(error);
+    accessToken = null;
+    emitSessionExpired(getAuthContext(originalRequest?.url));
+    return Promise.reject(error);
+  }
 
   if (shouldRetryWithRefresh(error, originalRequest)) {
     if (!originalRequest) {
