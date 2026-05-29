@@ -35,16 +35,29 @@ export const UserList: React.FC = () => {
 
   // ── Debounce search (400ms) ──
   useEffect(() => {
-    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 400);
+    const t = setTimeout(() => { setDebounced(search); }, 400);
     return () => clearTimeout(t);
   }, [search]);
 
-  // Reset page on filter change
-  useEffect(() => { setPage(1); }, [roleFilter, statusFilter]);
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
-  useEffect(() => {
+  const handleRoleChange = (value: string) => {
+    setRoleFilter(value);
+    setPage(1);
+  };
+
+  const handleStatusChange = (value: string) => {
+    setStatus(value);
+    setPage(1);
+  };
+
+  const handleOpenLockDialog = (user: IAdminUser) => {
     setLockReason('');
-  }, [lockTarget?._id]);
+    setLockTarget(user);
+  };
 
   // ── Hook ──
   const { users, total, totalPages, isLoading, isFetching, lockMut, unlockMut } =
@@ -151,9 +164,9 @@ export const UserList: React.FC = () => {
         search={search}
         roleFilter={roleFilter}
         statusFilter={statusFilter}
-        onSearchChange={setSearch}
-        onRoleChange={setRoleFilter}
-        onStatusChange={setStatus}
+        onSearchChange={handleSearchChange}
+        onRoleChange={handleRoleChange}
+        onStatusChange={handleStatusChange}
       />
 
       {/* Table */}
@@ -163,8 +176,8 @@ export const UserList: React.FC = () => {
         page={page}
         totalPages={totalPages}
         isFetching={isFetching}
-        onLock={setLockTarget}
-        onUnlock={setLockTarget}
+        onLock={handleOpenLockDialog}
+        onUnlock={handleOpenLockDialog}
         onPageChange={setPage}
       />
     </div>
