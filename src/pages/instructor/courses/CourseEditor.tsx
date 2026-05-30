@@ -562,6 +562,11 @@ export const CourseEditor: React.FC = () => {
     });
   };
 
+  const handleLessonAttachmentsChange = (sectionIndex: number, lessonIndex: number, attachments: string[]) => {
+    handleLessonFieldChange(sectionIndex, lessonIndex, "attachments", attachments);
+    setHasEditedInSession(true);
+  };
+
   const handleAttachmentOperationChange = (lessonId: string | undefined, operation: AttachmentOperation | null) => {
     if (!lessonId) return;
     setAttachmentOperations((prev) => {
@@ -953,7 +958,13 @@ export const CourseEditor: React.FC = () => {
                           attachmentOperation={lesson._id ? attachmentOperations[lesson._id] : undefined}
                           onRefresh={refreshCourse}
                           isReadOnly={isReadOnly}
-                          onUpdateField={(field, value) => handleLessonFieldChange(sectionIndex, lessonIndex, field, value)}
+                          onUpdateField={(field, value) => {
+                            if (field === "attachments") {
+                              handleLessonAttachmentsChange(sectionIndex, lessonIndex, value as string[]);
+                              return;
+                            }
+                            handleLessonFieldChange(sectionIndex, lessonIndex, field, value);
+                          }}
                           onTitleBlur={() => void handleLessonTitleBlur(sectionIndex, lessonIndex)}
                           onContentBlur={() => void handleLessonContentBlur(sectionIndex, lessonIndex)}
                           onAttachmentOperationChange={(operation) => handleAttachmentOperationChange(lesson._id, operation)}

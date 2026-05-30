@@ -43,6 +43,11 @@ export interface ICourse {
   submittedAt?: string | null;
   reviewedAt?: string | null;
   reviewedBy?: string;
+  reviewedByAdmin?: {
+    _id: string;
+    fullName: string;
+    email: string;
+  };
   rejectionReason?: string;
   activeRevision?: {
     _id: string;

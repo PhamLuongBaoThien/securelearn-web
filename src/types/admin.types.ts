@@ -186,7 +186,14 @@ export interface ICourseReview {
   totalLessons: number;
   totalChapters: number;
   totalDuration?: number; // phút
-  submittedAt: string;
+  submittedAt: string | null; // thời điểm tác giả submit để review
+  reviewedAt?: string | null; // thời điểm admin review (approve/reject)
+  reviewedBy?: string;
+  reviewedByAdmin?: {
+    _id: string;
+    fullName: string;
+    email: string;
+  };
   rejectionReason?: string;
   isRevision?: boolean;
   courseId?: string;

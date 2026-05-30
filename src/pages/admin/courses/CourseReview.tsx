@@ -43,6 +43,29 @@ const formatLessonDuration = (seconds?: number) => {
   return `${minutes} phút`;
 };
 
+const getReviewerLabel = (course: Pick<ICourseReview | ICourse, 'reviewedBy' | 'reviewedByAdmin'>) => {
+  if (course.reviewedByAdmin?.fullName) return course.reviewedByAdmin.fullName;
+  if (course.reviewedByAdmin?.email) return course.reviewedByAdmin.email;
+  return course.reviewedBy || 'Không rõ admin';
+};
+
+const formatReviewTime = (dateStr?: string | null) => {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'vừa xong';
+  if (mins < 60) return `${mins} phút trước`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} giờ trước`;
+  return `${Math.floor(hrs / 24)} ngày trước`;
+};
+
+const getReviewActionLabel = (status: string) => {
+  if (status === 'PUBLISHED') return 'Đã duyệt bởi';
+  if (status === 'REJECTED') return 'Yêu cầu chỉnh sửa bởi';
+  return 'Kiểm duyệt bởi';
+};
+
 const hasLessonOverview = (content?: string) => (content || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().length > 0;
 
 const richTextPreviewClassName = 'prose prose-sm dark:prose-invert mt-1 max-w-none';
@@ -138,6 +161,20 @@ const CourseCurriculumPreview: React.FC<{ courseId: string }> = ({ courseId }) =
 
   return (
     <div className="mt-5 space-y-5">
+      {(course.reviewedAt || course.reviewedBy) && course.status !== 'PENDING' && (
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-4 py-3">
+          <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Thông tin kiểm duyệt</h4>
+          <div className="space-y-1 text-sm text-zinc-500 dark:text-zinc-400">
+            <p>
+              {getReviewActionLabel(course.status)} <span className="font-medium text-zinc-700 dark:text-zinc-200">{getReviewerLabel(course)}</span>
+              {course.reviewedAt ? ` ${formatReviewTime(course.reviewedAt)}` : ''}
+            </p>
+            {course.reviewedByAdmin?.email && <p>Email: {course.reviewedByAdmin.email}</p>}
+            {course.status === 'REJECTED' && course.rejectionReason && <p>Lý do: {course.rejectionReason}</p>}
+          </div>
+        </div>
+      )}
+
       <div>
         <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Mô tả ngắn</h4>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">{course.shortDescription || 'Không có'}</p>
@@ -381,6 +418,16 @@ export const CourseReview: React.FC = () => {
                       <div className="mt-2 flex items-start gap-2 p-2.5 bg-red-50 dark:bg-red-500/10 rounded-xl text-xs text-red-600 dark:text-red-400">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                         <span>{course.rejectionReason}</span>
+                      </div>
+                    )}
+
+                    {(course.reviewedAt || course.reviewedBy) && course.status !== 'PENDING' && (
+                      <div className="mt-2 flex items-start gap-2 p-2.5 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl text-xs text-zinc-500 dark:text-zinc-400">
+                        <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-500" />
+                        <span>
+                          {getReviewActionLabel(course.status)} <span className="font-medium text-zinc-700 dark:text-zinc-200">{getReviewerLabel(course)}</span>
+                          {course.reviewedAt ? ` ${formatReviewTime(course.reviewedAt)}` : ''}
+                        </span>
                       </div>
                     )}
                   </div>
