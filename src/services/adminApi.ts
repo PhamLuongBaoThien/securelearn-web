@@ -235,8 +235,8 @@ export const getCourseReviewDetail = async (courseId: string): Promise<AdminApiR
   return res.data;
 };
 
-export const approveCourse = async (courseId: string): Promise<AdminApiResponse> => {
-  const res = await apiClient.patch<AdminApiResponse>(`${ADMIN}/courses/${courseId}/approve`);
+export const approveCourse = async (courseId: string, finalCategoryId?: string): Promise<AdminApiResponse> => {
+  const res = await apiClient.patch<AdminApiResponse>(`${ADMIN}/courses/${courseId}/approve`, finalCategoryId ? { finalCategoryId } : {});
   return res.data;
 };
 

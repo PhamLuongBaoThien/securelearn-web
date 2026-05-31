@@ -166,6 +166,7 @@ export type PermissionId = (typeof ALL_PERMISSION_IDS)[number];
 
 export type CourseStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';
 export type CourseLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+export type CategoryResolutionStatus = 'NONE' | 'NEEDS_ADMIN_CLASSIFICATION';
 
 export interface ICourseReview {
   _id: string;
@@ -180,6 +181,11 @@ export interface ICourseReview {
     avatarUrl?: string;
   };
   category: string;
+  categoryId?: string | null;
+  categorySlug?: string;
+  categoryResolutionStatus?: CategoryResolutionStatus;
+  suggestedCategoryName?: string;
+  suggestedCategoryNote?: string;
   level: CourseLevel;
   price: number;
   status: CourseStatus;

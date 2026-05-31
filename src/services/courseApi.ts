@@ -37,6 +37,9 @@ export interface ICourse {
   instructorName: string;
   categoryId?: string | null;
   category?: ICourseCategory | null;
+  categoryResolutionStatus?: 'NONE' | 'NEEDS_ADMIN_CLASSIFICATION';
+  suggestedCategoryName?: string;
+  suggestedCategoryNote?: string;
   level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
   price: number;
   status: 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';

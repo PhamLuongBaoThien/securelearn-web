@@ -60,6 +60,15 @@ import { LessonQuizBuilder } from "./LessonQuizBuilder";
 import { LessonVideoUploader } from "./LessonVideoUploader";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 
 type Tab = "info" | "curriculum";
@@ -111,6 +120,9 @@ type CourseEditorValues = {
   whatYouWillLearn: string[];
   requirements: string[];
   categoryId: string;
+  categoryResolutionStatus: NonNullable<ICourse["categoryResolutionStatus"]>;
+  suggestedCategoryName: string;
+  suggestedCategoryNote: string;
   level: ICourse["level"];
   price: number;
 };
@@ -124,6 +136,106 @@ const flattenCategoryOptions = (categories: ICourseCategoryNode[], parentTrail =
     ];
   });
 
+const CATEGORY_STATUS_NONE = "NONE";
+const CATEGORY_STATUS_NEEDS_ADMIN_CLASSIFICATION = "NEEDS_ADMIN_CLASSIFICATION";
+
+interface CategoryDropdownProps {
+  categories: ICourseCategoryNode[];
+  value: string;
+  isNeedsClassification: boolean;
+  isLoading?: boolean;
+  disabled?: boolean;
+  onSelectCategory: (categoryId: string) => void;
+  onSelectNeedsClassification: () => void;
+}
+
+const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
+  categories,
+  value,
+  isNeedsClassification,
+  isLoading,
+  disabled,
+  onSelectCategory,
+  onSelectNeedsClassification,
+}) => {
+  const options = React.useMemo(() => flattenCategoryOptions(categories), [categories]);
+  const selectedLabel = isNeedsClassification
+    ? "Không tìm thấy danh mục phù hợp"
+    : options.find((option) => option.value === value)?.label;
+
+  const renderCategoryItems = (items: ICourseCategoryNode[]) =>
+    items.map((category) => {
+      const hasChildren = Boolean(category.children?.length);
+      const isSelected = !isNeedsClassification && value === category._id;
+      const labelContent = (
+        <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+          <span className="truncate">{category.name}</span>
+          {isSelected && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />}
+        </span>
+      );
+
+      if (hasChildren) {
+        return (
+          <DropdownMenuSub key={category._id}>
+            <DropdownMenuSubTrigger
+              className="min-w-56 cursor-pointer rounded-lg px-3 py-2"
+              onClick={() => onSelectCategory(category._id)}
+            >
+              {labelContent}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="min-w-56 rounded-xl p-1">
+              {renderCategoryItems(category.children || [])}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        );
+      }
+
+      return (
+        <DropdownMenuItem
+          key={category._id}
+          className="min-w-56 cursor-pointer rounded-lg px-3 py-2"
+          onClick={() => onSelectCategory(category._id)}
+        >
+          {labelContent}
+        </DropdownMenuItem>
+      );
+    });
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={disabled || isLoading}>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 w-full justify-between rounded-xl border-zinc-200 bg-background px-3 text-left text-sm font-normal dark:border-zinc-800"
+          disabled={disabled || isLoading}
+        >
+          <span className={selectedLabel ? "truncate text-zinc-900 dark:text-zinc-100" : "truncate text-zinc-400"}>
+            {isLoading ? "Đang tải..." : selectedLabel || "Chọn danh mục"}
+          </span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-zinc-400" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-[420px] min-w-[280px] overflow-y-auto rounded-xl p-1">
+        {categories.length > 0 ? renderCategoryItems(categories) : (
+          <DropdownMenuItem disabled className="rounded-lg px-3 py-2 text-sm text-zinc-400">
+            Chưa có danh mục
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem
+          className="mt-1 cursor-pointer rounded-lg border-t border-zinc-100 px-3 py-2 text-amber-600 focus:text-amber-700 dark:border-zinc-800 dark:text-amber-300"
+          onClick={onSelectNeedsClassification}
+        >
+          <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+            <span className="truncate">Không tìm thấy danh mục phù hợp</span>
+            {isNeedsClassification && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+          </span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 const getInitialCourseEditorValues = (course: ICourse): CourseEditorValues => ({
   title: course.title,
   shortDescription: course.shortDescription || "",
@@ -132,6 +244,9 @@ const getInitialCourseEditorValues = (course: ICourse): CourseEditorValues => ({
   whatYouWillLearn: course.whatYouWillLearn?.length ? course.whatYouWillLearn : [""],
   requirements: course.requirements?.length ? course.requirements : [""],
   categoryId: course.categoryId || "",
+  categoryResolutionStatus: course.categoryResolutionStatus || CATEGORY_STATUS_NONE,
+  suggestedCategoryName: course.suggestedCategoryName || "",
+  suggestedCategoryNote: course.suggestedCategoryNote || "",
   level: course.level,
   price: course.price,
 });
@@ -146,6 +261,9 @@ const areCourseEditorValuesEqual = (a: CourseEditorValues, b: CourseEditorValues
   normalizeRichText(a.description) === normalizeRichText(b.description) &&
   a.thumbnail === b.thumbnail &&
   a.categoryId === b.categoryId &&
+  a.categoryResolutionStatus === b.categoryResolutionStatus &&
+  a.suggestedCategoryName === b.suggestedCategoryName &&
+  a.suggestedCategoryNote === b.suggestedCategoryNote &&
   a.level === b.level &&
   Number(a.price) === Number(b.price) &&
   JSON.stringify(normalizeStringList(a.whatYouWillLearn)) === JSON.stringify(normalizeStringList(b.whatYouWillLearn)) &&
@@ -195,6 +313,9 @@ export const CourseEditor: React.FC = () => {
   const [whatYouWillLearn, setWhatYouWillLearn] = useState<string[]>([""]);
   const [requirements, setRequirements] = useState<string[]>([""]);
   const [categoryId, setCategoryId] = useState("");
+  const [categoryResolutionStatus, setCategoryResolutionStatus] = useState<NonNullable<ICourse["categoryResolutionStatus"]>>(CATEGORY_STATUS_NONE);
+  const [suggestedCategoryName, setSuggestedCategoryName] = useState("");
+  const [suggestedCategoryNote, setSuggestedCategoryNote] = useState("");
   const [level, setLevel] = useState("BEGINNER");
   const [price, setPrice] = useState(0);
   const [sections, setSections] = useState<ISection[]>([]);
@@ -264,6 +385,9 @@ export const CourseEditor: React.FC = () => {
       setWhatYouWillLearn(initialValues.whatYouWillLearn);
       setRequirements(initialValues.requirements);
       setCategoryId(initialValues.categoryId);
+      setCategoryResolutionStatus(initialValues.categoryResolutionStatus);
+      setSuggestedCategoryName(initialValues.suggestedCategoryName);
+      setSuggestedCategoryNote(initialValues.suggestedCategoryNote);
       setLevel(initialValues.level);
       setPrice(initialValues.price);
       setExpandedSections(new Set(course.sections?.map((_, i) => i) || []));
@@ -284,13 +408,16 @@ export const CourseEditor: React.FC = () => {
       whatYouWillLearn,
       requirements,
       categoryId,
+      categoryResolutionStatus,
+      suggestedCategoryName,
+      suggestedCategoryNote,
       level: level as ICourse["level"],
       price,
     };
     setHasUnsavedChanges(!areCourseEditorValuesEqual(currentValues, savedSnapshotRef.current));
-  }, [isInitialized, title, shortDescription, description, thumbnail, whatYouWillLearn, requirements, categoryId, level, price]);
+  }, [isInitialized, title, shortDescription, description, thumbnail, whatYouWillLearn, requirements, categoryId, categoryResolutionStatus, suggestedCategoryName, suggestedCategoryNote, level, price]);
 
-  const categoryOptions = flattenCategoryOptions(categories);
+  const needsAdminClassification = categoryResolutionStatus === CATEGORY_STATUS_NEEDS_ADMIN_CLASSIFICATION;
   const pendingVideos = sections.flatMap((section) => section.lessons).filter((lesson) => {
     const videoStatus = getVideoDisplayStatus(lesson);
     return lesson.type === "VIDEO" && (videoStatus === "PENDING" || videoStatus === "PROCESSING");
@@ -303,6 +430,7 @@ export const CourseEditor: React.FC = () => {
     sections.length > 0 ||
     Boolean(thumbnail?.trim()) ||
     Boolean(categoryId) ||
+    needsAdminClassification ||
     Boolean(description?.replace(/<[^>]*>/g, "").trim()) ||
     whatYouWillLearn.some((item) => item.trim()) ||
     requirements.some((item) => item.trim());
@@ -338,7 +466,10 @@ export const CourseEditor: React.FC = () => {
       payload.append("shortDescription", shortDescription);
       payload.append("description", description);
       payload.append("thumbnail", thumbnailFile ?? thumbnail);
-      payload.append("categoryId", categoryId);
+      payload.append("categoryId", needsAdminClassification ? "" : categoryId);
+      payload.append("categoryResolutionStatus", categoryResolutionStatus);
+      payload.append("suggestedCategoryName", needsAdminClassification ? suggestedCategoryName : "");
+      payload.append("suggestedCategoryNote", needsAdminClassification ? suggestedCategoryNote : "");
       payload.append("level", level as ICourse["level"]);
       payload.append("price", String(price));
       whatYouWillLearn.filter(Boolean).forEach((item) => payload.append("whatYouWillLearn", item));
@@ -355,7 +486,11 @@ export const CourseEditor: React.FC = () => {
       savedSnapshotRef.current = {
         title, shortDescription, description,
         thumbnail: updatedCourse.thumbnail || "",
-        whatYouWillLearn, requirements, categoryId, level: level as ICourse["level"], price,
+        whatYouWillLearn, requirements, categoryId: needsAdminClassification ? "" : categoryId,
+        categoryResolutionStatus,
+        suggestedCategoryName: needsAdminClassification ? suggestedCategoryName : "",
+        suggestedCategoryNote: needsAdminClassification ? suggestedCategoryNote : "",
+        level: level as ICourse["level"], price,
       };
       setHasUnsavedChanges(false);
       setHasEditedInSession(true);
@@ -384,6 +519,9 @@ export const CourseEditor: React.FC = () => {
     setWhatYouWillLearn(snap.whatYouWillLearn);
     setRequirements(snap.requirements);
     setCategoryId(snap.categoryId);
+    setCategoryResolutionStatus(snap.categoryResolutionStatus);
+    setSuggestedCategoryName(snap.suggestedCategoryName);
+    setSuggestedCategoryNote(snap.suggestedCategoryNote);
     setLevel(snap.level);
     setPrice(snap.price);
     setHasUnsavedChanges(false);
@@ -410,6 +548,11 @@ export const CourseEditor: React.FC = () => {
 
     if (hasBlockingVideos) {
       toast.error(`Còn ${pendingVideos.length} video đang xử lý.`);
+      return;
+    }
+
+    if (needsAdminClassification && !suggestedCategoryName.trim()) {
+      toast.error("Vui lòng nhập chủ đề khóa học để người kiểm duyệt phân loại.");
       return;
     }
 
@@ -705,7 +848,7 @@ export const CourseEditor: React.FC = () => {
             <p className="text-sm text-muted-foreground mt-0.5">ID: {courseId}</p>
             {isReadOnly && (
               <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                {course.status === "PENDING" ? "Khóa học đang chờ admin duyệt, tạm khóa chỉnh sửa." : "Khóa học đã xuất bản. Hãy tạo bản cập nhật từ danh sách khóa học để chỉnh sửa."}
+                {course.status === "PENDING" ? "Khóa học đang chờ người kiểm duyệt xét duyệt, tạm khóa chỉnh sửa." : "Khóa học đã xuất bản. Hãy tạo bản cập nhật từ danh sách khóa học để chỉnh sửa."}
               </p>
             )}
           </div>
@@ -773,13 +916,10 @@ export const CourseEditor: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Danh mục</label>
-                    <Select value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setHasUnsavedChanges(true); }}
-                      className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm" disabled={isCategoriesLoading || isReadOnly}>
-                      <option value="">{isCategoriesLoading ? "Đang tải..." : "Chọn danh mục"}</option>
-                      {categoryOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                    </Select>
-                  </div>
+                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Giá (VND)</label>
+                  <Input type="number" value={price} onChange={(e) => { setPrice(Number(e.target.value)); setHasUnsavedChanges(true); }} className="h-11 rounded-xl" min={0} step={1000} disabled={isReadOnly} />
+                </div>
+                  
                   <div>
                     <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Trình độ</label>
                     <Select value={level} onChange={(e) => { setLevel(e.target.value); setHasUnsavedChanges(true); }}
@@ -791,9 +931,51 @@ export const CourseEditor: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Giá (VND)</label>
-                  <Input type="number" value={price} onChange={(e) => { setPrice(Number(e.target.value)); setHasUnsavedChanges(true); }} className="h-11 rounded-xl" min={0} step={1000} disabled={isReadOnly} />
-                </div>
+                    <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Danh mục</label>
+                    <CategoryDropdown
+                      categories={categories}
+                      value={categoryId}
+                      isNeedsClassification={needsAdminClassification}
+                      isLoading={isCategoriesLoading}
+                      disabled={isReadOnly}
+                      onSelectCategory={(nextCategoryId) => {
+                        setCategoryId(nextCategoryId);
+                        setCategoryResolutionStatus(CATEGORY_STATUS_NONE);
+                        setSuggestedCategoryName("");
+                        setSuggestedCategoryNote("");
+                        setHasUnsavedChanges(true);
+                      }}
+                      onSelectNeedsClassification={() => {
+                        setCategoryId("");
+                        setCategoryResolutionStatus(CATEGORY_STATUS_NEEDS_ADMIN_CLASSIFICATION);
+                        setHasUnsavedChanges(true);
+                      }}
+                    />
+                  </div>
+                {needsAdminClassification && (
+                  <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
+                    <div>
+                      <label className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1.5 block">Chủ đề khóa học</label>
+                      <Input
+                        value={suggestedCategoryName}
+                        onChange={(e) => { setSuggestedCategoryName(e.target.value); setHasUnsavedChanges(true); }}
+                        className="h-10 rounded-xl bg-white dark:bg-zinc-950"
+                        placeholder="VD: Lập trình SvelteKit"
+                        disabled={isReadOnly}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1.5 block">Ghi chú cho người kiểm duyệt</label>
+                      <textarea
+                        value={suggestedCategoryNote}
+                        onChange={(e) => { setSuggestedCategoryNote(e.target.value); setHasUnsavedChanges(true); }}
+                        className="w-full min-h-[82px] rounded-xl border border-zinc-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-amber-400/40 dark:border-zinc-800 dark:bg-zinc-950"
+                        placeholder="Mô tả ngắn vì sao chủ đề này phù hợp..."
+                        disabled={isReadOnly}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Ảnh quảng cáo khóa học</label>
@@ -891,13 +1073,12 @@ export const CourseEditor: React.FC = () => {
             <div className="space-y-4">
               {sections.map((section, sectionIndex) => (
                 <div key={section._id || sectionIndex} className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors" onClick={() => toggleSection(sectionIndex)}>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 transition-colors">
                     <GripVertical className="w-4 h-4 text-zinc-400 shrink-0" />
                     <Input
                       value={section.title}
                       onChange={(e) => handleSectionTitleChange(sectionIndex, e.target.value)}
                       onBlur={() => void handleSectionTitleBlur(sectionIndex)}
-                      onClick={(e) => e.stopPropagation()}
                       disabled={isReadOnly}
                       className="h-8 text-sm font-medium border-none bg-transparent p-0 focus-visible:ring-0"
                     />
@@ -935,7 +1116,7 @@ export const CourseEditor: React.FC = () => {
                             isDestructive
                             onConfirm={() => void handleRemoveSection(section._id)}
                             triggerButton={
-                              <Button type="button" variant="ghost" size="icon" onClick={(e) => e.stopPropagation()} className="h-7 w-7 p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0">
+                              <Button type="button" variant="ghost" size="icon" onClick={(e) => e.stopPropagation()} className="h-7 w-7 p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0" disabled={isMutatingCurriculum || isReadOnly}>
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             }
@@ -944,7 +1125,9 @@ export const CourseEditor: React.FC = () => {
                       </TooltipTrigger>
                       <TooltipContent>Xóa chương</TooltipContent>
                     </Tooltip>
-                    {expandedSections.has(sectionIndex) ? <ChevronUp className="w-4 h-4 shrink-0 text-zinc-400" /> : <ChevronDown className="w-4 h-4 shrink-0 text-zinc-400" />}
+                    <button type="button" onClick={() => toggleSection(sectionIndex)} className="h-7 w-7 flex items-center justify-center rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors shrink-0">
+                      {expandedSections.has(sectionIndex) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
                   </div>
                   {expandedSections.has(sectionIndex) && (
                     <div className="p-4 space-y-3 border-t border-zinc-200 dark:border-zinc-800">
@@ -1061,10 +1244,9 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
   return (
     <div className={`rounded-xl border transition-colors overflow-hidden ${isVideo && status === "DONE" ? "border-green-200 dark:border-green-500/20" : isVideo && (status === "PENDING" || status === "PROCESSING") ? "border-indigo-200 dark:border-indigo-500/20" : "border-zinc-200 dark:border-zinc-800/60"}`}>
       <div 
-        className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-950 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
-        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-950 transition-colors"
       >
-        <GripVertical className="w-4 h-4 text-zinc-400 shrink-0" onClick={(e) => e.stopPropagation()} />
+        <GripVertical className="w-4 h-4 text-zinc-400 shrink-0" />
         {isVideo ? <div className={`w-5 h-5 shrink-0 ${status === "DONE" ? "text-green-500" : status === "PROCESSING" || status === "PENDING" ? "text-indigo-500" : status === "FAILED" ? "text-red-500" : "text-blue-400"}`}><Video className="w-4 h-4" /></div> : <CheckCircle2 className="w-4 h-4 text-orange-400 shrink-0" />}
         <Input 
           value={lesson.title} 
@@ -1119,7 +1301,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
                 isDestructive
                 onConfirm={onRemove}
                 triggerButton={
-                  <Button type="button" variant="ghost" size="icon" onClick={(e) => e.stopPropagation()} className="h-7 w-7 p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0">
+                  <Button type="button" variant="ghost" size="icon" onClick={(e) => e.stopPropagation()} className="h-7 w-7 p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0" disabled={isReadOnly}>
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 }
@@ -1139,7 +1321,9 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
           onOpenChange={(open) => { if (!open) setPendingType(null); }}
           onConfirm={() => { if (pendingType) { onChangeType(pendingType); setPendingType(null); } }}
         />
-        {isExpanded ? <ChevronUp className="w-4 h-4 shrink-0 text-zinc-400" /> : <ChevronDown className="w-4 h-4 shrink-0 text-zinc-400" />}
+        <button type="button" onClick={() => setIsExpanded(!isExpanded)} className="h-7 w-7 flex items-center justify-center rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors shrink-0">
+          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
       </div>
 
       {isExpanded && (
