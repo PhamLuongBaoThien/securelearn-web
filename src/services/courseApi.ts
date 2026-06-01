@@ -26,6 +26,7 @@ export interface ICourseCategoryNode extends ICourseCategory {
 export interface ICourse {
   _id: string;
   courseId?: string;              // ID khóa cha public; _id có thể là version id trong editor/review
+  isRevision?: boolean;           // Đánh dấu bản revision (có bản published)
   title: string;
   slug: string;
   description?: string;           // Mô tả chi tiết (rich text HTML)
@@ -181,6 +182,11 @@ export const getMyCourses = async () => {
  */
 export const getCourseForManage = async (courseId: string) => {
   const { data } = await apiClient.get<ApiResponse<ICourse>>(`/api/courses/${courseId}/manage`);
+  return data;
+};
+
+export const getPublishedCourseForManage = async (courseId: string) => {
+  const { data } = await apiClient.get<ApiResponse<ICourse>>(`/api/courses/${courseId}/manage/published`);
   return data;
 };
 

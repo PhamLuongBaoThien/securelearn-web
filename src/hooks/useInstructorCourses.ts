@@ -15,6 +15,7 @@ import {
   deleteCourseSection,
   getLessonQuiz,
   getCourseForManage,
+  getPublishedCourseForManage,
   reorderCourseLessons,
   reorderCourseSections,
   updateCourse,
@@ -35,6 +36,7 @@ import {
 export const instructorKeys = {
   myCourses: ['instructor', 'my-courses'] as const,
   courseDetail: (id: string) => ['instructor', 'course', id] as const,
+  publishedCourseDetail: (id: string) => ['instructor', 'course', id, 'published'] as const,
   lessonQuiz: (courseId: string, lessonId: string) => ['instructor', 'course', courseId, 'lesson', lessonId, 'quiz'] as const,
 };
 
@@ -75,6 +77,21 @@ export function useGetCourseForManage(courseId: string) {
     // Luôn fetch lại khi mount để tránh hiển thị trạng thái video cũ (ví dụ: PROCESSING)
     // khi thực tế backend đã xử lý xong (READY). Nếu không, user sẽ thấy cảnh báo
     // "video đang xử lý" giả khi quay lại trang chỉnh sửa.
+    staleTime: 0,
+  });
+}
+
+export function useGetPublishedCourseForManage(courseId: string, enabled = false) {
+  return useQuery({
+    queryKey: instructorKeys.publishedCourseDetail(courseId),
+    queryFn: async () => {
+      const response = await getPublishedCourseForManage(courseId);
+      if (response.status === 'ERR') {
+        throw new Error(response.message);
+      }
+      return response.data as ICourse;
+    },
+    enabled: !!courseId && enabled,
     staleTime: 0,
   });
 }

@@ -33,6 +33,7 @@ import {
   useDeleteCourseLesson,
   useDeleteCourseSection,
   useGetCourseForManage,
+  useGetPublishedCourseForManage,
   useSubmitCourseForReview,
   useReorderCourseLessons,
   useReorderCourseSections,
@@ -69,9 +70,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 type Tab = "info" | "curriculum";
+type VersionViewMode = "draft" | "published";
 
 interface BulletListEditorProps {
   items: string[];
@@ -291,6 +294,8 @@ export const CourseEditor: React.FC = () => {
   const queryClient = useQueryClient();
 
   const { data: course, isLoading, error, refetch } = useGetCourseForManage(courseId!);
+  const hasPublishedVersion = Boolean(course?.isRevision);
+  const { data: publishedCourse, isLoading: isPublishedLoading } = useGetPublishedCourseForManage(courseId!, hasPublishedVersion);
   const { data: categories = [], isLoading: isCategoriesLoading } = usePublicCourseCategories();
   const updateMutation = useUpdateCourse();
   const submitReviewMutation = useSubmitCourseForReview();
@@ -305,6 +310,7 @@ export const CourseEditor: React.FC = () => {
   const reorderLessonsMutation = useReorderCourseLessons();
 
   const [activeTab, setActiveTab] = useState<Tab>("info");
+  const [viewMode, setViewMode] = useState<VersionViewMode>("draft");
   const [title, setTitle] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const [description, setDescription] = useState<string>("");
@@ -357,8 +363,13 @@ export const CourseEditor: React.FC = () => {
   useEffect(() => {
     setIsInitialized(false);
     setHasEditedInSession(false);
+    setViewMode("draft");
     lessonContentDraftsRef.current.clear();
   }, [courseId]);
+
+  useEffect(() => {
+    if (!hasPublishedVersion) setViewMode("draft");
+  }, [hasPublishedVersion]);
 
   useEffect(() => {
     if (!course) return;
@@ -808,18 +819,104 @@ export const CourseEditor: React.FC = () => {
   }
 
   const isReadOnly = course.status === "PENDING" || course.status === "PUBLISHED";
-  const isRevisionDraft = Boolean(course.courseId && course.courseId !== course._id);
-  const hasReviewChanges = !isRevisionDraft || hasEditedInSession;
-  const submitDisabledReason = isReadOnly
+  const isViewingPublished = viewMode === "published" && Boolean(publishedCourse);
+  const displayCourse = isViewingPublished ? publishedCourse! : course;
+  const effectiveReadOnly = isReadOnly || isViewingPublished;
+  const isRevisionDraft = Boolean(course?.isRevision);
+  const displayCategoryId = isViewingPublished ? (displayCourse.categoryId || "") : categoryId;
+  const displayNeedsAdminClassification = isViewingPublished
+    ? displayCourse.categoryResolutionStatus === CATEGORY_STATUS_NEEDS_ADMIN_CLASSIFICATION
+    : needsAdminClassification;
+  const displaySections = isViewingPublished ? (displayCourse.sections || []) : sections;
+  const displayWhatYouWillLearn = isViewingPublished ? (displayCourse.whatYouWillLearn?.length ? displayCourse.whatYouWillLearn : [""]) : whatYouWillLearn;
+  const displayRequirements = isViewingPublished ? (displayCourse.requirements?.length ? displayCourse.requirements : [""]) : requirements;
+
+  // Tự động kiểm tra xem bản nháp có thực sự khác biệt so với bản đã xuất bản không.
+  // Dùng hàm chạy ngay lập tức (IIFE) thay vì React.useMemo để tránh vi phạm "Rules of Hooks" do phía trên có lệnh return sớm (early return)
+  const hasRealChangesFromPublished = (() => {
+    // 1. Chống nháy nút (Anti-Flickering): Nếu đang tải bản published, tạm coi như không có thay đổi để nút gửi duyệt giữ trạng thái vô hiệu hoá tạm thời
+    if (!isRevisionDraft || isPublishedLoading || !publishedCourse) return false;
+
+    // 2. Gom nhóm các thông tin cơ bản để so sánh
+    const draftValues = {
+      title: course.title || "",
+      shortDescription: course.shortDescription || "",
+      description: course.description || "",
+      thumbnail: course.thumbnail || "",
+      categoryId: course.categoryId || "",
+      categoryResolutionStatus: course.categoryResolutionStatus || CATEGORY_STATUS_NONE,
+      suggestedCategoryName: course.suggestedCategoryName || "",
+      suggestedCategoryNote: course.suggestedCategoryNote || "",
+      level: course.level,
+      price: course.price,
+      whatYouWillLearn: course.whatYouWillLearn || [],
+      requirements: course.requirements || [],
+    };
+
+    const publishedValues = {
+      title: publishedCourse.title || "",
+      shortDescription: publishedCourse.shortDescription || "",
+      description: publishedCourse.description || "",
+      thumbnail: publishedCourse.thumbnail || "",
+      categoryId: publishedCourse.categoryId || "",
+      categoryResolutionStatus: publishedCourse.categoryResolutionStatus || CATEGORY_STATUS_NONE,
+      suggestedCategoryName: publishedCourse.suggestedCategoryName || "",
+      suggestedCategoryNote: publishedCourse.suggestedCategoryNote || "",
+      level: publishedCourse.level,
+      price: publishedCourse.price,
+      whatYouWillLearn: publishedCourse.whatYouWillLearn || [],
+      requirements: publishedCourse.requirements || [],
+    };
+
+    // Nếu thông tin cơ bản khác nhau -> có thay đổi
+    if (!areCourseEditorValuesEqual(draftValues, publishedValues)) return true;
+
+    // 3. So sánh cấu trúc Giáo trình (Sections & Lessons)
+    const draftSecs = course.sections || [];
+    const pubSecs = publishedCourse.sections || [];
+    
+    // Khác số lượng chương -> có thay đổi
+    if (draftSecs.length !== pubSecs.length) return true;
+
+    for (let i = 0; i < draftSecs.length; i++) {
+      const ds = draftSecs[i];
+      const ps = pubSecs[i];
+      // Khác tên chương -> có thay đổi
+      if (ds.title !== ps.title) return true;
+
+      const dLessons = ds.lessons || [];
+      const pLessons = ps.lessons || [];
+      
+      // Khác số lượng bài học -> có thay đổi
+      if (dLessons.length !== pLessons.length) return true;
+
+      for (let j = 0; j < dLessons.length; j++) {
+        const dl = dLessons[j];
+        const pl = pLessons[j];
+        // So sánh chi tiết từng bài học (tên, loại, nội dung text, id video, tài liệu)
+        if (dl.title !== pl.title) return true;
+        if (dl.type !== pl.type) return true;
+        if (normalizeRichText(dl.content || "") !== normalizeRichText(pl.content || "")) return true;
+        if (dl.videoAssetId !== pl.videoAssetId) return true;
+        if (JSON.stringify(dl.attachments || []) !== JSON.stringify(pl.attachments || [])) return true;
+      }
+    }
+
+    return false;
+  })();
+
+  // Cho phép Gửi duyệt nếu: Khóa học tạo mới (!isRevisionDraft) HOẶC vừa có thao tác sửa trong phiên này (hasEditedInSession) HOẶC bản nháp thực sự khác bản đã xuất bản
+  const hasReviewChanges = !isRevisionDraft || hasEditedInSession || hasRealChangesFromPublished;
+  const submitDisabledReason = isReadOnly // isReadOnly true khi status PENDING hoặc PUBLISHED
     ? "Khóa học hiện không thể gửi duyệt."
-    : hasBlockingVideos
+    : hasBlockingVideos // hasBlockingVideos true khi có video đang xử lý
       ? `Còn ${pendingVideos.length} video đang xử lý.`
-      : hasUnsavedChanges
+      : hasUnsavedChanges // hasUnsavedChanges true khi có thay đổi chưa lưu
         ? "Vui lòng lưu thay đổi trước khi gửi duyệt."
-      : !hasAnySavedContent
+      : !hasAnySavedContent // hasAnySavedContent true khi có nội dung
         ? "Hãy thêm nội dung khóa học trước khi gửi duyệt."
-        : !hasReviewChanges
-          ? "Bản cập nhật chưa có thay đổi so với khóa học đang xuất bản."
+      : !hasReviewChanges // hasReviewChanges true khi có thay đổi so với bản phát hành
+        ? "Bản cập nhật chưa có thay đổi so với khóa học đang xuất bản."
           : undefined;
   const isSubmitDisabled =
     isReadOnly ||
@@ -843,9 +940,39 @@ export const CourseEditor: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Chỉnh sửa khóa học</h1>
-              {getStatusBadge(course.status)}
+              {getStatusBadge(displayCourse.status)}
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">ID: {courseId}</p>
+            {hasPublishedVersion && (
+              <div className="mt-2 flex items-center gap-3 flex-wrap">
+                <Tabs
+                  value={viewMode}
+                  onValueChange={(val) => setViewMode(val as VersionViewMode)}
+                >
+                  <TabsList className="grid w-[260px] grid-cols-2 h-8 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    <TabsTrigger
+                      value="draft"
+                      className="rounded-lg text-xs font-medium py-1 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800"
+                    >
+                      Bản nháp
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="published"
+                      disabled={isPublishedLoading}
+                      className="rounded-lg text-xs font-medium py-1 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800"
+                    >
+                      {isPublishedLoading ? "Đang tải..." : "Bản đã xuất bản"}
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                {isViewingPublished && (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:border-blue-900/30 dark:bg-blue-950/20 dark:text-blue-400 animate-in fade-in slide-in-from-left-1 duration-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    Chế độ chỉ xem (Không thể chỉnh sửa)
+                  </span>
+                )}
+              </div>
+            )}
             {isReadOnly && (
               <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                 {course.status === "PENDING" ? "Khóa học đang chờ người kiểm duyệt xét duyệt, tạm khóa chỉnh sửa." : "Khóa học đã xuất bản. Hãy tạo bản cập nhật từ danh sách khóa học để chỉnh sửa."}
@@ -854,12 +981,12 @@ export const CourseEditor: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {hasBlockingVideos && (
+          {hasBlockingVideos && !isViewingPublished && (
             <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl text-xs font-medium text-amber-700 dark:text-amber-400">
               <Clock className="w-3.5 h-3.5 animate-pulse" />{pendingVideos.length} video đang xử lý
             </div>
           )}
-          {(course.status === "DRAFT" || course.status === "REJECTED") && (
+          {(course.status === "DRAFT" || course.status === "REJECTED") && !isViewingPublished && (
             <Button
               onClick={handleSubmitReview}
               disabled={isSubmitDisabled}
@@ -902,28 +1029,28 @@ export const CourseEditor: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Tên khóa học</label>
-                  <Input value={title} onChange={(e) => { setTitle(e.target.value); setHasUnsavedChanges(true); }} className="h-11 rounded-xl" placeholder="Nhập tên khóa học..." disabled={isReadOnly} />
+                  <Input value={isViewingPublished ? displayCourse.title : title} onChange={(e) => { setTitle(e.target.value); setHasUnsavedChanges(true); }} className="h-11 rounded-xl" placeholder="Nhập tên khóa học..." disabled={effectiveReadOnly} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
                     <span>Mô tả ngắn</span>
-                    <span className={`text-xs ${shortDescription.length > 200 ? "text-red-500" : "text-zinc-400"}`}>{shortDescription.length}/200</span>
+                    <span className={`text-xs ${(isViewingPublished ? displayCourse.shortDescription || "" : shortDescription).length > 200 ? "text-red-500" : "text-zinc-400"}`}>{(isViewingPublished ? displayCourse.shortDescription || "" : shortDescription).length}/200</span>
                   </label>
-                  <textarea value={shortDescription} onChange={(e) => { setShortDescription(e.target.value); setHasUnsavedChanges(true); }} maxLength={220} rows={3}
-                    disabled={isReadOnly}
+                  <textarea value={isViewingPublished ? displayCourse.shortDescription || "" : shortDescription} onChange={(e) => { setShortDescription(e.target.value); setHasUnsavedChanges(true); }} maxLength={220} rows={3}
+                    disabled={effectiveReadOnly}
                     className="w-full p-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
                     placeholder="Một câu giới thiệu ngắn, sẽ hiển thị ngay dưới tên khóa học..." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                   <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Giá (VND)</label>
-                  <Input type="number" value={price} onChange={(e) => { setPrice(Number(e.target.value)); setHasUnsavedChanges(true); }} className="h-11 rounded-xl" min={0} step={1000} disabled={isReadOnly} />
+                  <Input type="number" value={isViewingPublished ? displayCourse.price : price} onChange={(e) => { setPrice(Number(e.target.value)); setHasUnsavedChanges(true); }} className="h-11 rounded-xl" min={0} step={1000} disabled={effectiveReadOnly} />
                 </div>
                   
                   <div>
                     <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Trình độ</label>
-                    <Select value={level} onChange={(e) => { setLevel(e.target.value); setHasUnsavedChanges(true); }}
-                      className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm" disabled={isReadOnly}>
+                    <Select value={isViewingPublished ? displayCourse.level : level} onChange={(e) => { setLevel(e.target.value); setHasUnsavedChanges(true); }}
+                      className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm" disabled={effectiveReadOnly}>
                       <option value="BEGINNER">Cơ bản</option>
                       <option value="INTERMEDIATE">Trung cấp</option>
                       <option value="ADVANCED">Nâng cao</option>
@@ -934,10 +1061,10 @@ export const CourseEditor: React.FC = () => {
                     <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Danh mục</label>
                     <CategoryDropdown
                       categories={categories}
-                      value={categoryId}
-                      isNeedsClassification={needsAdminClassification}
+                      value={displayCategoryId}
+                      isNeedsClassification={displayNeedsAdminClassification}
                       isLoading={isCategoriesLoading}
-                      disabled={isReadOnly}
+                      disabled={effectiveReadOnly}
                       onSelectCategory={(nextCategoryId) => {
                         setCategoryId(nextCategoryId);
                         setCategoryResolutionStatus(CATEGORY_STATUS_NONE);
@@ -952,26 +1079,26 @@ export const CourseEditor: React.FC = () => {
                       }}
                     />
                   </div>
-                {needsAdminClassification && (
+                {displayNeedsAdminClassification && (
                   <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
                     <div>
                       <label className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1.5 block">Chủ đề khóa học</label>
                       <Input
-                        value={suggestedCategoryName}
+                        value={isViewingPublished ? displayCourse.suggestedCategoryName || "" : suggestedCategoryName}
                         onChange={(e) => { setSuggestedCategoryName(e.target.value); setHasUnsavedChanges(true); }}
                         className="h-10 rounded-xl bg-white dark:bg-zinc-950"
                         placeholder="VD: Lập trình SvelteKit"
-                        disabled={isReadOnly}
+                        disabled={effectiveReadOnly}
                       />
                     </div>
                     <div>
                       <label className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1.5 block">Ghi chú cho người kiểm duyệt</label>
                       <textarea
-                        value={suggestedCategoryNote}
+                        value={isViewingPublished ? displayCourse.suggestedCategoryNote || "" : suggestedCategoryNote}
                         onChange={(e) => { setSuggestedCategoryNote(e.target.value); setHasUnsavedChanges(true); }}
                         className="w-full min-h-[82px] rounded-xl border border-zinc-200 bg-white p-3 text-sm outline-none focus:ring-2 focus:ring-amber-400/40 dark:border-zinc-800 dark:bg-zinc-950"
                         placeholder="Mô tả ngắn vì sao chủ đề này phù hợp..."
-                        disabled={isReadOnly}
+                        disabled={effectiveReadOnly}
                       />
                     </div>
                   </div>
@@ -979,7 +1106,7 @@ export const CourseEditor: React.FC = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Ảnh quảng cáo khóa học</label>
-                <ThumbnailUploader value={thumbnail} onChange={handleThumbnailChange} disabled={updateMutation.isPending || isReadOnly} />
+                <ThumbnailUploader value={isViewingPublished ? displayCourse.thumbnail || "" : thumbnail} onChange={handleThumbnailChange} disabled={updateMutation.isPending || effectiveReadOnly} />
                 <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5">Khuyến nghị tỉ lệ 16:9, tối thiểu 1280×720px</p>
               </div>
             </div>
@@ -993,20 +1120,20 @@ export const CourseEditor: React.FC = () => {
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Học viên sẽ học được gì</h3>
                   <p className="text-xs text-muted-foreground mt-0.5 mb-3">Liệt kê những kỹ năng, kiến thức đạt được sau khóa học</p>
-                  <BulletListEditor items={whatYouWillLearn} onChange={(v) => { setWhatYouWillLearn(v); setHasUnsavedChanges(true); }} placeholder="Ví dụ: Xây dựng REST API với Node.js..." addLabel="Thêm mục tiêu" disabled={isReadOnly} />
+                  <BulletListEditor items={displayWhatYouWillLearn} onChange={(v) => { setWhatYouWillLearn(v); setHasUnsavedChanges(true); }} placeholder="Ví dụ: Xây dựng REST API với Node.js..." addLabel="Thêm mục tiêu" disabled={effectiveReadOnly} />
                 </div>
               </div>
               <div className="space-y-3">
                 <div>
                   <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Yêu cầu trước khi học</h3>
                   <p className="text-xs text-muted-foreground mt-0.5 mb-3">Những kiến thức hoặc công cụ cần có trước khi học</p>
-                  <BulletListEditor items={requirements} onChange={(v) => { setRequirements(v); setHasUnsavedChanges(true); }} placeholder="Ví dụ: Biết cơ bản về HTML/CSS..." addLabel="Thêm yêu cầu" disabled={isReadOnly} />
+                  <BulletListEditor items={displayRequirements} onChange={(v) => { setRequirements(v); setHasUnsavedChanges(true); }} placeholder="Ví dụ: Biết cơ bản về HTML/CSS..." addLabel="Thêm yêu cầu" disabled={effectiveReadOnly} />
                 </div>
               </div>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-3">Mô tả chi tiết</h3>
-              <RichTextEditor value={description} onChange={(v) => { setDescription(v); setHasUnsavedChanges(true); }} placeholder="Viết mô tả chi tiết về khóa học..." minHeight="280px" disabled={isReadOnly} />
+              <RichTextEditor value={isViewingPublished ? displayCourse.description || "" : description} onChange={(v) => { setDescription(v); setHasUnsavedChanges(true); }} placeholder="Viết mô tả chi tiết về khóa học..." minHeight="280px" disabled={effectiveReadOnly} />
             </div>
           </div>
 
@@ -1061,17 +1188,17 @@ export const CourseEditor: React.FC = () => {
                   <span>Tự động lưu</span>
                 </div>
               )}
-              <Button variant="outline" onClick={() => void handleAddSection()} className="gap-2 rounded-xl text-sm" disabled={isMutatingCurriculum || isReadOnly}>
+              <Button variant="outline" onClick={() => void handleAddSection()} className="gap-2 rounded-xl text-sm" disabled={isMutatingCurriculum || effectiveReadOnly}>
                 <Plus className="w-4 h-4" /> Thêm chương
               </Button>
             </div>
           </div>
 
-          {sections.length === 0 ? (
+          {displaySections.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground"><p>Chưa có chương nào. Hãy thêm chương đầu tiên!</p></div>
           ) : (
             <div className="space-y-4">
-              {sections.map((section, sectionIndex) => (
+              {displaySections.map((section, sectionIndex) => (
                 <div key={section._id || sectionIndex} className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
                   <div className="flex items-center gap-3 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 transition-colors">
                     <GripVertical className="w-4 h-4 text-zinc-400 shrink-0" />
@@ -1079,7 +1206,7 @@ export const CourseEditor: React.FC = () => {
                       value={section.title}
                       onChange={(e) => handleSectionTitleChange(sectionIndex, e.target.value)}
                       onBlur={() => void handleSectionTitleBlur(sectionIndex)}
-                      disabled={isReadOnly}
+                      disabled={effectiveReadOnly}
                       className="h-8 text-sm font-medium border-none bg-transparent p-0 focus-visible:ring-0"
                     />
                     <Badge variant="secondary" className="shrink-0 text-xs">{section.lessons.length} bài</Badge>
@@ -1091,7 +1218,7 @@ export const CourseEditor: React.FC = () => {
                     )}
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "up"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={isMutatingCurriculum || isReadOnly || sectionIndex === 0}>
+                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "up"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={isMutatingCurriculum || effectiveReadOnly || sectionIndex === 0}>
                           <ArrowUp className="w-4 h-4" />
                         </Button>
                       </TooltipTrigger>
@@ -1099,7 +1226,7 @@ export const CourseEditor: React.FC = () => {
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "down"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={isMutatingCurriculum || isReadOnly || sectionIndex === sections.length - 1}>
+                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "down"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={isMutatingCurriculum || effectiveReadOnly || sectionIndex === displaySections.length - 1}>
                           <ArrowDown className="w-4 h-4" />
                         </Button>
                       </TooltipTrigger>
@@ -1116,7 +1243,7 @@ export const CourseEditor: React.FC = () => {
                             isDestructive
                             onConfirm={() => void handleRemoveSection(section._id)}
                             triggerButton={
-                              <Button type="button" variant="ghost" size="icon" onClick={(e) => e.stopPropagation()} className="h-7 w-7 p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0" disabled={isMutatingCurriculum || isReadOnly}>
+                              <Button type="button" variant="ghost" size="icon" onClick={(e) => e.stopPropagation()} className="h-7 w-7 p-1 text-zinc-400 hover:text-red-500 transition-colors shrink-0" disabled={isMutatingCurriculum || effectiveReadOnly}>
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             }
@@ -1133,15 +1260,16 @@ export const CourseEditor: React.FC = () => {
                     <div className="p-4 space-y-3 border-t border-zinc-200 dark:border-zinc-800">
                       {section.lessons.map((lesson, lessonIndex) => (
                         <LessonRow
-                          key={`${lesson._id || lessonIndex}-${lesson.type}`}
+                          key={`${viewMode}-${lesson._id || lessonIndex}-${lesson.type}`}
                           courseId={courseId!}
                           lesson={lesson}
                           canMoveUp={lessonIndex > 0}
                           canMoveDown={lessonIndex < section.lessons.length - 1}
                           attachmentOperation={lesson._id ? attachmentOperations[lesson._id] : undefined}
                           onRefresh={refreshCourse}
-                          isReadOnly={isReadOnly}
+                          isReadOnly={effectiveReadOnly}
                           onUpdateField={(field, value) => {
+                            if (isViewingPublished) return;
                             if (field === "attachments") {
                               handleLessonAttachmentsChange(sectionIndex, lessonIndex, value as string[]);
                               return;
@@ -1157,7 +1285,7 @@ export const CourseEditor: React.FC = () => {
                           onRemove={() => void handleRemoveLesson(lesson._id)}
                         />
                       ))}
-                      <Button variant="ghost" size="sm" onClick={() => void handleAddLesson(sectionIndex)} className="gap-2 text-xs text-muted-foreground" disabled={isMutatingCurriculum || isReadOnly}>
+                      <Button variant="ghost" size="sm" onClick={() => void handleAddLesson(sectionIndex)} className="gap-2 text-xs text-muted-foreground" disabled={isMutatingCurriculum || effectiveReadOnly}>
                         <Plus className="w-3.5 h-3.5" /> Thêm bài giảng
                       </Button>
                     </div>
