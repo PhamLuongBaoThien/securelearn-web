@@ -8,7 +8,7 @@ import { Profile } from '../pages/user/profile';
 // Public & Auth Imports
 import { PublicLayout } from '../components/layout/PublicLayout';
 import { Catalog } from '../pages/public/catalog';
-import { CourseDetail } from '../pages/public/CourseDetail';
+import { CourseDetail } from '../pages/public/course-detail';
 import { AuthLayout } from '../pages/auth/AuthLayout';
 import { Login } from '../pages/auth/Login';
 import { Signup } from '../pages/auth/Signup';
