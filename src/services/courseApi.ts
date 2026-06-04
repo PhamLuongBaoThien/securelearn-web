@@ -339,6 +339,12 @@ export const getPublishedCourses = async (params?: {
   search?: string;
   category?: string;
   level?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  rating?: number;
+  minDuration?: number;
+  maxDuration?: number;
+  sort?: string;
 }) => {
   const { data } = await apiClient.get<ApiResponse<PaginatedData>>('/api/courses', { params });
   return data;

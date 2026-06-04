@@ -27,11 +27,11 @@
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 240 5.9% 10%; /* zinc-900 thay vì zinc-950 */
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 240 4.8% 13%; /* Sáng hơn background 1 chút */
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 240 4.8% 13%;
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 240 5.9% 10%;
@@ -95,3 +95,37 @@
 .tiptap.ProseMirror ul { @apply list-disc pl-5 space-y-1 mb-3; }
 .tiptap.ProseMirror ol { @apply list-decimal pl-5 space-y-1 mb-3; }
 .tiptap.ProseMirror li { @apply leading-relaxed; }
+
+/* ── Dual Range Slider (Price Filter) ── */
+.dual-range-slider { position: relative; height: 24px; display: flex; align-items: center; }
+.dual-range-slider input[type=range] {
+  position: absolute;
+  width: 100%;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  height: 0;
+  outline: none;
+}
+.dual-range-slider input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: all;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  cursor: pointer;
+  border: 2px solid hsl(var(--background));
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.dual-range-slider input[type=range]::-moz-range-thumb {
+  pointer-events: all;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  cursor: pointer;
+  border: 2px solid hsl(var(--background));
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}

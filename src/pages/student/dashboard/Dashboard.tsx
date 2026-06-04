@@ -1,119 +1,44 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Download } from 'lucide-react';
+import { ChevronDown, Download, BookOpen, Clock, AlertCircle, GraduationCap, ArrowRight } from 'lucide-react';
 import { Navbar } from '../../../components/layout/Header';
+import { useEnrolledCourses, type EnrolledCourseItem } from '../../../hooks/useEnrolledCourses';
+import { useAppSelector } from '../../../app/hooks';
 
-// ─── Types ───────────────────────────────────
-type AccessType = 'lifetime' | 'subscription';
+// ─── Types ───────────────────────────────────────────────────────────────────
 type TabId = 'my-courses' | 'certificates';
-type SortKey = 'progress-desc' | 'progress-asc' | 'name-az' | 'recent';
+type SortKey = 'recent' | 'name-az';
 
-interface EnrolledCourse {
-  id: string;
-  title: string;
-  instructor: string;
-  progress: number;
-  totalLessons: number;
-  completedLessons: number;
-  duration: string;
-  accessType: AccessType;
-  lastLessonTitle: string;
-  lastAccessedAt: number; // timestamp for sorting
-}
-
-interface Certificate {
-  id: string;
-  courseTitle: string;
-  instructor: string;
-  completedDate: string;
-  credentialId: string;
-}
-
-// ─── Mock Data ───────────────────────────────
-const MOCK_USER = { name: 'Minh Tuấn' };
-
-const ENROLLED_COURSES: EnrolledCourse[] = [
-  {
-    id: '1',
-    title: 'Kiến trúc Microservices & Security Platform',
-    instructor: 'Nguyễn Văn Thắng',
-    progress: 65,
-    totalLessons: 45,
-    completedLessons: 29,
-    duration: '38h 20m',
-    accessType: 'lifetime',
-    lastLessonTitle: 'Mã hóa Video HLS (DRM Core)',
-    lastAccessedAt: Date.now() - 1000 * 60 * 30, // 30 phút trước
-  },
-  {
-    id: '2',
-    title: 'Next.js 14 Full-Stack: Từ Zero đến Production',
-    instructor: 'Trần Thị Mai',
-    progress: 100,
-    totalLessons: 62,
-    completedLessons: 62,
-    duration: '52h 10m',
-    accessType: 'lifetime',
-    lastLessonTitle: 'Deploy lên Vercel & CloudFlare',
-    lastAccessedAt: Date.now() - 1000 * 60 * 60 * 24 * 3, // 3 ngày trước
-  },
-  {
-    id: '3',
-    title: 'DevOps CI/CD Pipeline với Docker & Kubernetes',
-    instructor: 'Lê Văn Hùng',
-    progress: 23,
-    totalLessons: 38,
-    completedLessons: 9,
-    duration: '29h 45m',
-    accessType: 'subscription',
-    lastLessonTitle: 'Thiết lập CI/CD với GitHub Actions',
-    lastAccessedAt: Date.now() - 1000 * 60 * 60 * 2, // 2 giờ trước
-  },
-  {
-    id: '4',
-    title: 'Machine Learning với Python: Thực chiến',
-    instructor: 'Phạm Thị Lan',
-    progress: 0,
-    totalLessons: 55,
-    completedLessons: 0,
-    duration: '44h 00m',
-    accessType: 'subscription',
-    lastLessonTitle: 'Giới thiệu Machine Learning',
-    lastAccessedAt: Date.now() - 1000 * 60 * 60 * 24 * 7, // 7 ngày trước
-  },
-];
-
-const CERTIFICATES: Certificate[] = [
-  {
-    id: 'c1',
-    courseTitle: 'Next.js 14 Full-Stack: Từ Zero đến Production',
-    instructor: 'Trần Thị Mai',
-    completedDate: '20/03/2025',
-    credentialId: 'SL-2025-NX14-001234',
-  },
-];
-
-// ─── Sort options ─────────────────────────────
+// ─── Sort options ─────────────────────────────────────────────────────────────
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'recent', label: 'Truy cập gần đây' },
-  { key: 'progress-desc', label: 'Tiến độ cao nhất' },
-  { key: 'progress-asc', label: 'Tiến độ thấp nhất' },
+  { key: 'recent', label: 'Ghi danh gần đây' },
   { key: 'name-az', label: 'Tên A → Z' },
 ];
 
-function sortCourses(courses: EnrolledCourse[], key: SortKey): EnrolledCourse[] {
+const LEVEL_LABEL: Record<string, string> = {
+  BEGINNER: 'Cơ bản',
+  INTERMEDIATE: 'Trung cấp',
+  ADVANCED: 'Nâng cao',
+};
+
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h${m > 0 ? ` ${m}m` : ''}`;
+  return `${m}m`;
+}
+
+function sortCourses(courses: EnrolledCourseItem[], key: SortKey): EnrolledCourseItem[] {
   return [...courses].sort((a, b) => {
     switch (key) {
-      case 'recent':       return b.lastAccessedAt - a.lastAccessedAt;
-      case 'progress-desc': return b.progress - a.progress;
-      case 'progress-asc':  return a.progress - b.progress;
-      case 'name-az':      return a.title.localeCompare(b.title, 'vi');
+      case 'recent': return new Date(b.enrolledAt).getTime() - new Date(a.enrolledAt).getTime();
+      case 'name-az': return a.title.localeCompare(b.title, 'vi');
     }
   });
 }
 
-// ─── Sort Dropdown ────────────────────────────
+// ─── Sort Dropdown ────────────────────────────────────────────────────────────
 function SortDropdown({ value, onChange }: { value: SortKey; onChange: (k: SortKey) => void }) {
   const [open, setOpen] = useState(false);
   const current = SORT_OPTIONS.find((o) => o.key === value)!;
@@ -131,7 +56,6 @@ function SortDropdown({ value, onChange }: { value: SortKey; onChange: (k: SortK
       <AnimatePresence>
         {open && (
           <>
-            {/* Backdrop */}
             <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
             <motion.div
               initial={{ opacity: 0, y: -6, scale: 0.97 }}
@@ -161,11 +85,28 @@ function SortDropdown({ value, onChange }: { value: SortKey; onChange: (k: SortK
   );
 }
 
-// ─── Course Card ──────────────────────────────
-function CourseCard({ course, delay }: { course: EnrolledCourse; delay: number }) {
+// ─── Skeleton Card ────────────────────────────────────────────────────────────
+function CourseCardSkeleton({ delay }: { delay: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.3 }}
+      className="flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden animate-pulse"
+    >
+      <div className="h-32 bg-zinc-100 dark:bg-zinc-800" />
+      <div className="p-4 space-y-3">
+        <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-full" />
+        <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded w-2/3" />
+        <div className="h-8 bg-zinc-200 dark:bg-zinc-700 rounded mt-4" />
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Course Card ──────────────────────────────────────────────────────────────
+function CourseCard({ course, delay }: { course: EnrolledCourseItem; delay: number }) {
   const navigate = useNavigate();
-  const isCompleted = course.progress === 100;
-  const isNew = course.progress === 0;
 
   return (
     <motion.div
@@ -175,20 +116,20 @@ function CourseCard({ course, delay }: { course: EnrolledCourse; delay: number }
       className="flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden hover:shadow-sm transition-shadow"
     >
       {/* Thumbnail */}
-      <div className="h-32 bg-zinc-100 dark:bg-zinc-800 relative">
-        {/* Access type — subtle top-right label only */}
-        <span className="absolute top-3 right-3 text-xs text-zinc-400 dark:text-zinc-500">
-          {course.accessType === 'lifetime' ? 'Vĩnh viễn' : 'Thuê bao'}
-        </span>
-        {/* Progress strip */}
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-zinc-200 dark:bg-zinc-700">
-          <motion.div
-            className={`h-full ${isCompleted ? 'bg-emerald-500' : 'bg-primary'}`}
-            initial={{ width: 0 }}
-            animate={{ width: `${course.progress}%` }}
-            transition={{ duration: 0.8, delay: delay + 0.2, ease: 'easeOut' }}
-          />
-        </div>
+      <div className="h-32 bg-zinc-100 dark:bg-zinc-800 relative overflow-hidden">
+        {course.thumbnail ? (
+          <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <BookOpen className="w-8 h-8 text-zinc-400 dark:text-zinc-600" />
+          </div>
+        )}
+        {/* Level badge */}
+        {course.level && (
+          <span className="absolute top-2 right-2 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded font-medium">
+            {LEVEL_LABEL[course.level] ?? course.level}
+          </span>
+        )}
       </div>
 
       {/* Body */}
@@ -196,79 +137,77 @@ function CourseCard({ course, delay }: { course: EnrolledCourse; delay: number }
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-white leading-snug line-clamp-2 mb-0.5">
           {course.title}
         </h3>
-        <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">{course.instructor}</p>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">{course.instructorName}</p>
 
-        {/* Progress */}
-        <div className="flex items-center justify-between text-xs mb-1.5">
-          <span className="text-zinc-400 dark:text-zinc-500">{course.completedLessons}/{course.totalLessons} bài</span>
-          <span className={`font-semibold ${isCompleted ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-600 dark:text-zinc-300'}`}>
-            {course.progress}%
-          </span>
-        </div>
-        <div className="h-1 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-4">
-          <motion.div
-            className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-primary'}`}
-            initial={{ width: 0 }}
-            animate={{ width: `${course.progress}%` }}
-            transition={{ duration: 0.8, delay: delay + 0.3, ease: 'easeOut' }}
-          />
+        {/* Stats */}
+        <div className="flex items-center gap-3 text-xs text-zinc-400 dark:text-zinc-500 mb-4">
+          {course.totalLessons > 0 && (
+            <span className="flex items-center gap-1">
+              <BookOpen className="w-3 h-3" />
+              {course.totalLessons} bài
+            </span>
+          )}
+          {course.totalDuration > 0 && (
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {formatDuration(course.totalDuration)}
+            </span>
+          )}
         </div>
 
         {/* CTA */}
-        <div className="mt-auto flex gap-2">
+        <div className="mt-auto">
           <button
-            onClick={() => navigate(`/student/courses/${course.id}/learn`)}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-              isCompleted
-                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                : 'bg-primary text-primary-foreground hover:opacity-90'
-            }`}
+            onClick={() => navigate(`/student/courses/${course.courseId}/learn`)}
+            className="w-full py-2 rounded-lg text-xs font-medium transition-colors bg-primary text-primary-foreground hover:opacity-90"
           >
-            {isCompleted ? 'Xem lại' : isNew ? 'Bắt đầu' : 'Học tiếp'}
+            Học tiếp
           </button>
-          {isCompleted && (
-            <button className="px-3 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-xs font-medium hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors border border-zinc-200 dark:border-zinc-700">
-              Chứng chỉ
-            </button>
-          )}
         </div>
       </div>
     </motion.div>
   );
 }
 
-// ─── Certificate Row ──────────────────────────
-function CertificateRow({ cert, delay }: { cert: Certificate; delay: number }) {
+// ─── Empty State ──────────────────────────────────────────────────────────────
+function EmptyEnrolled() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.3 }}
-      className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:shadow-sm transition-shadow"
+      className="flex flex-col items-center justify-center py-20 text-center gap-4"
     >
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-zinc-900 dark:text-white line-clamp-1">{cert.courseTitle}</p>
-        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
-          {cert.instructor} · Cấp ngày {cert.completedDate} · <span className="font-mono">{cert.credentialId}</span>
-        </p>
-      </div>
-      <button className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-        <Download className="w-3.5 h-3.5" />
-        PDF
-      </button>
+      <GraduationCap className="w-14 h-14 text-zinc-300 dark:text-zinc-600" />
+      <p className="text-lg font-semibold text-zinc-900 dark:text-white">
+        Bạn chưa ghi danh khóa học nào
+      </p>
+      <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs">
+        Khám phá hàng trăm khóa học chất lượng cao và bắt đầu hành trình học tập ngay hôm nay.
+      </p>
+      <Link
+        to="/courses"
+        className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+      >
+        Khám phá khóa học <ArrowRight className="w-4 h-4" />
+      </Link>
     </motion.div>
   );
 }
 
-// ─── Main ─────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export function StudentDashboard() {
   const [activeTab, setActiveTab] = useState<TabId>('my-courses');
   const [sortKey, setSortKey] = useState<SortKey>('recent');
 
-  const sortedCourses = useMemo(() => sortCourses(ENROLLED_COURSES, sortKey), [sortKey]);
+  const user = useAppSelector((state) => state.auth.user);
+  const firstName = user?.fullName?.split(' ').pop() ?? 'bạn';
 
-  const inProgress = ENROLLED_COURSES.filter((c) => c.progress > 0 && c.progress < 100).length;
-  const completed  = ENROLLED_COURSES.filter((c) => c.progress === 100).length;
+  const { data: enrolledCourses = [], isLoading, isError } = useEnrolledCourses();
+
+  const sortedCourses = useMemo(
+    () => sortCourses(enrolledCourses, sortKey),
+    [enrolledCourses, sortKey]
+  );
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-[#0A0A0A] text-zinc-900 dark:text-zinc-100 font-sans antialiased transition-colors duration-300">
@@ -279,10 +218,12 @@ export function StudentDashboard() {
         {/* ── Header ── */}
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Xin chào, {MOCK_USER.name}
+            Xin chào, {firstName} 👋
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Bạn đang học {inProgress} khóa · Đã hoàn thành {completed} khóa · {CERTIFICATES.length} chứng chỉ
+            {isLoading
+              ? 'Đang tải khóa học của bạn...'
+              : `Bạn đã ghi danh ${enrolledCourses.length} khóa học`}
           </p>
         </div>
 
@@ -290,8 +231,8 @@ export function StudentDashboard() {
         <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800">
           <div className="flex items-center">
             {([
-              { id: 'my-courses' as TabId, label: 'Khóa học', count: ENROLLED_COURSES.length },
-              { id: 'certificates' as TabId, label: 'Chứng chỉ', count: CERTIFICATES.length },
+              { id: 'my-courses' as TabId, label: 'Khóa học của tôi', count: enrolledCourses.length },
+              { id: 'certificates' as TabId, label: 'Chứng chỉ', count: 0 },
             ]).map((tab) => (
               <button
                 key={tab.id}
@@ -315,8 +256,7 @@ export function StudentDashboard() {
             ))}
           </div>
 
-          {/* Sort — chỉ hiện khi ở tab khóa học */}
-          {activeTab === 'my-courses' && (
+          {activeTab === 'my-courses' && !isLoading && enrolledCourses.length > 0 && (
             <div className="pb-3">
               <SortDropdown value={sortKey} onChange={setSortKey} />
             </div>
@@ -332,11 +272,37 @@ export function StudentDashboard() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
             >
-              {sortedCourses.map((course, i) => (
-                <CourseCard key={course.id} course={course} delay={i * 0.04} />
-              ))}
+              {/* Error */}
+              {isError && (
+                <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+                  <AlertCircle className="w-10 h-10 text-red-400" />
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    Không thể tải danh sách khóa học. Vui lòng thử lại.
+                  </p>
+                </div>
+              )}
+
+              {/* Loading */}
+              {isLoading && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <CourseCardSkeleton key={i} delay={i * 0.06} />
+                  ))}
+                </div>
+              )}
+
+              {/* Empty */}
+              {!isLoading && !isError && enrolledCourses.length === 0 && <EmptyEnrolled />}
+
+              {/* Grid */}
+              {!isLoading && !isError && sortedCourses.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {sortedCourses.map((course, i) => (
+                    <CourseCard key={course.enrollmentId} course={course} delay={i * 0.04} />
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -348,17 +314,12 @@ export function StudentDashboard() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              {CERTIFICATES.length === 0 ? (
-                <p className="text-sm text-zinc-400 dark:text-zinc-500 py-12 text-center">
-                  Chưa có chứng chỉ nào. Hoàn thành 100% một khóa học để nhận chứng chỉ.
+              <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+                <Download className="w-12 h-12 text-zinc-300 dark:text-zinc-600" />
+                <p className="text-sm text-zinc-400 dark:text-zinc-500">
+                  Chứng chỉ sẽ hiển thị ở đây sau khi bạn hoàn thành 100% một khóa học.
                 </p>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {CERTIFICATES.map((cert, i) => (
-                    <CertificateRow key={cert.id} cert={cert} delay={i * 0.06} />
-                  ))}
-                </div>
-              )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

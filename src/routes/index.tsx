@@ -7,7 +7,7 @@ import { Profile } from '../pages/user/profile';
 
 // Public & Auth Imports
 import { PublicLayout } from '../components/layout/PublicLayout';
-import { Catalog } from '../pages/public/Catalog';
+import { Catalog } from '../pages/public/catalog';
 import { CourseDetail } from '../pages/public/CourseDetail';
 import { AuthLayout } from '../pages/auth/AuthLayout';
 import { Login } from '../pages/auth/Login';
@@ -84,7 +84,7 @@ const router = createBrowserRouter([
         children: [
           { path: '', element: <Home /> },
           { path: 'courses', element: <Catalog /> },
-          { path: 'course/:courseId', element: <CourseDetail /> },
+          { path: 'course/:slug', element: <CourseDetail /> },
           { path: 'checkout', element: <Checkout /> },
           { path: 'cart', element: <Cart /> },
           { path: 'teach', element: <Teach /> },
