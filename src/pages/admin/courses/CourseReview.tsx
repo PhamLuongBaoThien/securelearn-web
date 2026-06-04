@@ -569,9 +569,16 @@ const CourseCurriculumPreview: React.FC<{ courseId: string }> = ({
         <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
           Mô tả khóa học
         </h4>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-          {course.description || "Chưa có mô tả."}
-        </p>
+        {course.description ? (
+          <div
+            className={richTextPreviewClassName}
+            dangerouslySetInnerHTML={{ __html: course.description }}
+          />
+        ) : (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            Chưa có mô tả.
+          </p>
+        )}
       </div>
 
       <div>

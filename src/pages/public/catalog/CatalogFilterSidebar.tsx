@@ -71,7 +71,6 @@ export function CatalogFilterSidebar({
   handleCategoryChange,
   selectedLevels,
   handleLevel,
-  isPriceFiltered,
   priceRange,
   setPriceRange,
   resetPage,
