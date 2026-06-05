@@ -1,4 +1,4 @@
-import { type PriceRangeValue } from "./CatalogFilters";
+import type { PriceRangeValue } from "@/lib/courseUtils";
 
 export const PRICE_MAX = 5_000_000;
 export const DEFAULT_PRICE: PriceRangeValue = { min: 0, max: PRICE_MAX };

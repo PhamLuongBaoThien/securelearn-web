@@ -1,32 +1,30 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CourseCard, courseToSnippet } from "@/components/ui/CourseCard";
+import { CourseCard } from "@/components/ui/CourseCard";
 import { StaggerContainer, StaggerItem } from "@/components/animations/Stagger";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronDown,
   AlertCircle,
   BookOpen,
   SlidersHorizontal,
-  Star,
-  Check,
 } from "lucide-react";
 import { useCatalog } from "@/hooks/useCatalog";
 import { usePublicCourseCategories } from "@/hooks/usePublicCourseCategories";
 import {
   MultiSelectDropdown,
-  normalizeCategorySelection,
   DurationDropdown,
+} from "./CatalogFilters";
+import {
+  normalizeCategorySelection,
   DURATION_OPTIONS,
   type PriceRangeValue,
-} from "./CatalogFilters";
+} from "@/lib/courseUtils";
 import { CatalogFilterSidebar } from "./CatalogFilterSidebar";
 
 import {
   PRICE_MAX,
   DEFAULT_PRICE,
   LEVEL_OPTIONS,
-  RATING_OPTIONS,
 } from "./constants";
 import { CourseCardSkeleton } from "./CourseCardSkeleton";
 import { SortDropdown } from "./SortDropdown";
@@ -265,7 +263,7 @@ export function Catalog() {
         <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-8">
           {courses.map((course) => (
             <StaggerItem key={course._id}>
-              <CourseCard course={courseToSnippet(course)} />
+              <CourseCard course={course} />
             </StaggerItem>
           ))}
         </StaggerContainer>

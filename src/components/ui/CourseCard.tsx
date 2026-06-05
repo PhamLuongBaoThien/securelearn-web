@@ -1,41 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Clock, BookOpen } from 'lucide-react';
+import { Star, Clock, BookOpen, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HoverCard } from '@/components/animations/HoverCard';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { ICourse } from '@/services/courseApi';
-
-// ── Shared snippet type ───────────────────────────────────────────────────────
-export interface CourseSnippet {
-  id: string;           // slug (dùng cho Link)
-  title: string;
-  instructor: string;
-  rating?: number;
-  reviews?: number;
-  price: number;
-  originalPrice?: number;
-  thumbnail: string;
-  badge?: string;
-  // Thông tin thêm từ API
-  level?: ICourse['level'];
-  totalLessons?: number;
-  totalDuration?: number; // giây
-  enrollmentCount?: number;
-}
-
-// ── Adapter: ICourse → CourseSnippet ─────────────────────────────────────────
-export function courseToSnippet(course: ICourse): CourseSnippet {
-  return {
-    id: course.slug,
-    title: course.title,
-    instructor: course.instructorName,
-    price: course.price,
-    thumbnail: course.thumbnail ?? '',
-    level: course.level,
-    totalLessons: course.totalLessons,
-    totalDuration: course.totalDuration,
-    enrollmentCount: course.enrollmentCount,
-  };
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const LEVEL_LABEL: Record<string, string> = {
@@ -52,12 +21,15 @@ function formatDuration(seconds: number): string {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export const CourseCard = ({ course }: { course: CourseSnippet }) => {
-  return (
+export const CourseCard = ({ course }: { course: ICourse }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const hasLearningPoints = Array.isArray(course.whatYouWillLearn) && course.whatYouWillLearn.length > 0;
+
+  const cardContent = (
     <HoverCard className="group flex flex-col h-full cursor-pointer bg-zinc-50 dark:bg-card border border-border rounded-xl overflow-hidden hover:shadow-md transition-shadow">
       {/* Thumbnail — bọc trong Link */}
       <Link
-        to={`/course/${course.id}`}
+        to={`/course/${course.slug}`}
         className="block w-full aspect-video overflow-hidden bg-secondary relative shrink-0"
       >
         {course.badge && (
@@ -78,14 +50,14 @@ export const CourseCard = ({ course }: { course: CourseSnippet }) => {
       {/* Info area */}
       <div className="flex flex-col flex-1 p-4">
         {/* Title */}
-        <Link to={`/course/${course.id}`}>
+        <Link to={`/course/${course.slug}`}>
           <h3 className="font-bold text-base leading-snug line-clamp-2 mb-0.5 text-foreground">
             {course.title}
           </h3>
         </Link>
 
         {/* Instructor */}
-        <p className="text-sm text-muted-foreground line-clamp-1 mb-1.5">{course.instructor}</p>
+        <p className="text-sm text-muted-foreground line-clamp-1 mb-1.5">{course.instructorName}</p>
 
         {/* Rating (chỉ hiển thị khi có data) */}
         {course.rating != null && (
@@ -159,5 +131,40 @@ export const CourseCard = ({ course }: { course: CourseSnippet }) => {
         </Button>
       </div>
     </HoverCard>
+  );
+
+  if (!hasLearningPoints) {
+    return cardContent;
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <div
+          onMouseEnter={() => setIsOpen(true)}
+          onMouseLeave={() => setIsOpen(false)}
+        >
+          {cardContent}
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        side="right"
+        align="start"
+        sideOffset={15}
+        className="w-80 p-5 shadow-xl pointer-events-none bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hidden md:block"
+      >
+        <h4 className="font-bold text-sm mb-3 text-zinc-900 dark:text-zinc-50">
+          Những gì bạn sẽ học được:
+        </h4>
+        <ul className="space-y-2.5">
+          {course.whatYouWillLearn?.map((item, index) => (
+            <li key={index} className="flex items-start gap-2 text-xs text-zinc-600 dark:text-zinc-300">
+              <Check className="w-4.5 h-4.5 text-emerald-500 shrink-0 mt-0.5" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
   );
 };

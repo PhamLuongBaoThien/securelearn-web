@@ -1,16 +1,11 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import type { ICourse } from '@/services/courseApi';
 
-export interface CourseSnippet {
-  id: string;
-  title: string;
-  price: number;
-  thumbnail?: string;
-  instructor?: string;
-}
+export type CartItem = Pick<ICourse, '_id' | 'slug' | 'title' | 'price' | 'thumbnail' | 'instructorName'>;
 
 interface CartState {
-  cartItems: CourseSnippet[];
-  wishlist: CourseSnippet[];
+  cartItems: CartItem[];
+  wishlist: CartItem[];
 }
 
 const initialState: CartState = {
@@ -22,21 +17,21 @@ const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
-    addToCart: (state, action: PayloadAction<CourseSnippet>) => {
-      if (!state.cartItems.find(item => item.id === action.payload.id)) {
+    addToCart: (state, action: PayloadAction<CartItem>) => {
+      if (!state.cartItems.find(item => item._id === action.payload._id)) {
         state.cartItems.push(action.payload);
       }
     },
     removeFromCart: (state, action: PayloadAction<string>) => {
-      state.cartItems = state.cartItems.filter(item => item.id !== action.payload);
+      state.cartItems = state.cartItems.filter(item => item._id !== action.payload);
     },
-    addToWishlist: (state, action: PayloadAction<CourseSnippet>) => {
-      if (!state.wishlist.find(item => item.id === action.payload.id)) {
+    addToWishlist: (state, action: PayloadAction<CartItem>) => {
+      if (!state.wishlist.find(item => item._id === action.payload._id)) {
         state.wishlist.push(action.payload);
       }
     },
     removeFromWishlist: (state, action: PayloadAction<string>) => {
-      state.wishlist = state.wishlist.filter(item => item.id !== action.payload);
+      state.wishlist = state.wishlist.filter(item => item._id !== action.payload);
     },
     clearCart: (state) => {
       state.cartItems = [];

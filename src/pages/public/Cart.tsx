@@ -28,14 +28,14 @@ export const Cart = () => {
           <div className="flex-1 space-y-4">
             <h2 className="text-lg font-bold mb-2">{cartItems.length} khóa học trong giỏ hàng</h2>
             {cartItems.map((item) => (
-              <div key={item.id} className="flex gap-4 p-4 border border-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
+              <div key={item._id} className="flex gap-4 p-4 border border-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
                 <img src={item.thumbnail || "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=150&q=80"} alt={item.title} className="w-24 h-24 object-cover rounded-md border border-border" />
                 <div className="flex-1 flex flex-col pt-1">
-                  <Link to={`/course/${item.id}`} className="font-bold text-base hover:text-primary transition-colors line-clamp-2 leading-tight mb-1">{item.title}</Link>
-                  <span className="text-sm text-muted-foreground mb-2">Giảng viên: {item.instructor || 'Hệ thống'}</span>
+                  <Link to={`/course/${item.slug}`} className="font-bold text-base hover:text-primary transition-colors line-clamp-2 leading-tight mb-1">{item.title}</Link>
+                  <span className="text-sm text-muted-foreground mb-2">Giảng viên: {item.instructorName || 'Hệ thống'}</span>
                   
                   <div className="mt-auto flex items-center gap-4">
-                    <button onClick={() => dispatch(removeFromCart(item.id))} className="text-sm font-medium text-destructive hover:underline flex items-center gap-1.5 transition-colors">
+                    <button onClick={() => dispatch(removeFromCart(item._id))} className="text-sm font-medium text-destructive hover:underline flex items-center gap-1.5 transition-colors">
                       <Trash2 className="w-4 h-4" /> Bỏ khỏi giỏ
                     </button>
                   </div>

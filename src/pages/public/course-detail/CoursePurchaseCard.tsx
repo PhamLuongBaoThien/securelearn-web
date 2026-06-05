@@ -26,7 +26,7 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
 
   // Kiểm tra khóa học này đã có trong giỏ hàng Redux chưa
   const cartItems = useAppSelector((state) => state.cart.cartItems);
-  const isInCart = cartItems.some((item) => item.id === course.slug);
+  const isInCart = cartItems.some((item) => item._id === course._id);
 
   // Ref cho wrapper ngoài (dùng để đặt z-index và chiều rộng cột)
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -57,11 +57,12 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
   const handleAddToCart = () => {
     dispatch(
       addToCart({
-        id: course.slug,          // Dùng slug làm id để Cart link đến /course/:slug đúng
+        _id: course._id,
+        slug: course.slug,
         title: course.title,
         price: course.price,
         thumbnail: course.thumbnail,
-        instructor: course.instructorName,
+        instructorName: course.instructorName,
       })
     );
   };

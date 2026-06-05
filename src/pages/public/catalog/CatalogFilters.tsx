@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { ChevronDown, Check, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ICourseCategoryNode } from '@/services/courseApi';
+import type { PriceRangeValue } from '@/lib/courseUtils';
+import { DURATION_OPTIONS, normalizeCategorySelection } from '@/lib/courseUtils';
 
 export interface MultiSelectDropdownProps {
   label: string;
@@ -60,8 +62,6 @@ export function MultiSelectDropdown({ label, options, selected, onSelect }: Mult
 const PRICE_MAX = 5_000_000;
 const PRICE_STEP = 100_000;
 
-export interface PriceRangeValue { min: number; max: number }
-
 function formatPrice(val: number) {
   if (val === 0) return '0 ₫';
   return `${(val / 1000).toLocaleString('vi-VN')}k`;
@@ -91,7 +91,6 @@ export function PriceRangeFilter({
   const [local, setLocal] = useState<PriceRangeValue>(value);
 
   // Sync nếu value bị reset từ bên ngoài
-  const prevValue = { min: value.min, max: value.max };
   if (local.min !== value.min && value.min === 0 && value.max === PRICE_MAX) {
     setLocal({ min: 0, max: PRICE_MAX });
   }
@@ -227,51 +226,7 @@ export function CategoryTreeDropdown({
   );
 }
 
-// ── Hàm chuẩn hóa các danh mục được chọn (Exported helper) ──────────
-export function normalizeCategorySelection(
-  selectedSlugs: string[],
-  nodes: ICourseCategoryNode[]
-): string[] {
-  const resultSet = new Set(selectedSlugs);
 
-  // 1. Pha 1 (Top-down): Nếu node được chọn, chọn tất cả con
-  const checkChildrenIfParentChecked = (treeNodes: ICourseCategoryNode[]) => {
-    for (const n of treeNodes) {
-      if (resultSet.has(n.slug)) {
-        // Tự động thu thập tất cả con
-        const gatherDescendants = (node: ICourseCategoryNode) => {
-          resultSet.add(node.slug);
-          node.children?.forEach(gatherDescendants);
-        };
-        gatherDescendants(n);
-      } else if (n.children && n.children.length > 0) {
-        // Nếu node cha không được chọn, tiếp tục kiểm tra con
-        checkChildrenIfParentChecked(n.children);
-      }
-    }
-  };
-  checkChildrenIfParentChecked(nodes);
-
-  // 2. Pha 2 (Bottom-up): Tick hết con thì tự động tick cha
-  const autoCheckParents = (treeNodes: ICourseCategoryNode[]) => {
-    for (const n of treeNodes) {
-      if (n.children && n.children.length > 0) {
-        // Xử lý con trước (đệ quy xuống lá)
-        autoCheckParents(n.children);
-        // Sau khi con đã xử lý, kiểm tra xem tất cả con đã được tick chưa
-        const allChildrenChecked = n.children.every((child) =>
-          resultSet.has(child.slug)
-        );
-        if (allChildrenChecked) {
-          resultSet.add(n.slug);
-        }
-      }
-    }
-  };
-  autoCheckParents(nodes);
-
-  return Array.from(resultSet);
-}
 
 export function CategoryTreeFilter({
   nodes,
@@ -372,20 +327,7 @@ function CategoryNode({ node, selected, onToggle, depth = 0, ancestors = [] }: {
   );
 }
 
-// ── Duration Filter ───────────────────────────────────────────────────────────
-export interface DurationOption {
-  key: string;
-  label: string;
-  minDuration?: number; // seconds
-  maxDuration?: number; // seconds
-}
 
-export const DURATION_OPTIONS: DurationOption[] = [
-  { key: 'lt2h',   label: 'Ít hơn 2 giờ', maxDuration: 7_200 },
-  { key: '2to5h',  label: '2 – 5 giờ',    minDuration: 7_200,  maxDuration: 18_000 },
-  { key: '5to10h', label: '5 – 10 giờ',   minDuration: 18_000, maxDuration: 36_000 },
-  { key: 'gt10h',  label: 'Hơn 10 giờ',   minDuration: 36_000 },
-];
 
 // Inline (dùng trong Drawer)
 export function DurationFilter({

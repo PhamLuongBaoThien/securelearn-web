@@ -6,8 +6,8 @@ import {
   CategoryTreeFilter,
   InlinePriceRange,
   DurationFilter,
-  type PriceRangeValue,
 } from "./CatalogFilters";
+import type { PriceRangeValue } from "@/lib/courseUtils";
 import { LEVEL_OPTIONS, RATING_OPTIONS } from "./constants";
 import type { ICourseCategoryNode } from "@/services/courseApi";
 

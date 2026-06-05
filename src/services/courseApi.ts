@@ -43,6 +43,10 @@ export interface ICourse {
   suggestedCategoryNote?: string;
   level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
   price: number;
+  originalPrice?: number;         // Giá gốc trước khi giảm (UI)
+  badge?: string;                 // Nhãn nổi bật (UI)
+  rating?: number;                // Điểm đánh giá (UI)
+  reviews?: number;               // Số lượt đánh giá (UI)
   status: 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';
   submittedAt?: string | null;
   reviewedAt?: string | null;

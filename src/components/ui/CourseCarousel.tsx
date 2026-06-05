@@ -1,8 +1,9 @@
 import { useRef } from 'react';
-import { CourseCard, type CourseSnippet } from './CourseCard';
+import { CourseCard } from './CourseCard';
+import type { ICourse } from '@/services/courseApi';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export const CourseCarousel = ({ courses }: { courses: CourseSnippet[] }) => {
+export const CourseCarousel = ({ courses }: { courses: ICourse[] }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollLeft = () => {
@@ -32,7 +33,7 @@ export const CourseCarousel = ({ courses }: { courses: CourseSnippet[] }) => {
         style={{ scrollBehavior: 'smooth', msOverflowStyle: 'none', scrollbarWidth: 'none' }}
       >
         {courses.map(course => (
-          <div key={course.id} className="min-w-[240px] md:min-w-[260px] max-w-[280px] snap-start shrink-0 flex">
+          <div key={course._id} className="min-w-[240px] md:min-w-[260px] max-w-[280px] snap-start shrink-0 flex">
             <CourseCard course={course} />
           </div>
         ))}
