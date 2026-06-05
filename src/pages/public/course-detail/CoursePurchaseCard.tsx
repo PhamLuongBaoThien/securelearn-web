@@ -10,8 +10,8 @@
 import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useAppDispatch, useAppSelector } from '@/app/hooks';
-import { addToCart } from '@/features/courses/cartSlice';
+import { useAppSelector } from '@/app/hooks';
+import { useCartActions } from '@/hooks/useCart';
 import type { ICourse } from '@/services/courseApi';
 import { CourseIncludes } from './CourseIncludes';
 
@@ -21,8 +21,8 @@ interface Props {
 }
 
 export function CoursePurchaseCard({ course, isEnrolled }: Props) {
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { addItem, isAdding } = useCartActions();
 
   // Kiểm tra khóa học này đã có trong giỏ hàng Redux chưa
   const cartItems = useAppSelector((state) => state.cart.cartItems);
@@ -55,16 +55,14 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
 
   // Thêm khóa học vào giỏ hàng Redux
   const handleAddToCart = () => {
-    dispatch(
-      addToCart({
-        _id: course._id,
-        slug: course.slug,
-        title: course.title,
-        price: course.price,
-        thumbnail: course.thumbnail,
-        instructorName: course.instructorName,
-      })
-    );
+    addItem({
+      _id: course._id,
+      slug: course.slug,
+      title: course.title,
+      price: course.price,
+      thumbnail: course.thumbnail,
+      instructorName: course.instructorName,
+    });
   };
 
   // Thêm vào giỏ rồi chuyển luôn sang trang giỏ hàng
@@ -147,8 +145,9 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
                       variant="udemy_dark"
                       className="w-full py-6 font-bold text-lg rounded-none"
                       onClick={handleAddToCart}
+                      disabled={isAdding}
                     >
-                      Thêm vào giỏ hàng
+                      {isAdding ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
                     </Button>
                   )}
                   <Button

@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
-import { useAppSelector, useAppDispatch } from '../../app/hooks';
-import { removeFromCart } from '../../features/courses/cartSlice';
+import { useAppSelector } from '../../app/hooks';
 import { buttonVariants } from '../../components/ui/button';
 import { Trash2 } from 'lucide-react';
+import { useCartActions } from '@/hooks/useCart';
 
 export const Cart = () => {
-  const dispatch = useAppDispatch();
   const cartItems = useAppSelector((state) => state.cart.cartItems);
+  const { removeItem, isRemoving } = useCartActions();
 
   // Fake promotion logic
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price, 0);
@@ -35,7 +35,7 @@ export const Cart = () => {
                   <span className="text-sm text-muted-foreground mb-2">Giảng viên: {item.instructorName || 'Hệ thống'}</span>
                   
                   <div className="mt-auto flex items-center gap-4">
-                    <button onClick={() => dispatch(removeFromCart(item._id))} className="text-sm font-medium text-destructive hover:underline flex items-center gap-1.5 transition-colors">
+                    <button disabled={isRemoving} onClick={() => removeItem(item._id)} className="text-sm font-medium text-destructive hover:underline flex items-center gap-1.5 transition-colors disabled:opacity-60">
                       <Trash2 className="w-4 h-4" /> Bỏ khỏi giỏ
                     </button>
                   </div>

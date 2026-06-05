@@ -1,14 +1,44 @@
 import { useState } from 'react';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { CreditCard, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAppSelector } from '@/app/hooks';
+import { buttonVariants } from '@/components/ui/button';
 
 export const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState<'vnpay' | 'momo' | 'credit_card'>('momo');
+  const location = useLocation();
+  const { isAuthenticated, authResolved } = useAppSelector((state) => state.auth);
+  const cartItems = useAppSelector((state) => state.cart.cartItems);
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.price, 0);
+  const originalPrice = totalPrice > 0 ? totalPrice * 2.5 : 0;
+
+  if (!authResolved) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth/login" state={{ from: location }} replace />;
+  }
 
   return (
     <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-12">
       <h1 className="text-3xl font-bold font-serif mb-8">Thanh toán an toàn</h1>
+
+      {cartItems.length === 0 ? (
+        <div className="border border-border py-16 px-6 text-center rounded-lg bg-card shadow-sm">
+          <h2 className="text-2xl font-bold mb-4">Giỏ hàng của bạn đang trống</h2>
+          <p className="text-muted-foreground mb-8 text-lg">Hãy chọn khóa học trước khi thanh toán.</p>
+          <Link to="/courses" className={buttonVariants({ variant: 'udemy_dark', className: 'font-bold h-12 px-8 rounded-none text-base' })}>
+            Khám phá khóa học
+          </Link>
+        </div>
+      ) : (
       
       <div className="flex flex-col lg:flex-row gap-10">
         {/* Cột trái: Thông tin thanh toán */}
@@ -89,33 +119,41 @@ export const Checkout = () => {
             <div className="p-6">
               <h2 className="text-xl font-bold mb-6 border-b pb-4">Tóm tắt đơn hàng</h2>
               
-              <div className="flex gap-4 mb-6">
-                <div className="w-16 h-16 bg-muted shrink-0 flex items-center justify-center">
-                  <img src="https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=150&q=80" alt="Course thumbnail" className="w-full h-full object-cover rounded" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-sm line-clamp-2 leading-tight">100 Days of Code: The Complete Python Pro Bootcamp</h3>
-                  <div className="flex flex-wrap items-baseline gap-2 mt-1">
-                    <span className="font-extrabold text-foreground">349.000 ₫</span>
-                    <span className="text-xs text-muted-foreground line-through">1.999.000 ₫</span>
+              <div className="space-y-4 mb-6">
+                {cartItems.map((item) => (
+                  <div key={item._id} className="flex gap-4">
+                    <div className="w-16 h-16 bg-muted shrink-0 flex items-center justify-center">
+                      <img
+                        src={item.thumbnail || 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=150&q=80'}
+                        alt={item.title}
+                        className="w-full h-full object-cover rounded"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-sm line-clamp-2 leading-tight">{item.title}</h3>
+                      <div className="flex flex-wrap items-baseline gap-2 mt-1">
+                        <span className="font-extrabold text-foreground">{item.price.toLocaleString('vi-VN')} ₫</span>
+                        <span className="text-xs text-muted-foreground line-through">{(item.price * 2.5).toLocaleString('vi-VN')} ₫</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
 
               <div className="space-y-3 border-t border-border/50 pt-4 mb-4">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Giá gốc:</span>
-                  <span>1.999.000 ₫</span>
+                  <span>{originalPrice.toLocaleString('vi-VN')} ₫</span>
                 </div>
                 <div className="flex justify-between items-center text-sm text-green-600 font-medium">
                   <span>Giảm giá nền tảng:</span>
-                  <span>-1.650.000 ₫</span>
+                  <span>-{(originalPrice - totalPrice).toLocaleString('vi-VN')} ₫</span>
                 </div>
               </div>
 
               <div className="border-t border-border pt-4 mb-6 flex justify-between items-end">
                 <span className="font-bold text-base">Tổng số tiền:</span>
-                <span className="font-extrabold text-3xl">349.000 ₫</span>
+                <span className="font-extrabold text-3xl">{totalPrice.toLocaleString('vi-VN')} ₫</span>
               </div>
             </div>
             
@@ -126,6 +164,7 @@ export const Checkout = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

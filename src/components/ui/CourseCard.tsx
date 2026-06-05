@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { HoverCard } from '@/components/animations/HoverCard';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { ICourse } from '@/services/courseApi';
+import { useAppSelector } from '@/app/hooks';
+import { useCartActions } from '@/hooks/useCart';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const LEVEL_LABEL: Record<string, string> = {
@@ -23,6 +25,9 @@ function formatDuration(seconds: number): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 export const CourseCard = ({ course }: { course: ICourse }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const cartItems = useAppSelector((state) => state.cart.cartItems);
+  const isInCart = cartItems.some((item) => item._id === course._id);
+  const { addItem, isAdding } = useCartActions();
   const hasLearningPoints = Array.isArray(course.whatYouWillLearn) && course.whatYouWillLearn.length > 0;
 
   const cardContent = (
@@ -124,10 +129,19 @@ export const CourseCard = ({ course }: { course: ICourse }) => {
           className="w-full rounded-sm font-bold"
           onClick={(e) => {
             e.preventDefault();
-            // TODO: dispatch addToCart action
+            if (isInCart) return;
+            addItem({
+              _id: course._id,
+              slug: course.slug,
+              title: course.title,
+              price: course.price,
+              thumbnail: course.thumbnail,
+              instructorName: course.instructorName,
+            });
           }}
+          disabled={isInCart || isAdding}
         >
-          Thêm vào giỏ hàng
+          {isInCart ? 'Đã có trong giỏ' : isAdding ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
         </Button>
       </div>
     </HoverCard>

@@ -7,12 +7,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppDispatch } from '@/app/hooks';
 import { setUser, clearUser } from '@/features/auth/authSlice';
 import { setAccessToken } from '@/services/apiClient';
+import { setCartItems } from '@/features/courses/cartSlice';
 import {
   loginUser, registerUser, logoutUser, getMe, refreshToken, 
   updateProfile, deleteAccount, changePassword,
   forgotPasswordRequest, resetPasswordRequest, verifyOTPRequest,
   switchToInstructor,
 } from '@/services/authApi';
+import { mergeGuestCart } from '@/services/cartApi';
+import { cartKeys } from '@/hooks/useCart';
+import { clearGuestCart, getGuestCartCourseIds } from '@/features/courses/cartStorage';
 import type { LoginPayload, RegisterPayload, ForgotPasswordPayload, VerifyOTPPayload, ResetPasswordPayload } from '@/types/auth.types';
 
 // ===== Query Keys =====
@@ -39,15 +43,28 @@ export function useLogin() {
 
       // Lấy profile đầy đủ
       const profileRes = await getMe();
+      const guestCourseIds = getGuestCartCourseIds();
+      const mergedCart = guestCourseIds.length > 0
+        ? await mergeGuestCart(guestCourseIds)
+        : null;
+      if (mergedCart?.status === 'OK') {
+        clearGuestCart();
+      }
+
       return {
         user: profileRes.data!,
         message: response.message,
+        cart: mergedCart?.data,
       };
     },
     onSuccess: (data) => {
       dispatch(setUser({ user: data.user }));
       queryClient.setQueryData(authKeys.session, { user: data.user });
       queryClient.setQueryData(authKeys.profile, data.user);
+      if (data.cart) {
+        dispatch(setCartItems(data.cart.items));
+        queryClient.setQueryData(cartKeys.items, data.cart);
+      }
     },
   });
 }

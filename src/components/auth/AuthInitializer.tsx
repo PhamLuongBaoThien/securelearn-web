@@ -3,13 +3,14 @@
 // Dùng React Query useInitializeAuth() thay cho Redux createAsyncThunk.
 // Lắng nghe event session-expired từ apiClient interceptor.
 // ========================
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAppDispatch } from '@/app/hooks';
 import { setUser, clearUser } from '@/features/auth/authSlice';
 import { setAdminUser, clearAdminUser } from '@/features/auth/adminAuthSlice';
 import { setAccessToken } from '@/services/apiClient';
 import { useInitializeAuth } from '@/hooks/useAuth';
 import { useInitializeAdminAuth } from '@/hooks/useAdminAuth';
+import { useCartSync, useMergeGuestCart } from '@/hooks/useCart';
 
 interface AuthInitializerProps {
   children: React.ReactNode;
@@ -20,15 +21,22 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
   const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
   const userSession = useInitializeAuth({ enabled: !isAdminPath });
   const adminSession = useInitializeAdminAuth({ enabled: isAdminPath });
+  const { mutate: mergeGuestCartAfterSessionRestore } = useMergeGuestCart();
+  const hasMergedGuestCart = useRef(false);
+  useCartSync({ enabled: !isAdminPath });
 
   // Khôi phục session user khi app khởi động ở nhánh user.
   useEffect(() => {
     if (userSession.status === 'success' && userSession.data) {
       dispatch(setUser({ user: userSession.data.user }));
+      if (!hasMergedGuestCart.current) {
+        hasMergedGuestCart.current = true;
+        mergeGuestCartAfterSessionRestore();
+      }
     } else if (userSession.status === 'error' && !isAdminPath) {
       dispatch(clearUser());
     }
-  }, [userSession.status, userSession.data, dispatch, isAdminPath]);
+  }, [userSession.status, userSession.data, dispatch, isAdminPath, mergeGuestCartAfterSessionRestore]);
 
   // Khôi phục session admin khi app khởi động ở nhánh admin.
   useEffect(() => {

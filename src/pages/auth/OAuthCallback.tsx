@@ -6,10 +6,14 @@ import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '@/app/hooks';
 import { setUser } from '@/features/auth/authSlice';
+import { setCartItems } from '@/features/courses/cartSlice';
 import { setAccessToken } from '@/services/apiClient';
 import { getMe } from '@/services/authApi';
+import { mergeGuestCart } from '@/services/cartApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { authKeys } from '@/hooks/useAuth';
+import { cartKeys } from '@/hooks/useCart';
+import { clearGuestCart, getGuestCartCourseIds } from '@/features/courses/cartStorage';
 import { toast } from 'sonner';
 
 export function OAuthCallback() {
@@ -41,9 +45,19 @@ export function OAuthCallback() {
         // Lấy profile user
         const profileRes = await getMe();
         if (profileRes.status === 'OK' && profileRes.data) {
+          const guestCourseIds = getGuestCartCourseIds();
+          const mergedCart = guestCourseIds.length > 0
+            ? await mergeGuestCart(guestCourseIds)
+            : null;
+
           dispatch(setUser({ user: profileRes.data }));
           queryClient.setQueryData(authKeys.session, { user: profileRes.data });
           queryClient.setQueryData(authKeys.profile, profileRes.data);
+          if (mergedCart?.status === 'OK' && mergedCart.data) {
+            clearGuestCart();
+            dispatch(setCartItems(mergedCart.data.items));
+            queryClient.setQueryData(cartKeys.items, mergedCart.data);
+          }
           toast.success(profileRes.message || `Chào mừng ${profileRes.data.fullName}!`);
           navigate('/', { replace: true });
         } else {
