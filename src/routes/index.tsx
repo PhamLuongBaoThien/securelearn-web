@@ -15,6 +15,7 @@ import { Signup } from '../pages/auth/Signup';
 import { ForgotPassword } from '../pages/auth/ForgotPassword';
 import { Checkout } from '../pages/public/Checkout';
 import { Cart } from '../pages/public/Cart';
+import { PaymentProcess } from '../pages/public/PaymentProcess';
 import { Teach } from '../pages/public/Teach';
 import { ScrollToTop } from '../components/layout/ScrollToTop';
 import { NotFound } from '../pages/public/NotFound';
@@ -111,6 +112,10 @@ const router = createBrowserRouter([
       {
         path: '/oauth-callback',
         element: <OAuthCallback />,
+      },
+      {
+        path: '/payment/process/:transactionId',
+        element: <PaymentProcess />,
       },
       // ===== Protected Routes: Yêu cầu đăng nhập =====
       {

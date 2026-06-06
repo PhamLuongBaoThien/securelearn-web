@@ -7,10 +7,7 @@ import { useCartActions } from '@/hooks/useCart';
 export const Cart = () => {
   const cartItems = useAppSelector((state) => state.cart.cartItems);
   const { removeItem, isRemoving } = useCartActions();
-
-  // Fake promotion logic
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price, 0);
-  const originalPrice = totalPrice > 0 ? totalPrice * 2.5 : 0;
 
   return (
     <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-12 min-h-[60vh]">
@@ -28,7 +25,7 @@ export const Cart = () => {
           <div className="flex-1 space-y-4">
             <h2 className="text-lg font-bold mb-2">{cartItems.length} khóa học trong giỏ hàng</h2>
             {cartItems.map((item) => (
-              <div key={item._id} className="flex gap-4 p-4 border border-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
+                <div key={item._id} className="flex gap-4 p-4 border border-border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
                 <img src={item.thumbnail || "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=150&q=80"} alt={item.title} className="w-24 h-24 object-cover rounded-md border border-border" />
                 <div className="flex-1 flex flex-col pt-1">
                   <Link to={`/course/${item.slug}`} className="font-bold text-base hover:text-primary transition-colors line-clamp-2 leading-tight mb-1">{item.title}</Link>
@@ -42,7 +39,6 @@ export const Cart = () => {
                 </div>
                 <div className="flex flex-col items-end shrink-0 pt-1">
                   <span className="font-extrabold text-xl text-primary">{item.price.toLocaleString('vi-VN')} ₫</span>
-                  <span className="text-sm text-muted-foreground line-through mt-1">{(item.price * 2.5).toLocaleString('vi-VN')} ₫</span>
                 </div>
               </div>
             ))}
@@ -52,20 +48,11 @@ export const Cart = () => {
             <div className="bg-card border border-border p-6 rounded-lg sticky top-24 shadow-sm">
               <h3 className="text-lg font-bold text-muted-foreground mb-2">Tổng cộng:</h3>
               <div className="text-4xl font-extrabold mb-1">{totalPrice.toLocaleString('vi-VN')} ₫</div>
-              <div className="text-lg text-muted-foreground line-through mb-6">{originalPrice.toLocaleString('vi-VN')} ₫</div>
-              <div className="text-emerald-600 font-bold mb-6">Bạn tiết kiệm được {(originalPrice - totalPrice).toLocaleString('vi-VN')} ₫</div>
               
               <Link to="/checkout" className={buttonVariants({ variant: 'udemy_dark', className: 'w-full h-14 font-bold text-lg rounded-none' })}>
                 Thanh toán
               </Link>
               
-              <div className="mt-6 border-t border-border pt-4">
-                <strong className="text-sm block mb-2 font-bold">Mã Khuyến mãi</strong>
-                <div className="flex">
-                  <input type="text" placeholder="Nhập mã (Ví dụ: SECURE10)" className="flex-1 h-10 px-3 border border-r-0 border-input rounded-none bg-background text-sm outline-none focus:ring-1 focus:ring-primary focus:border-transparent transition-all" />
-                  <button className="h-10 px-4 bg-secondary text-foreground border border-input border-l-0 font-bold text-sm rounded-none hover:bg-secondary/80 transition-colors">Áp dụng</button>
-                </div>
-              </div>
             </div>
           </div>
         </div>
