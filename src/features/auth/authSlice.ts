@@ -5,6 +5,8 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { AuthState, AuthUser } from '@/types/auth.types';
 
+import { clearUserCart } from '@/features/courses/cartStorage';
+
 // ===== localStorage helpers =====
 // Chỉ lưu user profile (public info), KHÔNG lưu accessToken (bảo mật)
 const AUTH_USER_KEY = 'sl_auth_user';
@@ -72,6 +74,7 @@ function clearAuthFromStorage(): void {
     // Giữ lại flag 'guest' để lần load sau biết ngay không cần check API
     localStorage.setItem(AUTH_STATUS_KEY, 'guest');
     localStorage.removeItem(AUTH_USER_KEY);
+    clearUserCart();
   } catch { /* bỏ qua */ }
 }
 

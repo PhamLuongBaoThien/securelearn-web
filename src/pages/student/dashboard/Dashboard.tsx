@@ -218,7 +218,7 @@ export function StudentDashboard() {
         {/* ── Header ── */}
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Xin chào, {firstName} 👋
+            Xin chào, {firstName}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
             {isLoading

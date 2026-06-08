@@ -66,10 +66,12 @@ export const getTransaction = async (transactionId: string) => {
   return data;
 };
 
-export const confirmCoursePayment = async (transactionId: string, providerRef?: string) => {
-  const { data } = await apiClient.post<ApiResponse<PaymentTransaction>>('/api/payments/confirm', {
-    transactionId,
-    providerRef,
-  });
+export const getTransactionByCode = async (transactionCode: string) => {
+  const { data } = await apiClient.get<ApiResponse<PaymentTransaction>>(`/api/payments/transactions/code/${transactionCode}`);
+  return data;
+};
+
+export const confirmVnpayPayment = async (payload: Record<string, string>) => {
+  const { data } = await apiClient.post<ApiResponse<PaymentTransaction>>('/api/payments/vnpay-return', payload);
   return data;
 };

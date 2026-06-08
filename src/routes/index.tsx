@@ -15,7 +15,7 @@ import { Signup } from '../pages/auth/Signup';
 import { ForgotPassword } from '../pages/auth/ForgotPassword';
 import { Checkout } from '../pages/public/Checkout';
 import { Cart } from '../pages/public/Cart';
-import { PaymentProcess } from '../pages/public/PaymentProcess';
+import { VnpayReturn } from '../pages/public/VnpayReturn';
 import { Teach } from '../pages/public/Teach';
 import { ScrollToTop } from '../components/layout/ScrollToTop';
 import { NotFound } from '../pages/public/NotFound';
@@ -114,8 +114,8 @@ const router = createBrowserRouter([
         element: <OAuthCallback />,
       },
       {
-        path: '/payment/process/:transactionId',
-        element: <PaymentProcess />,
+        path: '/payment/vnpay-return',
+        element: <VnpayReturn />,
       },
       // ===== Protected Routes: Yêu cầu đăng nhập =====
       {

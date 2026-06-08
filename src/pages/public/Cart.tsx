@@ -1,13 +1,31 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../app/hooks';
 import { buttonVariants } from '../../components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { useCartActions } from '@/hooks/useCart';
+import { toast } from 'sonner';
 
 export const Cart = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const cartItems = useAppSelector((state) => state.cart.cartItems);
   const { removeItem, isRemoving } = useCartActions();
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price, 0);
+
+  const handleCheckoutClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!isAuthenticated) {
+      toast.warning('Bạn cần đăng nhập để thực hiện thanh toán khóa học.', {
+        description: 'Đang chuyển hướng bạn đến trang đăng nhập...',
+        duration: 3000,
+      });
+      window.setTimeout(() => {
+        navigate('/auth/login', { state: { from: '/checkout' } });
+      }, 1500);
+      return;
+    }
+    navigate('/checkout');
+  };
 
   return (
     <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-12 min-h-[60vh]">
@@ -49,9 +67,9 @@ export const Cart = () => {
               <h3 className="text-lg font-bold text-muted-foreground mb-2">Tổng cộng:</h3>
               <div className="text-4xl font-extrabold mb-1">{totalPrice.toLocaleString('vi-VN')} ₫</div>
               
-              <Link to="/checkout" className={buttonVariants({ variant: 'udemy_dark', className: 'w-full h-14 font-bold text-lg rounded-none' })}>
+              <button onClick={handleCheckoutClick} className={buttonVariants({ variant: 'udemy_dark', className: 'w-full h-14 font-bold text-lg rounded-none cursor-pointer' })}>
                 Thanh toán
-              </Link>
+              </button>
               
             </div>
           </div>

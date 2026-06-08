@@ -9,6 +9,7 @@ import {
   getGuestCartCourseIds,
   readGuestCart,
   removeGuestCartItem,
+  saveUserCart,
 } from '@/features/courses/cartStorage';
 import { toast } from 'sonner';
 
@@ -54,6 +55,7 @@ export function useCartSync(options?: { enabled?: boolean }) {
 
     if (cartQuery.data) {
       dispatch(setCartItems(cartQuery.data.items));
+      saveUserCart(cartQuery.data.items);
     }
   }, [enabled, authResolved, isAuthenticated, cartQuery.data, dispatch]);
 
@@ -67,6 +69,7 @@ export function useCartActions() {
 
   const syncServerCart = useCallback((items: CartItem[]) => {
     dispatch(setCartItems(items));
+    saveUserCart(items);
     queryClient.setQueryData(cartKeys.items, {
       items,
       totalPrice: items.reduce((sum, item) => sum + item.price, 0),
@@ -147,6 +150,7 @@ export function useMergeGuestCart() {
       if (!cart) return;
       clearGuestCart();
       dispatch(setCartItems(cart.items));
+      saveUserCart(cart.items);
       queryClient.setQueryData(cartKeys.items, cart);
     },
   });

@@ -9,7 +9,7 @@
 // - checkoutMutation: gọi createCourseCheckout()
 // ========================
 import { useMemo, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useAppSelector } from '@/app/hooks';
@@ -21,9 +21,8 @@ const providerForMethod = (method: PaymentMethod): PaymentProvider =>
   method === 'MOMO' ? 'MOMO' : 'VNPAY';
 
 export const Checkout = () => {
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('MOMO');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('VNPAY');
   const location = useLocation();
-  const navigate = useNavigate();
   const { isAuthenticated, authResolved } = useAppSelector((state) => state.auth);
   const cartItems = useAppSelector((state) => state.cart.cartItems);
 
@@ -48,8 +47,7 @@ export const Checkout = () => {
         return;
       }
 
-      const url = new URL(data.paymentUrl, window.location.origin);
-      navigate(`${url.pathname}${url.search}`, { replace: true });
+      window.location.href = data.paymentUrl;
     },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : 'Không thể thanh toán lúc này.');
@@ -98,10 +96,10 @@ export const Checkout = () => {
                 </label>
 
                 <label className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'MOMO' ? 'border-primary bg-primary/5' : 'border-border hover:bg-secondary/50'}`}>
-                  <input type="radio" name="payment" value="MOMO" checked={paymentMethod === 'MOMO'} onChange={() => setPaymentMethod('MOMO')} className="w-5 h-5 accent-primary" />
+                  <input type="radio" name="payment" value="MOMO" checked={paymentMethod === 'MOMO'} onChange={() => setPaymentMethod('MOMO')} className="w-5 h-5 accent-primary" disabled />
                   <div className="flex-1">
                     <span className="font-bold block">Ví điện tử MoMo</span>
-                    <span className="text-sm text-muted-foreground">Thanh toán tiện lợi qua ứng dụng thông minh MoMo</span>
+                    <span className="text-sm text-muted-foreground">Sẽ tích hợp sau, hiện chưa mở trong flow thanh toán thật</span>
                   </div>
                   <div className="h-8 w-8 bg-pink-600 rounded-md flex items-center justify-center font-bold text-white text-[10px]">MoMo</div>
                 </label>
