@@ -6,7 +6,8 @@
 // Hàm chính:
 // - createCourseCheckout()
 // - getTransaction()
-// - confirmCoursePayment()
+// - confirmVnpayPayment()
+// - confirmMomoPayment()
 // ========================
 import apiClient from './apiClient';
 
@@ -73,5 +74,10 @@ export const getTransactionByCode = async (transactionCode: string) => {
 
 export const confirmVnpayPayment = async (payload: Record<string, string>) => {
   const { data } = await apiClient.post<ApiResponse<PaymentTransaction>>('/api/payments/vnpay-return', payload);
+  return data;
+};
+
+export const confirmMomoPayment = async (payload: Record<string, string>) => {
+  const { data } = await apiClient.post<ApiResponse<PaymentTransaction>>('/api/payments/momo-return', payload);
   return data;
 };

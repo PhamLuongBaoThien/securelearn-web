@@ -96,10 +96,10 @@ export const Checkout = () => {
                 </label>
 
                 <label className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'MOMO' ? 'border-primary bg-primary/5' : 'border-border hover:bg-secondary/50'}`}>
-                  <input type="radio" name="payment" value="MOMO" checked={paymentMethod === 'MOMO'} onChange={() => setPaymentMethod('MOMO')} className="w-5 h-5 accent-primary" disabled />
+                  <input type="radio" name="payment" value="MOMO" checked={paymentMethod === 'MOMO'} onChange={() => setPaymentMethod('MOMO')} className="w-5 h-5 accent-primary" />
                   <div className="flex-1">
-                    <span className="font-bold block">Ví điện tử MoMo</span>
-                    <span className="text-sm text-muted-foreground">Sẽ tích hợp sau, hiện chưa mở trong flow thanh toán thật</span>
+                    <span className="font-bold block">MoMo</span>
+                    <span className="text-sm text-muted-foreground">MoMo sẽ mở trang chọn phương thức thanh toán phù hợp</span>
                   </div>
                   <div className="h-8 w-8 bg-pink-600 rounded-md flex items-center justify-center font-bold text-white text-[10px]">MoMo</div>
                 </label>

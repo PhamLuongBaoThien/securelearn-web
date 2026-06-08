@@ -16,6 +16,7 @@ import { ForgotPassword } from '../pages/auth/ForgotPassword';
 import { Checkout } from '../pages/public/Checkout';
 import { Cart } from '../pages/public/Cart';
 import { VnpayReturn } from '../pages/public/VnpayReturn';
+import { MomoReturn } from '../pages/public/MomoReturn';
 import { Teach } from '../pages/public/Teach';
 import { ScrollToTop } from '../components/layout/ScrollToTop';
 import { NotFound } from '../pages/public/NotFound';
@@ -116,6 +117,10 @@ const router = createBrowserRouter([
       {
         path: '/payment/vnpay-return',
         element: <VnpayReturn />,
+      },
+      {
+        path: '/payment/momo-return',
+        element: <MomoReturn />,
       },
       // ===== Protected Routes: Yêu cầu đăng nhập =====
       {
