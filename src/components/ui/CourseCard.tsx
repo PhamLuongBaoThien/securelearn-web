@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Star, Clock, BookOpen, Check } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Star, Clock, BookOpen, Check, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HoverCard } from '@/components/animations/HoverCard';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { ICourse } from '@/services/courseApi';
 import { useAppSelector } from '@/app/hooks';
 import { useCartActions } from '@/hooks/useCart';
+import { useEnrolledCourses } from '@/hooks/useEnrolledCourses';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const LEVEL_LABEL: Record<string, string> = {
@@ -24,11 +25,17 @@ function formatDuration(seconds: number): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export const CourseCard = ({ course }: { course: ICourse }) => {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const cartItems = useAppSelector((state) => state.cart.cartItems);
   const isInCart = cartItems.some((item) => item._id === course._id);
   const { addItem, isAdding } = useCartActions();
   const hasLearningPoints = Array.isArray(course.whatYouWillLearn) && course.whatYouWillLearn.length > 0;
+
+  // Kiểm tra đã ghi danh chưa — dùng lại cache từ useEnrolledCourses (không gây thêm request)
+  const isAuthenticated = Boolean(useAppSelector((state) => state.auth.user));
+  const { data: enrolledCourses = [] } = useEnrolledCourses();
+  const isEnrolled = isAuthenticated && enrolledCourses.some((e) => e.courseId === course._id);
 
   const cardContent = (
     <HoverCard className="group flex flex-col h-full cursor-pointer bg-zinc-50 dark:bg-card border border-border rounded-xl overflow-hidden hover:shadow-md transition-shadow">
@@ -123,26 +130,48 @@ export const CourseCard = ({ course }: { course: ICourse }) => {
         </div>
 
         {/* CTA Button */}
-        <Button
-          variant="udemy_outline"
-          size="sm"
-          className="w-full rounded-sm font-bold"
-          onClick={(e) => {
-            e.preventDefault();
-            if (isInCart) return;
-            addItem({
-              _id: course._id,
-              slug: course.slug,
-              title: course.title,
-              price: course.price,
-              thumbnail: course.thumbnail,
-              instructorName: course.instructorName,
-            });
-          }}
-          disabled={isInCart || isAdding}
-        >
-          {isInCart ? 'Đã có trong giỏ' : isAdding ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
-        </Button>
+        {isEnrolled ? (
+          // Đã ghi danh: badge + nút vào học
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <GraduationCap className="w-3.5 h-3.5" />
+              Bạn đã sở hữu khóa học này
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full rounded-sm font-bold border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/my-learning');
+              }}
+            >
+              Vào học ngay
+            </Button>
+          </div>
+        ) : (
+          // Chưa ghi danh: nút thêm giỏ / xem giỏ
+          <Button
+            variant="udemy_outline"
+            size="sm"
+            className="w-full rounded-sm font-bold"
+            onClick={(e) => {
+              e.preventDefault();
+              if (isInCart) return;
+              addItem({
+                _id: course._id,
+                slug: course.slug,
+                title: course.title,
+                price: course.price,
+                thumbnail: course.thumbnail,
+                instructorName: course.instructorName,
+              });
+            }}
+            disabled={isInCart || isAdding}
+          >
+            {isInCart ? 'Đã có trong giỏ' : isAdding ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
+          </Button>
+        )}
       </div>
     </HoverCard>
   );
