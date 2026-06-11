@@ -552,7 +552,7 @@ export const CourseEditor: React.FC = () => {
       return;
     }
 
-    if (isRevisionDraft && !hasEditedInSession) {
+    if (isRevisionDraft && !hasEditedInSession && !hasRealChangesFromPublished) {
       toast.error("Bản cập nhật chưa có thay đổi so với khóa học đang xuất bản.");
       return;
     }
@@ -570,7 +570,12 @@ export const CourseEditor: React.FC = () => {
     validatePublishMutation.mutate(courseId!, {
       onSuccess: (result) => {
         if (!result.ok) {
-          toast.error(result.message || result.errors[0]?.message || "Khóa học chưa thể gửi duyệt.");
+          toast.error(
+            <div className="whitespace-pre-line text-left text-xs md:text-sm">
+              {result.message || "Khóa học chưa thể gửi duyệt."}
+            </div>,
+            { duration: 6000 }
+          );
           return;
         }
 
