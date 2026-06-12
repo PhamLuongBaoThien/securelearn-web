@@ -281,29 +281,48 @@ export interface ISecurityConfig {
 // ===== Finance =====
 
 export type PaymentProvider = 'VNPAY' | 'MOMO' | 'STRIPE';
-export type TransactionStatus = 'SUCCESS' | 'PENDING' | 'FAILED' | 'REFUNDED';
+export type TransactionStatus = 'SUCCEEDED' | 'PENDING' | 'FAILED';
 export type PlanType = 'LIFETIME' | 'MONTHLY' | 'YEARLY';
 
 export interface ITransaction {
   _id: string;
   transactionId: string;
-  user: {
-    _id: string;
-    email: string;
-    fullName: string;
-  };
+  transactionCode?: string;
+  fullName: string;
+  email: string;
   course?: {
     _id: string;
     title: string;
   };
   plan?: PlanType;
   amount: number; // VND
+  grossAmount?: number;
+  adminAmount?: number;
+  instructorAmount?: number;
   provider: PaymentProvider;
   status: TransactionStatus;
   paymentMethod?: string;
   ipnReceivedAt?: string; // Từ RabbitMQ event
+  items?: Array<{
+    courseId: string;
+    slug: string;
+    title: string;
+    price: number;
+    thumbnail?: string;
+    instructorName?: string;
+    instructorId?: string;
+    adminPercent?: number;
+    instructorPercent?: number;
+    adminAmount?: number;
+    instructorAmount?: number;
+  }>;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface IRevenueSplitConfig {
+  adminPercent: number;
+  instructorPercent: number;
 }
 
 export interface IPricingPlan {
@@ -321,14 +340,65 @@ export interface IPricingPlan {
 
 export interface IRevenueStats {
   totalRevenue: number;
+  totalAdminRevenue: number;
+  totalInstructorRevenue: number;
   thisMonthRevenue: number;
+  thisMonthAdminRevenue?: number;
+  thisMonthInstructorRevenue?: number;
   successfulTransactions: number;
   activeSubscriptions: number;
+  adminPercent?: number;
+  instructorPercent?: number;
   monthlyData: {
     month: string;
     revenue: number;
+    adminRevenue: number;
+    instructorRevenue: number;
     transactions: number;
   }[];
+  providerBreakdown?: {
+    provider: PaymentProvider;
+    revenue: number;
+    adminRevenue: number;
+    instructorRevenue: number;
+    transactions: number;
+  }[];
+  total?: number;
+  page?: number;
+  limit?: number;
+  transactions?: ITransaction[];
+}
+
+export interface IInstructorRevenueStats {
+  totalGrossRevenue: number;
+  totalAdminRevenue: number;
+  totalInstructorRevenue: number;
+  totalTransactions: number;
+  monthlyData: {
+    month: string;
+    revenue: number;
+    adminRevenue: number;
+    instructorRevenue: number;
+    transactions: number;
+  }[];
+  providerBreakdown: {
+    provider: PaymentProvider;
+    revenue: number;
+    adminRevenue: number;
+    instructorRevenue: number;
+    transactions: number;
+  }[];
+  courseBreakdown: {
+    courseId: string;
+    courseTitle: string;
+    slug: string;
+    grossRevenue: number;
+    adminRevenue: number;
+    instructorRevenue: number;
+    transactions: number;
+  }[];
+  adminPercent?: number;
+  instructorPercent?: number;
 }
 
 export interface IActiveSubscription {

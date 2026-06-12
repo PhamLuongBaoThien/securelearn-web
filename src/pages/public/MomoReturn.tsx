@@ -93,7 +93,7 @@ export function MomoReturn() {
             return;
           }
         }
-      } catch (confirmErr: any) {
+      } catch (confirmErr: unknown) {
         console.error('Lỗi khi confirm MoMo với backend:', confirmErr);
       }
 

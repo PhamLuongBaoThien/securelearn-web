@@ -95,7 +95,7 @@ export function VnpayReturn() {
             return;
           }
         }
-      } catch (confirmErr: any) {
+      } catch (confirmErr: unknown) {
         console.error('Lỗi khi confirm trực tiếp với backend:', confirmErr);
         // Nếu API verify trực tiếp lỗi, ta fallback sang cơ chế poll trạng thái DB (IPN xử lý sau)
       }

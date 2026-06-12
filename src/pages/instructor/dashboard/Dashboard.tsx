@@ -1,6 +1,6 @@
 // ========================
-// Instructor Dashboard: Tổng quan (Nâng cấp)
-// Thêm completion rate, phân loại activity feed, thông báo badge.
+// Instructor Dashboard: Tổng quan
+// Hiển thị dữ liệu thật từ courses API + revenue API
 // ========================
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -9,14 +9,13 @@ import {
   BookOpen,
   DollarSign,
   Star,
-  TrendingUp,
   Clock,
   Loader2,
   ArrowRight,
   CheckCircle2,
-  UserPlus,
+  AlertCircle,
+  Percent,
   MessageSquare,
-  CreditCard,
 } from 'lucide-react';
 import {
   LineChart,
@@ -27,66 +26,53 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { useQuery } from '@tanstack/react-query';
 import { useAppSelector } from '@/app/hooks';
 import { useGetMyCourses } from '@/hooks/useInstructorCourses';
-
-// Mock Chart Data (sẽ thay bằng analytics API sau)
-const chartData = [
-  { name: 'T1', revenue: 4000000, students: 24 },
-  { name: 'T2', revenue: 3000000, students: 13 },
-  { name: 'T3', revenue: 5200000, students: 42 },
-  { name: 'T4', revenue: 2780000, students: 39 },
-  { name: 'T5', revenue: 6890000, students: 48 },
-  { name: 'T6', revenue: 4390000, students: 38 },
-  { name: 'T7', revenue: 7490000, students: 53 },
-];
-
-const recentActivities = [
-  { id: 1, type: 'payment', message: 'Nguyễn Văn A đã thanh toán khóa học React Masterclass', time: '2 phút trước', unread: true },
-  { id: 2, type: 'enrollment', message: 'Trần Thị B vừa ghi danh vào DevOps Fundamentals', time: '1 giờ trước', unread: true },
-  { id: 3, type: 'review', message: 'Học viên để lại đánh giá 5★ cho React Masterclass', time: '3 giờ trước', unread: false },
-  { id: 4, type: 'question', message: 'Có câu hỏi mới trong mục Tương tác lớp học', time: '1 ngày trước', unread: false },
-  { id: 5, type: 'enrollment', message: 'Lê Minh C đã ghi danh vào React Masterclass 2024', time: '2 ngày trước', unread: false },
-];
-
-const activityConfig: Record<string, { color: string; icon: React.ReactNode; bg: string }> = {
-  payment: {
-    color: 'bg-green-500',
-    bg: 'bg-green-500/10',
-    icon: <CreditCard className="w-4 h-4 text-green-600" />,
-  },
-  enrollment: {
-    color: 'bg-blue-500',
-    bg: 'bg-blue-500/10',
-    icon: <UserPlus className="w-4 h-4 text-blue-600" />,
-  },
-  review: {
-    color: 'bg-yellow-500',
-    bg: 'bg-yellow-500/10',
-    icon: <Star className="w-4 h-4 text-yellow-600" />,
-  },
-  question: {
-    color: 'bg-purple-500',
-    bg: 'bg-purple-500/10',
-    icon: <MessageSquare className="w-4 h-4 text-purple-600" />,
-  },
-};
+import { getInstructorRevenueStats } from '@/services/paymentApi';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value);
 
 export const InstructorDashboard: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
-  const { data: courses = [], isLoading } = useGetMyCourses();
+  const { data: courses = [], isLoading: coursesLoading } = useGetMyCourses();
 
+  const { data: revenue, isLoading: revenueLoading } = useQuery({
+    queryKey: ['instructor', 'finance', 'revenue'],
+    queryFn: async () => {
+      const response = await getInstructorRevenueStats();
+      if (response.status === 'ERR' || !response.data) {
+        throw new Error(response.message || 'Không thể tải dữ liệu doanh thu.');
+      }
+      return response.data;
+    },
+  });
+
+  const isLoading = coursesLoading || revenueLoading;
+
+  // Course stats — dữ liệu thật
   const totalCourses = courses.length;
   const publishedCourses = courses.filter((c) => c.status === 'PUBLISHED').length;
   const draftCourses = courses.filter((c) => c.status === 'DRAFT').length;
+  const pendingCourses = courses.filter((c) => c.status === 'PENDING').length;
   const totalStudents = courses.reduce((sum, c) => sum + (c.enrollmentCount || 0), 0);
-  const totalRevenueMock = chartData.reduce((s, d) => s + d.revenue, 0);
-  const thisMonthRevenue = chartData[chartData.length - 1].revenue;
 
-  const unreadCount = recentActivities.filter((a) => a.unread).length;
+  // Revenue stats — dữ liệu thật
+  const totalInstructorRevenue = revenue?.totalInstructorRevenue ?? 0;
+  const totalGrossRevenue = revenue?.totalGrossRevenue ?? 0;
+  const totalTransactions = revenue?.totalTransactions ?? 0;
+  const instructorPercent = revenue?.instructorPercent ?? 0;
+  const adminPercent = revenue?.adminPercent ?? 0;
+  const monthlyData = revenue?.monthlyData ?? [];
+  const topCourses = revenue?.courseBreakdown ?? [];
+
+  // Chart data from real monthly data
+  const chartData = monthlyData.map((m) => ({
+    name: m.month,
+    revenue: m.instructorRevenue,
+    transactions: m.transactions,
+  }));
 
   if (isLoading) {
     return (
@@ -104,94 +90,84 @@ export const InstructorDashboard: React.FC = () => {
           <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
             Chào mừng trở lại, {user?.fullName || 'Giảng viên'}!
           </h1>
-          <p className="text-muted-foreground mt-2">Dưới đây là tổng quan về các khóa học của bạn hôm nay.</p>
+          <p className="text-muted-foreground mt-2">Dưới đây là tổng quan về các khóa học và doanh thu của bạn.</p>
         </div>
-        {unreadCount > 0 && (
-          <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium border border-primary/20 animate-pulse">
-            <span className="w-2 h-2 bg-primary rounded-full" />
-            {unreadCount} thông báo mới
-          </div>
-        )}
       </div>
 
-      {/* Stats Grid — 4 cards hàng 1 + 2 cards hàng 2 */}
+      {/* Stats Grid — 4 cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Tổng doanh thu */}
+        {/* Doanh thu thực nhận */}
         <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Tổng doanh thu</p>
-              <h3 className="text-2xl font-bold mt-1 text-zinc-900 dark:text-white">{formatCurrency(totalRevenueMock)}</h3>
+              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Doanh thu thực nhận</p>
+              <h3 className="text-2xl font-bold mt-1 text-zinc-900 dark:text-white">{formatCurrency(totalInstructorRevenue)}</h3>
             </div>
             <div className="h-12 w-12 bg-green-500/10 text-green-600 dark:text-green-400 rounded-xl flex items-center justify-center">
               <DollarSign className="w-6 h-6" />
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-1 text-sm text-green-600 dark:text-green-400 font-medium">
-            <TrendingUp className="w-4 h-4" />
-            <span>+12.5% so với tháng trước</span>
-          </div>
+          <p className="mt-3 text-xs text-zinc-400">
+            Tổng thu: {formatCurrency(totalGrossRevenue)}
+          </p>
         </div>
 
-        {/* Tháng này */}
+        {/* Giao dịch thành công */}
         <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Tháng này</p>
-              <h3 className="text-2xl font-bold mt-1 text-zinc-900 dark:text-white">{formatCurrency(thisMonthRevenue)}</h3>
+              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Giao dịch thành công</p>
+              <h3 className="text-2xl font-bold mt-1 text-zinc-900 dark:text-white">{totalTransactions.toLocaleString('vi-VN')}</h3>
             </div>
             <div className="h-12 w-12 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center">
-              <CreditCard className="w-6 h-6" />
+              <CheckCircle2 className="w-6 h-6" />
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 font-medium">
-            <TrendingUp className="w-4 h-4" />
-            <span>+8.3% so với T6</span>
-          </div>
+          <p className="mt-3 text-xs text-zinc-400">
+            Tỷ lệ chia: Giảng viên {instructorPercent}% / QTV {adminPercent}%
+          </p>
         </div>
 
-        {/* Học viên */}
+        {/* Tổng học viên */}
         <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Học viên</p>
+              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Tổng học viên</p>
               <h3 className="text-2xl font-bold mt-1 text-zinc-900 dark:text-white">{totalStudents.toLocaleString('vi-VN')}</h3>
             </div>
             <div className="h-12 w-12 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
               <Users className="w-6 h-6" />
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 font-medium">
-            <TrendingUp className="w-4 h-4" />
-            <span>Từ {publishedCourses} khóa đã xuất bản</span>
-          </div>
+          <p className="mt-3 text-xs text-zinc-400">
+            Từ {publishedCourses} khóa đã xuất bản
+          </p>
         </div>
 
-        {/* Tỷ lệ hoàn thành */}
+        {/* Đánh giá */}
         <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Hoàn thành TB</p>
-              <h3 className="text-2xl font-bold mt-1 text-zinc-900 dark:text-white">73%</h3>
+              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Đánh giá</p>
+              <h3 className="text-2xl font-bold mt-1 text-zinc-300 dark:text-zinc-600">—</h3>
             </div>
-            <div className="h-12 w-12 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6" />
+            <div className="h-12 w-12 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center">
+              <Star className="w-6 h-6" />
             </div>
           </div>
-          <div className="mt-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2">
-            <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '73%' }} />
-          </div>
-          <p className="mt-1 text-xs text-zinc-400">Progress Service (mock)</p>
+          <p className="mt-3 text-xs text-zinc-400">
+            Sắp ra mắt
+          </p>
         </div>
       </div>
 
-      {/* Row 2: Stats nhỏ */}
+      {/* Row 2: Khóa học stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Tổng khóa học', value: totalCourses, color: 'text-purple-600 dark:text-purple-400', icon: <BookOpen className="w-5 h-5" /> },
           { label: 'Đã xuất bản', value: publishedCourses, color: 'text-green-600 dark:text-green-400', icon: <CheckCircle2 className="w-5 h-5" /> },
           { label: 'Bản nháp', value: draftCourses, color: 'text-yellow-600 dark:text-yellow-400', icon: <Clock className="w-5 h-5" /> },
-          { label: 'Đánh giá TB', value: '4.8★', color: 'text-yellow-500', icon: <Star className="w-5 h-5" /> },
+          { label: 'Chờ duyệt', value: pendingCourses, color: 'text-orange-600 dark:text-orange-400', icon: <AlertCircle className="w-5 h-5" /> },
         ].map((s) => (
           <div key={s.label} className="p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm flex items-center gap-3">
             <div className={`${s.color} shrink-0`}>{s.icon}</div>
@@ -203,65 +179,121 @@ export const InstructorDashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* Chart + Activity */}
+      {/* Chart + Top courses */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart */}
         <div className="lg:col-span-2 p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
-          <h3 className="text-lg font-bold mb-6 text-zinc-900 dark:text-white">Biểu đồ Doanh thu & Học viên</h3>
-          <div className="h-[280px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                <XAxis dataKey="name" stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} />
-                <YAxis yAxisId="left" stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} tickFormatter={(v) => `${(v / 1000000).toFixed(0)}M`} />
-                <YAxis yAxisId="right" orientation="right" stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
-                  itemStyle={{ color: '#fff' }}
-                />
-                <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Doanh thu" />
-                <Line yAxisId="right" type="monotone" dataKey="students" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Học viên" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <h3 className="text-lg font-bold mb-6 text-zinc-900 dark:text-white">Doanh thu theo tháng</h3>
+          {chartData.length > 0 ? (
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                  <XAxis dataKey="name" stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} />
+                  <YAxis stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
+                    itemStyle={{ color: '#fff' }}
+                    formatter={(value, name) => [
+                      name === 'Doanh thu' ? formatCurrency(Number(value ?? 0)) : `${value} giao dịch`,
+                      String(name),
+                    ]}
+                  />
+                  <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Doanh thu" />
+                  <Line type="monotone" dataKey="transactions" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Giao dịch" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-zinc-400">
+              <DollarSign className="w-10 h-10 mb-3 opacity-30" />
+              <p className="text-sm">Chưa có dữ liệu doanh thu.</p>
+            </div>
+          )}
         </div>
 
-        {/* Activity Feed */}
+        {/* Top courses */}
         <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Thông báo</h3>
-            {unreadCount > 0 && (
-              <span className="px-2 py-0.5 text-xs font-bold bg-primary text-primary-foreground rounded-full">
-                {unreadCount}
-              </span>
-            )}
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Top khóa học</h3>
+            <Link to="/instructor/performance" className="text-xs text-primary hover:text-primary/80 transition-colors">
+              Xem chi tiết
+            </Link>
           </div>
-          <div className="space-y-4">
-            {recentActivities.map((activity) => {
-              const cfg = activityConfig[activity.type];
-              return (
-                <div key={activity.id} className={`flex gap-3 p-3 rounded-xl transition-colors ${activity.unread ? 'bg-primary/5 border border-primary/10' : ''}`}>
-                  <div className={`w-8 h-8 ${cfg.bg} rounded-lg flex items-center justify-center shrink-0 mt-0.5`}>
-                    {cfg.icon}
+          {topCourses.length > 0 ? (
+            <div className="space-y-4">
+              {topCourses.slice(0, 5).map((c, index) => (
+                <div key={c.courseId} className="flex gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-xs font-bold text-primary">
+                    {index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-zinc-900 dark:text-zinc-200 line-clamp-2">{activity.message}</p>
-                    <div className="flex items-center gap-1 mt-1 text-xs text-zinc-400">
-                      <Clock className="w-3 h-3" />
-                      <span>{activity.time}</span>
-                      {activity.unread && <span className="w-1.5 h-1.5 bg-primary rounded-full ml-1" />}
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-200 truncate">{c.courseTitle}</p>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-zinc-400">
+                      <span>{c.transactions} giao dịch</span>
+                      <span className="text-emerald-500 font-semibold">{formatCurrency(c.instructorRevenue)}</span>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-zinc-400">
+              <BookOpen className="w-8 h-8 mb-2 opacity-30" />
+              <p className="text-sm">Chưa có giao dịch nào.</p>
+            </div>
+          )}
+          {topCourses.length > 0 && (
+            <Link
+              to="/instructor/performance"
+              className="flex items-center justify-center gap-2 w-full mt-5 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              Xem phân tích đầy đủ <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Quick links */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Link
+          to="/instructor/performance"
+          className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm hover:shadow-md transition-all hover:border-primary/30 group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+              <Percent className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-zinc-900 dark:text-white">Phân tích doanh thu</p>
+              <p className="text-xs text-zinc-400">Chi tiết theo khóa, cổng TT</p>
+            </div>
           </div>
-          <Link
-            to="/instructor/communication"
-            className="flex items-center justify-center gap-2 w-full mt-5 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-          >
-            Xem tất cả <ArrowRight className="w-4 h-4" />
-          </Link>
+        </Link>
+        <Link
+          to="/instructor/courses"
+          className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm hover:shadow-md transition-all hover:border-primary/30 group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-zinc-900 dark:text-white">Quản lý khóa học</p>
+              <p className="text-xs text-zinc-400">{totalCourses} khóa · {publishedCourses} đã xuất bản</p>
+            </div>
+          </div>
+        </Link>
+        <div className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm opacity-60">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-zinc-900 dark:text-white">Đánh giá học viên</p>
+              <p className="text-xs text-zinc-400">Sắp ra mắt</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

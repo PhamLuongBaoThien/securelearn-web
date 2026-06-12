@@ -44,11 +44,21 @@ export const CourseCard = ({ course }: { course: ICourse }) => {
         to={`/course/${course.slug}`}
         className="block w-full aspect-video overflow-hidden bg-secondary relative shrink-0"
       >
-        {course.badge && (
+        {/* Badge thông thường (Bestseller, ...) — chỉ hiện khi chưa enrolled */}
+        {!isEnrolled && course.badge && (
           <div className="absolute top-2 left-2 bg-[#eceb98] text-yellow-900 text-xs font-bold px-2 py-1 rounded-sm z-10 shadow-sm">
             {course.badge}
           </div>
         )}
+
+        {/* Badge "Đã sở hữu" — overlay thumbnail, không chiếm chiều cao card */}
+        {isEnrolled && (
+          <div className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600/90 to-emerald-500/80 backdrop-blur-sm z-20">
+            <GraduationCap className="w-3.5 h-3.5 text-white shrink-0" />
+            <span className="text-white text-xs font-semibold tracking-wide">Đã sở hữu</span>
+          </div>
+        )}
+
         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity z-10" />
         {course.thumbnail ? (
           <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
@@ -117,40 +127,40 @@ export const CourseCard = ({ course }: { course: ICourse }) => {
           </div>
         )}
 
-        {/* Price row */}
+        {/* Price row — ẩn khi đã enrolled để không hiển thị giá gây nhầm lẫn */}
         <div className="flex items-center gap-2 mb-3 mt-auto">
-          <span className="font-bold text-base text-foreground">
-            {course.price === 0 ? 'Miễn phí' : `${course.price.toLocaleString('vi-VN')} ₫`}
-          </span>
-          {course.originalPrice != null && (
-            <span className="text-sm text-muted-foreground line-through">
-              {course.originalPrice.toLocaleString('vi-VN')} ₫
+          {isEnrolled ? (
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+              Tiếp tục học khoá học
             </span>
+          ) : (
+            <>
+              <span className="font-bold text-base text-foreground">
+                {course.price === 0 ? 'Miễn phí' : `${course.price.toLocaleString('vi-VN')} ₫`}
+              </span>
+              {course.originalPrice != null && (
+                <span className="text-sm text-muted-foreground line-through">
+                  {course.originalPrice.toLocaleString('vi-VN')} ₫
+                </span>
+              )}
+            </>
           )}
         </div>
 
-        {/* CTA Button */}
+        {/* CTA Button — luôn 1 nút duy nhất, cùng height cho mọi card */}
         {isEnrolled ? (
-          // Đã ghi danh: badge + nút vào học
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-              <GraduationCap className="w-3.5 h-3.5" />
-              Bạn đã sở hữu khóa học này
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full rounded-sm font-bold border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate('/my-learning');
-              }}
-            >
-              Vào học ngay
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full rounded-sm font-bold border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-500/60 dark:text-emerald-400 dark:hover:bg-emerald-950/50 transition-colors"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/my-learning');
+            }}
+          >
+            Vào học ngay
+          </Button>
         ) : (
-          // Chưa ghi danh: nút thêm giỏ / xem giỏ
           <Button
             variant="udemy_outline"
             size="sm"

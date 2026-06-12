@@ -17,6 +17,7 @@ import type {
   ITransaction,
   IPricingPlan,
   IRevenueStats,
+  IRevenueSplitConfig,
   IActiveSubscription,
   INotificationTemplate,
   ILearningProgress,
@@ -26,6 +27,7 @@ import type {
 } from '@/types/admin.types';
 
 const ADMIN = '/api/admin';
+const ADMIN_FINANCE = '/api/payments/admin/finance';
 
 type CategoryNodeResponse = Omit<ICategory, 'children'> & {
   children?: CategoryNodeResponse[];
@@ -306,7 +308,17 @@ export const getTransactions = async (params?: {
   page?: number;
   limit?: number;
 }): Promise<AdminApiResponse<{ transactions: ITransaction[]; total: number; totalAmount: number }>> => {
-  const res = await apiClient.get(`${ADMIN}/finance/transactions`, { params });
+  const res = await apiClient.get(`${ADMIN_FINANCE}/transactions`, { params });
+  return res.data;
+};
+
+export const getRevenueSplitConfig = async (): Promise<AdminApiResponse<IRevenueSplitConfig>> => {
+  const res = await apiClient.get<AdminApiResponse<IRevenueSplitConfig>>(`${ADMIN_FINANCE}/split-config`);
+  return res.data;
+};
+
+export const updateRevenueSplitConfig = async (data: IRevenueSplitConfig): Promise<AdminApiResponse<IRevenueSplitConfig>> => {
+  const res = await apiClient.put<AdminApiResponse<IRevenueSplitConfig>>(`${ADMIN_FINANCE}/split-config`, data);
   return res.data;
 };
 
@@ -321,7 +333,7 @@ export const updatePricingPlan = async (planId: string, data: Partial<IPricingPl
 };
 
 export const getRevenueStats = async (): Promise<AdminApiResponse<IRevenueStats>> => {
-  const res = await apiClient.get<AdminApiResponse<IRevenueStats>>(`${ADMIN}/finance/revenue`);
+  const res = await apiClient.get<AdminApiResponse<IRevenueStats>>(`${ADMIN_FINANCE}/revenue`);
   return res.data;
 };
 

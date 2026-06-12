@@ -21,6 +21,11 @@ export interface PaymentCourseItem {
   price: number;
   thumbnail?: string;
   instructorName?: string;
+  instructorId?: string;
+  adminPercent?: number;
+  instructorPercent?: number;
+  adminAmount?: number;
+  instructorAmount?: number;
 }
 
 export interface PaymentTransaction {
@@ -32,6 +37,9 @@ export interface PaymentTransaction {
   email: string;
   items: PaymentCourseItem[];
   amount: number;
+  grossAmount?: number;
+  adminAmount?: number;
+  instructorAmount?: number;
   provider: PaymentProvider;
   paymentMethod: PaymentMethod;
   status: 'PENDING' | 'SUCCEEDED' | 'FAILED';
@@ -47,6 +55,38 @@ interface ApiResponse<T = undefined> {
   status: string;
   message?: string;
   data?: T;
+}
+
+export interface InstructorRevenueBreakdown {
+  totalGrossRevenue: number;
+  totalAdminRevenue: number;
+  totalInstructorRevenue: number;
+  totalTransactions: number;
+  monthlyData: {
+    month: string;
+    revenue: number;
+    adminRevenue: number;
+    instructorRevenue: number;
+    transactions: number;
+  }[];
+  providerBreakdown: {
+    provider: PaymentProvider;
+    revenue: number;
+    adminRevenue: number;
+    instructorRevenue: number;
+    transactions: number;
+  }[];
+  courseBreakdown: {
+    courseId: string;
+    courseTitle: string;
+    slug: string;
+    grossRevenue: number;
+    adminRevenue: number;
+    instructorRevenue: number;
+    transactions: number;
+  }[];
+  adminPercent?: number;
+  instructorPercent?: number;
 }
 
 export interface CourseCheckoutResponse {
@@ -79,5 +119,10 @@ export const confirmVnpayPayment = async (payload: Record<string, string>) => {
 
 export const confirmMomoPayment = async (payload: Record<string, string>) => {
   const { data } = await apiClient.post<ApiResponse<PaymentTransaction>>('/api/payments/momo-return', payload);
+  return data;
+};
+
+export const getInstructorRevenueStats = async (): Promise<ApiResponse<InstructorRevenueBreakdown>> => {
+  const { data } = await apiClient.get<ApiResponse<InstructorRevenueBreakdown>>('/api/payments/instructor/finance/revenue');
   return data;
 };
