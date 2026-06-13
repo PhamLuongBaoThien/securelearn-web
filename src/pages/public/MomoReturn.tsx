@@ -1,12 +1,8 @@
 // ========================
 // MoMo Return Page
 // Mục đích:
-// - nhận redirect từ MoMo sau khi user thanh toán
-// - đọc query params MoMo, chờ backend xử lý/đối soát giao dịch
-// - clear cart và chuyển người học sang dashboard khi transaction đã SUCCEEDED
-// Hàm/chức năng chính:
-// - finishSuccess(): dọn state sau khi backend xác nhận giao dịch thành công
-// - pollTransaction(): chờ trạng thái transaction đổi từ PENDING sang SUCCEEDED/FAILED
+// - xác nhận giao dịch MoMo sau khi user quay về frontend
+// - điều hướng khác nhau cho mua khóa học và mua thuê bao theo productType
 // ========================
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams, Navigate } from 'react-router-dom';
@@ -47,15 +43,21 @@ export function MomoReturn() {
     const finishSuccess = async (payment: PaymentTransaction) => {
       setTransaction(payment);
       setIsDone(true);
-      clearGuestCart();
-      clearUserCart();
-      dispatch(clearCart());
-      dispatch(setCartItems([]));
-      queryClient.setQueryData(cartKeys.items, { items: [], totalPrice: 0 });
-      queryClient.invalidateQueries({ queryKey: enrolledKeys.all });
-      toast.success('Thanh toán thành công. Khóa học đã được mở quyền.');
+      if (payment.productType === 'COURSE') {
+        // Chỉ checkout khóa học mới dọn cart; subscription checkout không dùng cart.
+        clearGuestCart();
+        clearUserCart();
+        dispatch(clearCart());
+        dispatch(setCartItems([]));
+        queryClient.setQueryData(cartKeys.items, { items: [], totalPrice: 0 });
+        queryClient.invalidateQueries({ queryKey: enrolledKeys.all });
+        toast.success('Thanh toán thành công. Khóa học đã được mở quyền.');
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['subscription', 'me'] });
+        toast.success('Thanh toán thành công. Kỳ thuê bao đã được ghi nhận.');
+      }
 
-      const returnTo = '/student/dashboard';
+      const returnTo = payment.productType === 'SUBSCRIPTION' ? '/pricing' : '/student/dashboard';
       window.setTimeout(() => {
         navigate(returnTo, { replace: true });
       }, 1200);

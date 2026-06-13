@@ -1,6 +1,8 @@
 // ========================
-// API Service: Tất cả chức năng quản trị Admin
-// Giao tiếp qua Kong API Gateway — prefix /api/admin/
+// Admin API Client
+// Mục đích:
+// - gom các API quản trị dùng chung của frontend admin
+// - bổ sung action review catalog thuê bao cạnh các flow review course hiện có
 // ========================
 import apiClient from './apiClient';
 import type { ICourse } from './courseApi';
@@ -239,6 +241,16 @@ export const getCourseReviewDetail = async (courseId: string): Promise<AdminApiR
 
 export const approveCourse = async (courseId: string, finalCategoryId?: string): Promise<AdminApiResponse> => {
   const res = await apiClient.patch<AdminApiResponse>(`${ADMIN}/courses/${courseId}/approve`, finalCategoryId ? { finalCategoryId } : {});
+  return res.data;
+};
+
+export const reviewCourseSubscription = async (
+  courseId: string,
+  action: 'APPROVE' | 'REJECT' | 'REMOVE',
+  reason?: string
+): Promise<AdminApiResponse> => {
+  // Admin review catalog thuê bao tách khỏi flow approve/reject publish của course chính.
+  const res = await apiClient.patch<AdminApiResponse>(`${ADMIN}/courses/${courseId}/subscription-review`, { action, reason });
   return res.data;
 };
 

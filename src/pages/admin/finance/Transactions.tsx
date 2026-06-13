@@ -1,12 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { Search, Filter, DollarSign, CreditCard, Download, CheckCircle, XCircle, Clock, Percent, Save } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ITransaction, PaymentProvider, TransactionStatus, IRevenueSplitConfig, IRevenueStats } from '@/types/admin.types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
-import { getRevenueSplitConfig, getRevenueStats, getTransactions, updateRevenueSplitConfig } from '@/services/adminApi';
-import { toast } from 'sonner';
+import {
+  useAdminRevenueSplitConfig,
+  useAdminRevenueStats,
+  useAdminTransactions,
+  useUpdateRevenueSplitConfig,
+} from '@/hooks/useAdminFinance';
 
 const statusConfig: Record<TransactionStatus, { label: string; icon: React.ReactNode; cls: string }> = {
   SUCCEEDED: { label: 'Thành công', icon: <CheckCircle className="w-3.5 h-3.5" />, cls: 'bg-emerald-100 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400' },
@@ -23,7 +26,6 @@ const providerBadge: Record<PaymentProvider, { label: string; cls: string }> = {
 const fmt = (n: number) => n.toLocaleString('vi-VN') + '₫';
 
 export const Transactions: React.FC = () => {
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [providerFilter, setProviderFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -31,43 +33,9 @@ export const Transactions: React.FC = () => {
   const [limit] = useState(20);
   const [draftConfig, setDraftConfig] = useState<IRevenueSplitConfig | null>(null);
 
-  const splitConfigQuery = useQuery({
-    queryKey: ['admin', 'finance', 'split-config'],
-    queryFn: async () => {
-      const response = await getRevenueSplitConfig();
-      if (response.status === 'ERR' || !response.data) {
-        throw new Error(response.message || 'Không thể tải cấu hình chia doanh thu.');
-      }
-      return response.data;
-    },
-  });
-
-  const revenueQuery = useQuery({
-    queryKey: ['admin', 'finance', 'revenue'],
-    queryFn: async () => {
-      const response = await getRevenueStats();
-      if (response.status === 'ERR' || !response.data) {
-        throw new Error(response.message || 'Không thể tải báo cáo doanh thu.');
-      }
-      return response.data as IRevenueStats;
-    },
-  });
-
-  const transactionsQuery = useQuery({
-    queryKey: ['admin', 'finance', 'transactions', { search, providerFilter, statusFilter, page, limit }],
-    queryFn: async () => {
-      const response = await getTransactions({
-        provider: providerFilter || undefined,
-        status: statusFilter || undefined,
-        page,
-        limit,
-      });
-      if (response.status === 'ERR' || !response.data) {
-        throw new Error(response.message || 'Không thể tải danh sách giao dịch.');
-      }
-      return response.data;
-    },
-  });
+  const splitConfigQuery = useAdminRevenueSplitConfig();
+  const revenueQuery = useAdminRevenueStats();
+  const transactionsQuery = useAdminTransactions({ search, providerFilter, statusFilter, page, limit });
 
   const currentSplitConfig = useMemo(() => {
     if (draftConfig !== null) return draftConfig;
@@ -75,24 +43,7 @@ export const Transactions: React.FC = () => {
     return { adminPercent: 25, instructorPercent: 75 };
   }, [draftConfig, splitConfigQuery.data]);
 
-  const updateSplitMutation = useMutation({
-    mutationFn: async () => {
-      const response = await updateRevenueSplitConfig(currentSplitConfig);
-      if (response.status === 'ERR' || !response.data) {
-        throw new Error(response.message || 'Không thể cập nhật cấu hình chia doanh thu.');
-      }
-      return response.data;
-    },
-    onSuccess: async () => {
-      setDraftConfig(null);
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'finance', 'split-config'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'finance', 'revenue'] });
-      toast.success('Đã cập nhật tỷ lệ chia doanh thu.');
-    },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Không thể cập nhật tỷ lệ chia doanh thu.');
-    },
-  });
+  const updateSplitMutation = useUpdateRevenueSplitConfig();
 
   const filtered = useMemo(() => {
     const transactions = transactionsQuery.data?.transactions ?? [];
@@ -108,7 +59,7 @@ export const Transactions: React.FC = () => {
     });
   }, [search, transactionsQuery.data?.transactions]);
 
-  const summary = revenueQuery.data;
+  const summary = revenueQuery.data as IRevenueStats | undefined;
   const totalAmount = filtered.filter((t) => t.status === 'SUCCEEDED').reduce((s, t) => s + (t.grossAmount ?? t.amount), 0);
 
   return (
@@ -168,8 +119,8 @@ export const Transactions: React.FC = () => {
               && draftConfig.instructorPercent === splitConfigQuery.data.instructorPercent
             );
             return (
-              <Button
-                onClick={() => updateSplitMutation.mutate()}
+                <Button
+                onClick={() => updateSplitMutation.mutate(currentSplitConfig)}
                 disabled={updateSplitMutation.isPending || !!unchanged}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl"
               >

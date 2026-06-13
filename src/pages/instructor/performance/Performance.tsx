@@ -1,14 +1,20 @@
 // ========================
-// Instructor Performance: Phân tích giảng dạy
-// Doanh thu | Học viên | Đánh giá
+// Instructor Performance Page
+// Mục đích:
+// - hiển thị báo cáo doanh thu, học viên và đánh giá cho instructor
+// - tách doanh thu mua đứt và doanh thu thuê bao để theo dõi estimated/pending/available rõ ràng
 // ========================
 import React, { useMemo, useState } from 'react';
 import {
   DollarSign, Users, Star,
-  BookOpen, Clock, Award, Percent, MessageSquare, GraduationCap,
+  BookOpen, Clock, Award, Percent, MessageSquare, GraduationCap, CircleHelp,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getInstructorRevenueStats, type InstructorRevenueBreakdown } from '@/services/paymentApi';
+import {
+  type InstructorRevenueBreakdown,
+  type InstructorSubscriptionFinance,
+} from '@/services/paymentApi';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useInstructorRevenueStats, useInstructorSubscriptionFinance } from '@/hooks/useInstructorFinance';
 
 type PerfTab = 'revenue' | 'students' | 'reviews';
 
@@ -46,15 +52,57 @@ const MiniBar: React.FC<{ label: string; value: number; max: number; color?: str
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value);
 
+const RevenueTitleWithTooltip: React.FC<{ title: string; content: string }> = ({ title, content }) => (
+  <div className="mb-3 flex items-center gap-2">
+    <h2 className="text-sm font-bold uppercase text-zinc-500">{title}</h2>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-200"
+          aria-label={`Giải thích ${title.toLowerCase()}`}
+        >
+          <CircleHelp className="h-4 w-4" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs text-left leading-5">
+        {content}
+      </TooltipContent>
+    </Tooltip>
+  </div>
+);
+
 /* ─── Tab: Doanh thu ─── */
-const RevenueTab = ({ revenue }: { revenue: InstructorRevenueBreakdown | undefined }) => {
+const RevenueTab = ({ revenue, subscription }: {
+  revenue: InstructorRevenueBreakdown | undefined;
+  subscription: InstructorSubscriptionFinance | undefined;
+}) => {
   const monthlyData = revenue?.monthlyData ?? [];
   const maxMonthRevenue = Math.max(...monthlyData.map((m) => m.instructorRevenue), 1);
   const providerBreakdown = revenue?.providerBreakdown ?? [];
   const topCourses = revenue?.courseBreakdown ?? [];
 
   return (
-    <div className="space-y-6">
+    <TooltipProvider delayDuration={250}>
+      <div className="space-y-6">
+      <div>
+        {/* Gom giải thích vào tooltip để giao diện gọn nhưng instructor vẫn xem được cách tính khi cần. */}
+        <RevenueTitleWithTooltip
+          title="Doanh thu thuê bao"
+          content="Tiền từ gói thuê bao được chia dựa trên thời gian học thực tế của học viên trong khóa học của bạn. Học viên học càng nhiều và thời gian học càng hợp lệ thì phần doanh thu bạn nhận càng cao."
+        />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard label="Tạm tính" value={formatCurrency(subscription?.estimated ?? 0)} sub="đang được hệ thống tính" icon={<Clock className="h-4 w-4" />} />
+          <StatCard label="Sắp được ghi nhận" value={formatCurrency(subscription?.pending ?? 0)} sub="đã chốt kỳ, chờ cộng sang khả dụng" icon={<Award className="h-4 w-4" />} />
+          <StatCard label="Hiện có thể nhận" value={formatCurrency(subscription?.available ?? 0)} sub="số tiền hệ thống đang ghi nhận cho bạn" icon={<DollarSign className="h-4 w-4" />} />
+          <StatCard label="Phút học hợp lệ" value={Math.floor((subscription?.qualifiedSeconds ?? 0) / 60).toLocaleString('vi-VN')} sub="căn cứ để chia doanh thu thuê bao" icon={<Percent className="h-4 w-4" />} />
+        </div>
+      </div>
+
+      <RevenueTitleWithTooltip
+        title="Doanh thu mua đứt"
+        content="Đây là doanh thu từ các khóa học được học viên mua riêng từng khóa. Số tiền thực nhận được tính theo tỷ lệ chia hiện hành giữa giảng viên và quản trị viên tại thời điểm thanh toán."
+      />
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -159,7 +207,8 @@ const RevenueTab = ({ revenue }: { revenue: InstructorRevenueBreakdown | undefin
           {(revenue?.courseBreakdown ?? []).length === 0 && <p className="text-sm text-zinc-500 mt-4">Chưa có dữ liệu doanh thu.</p>}
         </div>
       </div>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 
@@ -229,16 +278,8 @@ const ReviewsTab = () => (
 
 export const InstructorPerformance: React.FC = () => {
   const [activeTab, setActiveTab] = useState<PerfTab>('revenue');
-  const { data: revenue, isLoading } = useQuery({
-    queryKey: ['instructor', 'finance', 'revenue'],
-    queryFn: async () => {
-      const response = await getInstructorRevenueStats();
-      if (response.status === 'ERR' || !response.data) {
-        throw new Error(response.message || 'Không thể tải dữ liệu doanh thu.');
-      }
-      return response.data;
-    },
-  });
+  const { data: revenue, isLoading } = useInstructorRevenueStats();
+  const { data: subscriptionFinance } = useInstructorSubscriptionFinance();
 
   const monthlyTrend = useMemo(() => (revenue?.monthlyData ?? []).map((m) => m.instructorRevenue), [revenue]);
   const latestRevenue = monthlyTrend.length > 0 ? monthlyTrend[monthlyTrend.length - 1] : 0;
@@ -271,7 +312,7 @@ export const InstructorPerformance: React.FC = () => {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-sm text-zinc-500">Đang tải dữ liệu doanh thu...</div>
       ) : (
         <>
-          {activeTab === 'revenue' && <RevenueTab revenue={revenue} />}
+          {activeTab === 'revenue' && <RevenueTab revenue={revenue} subscription={subscriptionFinance} />}
           {activeTab === 'students' && <StudentsTab />}
           {activeTab === 'reviews' && <ReviewsTab />}
         </>
