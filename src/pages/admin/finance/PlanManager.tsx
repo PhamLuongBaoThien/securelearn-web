@@ -1,152 +1,185 @@
-import React, { useState } from 'react';
-import { Pencil, Check, X, ToggleLeft, ToggleRight, Save, Users, Infinity, Calendar, Zap, Star } from 'lucide-react';
-import { toast } from 'sonner';
-import type { IPricingPlan, PlanType } from '@/types/admin.types';
-import { Input } from '@/components/ui/input';
+// ========================
+// Admin Plan Manager
+// Mục đích:
+// - thay mock plan cũ bằng dữ liệu subscription plan, term và settlement thật
+// - cho Admin chỉnh giá, tạm dừng bán, refund manual và chốt settlement thuê bao
+// ========================
+import { useState } from 'react';
+import { CalendarDays, Check, Loader2, RotateCcw, Save, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  type SubscriptionPlan,
+} from '@/services/paymentApi';
+import {
+  useAdminSubscriptionPlans,
+  useAdminSubscriptionTerms,
+  useAdminSubscriptionSettlements,
+  useSaveAdminSubscriptionPlan,
+  useCalculateSubscriptionSettlement,
+  useUpdateSubscriptionSettlement,
+  useRefundAdminSubscriptionTerm,
+} from '@/hooks/useAdminFinance';
 
-const MOCK_PLANS: IPricingPlan[] = [
-  { _id: 'p1', type: 'MONTHLY', name: 'Gói Tháng', price: 199000, durationDays: 30, features: ['Truy cập toàn bộ khóa học', 'Xem video chất lượng HD', 'Tải tài liệu PDF', 'Hỗ trợ email'], isActive: true, subscriberCount: 324, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-04-01T00:00:00Z' },
-  { _id: 'p2', type: 'YEARLY', name: 'Gói Năm', price: 1499000, durationDays: 365, features: ['Toàn bộ tính năng Gói Tháng', 'Tiết kiệm 37% so với gói tháng', 'Ưu tiên hỗ trợ 24/7', 'Chứng chỉ hoàn thành khóa học', 'Truy cập khóa học mới nhất'], isActive: true, subscriberCount: 189, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-04-01T00:00:00Z' },
-  { _id: 'p3', type: 'LIFETIME', name: 'Trọn Đời', price: 4999000, durationDays: undefined, features: ['Toàn bộ tính năng Gói Năm', 'Truy cập vĩnh viễn', 'Mua một lần — không phí ẩn', 'Hỗ trợ ưu tiên Platinum', 'Beta tester cho tính năng mới'], isActive: true, subscriberCount: 76, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-04-01T00:00:00Z' },
-];
+const money = (value: number) => value.toLocaleString('vi-VN') + ' ₫';
 
-const planIcons: Record<PlanType, React.ReactNode> = {
-  MONTHLY: <Calendar className="w-5 h-5" />,
-  YEARLY: <Zap className="w-5 h-5" />,
-  LIFETIME: <Star className="w-5 h-5" />,
-};
+export const PlanManager = () => {
+  const [drafts, setDrafts] = useState<Record<string, SubscriptionPlan>>({});
+  const plansQuery = useAdminSubscriptionPlans();
+  const termsQuery = useAdminSubscriptionTerms();
+  // Màn này thay mock cũ bằng dữ liệu thật cho cả plan, term gần đây và settlement thuê bao.
+  const settlementsQuery = useAdminSubscriptionSettlements();
+  const saveMutation = useSaveAdminSubscriptionPlan();
+  const calculateSettlementMutation = useCalculateSubscriptionSettlement();
+  const updateSettlementMutation = useUpdateSubscriptionSettlement();
+  const refundMutation = useRefundAdminSubscriptionTerm();
 
-const planColors: Record<PlanType, { banner: string; badge: string; iconCls: string }> = {
-  MONTHLY: { banner: 'from-blue-500/10 to-blue-600/5 border-blue-200 dark:border-blue-900', badge: 'bg-blue-100 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400', iconCls: 'bg-blue-100 dark:bg-blue-400/10 text-blue-600' },
-  YEARLY: { banner: 'from-violet-500/10 to-violet-600/5 border-violet-200 dark:border-violet-900', badge: 'bg-violet-100 dark:bg-violet-400/10 text-violet-600 dark:text-violet-400', iconCls: 'bg-violet-100 dark:bg-violet-400/10 text-violet-600' },
-  LIFETIME: { banner: 'from-amber-500/10 to-amber-600/5 border-amber-200 dark:border-amber-900', badge: 'bg-amber-100 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400', iconCls: 'bg-amber-100 dark:bg-amber-400/10 text-amber-600' },
-};
-
-const fmt = (n: number) => n.toLocaleString('vi-VN') + '₫';
-
-export const PlanManager: React.FC = () => {
-  const [plans, setPlans] = useState<IPricingPlan[]>(MOCK_PLANS);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editPrice, setEditPrice] = useState<string>('');
-
-  const handleStartEdit = (plan: IPricingPlan) => {
-    setEditingId(plan._id);
-    setEditPrice(plan.price.toString());
-  };
-
-  const handleSavePrice = (id: string) => {
-    const price = parseInt(editPrice.replace(/\D/g, ''));
-    if (isNaN(price) || price < 1000) { toast.error('Giá không hợp lệ (tối thiểu 1,000₫).'); return; }
-    setPlans((p) => p.map((pl) => pl._id === id ? { ...pl, price } : pl));
-    setEditingId(null);
-    toast.success('Đã cập nhật giá gói cước.');
-  };
-
-  const handleToggle = (id: string) => {
-    setPlans((p) => p.map((pl) => pl._id === id ? { ...pl, isActive: !pl.isActive } : pl));
-    const plan = plans.find((p) => p._id === id);
-    toast.success(`Đã ${plan?.isActive ? 'tạm dừng' : 'kích hoạt'} gói ${plan?.name}.`);
-  };
+  const plans = plansQuery.data || [];
+  const draftFor = (plan: SubscriptionPlan) => drafts[plan._id] || plan;
+  const patch = (plan: SubscriptionPlan, values: Partial<SubscriptionPlan>) =>
+    setDrafts((current) => ({ ...current, [plan._id]: { ...draftFor(plan), ...values } }));
 
   return (
-    <div className="w-full space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Quản lý Gói cước</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">Thiết lập giá và điều kiện cho các mô hình mua đứt và thuê bao định kỳ.</p>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
-          <Users className="w-4 h-4 text-primary" />
-          <span className="text-sm text-zinc-500">Tổng: <strong className="text-zinc-900 dark:text-white">{plans.reduce((s, p) => s + p.subscriberCount, 0)}</strong> người đăng ký</span>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">Gói thuê bao</h1>
+        <p className="mt-1 text-sm text-zinc-500">Chỉ hỗ trợ kỳ trả trước 30 ngày và 365 ngày. Gói đã có giao dịch chỉ được tạm dừng bán.</p>
       </div>
 
-      {/* Plan Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {plans.map((plan) => {
-          const pc = planColors[plan.type];
-          const isEditing = editingId === plan._id;
-          return (
-            <div key={plan._id} className={`bg-gradient-to-br ${pc.banner} border-2 rounded-3xl p-6 shadow-sm relative overflow-hidden ${!plan.isActive ? 'opacity-60' : ''}`}>
-              {/* Top */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${pc.iconCls}`}>{planIcons[plan.type]}</div>
-                  <div>
-                    <h3 className="font-bold text-zinc-900 dark:text-white">{plan.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${pc.badge}`}>{plan.type}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${plan.isActive ? 'bg-emerald-100 dark:bg-emerald-400/10 text-emerald-600' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'}`}>
-                        {plan.isActive ? 'Đang bán' : 'Tạm dừng'}
-                      </span>
+      {plansQuery.isLoading ? (
+        <div className="flex h-40 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-2">
+          {plans.map((plan) => {
+            const draft = draftFor(plan);
+            return (
+              <section key={plan._id} className="border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center bg-primary/10 text-primary">
+                      <CalendarDays className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-zinc-500">{draft.type}</p>
+                      <p className="font-bold text-zinc-900 dark:text-white">{draft.durationDays} ngày</p>
                     </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title={draft.isActive ? 'Tạm dừng bán' : 'Mở bán'}
+                    onClick={() => patch(plan, { isActive: !draft.isActive })}
+                  >
+                    {draft.isActive ? <ToggleRight className="h-6 w-6 text-emerald-600" /> : <ToggleLeft className="h-6 w-6" />}
+                  </Button>
                 </div>
-                <Button type="button" variant="ghost" size="icon" onClick={() => handleToggle(plan._id)} title={plan.isActive ? 'Tạm dừng' : 'Kích hoạt'} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
-                  {plan.isActive ? <ToggleRight className="w-6 h-6 text-primary" /> : <ToggleLeft className="w-6 h-6" />}
-                </Button>
-              </div>
 
-              {/* Price */}
-              <div className="mb-4">
-                {isEditing ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="text"
-                      value={editPrice}
-                      onChange={(e) => setEditPrice(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-600 rounded-xl text-xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 text-zinc-900 dark:text-zinc-100"
-                      autoFocus
+                <div className="space-y-4">
+                  <label className="block text-sm font-medium">
+                    Tên gói
+                    <Input className="mt-1" value={draft.name} onChange={(event) => patch(plan, { name: event.target.value })} />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Giá bán
+                    <Input className="mt-1" type="number" min={1000} value={draft.price} onChange={(event) => patch(plan, { price: Number(event.target.value) })} />
+                    <span className="mt-1 block text-xs text-zinc-500">{money(draft.price || 0)}</span>
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Mô tả
+                    <Input className="mt-1" value={draft.description} onChange={(event) => patch(plan, { description: event.target.value })} />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Quyền lợi, mỗi dòng một mục
+                    <textarea
+                      className="mt-1 min-h-28 w-full border border-zinc-200 bg-transparent p-3 text-sm outline-none focus:border-primary dark:border-zinc-700"
+                      value={draft.features.join('\n')}
+                      onChange={(event) => patch(plan, { features: event.target.value.split('\n') })}
                     />
-                    <Button type="button" size="icon" onClick={() => handleSavePrice(plan._id)} className="p-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"><Check className="w-4 h-4" /></Button>
-                    <Button type="button" variant="secondary" size="icon" onClick={() => setEditingId(null)} className="p-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors"><X className="w-4 h-4" /></Button>
-                  </div>
-                ) : (
-                  <div className="flex items-baseline gap-2 group">
-                    <span className="text-3xl font-extrabold text-zinc-900 dark:text-white">{fmt(plan.price)}</span>
-                    <span className="text-zinc-500 text-sm">{plan.type === 'LIFETIME' ? '/ mãi mãi' : plan.type === 'MONTHLY' ? '/ tháng' : '/ năm'}</span>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => handleStartEdit(plan)} className="p-1.5 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 transition-colors ml-auto">
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
-                <p className="text-xs text-zinc-400 mt-1">
-                  {plan.durationDays ? `${plan.durationDays} ngày` : <span className="flex items-center gap-1"><Infinity className="w-3 h-3" />Vĩnh viễn</span>}
-                </p>
-              </div>
-
-              {/* Features */}
-              <ul className="space-y-2 mb-5">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                    <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              {/* Footer */}
-              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-zinc-500">
-                  <Users className="w-4 h-4" />
-                  <span><strong className="text-zinc-900 dark:text-zinc-200">{plan.subscriberCount}</strong> người đăng ký</span>
+                  </label>
                 </div>
-                <div className="text-xs text-zinc-400">
-                  Revenue: <strong className="text-zinc-600 dark:text-zinc-300">{fmt(plan.price * plan.subscriberCount)}</strong>
+
+                <div className="mt-5 flex items-center justify-between border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                  <span className={`text-sm font-medium ${draft.isActive ? 'text-emerald-600' : 'text-zinc-500'}`}>
+                    {draft.isActive ? 'Đang bán' : 'Tạm dừng'}
+                  </span>
+                  <Button onClick={() => saveMutation.mutate(draft)} disabled={saveMutation.isPending}>
+                    {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Lưu gói
+                  </Button>
                 </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex items-start gap-3 border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+        Giá, thời hạn và tỷ lệ chia được snapshot tại lúc thanh toán. Việc sửa gói không thay đổi giao dịch hoặc kỳ thuê bao cũ.
+      </div>
+
+      <section className="border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold">Kỳ thuê bao gần đây</h2>
+          <span className="text-sm text-zinc-500">{termsQuery.data?.length || 0} kỳ</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b text-left text-zinc-500"><th className="py-2">User</th><th>Mã giao dịch</th><th>Gói</th><th>Thời hạn</th><th>Trạng thái</th><th /></tr></thead>
+            <tbody>
+              {(termsQuery.data || []).slice(0, 30).map((term) => (
+                <tr key={term._id} className="border-b border-zinc-100 dark:border-zinc-800">
+                  <td className="py-3">{term.userId}</td>
+                  <td>{term.transactionCode}</td>
+                  <td>{term.planName}</td>
+                  <td>{new Date(term.startsAt).toLocaleDateString('vi-VN')} - {new Date(term.endsAt).toLocaleDateString('vi-VN')}</td>
+                  <td className="font-medium">{term.status}</td>
+                  <td className="text-right">
+                    {!['REFUNDED', 'EXPIRED'].includes(term.status) && (
+                      <Button variant="ghost" size="sm" onClick={() => refundMutation.mutate(term._id)}>
+                        <RotateCcw className="mr-2 h-4 w-4" /> Hoàn tiền
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold">Settlement thuê bao</h2>
+            <p className="text-sm text-zinc-500">Pool không có usage được chuyển sang kỳ sau. Khóa settlement sau tối thiểu 7 ngày.</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const now = new Date();
+              now.setMonth(now.getMonth() - 1);
+              calculateSettlementMutation.mutate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+            }}
+          >
+            Tính tháng trước
+          </Button>
+        </div>
+        <div className="space-y-3">
+          {(settlementsQuery.data || []).map((item) => (
+            <div key={item._id} className="grid gap-3 border-t border-zinc-100 py-3 text-sm md:grid-cols-[100px_1fr_1fr_1fr_auto] dark:border-zinc-800">
+              <strong>{item.period}</strong>
+              <span>Tổng ghi nhận: {money(item.recognizedGross)}</span>
+              <span>Pool: {money(item.instructorPool + item.carriedIn)}</span>
+              <span>{item.status} · {Math.floor(item.totalQualifiedSeconds / 60).toLocaleString('vi-VN')} phút</span>
+              <div>
+                {item.status === 'CALCULATED' && <Button size="sm" onClick={() => updateSettlementMutation.mutate({ period: item.period, status: 'LOCKED' })}>Khóa</Button>}
+                {item.status === 'LOCKED' && <Button size="sm" onClick={() => updateSettlementMutation.mutate({ period: item.period, status: 'AVAILABLE' })}>Cho phép nhận</Button>}
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Save All */}
-      <div className="flex justify-end">
-      <Button id="btn-save-plans" onClick={() => toast.success('Đã đồng bộ cấu hình gói cước.')} className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors">
-          <Save className="w-4 h-4" /> Đồng bộ cài đặt
-        </Button>
-      </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 };

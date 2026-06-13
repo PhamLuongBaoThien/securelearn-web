@@ -9,10 +9,14 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAppSelector } from '@/app/hooks';
 import { useCartActions } from '@/hooks/useCart';
-import type { ICourse } from '@/services/courseApi';
+import { enrollWithSubscription, type ICourse } from '@/services/courseApi';
+import { enrolledKeys } from '@/hooks/useEnrolledCourses';
+import { useMySubscription } from '@/hooks/useMySubscription';
 import { CourseIncludes } from './CourseIncludes';
 
 interface Props {
@@ -22,11 +26,29 @@ interface Props {
 
 export function CoursePurchaseCard({ course, isEnrolled }: Props) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { addItem, isAdding } = useCartActions();
+  const user = useAppSelector((state) => state.auth.user);
+  const { data: subscription } = useMySubscription();
+  const hasActiveSubscription = Boolean(subscription?.current);
+  const isSubscriptionCourse = course.subscriptionStatus === 'APPROVED';
 
   // Kiểm tra khóa học này đã có trong giỏ hàng Redux chưa
   const cartItems = useAppSelector((state) => state.cart.cartItems);
   const isInCart = cartItems.some((item) => item._id === course._id);
+  const subscriptionEnrollMutation = useMutation({
+    mutationFn: async () => {
+      const response = await enrollWithSubscription(course._id);
+      if (response.status === 'ERR') throw new Error(response.message || 'Không thể mở khóa học bằng thuê bao.');
+      return response.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: enrolledKeys.all });
+      toast.success('Đã mở khóa học bằng thuê bao.');
+      navigate('/student/dashboard');
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể mở khóa học bằng thuê bao.'),
+  });
 
   // Ref cho wrapper ngoài (dùng để đặt z-index và chiều rộng cột)
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -111,7 +133,7 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
                 </div>
                 <Button
                   className="w-full py-6 font-bold text-lg rounded-none"
-                  onClick={() => navigate('/my-learning')}
+                  onClick={() => navigate('/student/dashboard')}
                 >
                   Vào học ngay
                 </Button>
@@ -132,6 +154,28 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
 
                 {/* Nút hành động: thêm giỏ hoặc xem giỏ nếu đã thêm */}
                 <div className="space-y-3">
+                  {isSubscriptionCourse && (
+                    <Button
+                      variant={hasActiveSubscription ? 'default' : 'outline'}
+                      className="w-full py-6 font-bold text-lg rounded-none"
+                      onClick={() => {
+                        if (!user) {
+                          navigate('/auth/login', { state: { from: `/course/${course.slug}` } });
+                          return;
+                        }
+                        if (!hasActiveSubscription) {
+                          navigate('/pricing');
+                          return;
+                        }
+                        subscriptionEnrollMutation.mutate();
+                      }}
+                      disabled={subscriptionEnrollMutation.isPending}
+                    >
+                      {hasActiveSubscription
+                        ? (subscriptionEnrollMutation.isPending ? 'Đang mở khóa...' : 'Học bằng thuê bao')
+                        : 'Mua gói để học khóa này'}
+                    </Button>
+                  )}
                   {isInCart ? (
                     <Button
                       variant="outline"

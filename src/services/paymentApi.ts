@@ -1,13 +1,8 @@
 // ========================
 // Payment API Client
 // Mục đích:
-// - gọi payment-service từ frontend
-// - tạo checkout / lấy transaction / confirm payment
-// Hàm chính:
-// - createCourseCheckout()
-// - getTransaction()
-// - confirmVnpayPayment()
-// - confirmMomoPayment()
+// - gọi payment-service cho checkout, transaction, finance và subscription
+// - gom type frontend dùng để render payment return, pricing và admin settlement
 // ========================
 import apiClient from './apiClient';
 
@@ -37,6 +32,18 @@ export interface PaymentTransaction {
   email: string;
   items: PaymentCourseItem[];
   amount: number;
+  // productType giúp return page và finance UI biết đây là mua khóa học hay mua thuê bao.
+  productType: 'COURSE' | 'SUBSCRIPTION';
+  subscriptionSnapshot?: {
+    planId: string;
+    planType: 'MONTHLY' | 'YEARLY';
+    name: string;
+    durationDays: number;
+    adminPercent: number;
+    instructorPercent: number;
+    adminAmount: number;
+    instructorPoolAmount: number;
+  } | null;
   grossAmount?: number;
   adminAmount?: number;
   instructorAmount?: number;
@@ -94,11 +101,132 @@ export interface CourseCheckoutResponse {
   paymentUrl: string;
 }
 
+export interface SubscriptionPlan {
+  _id: string;
+  type: 'MONTHLY' | 'YEARLY';
+  name: string;
+  description: string;
+  price: number;
+  durationDays: 30 | 365;
+  features: string[];
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface SubscriptionTerm {
+  _id: string;
+  planName: string;
+  planType: 'MONTHLY' | 'YEARLY';
+  status: 'SCHEDULED' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'REFUNDED';
+  startsAt: string;
+  endsAt: string;
+}
+
 export const createCourseCheckout = async (payload: {
   paymentMethod: PaymentMethod;
   provider?: PaymentProvider;
 }) => {
   const { data } = await apiClient.post<ApiResponse<CourseCheckoutResponse>>('/api/payments/course-checkout', payload);
+  return data;
+};
+
+export const getSubscriptionPlans = async () => {
+  const { data } = await apiClient.get<ApiResponse<SubscriptionPlan[]>>('/api/payments/subscription-plans');
+  return data;
+};
+
+export const createSubscriptionCheckout = async (payload: {
+  planId: string;
+  paymentMethod: PaymentMethod;
+  provider?: PaymentProvider;
+}) => {
+  const { data } = await apiClient.post<ApiResponse<CourseCheckoutResponse>>('/api/payments/subscription-checkout', payload);
+  return data;
+};
+
+export const getMySubscription = async () => {
+  const { data } = await apiClient.get<ApiResponse<{
+    current: SubscriptionTerm | null;
+    scheduled: SubscriptionTerm[];
+    history: SubscriptionTerm[];
+  }>>('/api/payments/subscriptions/me');
+  return data;
+};
+
+export const getAdminSubscriptionPlans = async () => {
+  const { data } = await apiClient.get<ApiResponse<SubscriptionPlan[]>>('/api/payments/admin/subscription-plans');
+  return data;
+};
+
+export const saveAdminSubscriptionPlan = async (plan: Omit<SubscriptionPlan, '_id'>) => {
+  const { data } = await apiClient.put<ApiResponse<SubscriptionPlan>>('/api/payments/admin/subscription-plans', plan);
+  return data;
+};
+
+export interface AdminSubscriptionTerm extends SubscriptionTerm {
+  userId: string;
+  transactionCode: string;
+  price: number;
+  instructorPoolAmount: number;
+}
+
+export interface SubscriptionSettlement {
+  _id: string;
+  period: string;
+  status: 'OPEN' | 'CALCULATED' | 'LOCKED' | 'AVAILABLE';
+  recognizedGross: number;
+  adminRevenue: number;
+  instructorPool: number;
+  carriedIn: number;
+  carriedOut: number;
+  totalQualifiedSeconds: number;
+  calculatedAt?: string;
+}
+
+export const getAdminSubscriptionTerms = async () => {
+  const { data } = await apiClient.get<ApiResponse<AdminSubscriptionTerm[]>>('/api/payments/admin/subscriptions/terms');
+  return data;
+};
+
+export const refundAdminSubscriptionTerm = async (termId: string, reason: string) => {
+  const { data } = await apiClient.post<ApiResponse<AdminSubscriptionTerm>>(`/api/payments/admin/subscriptions/terms/${termId}/refund`, { reason });
+  return data;
+};
+
+export const getSubscriptionSettlements = async () => {
+  const { data } = await apiClient.get<ApiResponse<SubscriptionSettlement[]>>('/api/payments/admin/subscriptions/settlements');
+  return data;
+};
+
+export const calculateSubscriptionSettlement = async (period: string) => {
+  const { data } = await apiClient.post<ApiResponse<SubscriptionSettlement>>(`/api/payments/admin/subscriptions/settlements/${period}/calculate`);
+  return data;
+};
+
+export const updateSubscriptionSettlementStatus = async (
+  period: string,
+  status: SubscriptionSettlement['status']
+) => {
+  const { data } = await apiClient.patch<ApiResponse<SubscriptionSettlement>>(`/api/payments/admin/subscriptions/settlements/${period}/status`, { status });
+  return data;
+};
+
+export interface InstructorSubscriptionFinance {
+  estimated: number;
+  pending: number;
+  available: number;
+  qualifiedSeconds: number;
+  settlements: Array<{
+    period: string;
+    status: 'OPEN' | 'CALCULATED' | 'LOCKED' | 'AVAILABLE';
+    courseId: string;
+    qualifiedSeconds: number;
+    amount: number;
+  }>;
+}
+
+export const getInstructorSubscriptionFinance = async () => {
+  const { data } = await apiClient.get<ApiResponse<InstructorSubscriptionFinance>>('/api/payments/instructor/finance/subscriptions');
   return data;
 };
 

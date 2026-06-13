@@ -1,3 +1,9 @@
+// ========================
+// Frontend Routes
+// Mục đích:
+// - khai báo router chính cho public, student, instructor và admin
+// - gắn thêm pricing route cho flow thuê bao song song với checkout giỏ khóa học
+// ========================
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import { Home } from '../pages/public/Home';
 
@@ -18,6 +24,8 @@ import { Cart } from '../pages/public/Cart';
 import { VnpayReturn } from '../pages/public/VnpayReturn';
 import { MomoReturn } from '../pages/public/MomoReturn';
 import { Teach } from '../pages/public/Teach';
+import { Pricing } from '../pages/public/Pricing';
+import { SubscriptionCatalog } from '../pages/public/SubscriptionCatalog';
 import { ScrollToTop } from '../components/layout/ScrollToTop';
 import { NotFound } from '../pages/public/NotFound';
 
@@ -90,6 +98,9 @@ const router = createBrowserRouter([
           { path: 'checkout', element: <Checkout /> },
           { path: 'cart', element: <Cart /> },
           { path: 'teach', element: <Teach /> },
+          // Pricing là entry cho flow mua thuê bao, độc lập với checkout giỏ khóa học.
+          { path: 'pricing', element: <Pricing /> },
+          { path: 'subscription-catalog', element: <SubscriptionCatalog /> },
           {
             path: 'profile',
             element: (

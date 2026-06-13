@@ -1,9 +1,12 @@
 // ========================
-// Instructor Courses: Danh sách khóa học
+// Instructor Courses Page
+// Mục đích:
+// - hiển thị danh sách khóa học của giảng viên và các action editor/review
+// - thêm entry để instructor gửi course published vào catalog thuê bao
 // ========================
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, Edit, Trash2, Upload, Loader2, Clock, AlertCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Search, MoreVertical, Edit, Trash2, Upload, Loader2, Clock, AlertCircle, ArrowRightLeft, WalletCards } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +16,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from '@/components/ui/badge';
-import { useGetMyCourses, useCreateCourse, useDeleteCourse, useSubmitCourseForReview, useCreateOrGetCourseRevision } from '@/hooks/useInstructorCourses';
+import {
+  useGetMyCourses,
+  useCreateCourse,
+  useDeleteCourse,
+  useSubmitCourseForReview,
+  useCreateOrGetCourseRevision,
+  useOptInCourseSubscription,
+  useWithdrawCourseSubscription,
+} from '@/hooks/useInstructorCourses';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
@@ -58,6 +69,8 @@ export const InstructorCourses: React.FC = () => {
   const deleteCourseMutation = useDeleteCourse();
   const submitReviewMutation = useSubmitCourseForReview();
   const revisionMutation = useCreateOrGetCourseRevision();
+  const subscriptionMutation = useOptInCourseSubscription();
+  const withdrawSubscriptionMutation = useWithdrawCourseSubscription();
 
   // Filter logic
   const filteredCourses = courses.filter((course) => {
@@ -65,6 +78,8 @@ export const InstructorCourses: React.FC = () => {
     const matchStatus = statusFilter === 'ALL' || course.status === statusFilter;
     return matchSearch && matchStatus;
   });
+  const approvedSubscriptionCourses = courses.filter((course) => course.subscriptionStatus === 'APPROVED').length;
+  const pendingSubscriptionCourses = courses.filter((course) => course.subscriptionStatus === 'PENDING').length;
 
   const handleCreateCourse = () => {
     createCourseMutation.mutate(
@@ -141,6 +156,36 @@ export const InstructorCourses: React.FC = () => {
           {createCourseMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
           Tạo khóa học mới
         </Button>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr_1fr]">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <WalletCards className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-bold text-zinc-900 dark:text-white">Đưa khóa học vào gói thuê bao</h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                Khi đưa khóa học vào gói này, bạn có cơ hội tiếp cận thêm nhiều học viên mới và nhận doanh thu dựa trên thời gian học thực tế. Nếu đổi ý, bạn vẫn có thể rút khóa học ra; học viên mới sẽ không thể mở khóa nữa, còn những người đã bắt đầu học vẫn tiếp tục đến hết kỳ hiện tại.
+              </p>
+              <Link to="/instructor/performance" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                Xem doanh thu thuê bao
+                <ArrowRightLeft className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Đã tham gia gói thuê bao</p>
+          <p className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">{approvedSubscriptionCourses}</p>
+          <p className="mt-1 text-xs text-zinc-400">Học viên dùng gói có thể vào học ngay.</p>
+        </div>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Đang chờ quản trị viên duyệt</p>
+          <p className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">{pendingSubscriptionCourses}</p>
+          <p className="mt-1 text-xs text-zinc-400">Bạn có thể rút lại bất cứ lúc nào trước khi được duyệt.</p>
+        </div>
       </div>
 
       {/* Filters and Search */}
@@ -272,6 +317,22 @@ export const InstructorCourses: React.FC = () => {
                           </DropdownMenuItem>
                         </>
                       )}
+                      {course.status === 'PUBLISHED' && ['NOT_OPTED_IN', 'REJECTED', 'REMOVED', undefined].includes(course.subscriptionStatus) && (
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer"
+                          onClick={() => subscriptionMutation.mutate(course._id)}
+                        >
+                          <Upload className="w-4 h-4" /> Đưa vào gói thuê bao
+                        </DropdownMenuItem>
+                      )}
+                      {course.status === 'PUBLISHED' && ['APPROVED', 'PENDING'].includes(course.subscriptionStatus || '') && (
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer text-amber-600 focus:text-amber-600"
+                          onClick={() => withdrawSubscriptionMutation.mutate(course._id)}
+                        >
+                          <ArrowRightLeft className="w-4 h-4" /> Rút khỏi gói thuê bao
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -313,6 +374,23 @@ export const InstructorCourses: React.FC = () => {
                         ? `Bản cập nhật cần chỉnh sửa${course.activeRevision.rejectionReason ? `: ${course.activeRevision.rejectionReason}` : ''}`
                           : 'Có bản nháp cập nhật'}
                     </span>
+                  </div>
+                )}
+                {course.status === 'PUBLISHED' && (
+                  <div className="mt-3">
+                    <Badge variant="outline">
+                      Thuê bao: {course.subscriptionStatus === 'APPROVED' ? 'Đã duyệt' : course.subscriptionStatus === 'PENDING' ? 'Chờ duyệt' : course.subscriptionStatus === 'REJECTED' ? 'Bị từ chối' : course.subscriptionStatus === 'REMOVED' ? 'Đã rút' : 'Chưa đăng ký'}
+                    </Badge>
+                    {course.subscriptionStatus === 'APPROVED' && (
+                      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        Học viên đang dùng gói có thể mở khóa học này ngay. Nếu muốn dừng học viên mới vào học theo gói, bạn có thể rút khóa học ra bất cứ lúc nào.
+                      </p>
+                    )}
+                    {course.subscriptionStatus === 'PENDING' && (
+                      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        Khóa học đang chờ quản trị viên duyệt vào gói. Nếu đổi ý, bạn có thể rút lại trước khi được duyệt.
+                      </p>
+                    )}
                   </div>
                 )}
                 

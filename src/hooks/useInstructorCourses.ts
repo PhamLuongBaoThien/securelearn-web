@@ -2,9 +2,11 @@
 // File này chứa React Query hooks cấp course cho instructor.
 // Lưu ý:
 // - file này bọc toàn bộ course-level và curriculum-level operations cho instructor
+// - bao gồm cả opt-in / rút khóa học khỏi gói thuê bao để page chỉ còn phần hiển thị
 // - validate publish vẫn là mutation riêng trước khi publish thật
 // ========================
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   createCourseLesson,
   createCourseSection,
@@ -26,6 +28,8 @@ import {
   deleteCourse,
   validatePublishCourse,
   createOrGetCourseRevision,
+  optInCourseSubscription,
+  withdrawCourseSubscription,
   type ICourse,
   type ILesson,
   type IQuiz,
@@ -173,6 +177,35 @@ export function useCreateOrGetCourseRevision() {
       queryClient.invalidateQueries({ queryKey: instructorKeys.myCourses });
       queryClient.setQueryData(instructorKeys.courseDetail(revision._id), revision);
     },
+  });
+}
+
+export function useOptInCourseSubscription() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: optInCourseSubscription,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: instructorKeys.myCourses });
+      toast.success('Đã gửi khóa học vào gói học theo thuê bao để quản trị viên duyệt.');
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể gửi duyệt thuê bao.'),
+  });
+}
+
+export function useWithdrawCourseSubscription() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (courseId: string) => {
+      const reason = window.prompt('Lý do rút khóa học khỏi gói học theo thuê bao (không bắt buộc):') || '';
+      return withdrawCourseSubscription(courseId, reason);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: instructorKeys.myCourses });
+      toast.success('Khóa học đã được rút khỏi gói học theo thuê bao.');
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể rút khóa học khỏi gói học theo thuê bao.'),
   });
 }
 

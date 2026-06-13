@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Star, Clock, BookOpen, Check, GraduationCap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HoverCard } from '@/components/animations/HoverCard';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import type { ICourse } from '@/services/courseApi';
+import { enrollWithSubscription, type ICourse } from '@/services/courseApi';
 import { useAppSelector } from '@/app/hooks';
 import { useCartActions } from '@/hooks/useCart';
-import { useEnrolledCourses } from '@/hooks/useEnrolledCourses';
+import { enrolledKeys, useEnrolledCourses } from '@/hooks/useEnrolledCourses';
+import { useMySubscription } from '@/hooks/useMySubscription';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const LEVEL_LABEL: Record<string, string> = {
@@ -24,18 +27,41 @@ function formatDuration(seconds: number): string {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export const CourseCard = ({ course }: { course: ICourse }) => {
+export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode?: 'default' | 'subscription' }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const cartItems = useAppSelector((state) => state.cart.cartItems);
+  const user = useAppSelector((state) => state.auth.user);
   const isInCart = cartItems.some((item) => item._id === course._id);
   const { addItem, isAdding } = useCartActions();
   const hasLearningPoints = Array.isArray(course.whatYouWillLearn) && course.whatYouWillLearn.length > 0;
 
   // Kiểm tra đã ghi danh chưa — dùng lại cache từ useEnrolledCourses (không gây thêm request)
-  const isAuthenticated = Boolean(useAppSelector((state) => state.auth.user));
+  const isAuthenticated = Boolean(user);
   const { data: enrolledCourses = [] } = useEnrolledCourses();
   const isEnrolled = isAuthenticated && enrolledCourses.some((e) => e.courseId === course._id);
+  const { data: subscription } = useMySubscription();
+  const hasActiveSubscription = Boolean(subscription?.current);
+  const canUseSubscription = mode === 'subscription' && course.subscriptionStatus === 'APPROVED';
+  const subscriptionEnrollMutation = useMutation({
+    mutationFn: async () => {
+      const response = await enrollWithSubscription(course._id);
+      if (response.status === 'ERR') {
+        throw new Error(response.message || 'Không thể mở khóa học bằng thuê bao.');
+      }
+      return response.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: enrolledKeys.all });
+      toast.success('Đã mở khóa học bằng gói thuê bao.');
+      navigate('/student/dashboard');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Không thể mở khóa học bằng thuê bao.');
+    },
+  });
 
   const cardContent = (
     <HoverCard className="group flex flex-col h-full cursor-pointer bg-zinc-50 dark:bg-card border border-border rounded-xl overflow-hidden hover:shadow-md transition-shadow">
@@ -133,6 +159,10 @@ export const CourseCard = ({ course }: { course: ICourse }) => {
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
               Tiếp tục học khoá học
             </span>
+          ) : canUseSubscription ? (
+            <span className="text-xs text-primary font-medium">
+              {hasActiveSubscription ? 'Dùng gói hiện tại để mở khóa học này' : 'Khóa học này nằm trong catalog thuê bao'}
+            </span>
           ) : (
             <>
               <span className="font-bold text-base text-foreground">
@@ -155,10 +185,33 @@ export const CourseCard = ({ course }: { course: ICourse }) => {
             className="w-full rounded-sm font-bold border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-500/60 dark:text-emerald-400 dark:hover:bg-emerald-950/50 transition-colors"
             onClick={(e) => {
               e.preventDefault();
-              navigate('/my-learning');
+              navigate('/student/dashboard');
             }}
           >
             Vào học ngay
+          </Button>
+        ) : canUseSubscription ? (
+          <Button
+            variant={hasActiveSubscription ? 'default' : 'outline'}
+            size="sm"
+            className="w-full rounded-sm font-bold"
+            onClick={(e) => {
+              e.preventDefault();
+              if (!isAuthenticated) {
+                navigate('/auth/login', { state: { from: location.pathname } });
+                return;
+              }
+              if (!hasActiveSubscription) {
+                navigate('/pricing');
+                return;
+              }
+              subscriptionEnrollMutation.mutate();
+            }}
+            disabled={subscriptionEnrollMutation.isPending}
+          >
+            {hasActiveSubscription
+              ? (subscriptionEnrollMutation.isPending ? 'Đang mở khóa...' : 'Học bằng thuê bao')
+              : 'Mua gói'}
           </Button>
         ) : (
           <Button

@@ -1,10 +1,8 @@
 // ========================
-// File này chứa:
-// - type dùng cho course editor
-// - API gọi course-service cho instructor/student/public
-// - API CRUD section/lesson/quiz và bind asset cho lesson
-// Lưu ý:
-// - frontend editor hiện đang phụ thuộc trực tiếp vào type trong file này
+// Course API Client
+// Mục đích:
+// - gom type và API cho catalog, editor, enrollment và learning của course-service
+// - thêm endpoint entitlement, subscription enroll và heartbeat cho flow thuê bao
 // ========================
 import apiClient from './apiClient';
 
@@ -70,6 +68,8 @@ export interface ICourse {
   sections: ISection[];
   createdAt: string;
   updatedAt: string;
+  subscriptionStatus?: 'NOT_OPTED_IN' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'REMOVED';
+  subscriptionReviewReason?: string;
 }
 
 export interface ISection {
@@ -216,6 +216,33 @@ export const submitCourseForReview = async (courseId: string) => {
   return data;
 };
 
+export const optInCourseSubscription = async (courseId: string) => {
+  const { data } = await apiClient.post<ApiResponse<ICourse>>(`/api/courses/${courseId}/subscription-opt-in`);
+  return data;
+};
+
+export const withdrawCourseSubscription = async (courseId: string, reason?: string) => {
+  const { data } = await apiClient.post<ApiResponse<ICourse>>(`/api/courses/${courseId}/subscription-withdraw`, { reason });
+  return data;
+};
+
+export const enrollWithSubscription = async (courseId: string) => {
+  const { data } = await apiClient.post<ApiResponse<IEnrollment>>(`/api/courses/${courseId}/subscription-enroll`);
+  return data;
+};
+
+export const sendSubscriptionHeartbeat = async (payload: {
+  courseId: string;
+  lessonId: string;
+  sessionId: string;
+  segmentIndex: number;
+  qualifiedSeconds: number;
+}) => {
+  // Frontend player chỉ gửi heartbeat qua course-service để backend tự check entitlement trước khi tính usage.
+  const { data } = await apiClient.post<ApiResponse>('/api/courses/subscription/heartbeat', payload);
+  return data;
+};
+
 export const createOrGetCourseRevision = async (courseId: string) => {
   const { data } = await apiClient.post<ApiResponse<ICourse>>(`/api/courses/${courseId}/revisions`);
   return data;
@@ -351,6 +378,11 @@ export const getPublishedCourses = async (params?: {
   sort?: string;
 }) => {
   const { data } = await apiClient.get<ApiResponse<PaginatedData>>('/api/courses', { params });
+  return data;
+};
+
+export const getSubscriptionCatalog = async () => {
+  const { data } = await apiClient.get<ApiResponse<ICourse[]>>('/api/courses/subscription-catalog');
   return data;
 };
 
