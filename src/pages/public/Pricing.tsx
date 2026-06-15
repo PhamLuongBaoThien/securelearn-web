@@ -20,6 +20,17 @@ import {
   type PaymentMethod,
 } from '@/services/paymentApi';
 
+const paymentMethodLabel: Record<PaymentMethod, string> = {
+  VNPAY: 'VNPay',
+  MOMO: 'MoMo',
+};
+
+const planDurationLabel = (days: number) => {
+  if (days === 30) return 'Dùng trong 30 ngày';
+  if (days === 365) return 'Dùng trong 365 ngày';
+  return `${days} ngày sử dụng`;
+};
+
 export const Pricing = () => {
   const location = useLocation();
   const { authResolved, isAuthenticated } = useAppSelector((state) => state.auth);
@@ -58,11 +69,11 @@ export const Pricing = () => {
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 md:px-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Gói học SecureLearn</h1>
-        <p className="mt-2 text-zinc-500">Trả trước, tự gia hạn. Mua thêm khi còn hạn sẽ nối tiếp sau kỳ hiện tại.</p>
+        <h1 className="text-3xl font-bold">Gói học theo thuê bao</h1>
+        <p className="mt-2 text-zinc-500">Thanh toán trước, dùng theo thời hạn của gói. Nếu mua thêm khi gói cũ còn hạn, thời gian mới sẽ được cộng nối tiếp.</p>
         {current && (
           <p className="mt-3 border-l-4 border-emerald-500 pl-3 text-sm">
-            Gói hiện tại: <strong>{current.planName}</strong>, hết hạn {new Date(current.endsAt).toLocaleDateString('vi-VN')}.
+            Bạn đang dùng <strong>{current.planName}</strong>, có hiệu lực đến ngày {new Date(current.endsAt).toLocaleDateString('vi-VN')}.
           </p>
         )}
       </div>
@@ -82,17 +93,17 @@ export const Pricing = () => {
               <CalendarDays className="h-6 w-6 text-primary" />
               <div>
                 <h2 className="text-xl font-bold">{plan.name}</h2>
-                <p className="text-sm text-zinc-500">{plan.durationDays} ngày</p>
+                <p className="text-sm text-zinc-500">{planDurationLabel(plan.durationDays)}</p>
               </div>
             </div>
             <p className="mt-5 text-3xl font-extrabold">{plan.price.toLocaleString('vi-VN')} ₫</p>
-            <p className="mt-2 text-sm text-zinc-500">{plan.description}</p>
+            <p className="mt-2 text-sm text-zinc-500">{plan.description || 'Dành cho người học muốn mở khóa toàn bộ các khóa học đang nằm trong gói.'}</p>
             <ul className="my-6 space-y-2">
               {plan.features.map((feature) => <li key={feature} className="flex gap-2 text-sm"><Check className="h-4 w-4 text-emerald-600" />{feature}</li>)}
             </ul>
             <Button className="w-full" onClick={() => handlePlanCheckout(plan._id)} disabled={checkout.isPending}>
               {checkout.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-              Thanh toán bằng {method}
+              Thanh toán qua {paymentMethodLabel[method]}
             </Button>
           </section>
         ))}
@@ -101,13 +112,13 @@ export const Pricing = () => {
       <section className="mt-12">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold">Preview catalog trong gói</h2>
+            <h2 className="text-2xl font-bold">Một số khóa học có trong gói</h2>
             <p className="mt-1 text-sm text-zinc-500">
-              Cả gói tháng và gói năm đều mở quyền vào cùng catalog này, chỉ khác thời hạn sử dụng.
+              Các gói đều mở cùng một danh sách khóa học. Điểm khác nhau nằm ở thời gian sử dụng của từng gói.
             </p>
           </div>
           <Link to="/subscription-catalog" className={buttonVariants({ variant: 'outline' })}>
-            Xem toàn bộ khóa học trong gói
+            Xem tất cả khóa học
           </Link>
         </div>
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">

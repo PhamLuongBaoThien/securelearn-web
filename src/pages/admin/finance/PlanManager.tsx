@@ -22,6 +22,23 @@ import {
 } from '@/hooks/useAdminFinance';
 
 const money = (value: number) => value.toLocaleString('vi-VN') + ' ₫';
+const planTypeLabel: Record<string, string> = {
+  MONTHLY: 'Gói tháng',
+  YEARLY: 'Gói năm',
+};
+const termStatusLabel: Record<string, string> = {
+  SCHEDULED: 'Sắp bắt đầu',
+  ACTIVE: 'Đang hiệu lực',
+  EXPIRED: 'Đã hết hạn',
+  CANCELLED: 'Đã hủy',
+  REFUNDED: 'Đã hoàn tiền',
+};
+const settlementStatusLabel: Record<string, string> = {
+  OPEN: 'Mới tạo',
+  CALCULATED: 'Đã tính xong',
+  LOCKED: 'Đã khóa sổ',
+  AVAILABLE: 'Đã cho phép ghi nhận',
+};
 
 export const PlanManager = () => {
   const [drafts, setDrafts] = useState<Record<string, SubscriptionPlan>>({});
@@ -43,7 +60,7 @@ export const PlanManager = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">Gói thuê bao</h1>
-        <p className="mt-1 text-sm text-zinc-500">Chỉ hỗ trợ kỳ trả trước 30 ngày và 365 ngày. Gói đã có giao dịch chỉ được tạm dừng bán.</p>
+        <p className="mt-1 text-sm text-zinc-500">Hiện hệ thống chỉ hỗ trợ gói 30 ngày và 365 ngày. Gói đã phát sinh giao dịch sẽ không xóa, chỉ có thể tạm dừng bán.</p>
       </div>
 
       {plansQuery.isLoading ? (
@@ -60,8 +77,8 @@ export const PlanManager = () => {
                       <CalendarDays className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-zinc-500">{draft.type}</p>
-                      <p className="font-bold text-zinc-900 dark:text-white">{draft.durationDays} ngày</p>
+                      <p className="text-xs font-semibold text-zinc-500">{planTypeLabel[draft.type] || draft.type}</p>
+                      <p className="font-bold text-zinc-900 dark:text-white">{draft.durationDays} ngày sử dụng</p>
                     </div>
                   </div>
                   <Button
@@ -115,17 +132,17 @@ export const PlanManager = () => {
 
       <div className="flex items-start gap-3 border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
         <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-        Giá, thời hạn và tỷ lệ chia được snapshot tại lúc thanh toán. Việc sửa gói không thay đổi giao dịch hoặc kỳ thuê bao cũ.
+        Giá bán, thời hạn và tỷ lệ chia doanh thu đều được chốt tại thời điểm thanh toán. Việc chỉnh sửa gói sau này sẽ không làm thay đổi dữ liệu cũ.
       </div>
 
       <section className="border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Kỳ thuê bao gần đây</h2>
-          <span className="text-sm text-zinc-500">{termsQuery.data?.length || 0} kỳ</span>
+          <h2 className="text-lg font-bold">Các lượt mua thuê bao gần đây</h2>
+          <span className="text-sm text-zinc-500">{termsQuery.data?.length || 0} lượt</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="border-b text-left text-zinc-500"><th className="py-2">User</th><th>Mã giao dịch</th><th>Gói</th><th>Thời hạn</th><th>Trạng thái</th><th /></tr></thead>
+            <thead><tr className="border-b text-left text-zinc-500"><th className="py-2">Người mua</th><th>Mã giao dịch</th><th>Gói</th><th>Thời gian sử dụng</th><th>Trạng thái</th><th /></tr></thead>
             <tbody>
               {(termsQuery.data || []).slice(0, 30).map((term) => (
                 <tr key={term._id} className="border-b border-zinc-100 dark:border-zinc-800">
@@ -133,7 +150,7 @@ export const PlanManager = () => {
                   <td>{term.transactionCode}</td>
                   <td>{term.planName}</td>
                   <td>{new Date(term.startsAt).toLocaleDateString('vi-VN')} - {new Date(term.endsAt).toLocaleDateString('vi-VN')}</td>
-                  <td className="font-medium">{term.status}</td>
+                  <td className="font-medium">{termStatusLabel[term.status] || term.status}</td>
                   <td className="text-right">
                     {!['REFUNDED', 'EXPIRED'].includes(term.status) && (
                       <Button variant="ghost" size="sm" onClick={() => refundMutation.mutate(term._id)}>
@@ -151,8 +168,8 @@ export const PlanManager = () => {
       <section className="border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold">Settlement thuê bao</h2>
-            <p className="text-sm text-zinc-500">Pool không có usage được chuyển sang kỳ sau. Khóa settlement sau tối thiểu 7 ngày.</p>
+            <h2 className="text-lg font-bold">Đối soát doanh thu thuê bao</h2>
+            <p className="text-sm text-zinc-500">Nếu kỳ đó chưa có thời gian học hợp lệ, phần doanh thu dành cho giảng viên sẽ được chuyển sang kỳ sau. Chỉ nên khóa sổ sau ít nhất 7 ngày.</p>
           </div>
           <Button
             variant="outline"
@@ -162,7 +179,7 @@ export const PlanManager = () => {
               calculateSettlementMutation.mutate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
             }}
           >
-            Tính tháng trước
+            Tính doanh thu tháng trước
           </Button>
         </div>
         <div className="space-y-3">
@@ -170,21 +187,21 @@ export const PlanManager = () => {
             <div key={item._id} className="grid gap-3 border-t border-zinc-100 py-3 text-sm md:grid-cols-[100px_1fr_1fr_1fr_auto] dark:border-zinc-800">
               <strong>{item.period}</strong>
               <span>
-                Tổng sau hoàn tiền: {money(item.recognizedGross)}
+                Doanh thu sau hoàn tiền: {money(item.recognizedGross)}
                 {item.refundGrossAdjustment > 0 && (
-                  <small className="block text-red-600 dark:text-red-400">Đã trừ {money(item.refundGrossAdjustment)}</small>
+                  <small className="block text-red-600 dark:text-red-400">Đã trừ hoàn tiền: {money(item.refundGrossAdjustment)}</small>
                 )}
               </span>
               <span>
-                Pool phân bổ: {money(item.instructorPool + item.carriedIn - item.refundInstructorPoolAdjustment)}
+                Quỹ chia cho giảng viên: {money(item.instructorPool + item.carriedIn - item.refundInstructorPoolAdjustment)}
                 {item.refundInstructorPoolAdjustment > 0 && (
-                  <small className="block text-red-600 dark:text-red-400">Đã trừ {money(item.refundInstructorPoolAdjustment)}</small>
+                  <small className="block text-red-600 dark:text-red-400">Đã trừ hoàn tiền: {money(item.refundInstructorPoolAdjustment)}</small>
                 )}
               </span>
-              <span>{item.status} · {Math.floor(item.totalQualifiedSeconds / 60).toLocaleString('vi-VN')} phút</span>
+              <span>{settlementStatusLabel[item.status] || item.status} · {Math.floor(item.totalQualifiedSeconds / 60).toLocaleString('vi-VN')} phút học hợp lệ</span>
               <div>
                 {item.status === 'CALCULATED' && <Button size="sm" onClick={() => updateSettlementMutation.mutate({ period: item.period, status: 'LOCKED' })}>Khóa</Button>}
-                {item.status === 'LOCKED' && <Button size="sm" onClick={() => updateSettlementMutation.mutate({ period: item.period, status: 'AVAILABLE' })}>Cho phép nhận</Button>}
+                {item.status === 'LOCKED' && <Button size="sm" onClick={() => updateSettlementMutation.mutate({ period: item.period, status: 'AVAILABLE' })}>Chuyển sang khả dụng</Button>}
               </div>
             </div>
           ))}

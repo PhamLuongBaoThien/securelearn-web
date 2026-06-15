@@ -89,19 +89,19 @@ const RevenueTab = ({ revenue, subscription }: {
         {/* Gom giải thích vào tooltip để giao diện gọn nhưng instructor vẫn xem được cách tính khi cần. */}
         <RevenueTitleWithTooltip
           title="Doanh thu thuê bao"
-          content="Tiền từ gói thuê bao được chia dựa trên thời gian học thực tế của học viên trong khóa học của bạn. Học viên học càng nhiều và thời gian học càng hợp lệ thì phần doanh thu bạn nhận càng cao."
+          content="Doanh thu từ gói học được chia theo mức độ học thực tế của học viên trong các khóa học của bạn. Khi học viên học nhiều hơn và thời gian học hợp lệ nhiều hơn, phần doanh thu bạn được ghi nhận cũng tăng theo."
         />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard label="Tạm tính" value={formatCurrency(subscription?.estimated ?? 0)} sub="đang được hệ thống tính" icon={<Clock className="h-4 w-4" />} />
-          <StatCard label="Sắp được ghi nhận" value={formatCurrency(subscription?.pending ?? 0)} sub="đã chốt kỳ, chờ cộng sang khả dụng" icon={<Award className="h-4 w-4" />} />
-          <StatCard label="Hiện có thể nhận" value={formatCurrency(subscription?.available ?? 0)} sub="số tiền hệ thống đang ghi nhận cho bạn" icon={<DollarSign className="h-4 w-4" />} />
-          <StatCard label="Phút học hợp lệ" value={Math.floor((subscription?.qualifiedSeconds ?? 0) / 60).toLocaleString('vi-VN')} sub="căn cứ để chia doanh thu thuê bao" icon={<Percent className="h-4 w-4" />} />
+          <StatCard label="Tạm tính" value={formatCurrency(subscription?.estimated ?? 0)} sub="hệ thống đang tiếp tục cộng dồn" icon={<Clock className="h-4 w-4" />} />
+          <StatCard label="Chờ ghi nhận" value={formatCurrency(subscription?.pending ?? 0)} sub="đã chốt kỳ, đang chờ chuyển sang khả dụng" icon={<Award className="h-4 w-4" />} />
+          <StatCard label="Có thể nhận" value={formatCurrency(subscription?.available ?? 0)} sub="số tiền hiện hệ thống đang ghi nhận cho bạn" icon={<DollarSign className="h-4 w-4" />} />
+          <StatCard label="Phút học hợp lệ" value={Math.floor((subscription?.qualifiedSeconds ?? 0) / 60).toLocaleString('vi-VN')} sub="căn cứ để chia doanh thu từ gói học" icon={<Percent className="h-4 w-4" />} />
         </div>
       </div>
 
       <RevenueTitleWithTooltip
         title="Doanh thu mua đứt"
-        content="Đây là doanh thu từ các khóa học được học viên mua riêng từng khóa. Số tiền thực nhận được tính theo tỷ lệ chia hiện hành giữa giảng viên và quản trị viên tại thời điểm thanh toán."
+        content="Đây là doanh thu từ các khóa học được học viên mua riêng từng khóa. Số tiền bạn nhận được sẽ bám theo tỷ lệ chia doanh thu tại đúng thời điểm học viên thanh toán."
       />
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

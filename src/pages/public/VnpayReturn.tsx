@@ -54,7 +54,7 @@ export function VnpayReturn() {
         toast.success('Thanh toán thành công. Khóa học đã được mở quyền.');
       } else {
         queryClient.invalidateQueries({ queryKey: ['subscription', 'me'] });
-        toast.success('Thanh toán thành công. Kỳ thuê bao đã được ghi nhận.');
+        toast.success('Thanh toán thành công. Gói học của bạn đã được kích hoạt.');
       }
 
       const returnTo = payment.productType === 'SUBSCRIPTION' ? '/pricing' : '/student/dashboard';
@@ -150,7 +150,7 @@ export function VnpayReturn() {
             <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             <h1 className="text-2xl font-bold">Đang xác nhận thanh toán VNPay</h1>
             <p className="text-muted-foreground">
-              Hệ thống đang chờ IPN từ VNPay để ghi nhận giao dịch và cấp quyền học.
+              Hệ thống đang kiểm tra kết quả thanh toán và cập nhật quyền học cho bạn.
             </p>
             {transaction?.transactionCode && (
               <p className="text-sm text-muted-foreground">Mã giao dịch: {transaction.transactionCode}</p>
@@ -174,7 +174,7 @@ export function VnpayReturn() {
             <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
             <h1 className="text-2xl font-bold">Thanh toán thành công</h1>
             <p className="text-muted-foreground">
-              Ghi danh đã được cập nhật. Bạn sẽ được chuyển hướng sau vài giây.
+              Quyền học của bạn đã được cập nhật. Hệ thống sẽ chuyển trang sau ít giây nữa.
             </p>
             {transaction?.transactionCode && (
               <p className="text-sm text-muted-foreground">Mã giao dịch: {transaction.transactionCode}</p>

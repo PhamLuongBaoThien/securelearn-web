@@ -44,7 +44,7 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: enrolledKeys.all });
-      toast.success('Đã mở khóa học bằng thuê bao.');
+      toast.success('Bạn đã có thể vào học bằng gói thuê bao.');
       navigate('/student/dashboard');
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể mở khóa học bằng thuê bao.'),
@@ -172,7 +172,7 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
                       disabled={subscriptionEnrollMutation.isPending}
                     >
                       {hasActiveSubscription
-                        ? (subscriptionEnrollMutation.isPending ? 'Đang mở khóa...' : 'Học bằng thuê bao')
+                        ? (subscriptionEnrollMutation.isPending ? 'Đang mở quyền học...' : 'Dùng gói để vào học')
                         : 'Mua gói để học khóa này'}
                     </Button>
                   )}

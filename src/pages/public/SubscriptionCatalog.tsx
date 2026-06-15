@@ -19,7 +19,7 @@ export function SubscriptionCatalog() {
     queryFn: async () => {
       const response = await getSubscriptionCatalog();
       if (response.status === 'ERR') {
-        throw new Error(response.message || 'Không thể tải catalog thuê bao.');
+        throw new Error(response.message || 'Không thể tải danh sách khóa học trong gói.');
       }
       return response.data || [];
     },
@@ -29,17 +29,17 @@ export function SubscriptionCatalog() {
     <div className="max-w-[1340px] mx-auto px-4 md:px-6 py-8">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-primary">Catalog thuê bao</p>
-          <h1 className="mt-2 text-3xl md:text-4xl font-bold font-serif">Khóa học nằm trong gói</h1>
+          <p className="text-sm font-semibold uppercase tracking-wide text-primary">Khóa học trong gói</p>
+          <h1 className="mt-2 text-3xl md:text-4xl font-bold font-serif">Toàn bộ khóa học bạn có thể học bằng thuê bao</h1>
           <p className="mt-2 text-muted-foreground">
             {subscription?.current
-              ? `Gói của bạn đang hoạt động đến ${new Date(subscription.current.endsAt).toLocaleDateString('vi-VN')}.`
-              : 'Mua gói để mở khóa toàn bộ các khóa học trong catalog này.'}
+              ? `Gói của bạn còn hiệu lực đến ngày ${new Date(subscription.current.endsAt).toLocaleDateString('vi-VN')}.`
+              : 'Mua gói để học tất cả các khóa học đang có trong danh sách này.'}
           </p>
         </div>
         {!subscription?.current && (
           <Link to="/pricing" className={buttonVariants({ variant: 'outline', className: 'rounded-sm font-bold' })}>
-            Mua gói ngay
+            Xem gói học
           </Link>
         )}
       </div>
@@ -57,8 +57,8 @@ export function SubscriptionCatalog() {
       ) : (
         <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
           <BookOpen className="h-12 w-12 text-muted-foreground" />
-          <p className="text-lg font-semibold">Chưa có khóa học trong catalog thuê bao</p>
-          <p className="text-sm text-muted-foreground">Catalog này sẽ tự mở rộng khi instructor opt-in và Admin duyệt thêm khóa học.</p>
+          <p className="text-lg font-semibold">Hiện chưa có khóa học nào trong gói</p>
+          <p className="text-sm text-muted-foreground">Danh sách này sẽ được cập nhật khi giảng viên đăng ký tham gia và quản trị viên phê duyệt thêm khóa học.</p>
         </div>
       )}
     </div>
