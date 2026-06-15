@@ -12,6 +12,8 @@ import type {
   ICategory,
   IAdminUser,
   ICourseReview,
+  ISubscriptionCourseReview,
+  SubscriptionCatalogStatus,
   ICourseResource,
   IEncryptionJob,
   IKmsKey,
@@ -241,6 +243,21 @@ export const getCourseReviewDetail = async (courseId: string): Promise<AdminApiR
 
 export const approveCourse = async (courseId: string, finalCategoryId?: string): Promise<AdminApiResponse> => {
   const res = await apiClient.patch<AdminApiResponse>(`${ADMIN}/courses/${courseId}/approve`, finalCategoryId ? { finalCategoryId } : {});
+  return res.data;
+};
+
+export const getSubscriptionCoursesForReview = async (params?: {
+  status?: SubscriptionCatalogStatus;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<AdminApiResponse<{ courses: ISubscriptionCourseReview[]; total: number; page: number; totalPages: number }>> => {
+  const res = await apiClient.get(`${ADMIN}/courses/subscription-review`, { params });
+  return res.data;
+};
+
+export const getSubscriptionCourseReviewDetail = async (courseId: string): Promise<AdminApiResponse<ICourse>> => {
+  const res = await apiClient.get<AdminApiResponse<ICourse>>(`${ADMIN}/courses/${courseId}/subscription-review`);
   return res.data;
 };
 

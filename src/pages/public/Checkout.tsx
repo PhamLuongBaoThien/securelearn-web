@@ -54,6 +54,10 @@ export const Checkout = () => {
     },
   });
 
+  const handleCheckout = () => {
+    checkoutMutation.mutate();
+  };
+
   if (!authResolved) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
@@ -110,7 +114,7 @@ export const Checkout = () => {
             <Button
               variant="udemy_dark"
               className="w-full text-lg h-14 rounded-none font-bold flex items-center justify-center gap-2"
-              onClick={() => checkoutMutation.mutate()}
+              onClick={handleCheckout}
               disabled={checkoutMutation.isPending}
             >
               {checkoutMutation.isPending ? 'Đang tạo giao dịch...' : 'Thanh toán an toàn'}

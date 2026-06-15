@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Search,
   CheckCircle,
@@ -22,13 +21,12 @@ import {
   Paperclip,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { ICourseReview, CourseStatus } from "@/types/admin.types";
-import {
-  approveCourse,
-  getCourseReviewDetail,
-  getCoursesForReview,
-  rejectCourse,
-} from "@/services/adminApi";
+import type {
+  ICourseReview,
+  ISubscriptionCourseReview,
+  CourseStatus,
+  SubscriptionCatalogStatus,
+} from "@/types/admin.types";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +45,15 @@ import type {
   ICourseCategoryNode,
   ILesson,
 } from "@/services/courseApi";
+import {
+  useApprovePublishedCourse,
+  usePublishedCourseReviewDetail,
+  usePublishedCourseReviews,
+  useRejectPublishedCourse,
+  useReviewCourseSubscription,
+  useSubscriptionCourseReviewDetail,
+  useSubscriptionCourseReviews,
+} from "@/hooks/useAdminCourseReview";
 
 type CategoryOption = {
   value: string;
@@ -477,20 +484,20 @@ const LessonTypeIcon: React.FC<{ lesson: ILesson }> = ({ lesson }) => {
   return <Video className="h-4 w-4 text-blue-500" />;
 };
 
-const CourseCurriculumPreview: React.FC<{ courseId: string }> = ({
-  courseId,
-}) => {
-  const detailQuery = useQuery({
-    queryKey: ["admin", "courses", "review-detail", courseId],
-    queryFn: async () => {
-      const response = await getCourseReviewDetail(courseId);
-      if (response.status === "ERR" || !response.data)
-        throw new Error(
-          response.message || "Không tải được chi tiết khóa học.",
-        );
-      return response.data as ICourse;
-    },
-  });
+const CourseCurriculumPreview: React.FC<{
+  courseId: string;
+  mode?: "PUBLISH" | "SUBSCRIPTION";
+}> = ({ courseId, mode = "PUBLISH" }) => {
+  const publishedDetailQuery = usePublishedCourseReviewDetail(
+    courseId,
+    mode === "PUBLISH",
+  );
+  const subscriptionDetailQuery = useSubscriptionCourseReviewDetail(
+    courseId,
+    mode === "SUBSCRIPTION",
+  );
+  const detailQuery =
+    mode === "SUBSCRIPTION" ? subscriptionDetailQuery : publishedDetailQuery;
 
   if (detailQuery.isLoading) {
     return (
@@ -690,8 +697,366 @@ const CourseCurriculumPreview: React.FC<{ courseId: string }> = ({
   );
 };
 
+const subscriptionStatusConfig: Record<
+  Exclude<SubscriptionCatalogStatus, "NOT_OPTED_IN">,
+  { label: string; cls: string; icon: React.ReactNode }
+> = {
+  PENDING: {
+    label: "Chờ duyệt",
+    cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+    icon: <Clock className="w-3.5 h-3.5" />,
+  },
+  APPROVED: {
+    label: "Đang trong gói",
+    cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+    icon: <CheckCircle className="w-3.5 h-3.5" />,
+  },
+  REJECTED: {
+    label: "Đã từ chối",
+    cls: "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-300",
+    icon: <XCircle className="w-3.5 h-3.5" />,
+  },
+  REMOVED: {
+    label: "Đã rút khỏi gói",
+    cls: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
+    icon: <Eye className="w-3.5 h-3.5" />,
+  },
+};
+
+const ReviewModeTabs: React.FC<{
+  mode: "PUBLISH" | "SUBSCRIPTION";
+  onChange: (mode: "PUBLISH" | "SUBSCRIPTION") => void;
+}> = ({ mode, onChange }) => (
+  <div className="inline-flex rounded-xl border border-zinc-200 bg-zinc-100 p-1 dark:border-zinc-800 dark:bg-zinc-900">
+    <Button
+      variant={mode === "PUBLISH" ? "default" : "ghost"}
+      className={mode === "PUBLISH" ? "shadow-sm" : ""}
+      onClick={() => onChange("PUBLISH")}
+    >
+      Duyệt xuất bản
+    </Button>
+    <Button
+      variant={mode === "SUBSCRIPTION" ? "default" : "ghost"}
+      className={mode === "SUBSCRIPTION" ? "shadow-sm" : ""}
+      onClick={() => onChange("SUBSCRIPTION")}
+    >
+      Duyệt vào gói thuê bao
+    </Button>
+  </div>
+);
+
+const SubscriptionCourseReviewPage: React.FC<{
+  onChangeMode: (mode: "PUBLISH" | "SUBSCRIPTION") => void;
+}> = ({ onChangeMode }) => {
+  const [status, setStatus] =
+    useState<Exclude<SubscriptionCatalogStatus, "NOT_OPTED_IN">>("PENDING");
+  const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [reasonAction, setReasonAction] = useState<{
+    courseId: string;
+    action: "REJECT" | "REMOVE";
+  } | null>(null);
+  const [reason, setReason] = useState("");
+  const reviewQuery = useSubscriptionCourseReviews(status, search);
+  const reviewMutation = useReviewCourseSubscription();
+  const courses = reviewQuery.data?.courses || [];
+
+  const submitReasonAction = () => {
+    if (!reasonAction || !reason.trim()) {
+      toast.error("Vui lòng nhập lý do để giảng viên biết cần xử lý gì.");
+      return;
+    }
+    reviewMutation.mutate(
+      { ...reasonAction, reason: reason.trim() },
+      {
+        onSuccess: () => {
+          setReasonAction(null);
+          setReason("");
+        },
+      },
+    );
+  };
+
+  return (
+    <div className="w-full space-y-6">
+      <Dialog
+        open={reasonAction !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReasonAction(null);
+            setReason("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {reasonAction?.action === "REJECT"
+                ? "Từ chối đưa vào gói thuê bao"
+                : "Rút khỏi gói thuê bao"}
+            </DialogTitle>
+            <DialogDescription>
+              Lý do sẽ được hiển thị cho giảng viên trong trang quản lý khóa
+              học.
+            </DialogDescription>
+          </DialogHeader>
+          <textarea
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            className="min-h-28 w-full rounded-xl border border-zinc-200 bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-primary/40 dark:border-zinc-800"
+            placeholder="Nhập lý do cụ thể..."
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReasonAction(null)}>
+              Hủy
+            </Button>
+            <Button
+              onClick={submitReasonAction}
+              disabled={reviewMutation.isPending || !reason.trim()}
+              className="bg-red-500 text-white hover:bg-red-600"
+            >
+              Xác nhận
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">
+            Kiểm duyệt Khóa học
+          </h1>
+          <p className="text-zinc-500 dark:text-zinc-400">
+            Xem xét các khóa học giảng viên đăng ký tham gia gói thuê bao.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl">
+          <Clock className="w-4 h-4 text-amber-500" />
+          <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+            {reviewQuery.data?.total || 0} khóa học
+          </span>
+        </div>
+      </div>
+
+      <ReviewModeTabs mode="SUBSCRIPTION" onChange={onChangeMode} />
+
+      <div className="flex flex-wrap gap-3">
+        <div className="flex items-center gap-2 flex-1 min-w-48 px-3 py-2 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <Search className="h-4 w-4 shrink-0 text-zinc-400" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Tìm khóa học hoặc giảng viên..."
+            className="bg-transparent text-sm flex-1 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
+          />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {(["PENDING", "APPROVED", "REJECTED", "REMOVED"] as const).map(
+            (item) => (
+              <Button
+                key={item}
+                onClick={() => setStatus(item)}
+                variant="outline"
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${status === item ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-primary/30"}`}
+              >
+                {subscriptionStatusConfig[item].label}
+              </Button>
+            ),
+          )}
+        </div>
+      </div>
+
+      {reviewQuery.isLoading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : reviewQuery.error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-600">
+          {(reviewQuery.error as Error).message}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {courses.map((course: ISubscriptionCourseReview) => {
+            const isExpanded = expandedId === course._id;
+            const config =
+              subscriptionStatusConfig[
+                course.subscriptionStatus as Exclude<
+                  SubscriptionCatalogStatus,
+                  "NOT_OPTED_IN"
+                >
+              ];
+            return (
+              <div
+                key={course._id}
+                className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="p-5 flex gap-4">
+                  <div className="w-28 h-20 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shrink-0 border border-zinc-200 dark:border-zinc-700">
+                    {course.thumbnailUrl ? (
+                      <img
+                        src={course.thumbnailUrl}
+                        alt={course.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <BookOpen className="h-8 w-8 text-zinc-400" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h3 className="font-bold text-zinc-900 dark:text-white text-base leading-snug">
+                            {course.title}
+                          </h3>
+                          <span
+                            className={`shrink-0 flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.cls}`}
+                          >
+                            {config.icon}
+                            {config.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-zinc-500 flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            {course.instructor.fullName ||
+                              course.instructor._id}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Folder className="w-3 h-3" />
+                            {course.category || "Chưa phân loại"}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Tag className="w-3 h-3" />
+                            {levelLabel[course.level]}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <DollarSign className="w-3 h-3" />
+                            {course.price.toLocaleString("vi-VN")}₫
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Layers className="w-3 h-3" />
+                            {course.totalChapters} chương ·{" "}
+                            {course.totalLessons} bài · {course.totalVideos}{" "}
+                            video · {course.totalDuration || 0} phút
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          setExpandedId(isExpanded ? null : course._id)
+                        }
+                        className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors shrink-0"
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+
+                    {course.subscriptionReviewReason &&
+                      course.subscriptionStatus !== "PENDING" && (
+                        <div className="mt-2 flex items-start gap-2 p-2.5 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl text-xs text-zinc-500 dark:text-zinc-400">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                          <span>Lý do: {course.subscriptionReviewReason}</span>
+                        </div>
+                      )}
+                    {course.subscriptionReviewedAt &&
+                      course.subscriptionStatus !== "PENDING" && (
+                        <div className="mt-2 flex items-start gap-2 p-2.5 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl text-xs text-zinc-500 dark:text-zinc-400">
+                          <CheckCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-500" />
+                          <span>
+                            Cập nhật bởi{" "}
+                            <span className="font-medium text-zinc-700 dark:text-zinc-200">
+                              {course.subscriptionReviewedByAdmin?.fullName ||
+                                "Admin"}
+                            </span>
+                            {` ${formatReviewTime(course.subscriptionReviewedAt)}`}
+                          </span>
+                        </div>
+                      )}
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="px-5 pb-4 border-t border-zinc-100 dark:border-zinc-800 pt-4">
+                    <CourseCurriculumPreview
+                      courseId={course._id}
+                      mode="SUBSCRIPTION"
+                    />
+                  </div>
+                )}
+
+                {(course.subscriptionStatus === "PENDING" ||
+                  course.subscriptionStatus === "APPROVED") && (
+                  <div className="px-5 pb-5 flex gap-3">
+                    {course.subscriptionStatus === "PENDING" && (
+                      <>
+                        <Button
+                          onClick={() =>
+                            reviewMutation.mutate({
+                              courseId: course._id,
+                              action: "APPROVE",
+                            })
+                          }
+                          disabled={reviewMutation.isPending}
+                          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20"
+                        >
+                          <CheckCircle className="w-4 h-4" /> Phê duyệt
+                        </Button>
+                        <Button
+                          onClick={() =>
+                            setReasonAction({
+                              courseId: course._id,
+                              action: "REJECT",
+                            })
+                          }
+                          className="flex items-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors"
+                        >
+                          <XCircle className="w-4 h-4" /> Từ chối
+                        </Button>
+                      </>
+                    )}
+                    {course.subscriptionStatus === "APPROVED" && (
+                      <Button
+                        onClick={() =>
+                          setReasonAction({
+                            courseId: course._id,
+                            action: "REMOVE",
+                          })
+                        }
+                        className="flex items-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors"
+                      >
+                        <XCircle className="w-4 h-4" /> Rút khỏi gói
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {courses.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 text-zinc-400">
+              <BookOpen className="w-12 h-12 mb-3 opacity-30" />
+              <p className="text-sm">Không có khóa học nào phù hợp.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const CourseReview: React.FC = () => {
-  const queryClient = useQueryClient();
+  const [reviewMode, setReviewMode] = useState<"PUBLISH" | "SUBSCRIPTION">(
+    "PUBLISH",
+  );
   const { data: categories = [] } = usePublicCourseCategories();
   const createCategoryMutation = useCreateAdminCategory();
   const [statusFilter, setStatusFilter] = useState<string>("PENDING");
@@ -701,60 +1066,13 @@ export const CourseReview: React.FC = () => {
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
 
-  const reviewQuery = useQuery({
-    queryKey: ["admin", "courses", "review", statusFilter, search],
-    queryFn: async () => {
-      const response = await getCoursesForReview({
-        status: statusFilter || undefined,
-        search: search || undefined,
-        page: 1,
-        limit: 50,
-      });
-      if (response.status === "ERR" || !response.data)
-        throw new Error(
-          response.message || "Không tải được danh sách khóa học.",
-        );
-      return response.data;
-    },
-  });
-
-  const approveMutation = useMutation({
-    mutationFn: ({
-      courseId,
-      finalCategoryId,
-    }: {
-      courseId: string;
-      finalCategoryId?: string;
-    }) => approveCourse(courseId, finalCategoryId),
-    onSuccess: (response) => {
-      if (response.status === "ERR") throw new Error(response.message);
-      toast.success(
-        response.message || "Khóa học đã được phê duyệt và xuất bản!",
-      );
-      setApproveTargetId(null);
-      queryClient.invalidateQueries({
-        queryKey: ["admin", "courses", "review"],
-      });
-    },
-    onError: (err: Error) =>
-      toast.error(err.message || "Không thể phê duyệt khóa học."),
-  });
-
-  const rejectMutation = useMutation({
-    mutationFn: ({ courseId, reason }: { courseId: string; reason: string }) =>
-      rejectCourse(courseId, reason),
-    onSuccess: (response) => {
-      if (response.status === "ERR") throw new Error(response.message);
-      toast.success(response.message || "Đã gửi yêu cầu chỉnh sửa.");
-      setRejectTargetId(null);
-      setRejectDialogOpen(false);
-      queryClient.invalidateQueries({
-        queryKey: ["admin", "courses", "review"],
-      });
-    },
-    onError: (err: Error) =>
-      toast.error(err.message || "Không thể gửi yêu cầu chỉnh sửa."),
-  });
+  const reviewQuery = usePublishedCourseReviews(
+    statusFilter,
+    search,
+    reviewMode === "PUBLISH",
+  );
+  const approveMutation = useApprovePublishedCourse();
+  const rejectMutation = useRejectPublishedCourse();
 
   const courses = reviewQuery.data?.courses || [];
   const approveTarget =
@@ -771,6 +1089,10 @@ export const CourseReview: React.FC = () => {
     return `${h}h${m > 0 ? m + "m" : ""}`;
   };
 
+  if (reviewMode === "SUBSCRIPTION") {
+    return <SubscriptionCourseReviewPage onChangeMode={setReviewMode} />;
+  }
+
   return (
     <div className="w-full space-y-6">
       <RejectDialog
@@ -781,7 +1103,15 @@ export const CourseReview: React.FC = () => {
         }}
         onConfirm={(reason) =>
           rejectTargetId &&
-          rejectMutation.mutate({ courseId: rejectTargetId, reason })
+          rejectMutation.mutate(
+            { courseId: rejectTargetId, reason },
+            {
+              onSuccess: () => {
+                setRejectTargetId(null);
+                setRejectDialogOpen(false);
+              },
+            },
+          )
         }
         isPending={rejectMutation.isPending}
       />
@@ -800,7 +1130,10 @@ export const CourseReview: React.FC = () => {
         }
         onConfirm={(finalCategoryId) =>
           approveTargetId &&
-          approveMutation.mutate({ courseId: approveTargetId, finalCategoryId })
+          approveMutation.mutate(
+            { courseId: approveTargetId, finalCategoryId },
+            { onSuccess: () => setApproveTargetId(null) },
+          )
         }
       />
 
@@ -820,6 +1153,8 @@ export const CourseReview: React.FC = () => {
           </span>
         </div>
       </div>
+
+      <ReviewModeTabs mode="PUBLISH" onChange={setReviewMode} />
 
       <div className="flex flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-48 px-3 py-2 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">

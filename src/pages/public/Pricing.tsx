@@ -47,6 +47,10 @@ export const Pricing = () => {
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể tạo thanh toán.'),
   });
 
+  const handlePlanCheckout = (planId: string) => {
+    checkout.mutate(planId);
+  };
+
   if (!authResolved) return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="h-7 w-7 animate-spin" /></div>;
   if (!isAuthenticated) return <Navigate to="/auth/login" state={{ from: location }} replace />;
 
@@ -86,7 +90,7 @@ export const Pricing = () => {
             <ul className="my-6 space-y-2">
               {plan.features.map((feature) => <li key={feature} className="flex gap-2 text-sm"><Check className="h-4 w-4 text-emerald-600" />{feature}</li>)}
             </ul>
-            <Button className="w-full" onClick={() => checkout.mutate(plan._id)} disabled={checkout.isPending}>
+            <Button className="w-full" onClick={() => handlePlanCheckout(plan._id)} disabled={checkout.isPending}>
               {checkout.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
               Thanh toán bằng {method}
             </Button>

@@ -161,7 +161,7 @@ export const InstructorCourses: React.FC = () => {
       <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr_1fr]">
         <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <div className="flex h-11 w-11 items-center justify-center text-primary">
               <WalletCards className="h-5 w-5" />
             </div>
             <div>
@@ -389,6 +389,11 @@ export const InstructorCourses: React.FC = () => {
                     {course.subscriptionStatus === 'PENDING' && (
                       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                         Khóa học đang chờ quản trị viên duyệt vào gói. Nếu đổi ý, bạn có thể rút lại trước khi được duyệt.
+                      </p>
+                    )}
+                    {['REJECTED', 'REMOVED'].includes(course.subscriptionStatus || '') && course.subscriptionReviewReason && (
+                      <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                        Lý do: {course.subscriptionReviewReason}
                       </p>
                     )}
                   </div>

@@ -169,8 +169,18 @@ export const PlanManager = () => {
           {(settlementsQuery.data || []).map((item) => (
             <div key={item._id} className="grid gap-3 border-t border-zinc-100 py-3 text-sm md:grid-cols-[100px_1fr_1fr_1fr_auto] dark:border-zinc-800">
               <strong>{item.period}</strong>
-              <span>Tổng ghi nhận: {money(item.recognizedGross)}</span>
-              <span>Pool: {money(item.instructorPool + item.carriedIn)}</span>
+              <span>
+                Tổng sau hoàn tiền: {money(item.recognizedGross)}
+                {item.refundGrossAdjustment > 0 && (
+                  <small className="block text-red-600 dark:text-red-400">Đã trừ {money(item.refundGrossAdjustment)}</small>
+                )}
+              </span>
+              <span>
+                Pool phân bổ: {money(item.instructorPool + item.carriedIn - item.refundInstructorPoolAdjustment)}
+                {item.refundInstructorPoolAdjustment > 0 && (
+                  <small className="block text-red-600 dark:text-red-400">Đã trừ {money(item.refundInstructorPoolAdjustment)}</small>
+                )}
+              </span>
               <span>{item.status} · {Math.floor(item.totalQualifiedSeconds / 60).toLocaleString('vi-VN')} phút</span>
               <div>
                 {item.status === 'CALCULATED' && <Button size="sm" onClick={() => updateSettlementMutation.mutate({ period: item.period, status: 'LOCKED' })}>Khóa</Button>}

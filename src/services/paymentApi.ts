@@ -49,11 +49,14 @@ export interface PaymentTransaction {
   instructorAmount?: number;
   provider: PaymentProvider;
   paymentMethod: PaymentMethod;
-  status: 'PENDING' | 'SUCCEEDED' | 'FAILED';
+  status: 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'REFUNDED';
   providerRef?: string;
   failureReason?: string;
   paidAt?: string | null;
   failedAt?: string | null;
+  refundedAt?: string | null;
+  refundedBy?: string;
+  refundReason?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -177,6 +180,9 @@ export interface SubscriptionSettlement {
   recognizedGross: number;
   adminRevenue: number;
   instructorPool: number;
+  refundGrossAdjustment: number;
+  refundAdminAdjustment: number;
+  refundInstructorPoolAdjustment: number;
   carriedIn: number;
   carriedOut: number;
   totalQualifiedSeconds: number;

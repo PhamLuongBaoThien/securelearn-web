@@ -15,6 +15,7 @@ import { enrolledKeys } from '@/hooks/useEnrolledCourses';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { confirmMomoPayment, getTransactionByCode, type PaymentTransaction } from '@/services/paymentApi';
+import axios from 'axios';
 
 const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -97,10 +98,17 @@ export function MomoReturn() {
         }
       } catch (confirmErr: unknown) {
         console.error('Lỗi khi confirm MoMo với backend:', confirmErr);
+        if (axios.isAxiosError(confirmErr)) {
+          const message = String(confirmErr.response?.data?.message || '');
+          if (message) {
+            setError(message);
+            return;
+          }
+        }
       }
 
       try {
-        for (let attempt = 0; attempt < 15; attempt++) {
+        for (let attempt = 0; attempt < 60; attempt++) {
           const res = await getTransactionByCode(orderId);
           if (res.status === 'ERR') {
             throw new Error(res.message || 'Không thể tải trạng thái giao dịch.');
@@ -120,7 +128,7 @@ export function MomoReturn() {
             }
           }
 
-          await sleep(1200);
+          await sleep(1500);
         }
 
         setError('Đang chờ MoMo xác nhận giao dịch. Vui lòng tải lại sau ít phút.');

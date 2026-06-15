@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Search, Filter, DollarSign, CreditCard, Download, CheckCircle, XCircle, Clock, Percent, Save } from 'lucide-react';
+import { Search, Filter, DollarSign, CreditCard, Download, CheckCircle, XCircle, Clock, Percent, Save, Undo2 } from 'lucide-react';
 import type { ITransaction, PaymentProvider, TransactionStatus, IRevenueSplitConfig, IRevenueStats } from '@/types/admin.types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ const statusConfig: Record<TransactionStatus, { label: string; icon: React.React
   SUCCEEDED: { label: 'Thành công', icon: <CheckCircle className="w-3.5 h-3.5" />, cls: 'bg-emerald-100 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-400' },
   FAILED: { label: 'Thất bại', icon: <XCircle className="w-3.5 h-3.5" />, cls: 'bg-red-100 dark:bg-red-400/10 text-red-600 dark:text-red-400' },
   PENDING: { label: 'Đang xử lý', icon: <Clock className="w-3.5 h-3.5" />, cls: 'bg-amber-100 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400' },
+  REFUNDED: { label: 'Đã hoàn tiền', icon: <Undo2 className="w-3.5 h-3.5" />, cls: 'bg-zinc-100 dark:bg-zinc-400/10 text-zinc-600 dark:text-zinc-300' },
 };
 
 const providerBadge: Record<PaymentProvider, { label: string; cls: string }> = {
@@ -172,6 +173,7 @@ export const Transactions: React.FC = () => {
             <option value="SUCCEEDED">Thành công</option>
             <option value="FAILED">Thất bại</option>
             <option value="PENDING">Đang xử lý</option>
+            <option value="REFUNDED">Đã hoàn tiền</option>
           </Select>
         </div>
       </div>
@@ -215,7 +217,12 @@ export const Transactions: React.FC = () => {
                       <div className="font-bold text-zinc-900 dark:text-white">{fmt(gross)}</div>
                       <div className="text-xs text-zinc-500">QTV {fmt(adminShare)} · GV {fmt(instructorShare)}</div>
                     </td>
-                    <td className="px-4 py-3.5"><span className={`flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full text-xs font-medium ${sc.cls}`}>{sc.icon}{sc.label}</span></td>
+                    <td className="px-4 py-3.5">
+                      <span className={`flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full text-xs font-medium ${sc.cls}`}>{sc.icon}{sc.label}</span>
+                      {t.status === 'REFUNDED' && t.refundReason && (
+                        <p className="mt-1 max-w-40 text-xs text-zinc-500" title={t.refundReason}>{t.refundReason}</p>
+                      )}
+                    </td>
                     <td className="px-4 py-3.5 text-xs text-zinc-400 whitespace-nowrap">
                       <p>{new Date(t.createdAt).toLocaleDateString('vi-VN')}</p>
                       <p>{new Date(t.createdAt).toLocaleTimeString('vi-VN')}</p>

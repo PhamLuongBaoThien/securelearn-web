@@ -167,6 +167,7 @@ export type PermissionId = (typeof ALL_PERMISSION_IDS)[number];
 export type CourseStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARCHIVED';
 export type CourseLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 export type CategoryResolutionStatus = 'NONE' | 'NEEDS_ADMIN_CLASSIFICATION';
+export type SubscriptionCatalogStatus = 'NOT_OPTED_IN' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'REMOVED';
 
 export interface ICourseReview {
   _id: string;
@@ -203,6 +204,36 @@ export interface ICourseReview {
   rejectionReason?: string;
   isRevision?: boolean;
   courseId?: string;
+  createdAt: string;
+}
+
+export interface ISubscriptionCourseReview {
+  _id: string;
+  title: string;
+  slug: string;
+  thumbnailUrl?: string;
+  instructor: {
+    _id: string;
+    fullName: string;
+    email: string;
+  };
+  category: string;
+  categoryId?: string | null;
+  level: CourseLevel;
+  price: number;
+  status: 'PUBLISHED';
+  totalLessons: number;
+  totalVideos: number;
+  totalChapters: number;
+  totalDuration: number;
+  subscriptionStatus: SubscriptionCatalogStatus;
+  subscriptionReviewReason?: string;
+  subscriptionReviewedAt?: string | null;
+  subscriptionReviewedByAdmin?: {
+    _id: string;
+    fullName: string;
+    email: string;
+  };
   createdAt: string;
 }
 
@@ -281,7 +312,7 @@ export interface ISecurityConfig {
 // ===== Finance =====
 
 export type PaymentProvider = 'VNPAY' | 'MOMO' | 'STRIPE';
-export type TransactionStatus = 'SUCCEEDED' | 'PENDING' | 'FAILED';
+export type TransactionStatus = 'SUCCEEDED' | 'PENDING' | 'FAILED' | 'REFUNDED';
 export type PlanType = 'LIFETIME' | 'MONTHLY' | 'YEARLY';
 
 export interface ITransaction {
@@ -302,6 +333,9 @@ export interface ITransaction {
   provider: PaymentProvider;
   status: TransactionStatus;
   paymentMethod?: string;
+  refundedAt?: string | null;
+  refundedBy?: string;
+  refundReason?: string;
   ipnReceivedAt?: string; // Từ RabbitMQ event
   items?: Array<{
     courseId: string;
