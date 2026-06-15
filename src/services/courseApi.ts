@@ -70,6 +70,8 @@ export interface ICourse {
   updatedAt: string;
   subscriptionStatus?: 'NOT_OPTED_IN' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'REMOVED';
   subscriptionReviewReason?: string;
+  accessSource?: 'PURCHASE' | 'SUBSCRIPTION';
+  accessEndsAt?: string | null;
 }
 
 export interface ISection {
@@ -101,6 +103,23 @@ export interface ILesson {
   contentMeta?: {
     questionCount?: number;
   } | null;
+}
+
+export interface ILearningNote {
+  _id?: string;
+  content: string;
+  timestampSec: number;
+  updatedAt?: string;
+}
+
+export interface ILessonDiscussion {
+  _id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: 'STUDENT' | 'INSTRUCTOR';
+  content: string;
+  timestampSec: number;
+  createdAt: string;
 }
 
 export interface IQuizQuestionOption {
@@ -378,6 +397,49 @@ export const getPublishedCourses = async (params?: {
   sort?: string;
 }) => {
   const { data } = await apiClient.get<ApiResponse<PaginatedData>>('/api/courses', { params });
+  return data;
+};
+
+export const getCourseForLearning = async (courseId: string) => {
+  const { data } = await apiClient.get<ApiResponse<ICourse>>(`/api/courses/${courseId}/learning`);
+  return data;
+};
+
+export const getLearningNote = async (courseId: string, lessonId: string) => {
+  const { data } = await apiClient.get<ApiResponse<ILearningNote | null>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/note`,
+  );
+  return data;
+};
+
+export const saveLearningNote = async (
+  courseId: string,
+  lessonId: string,
+  payload: { content: string; timestampSec: number },
+) => {
+  const { data } = await apiClient.put<ApiResponse<ILearningNote>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/note`,
+    payload,
+  );
+  return data;
+};
+
+export const getLessonDiscussions = async (courseId: string, lessonId: string) => {
+  const { data } = await apiClient.get<ApiResponse<ILessonDiscussion[]>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/discussions`,
+  );
+  return data;
+};
+
+export const createLessonDiscussion = async (
+  courseId: string,
+  lessonId: string,
+  payload: { content: string; timestampSec: number },
+) => {
+  const { data } = await apiClient.post<ApiResponse<ILessonDiscussion>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/discussions`,
+    payload,
+  );
   return data;
 };
 

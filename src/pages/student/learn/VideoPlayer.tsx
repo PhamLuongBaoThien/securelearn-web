@@ -1,103 +1,192 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { Shield } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Hls from 'hls.js';
+import { Loader2, Shield, VideoOff } from 'lucide-react';
+import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
+import { useLearningVideoAsset, useSubscriptionHeartbeat } from '@/hooks/useCourseLearning';
+import type { ILesson } from '@/services/courseApi';
 
-// ─── Constants ───────────────────────────────
-const VIMEO_URL =
-  'https://player.vimeo.com/video/76979871?h=8272103f6e&autoplay=0&title=0&byline=0&portrait=0';
 const HEARTBEAT_MS = 15_000;
 
-// ─── Watermark hook ───────────────────────────
-function useWatermark(active: boolean) {
-  const [pos, setPos] = useState({ top: '20%', left: '30%' });
-  useEffect(() => {
-    if (!active) return;
-    const id = setInterval(() => {
-      setPos({ top: `${10 + Math.random() * 70}%`, left: `${5 + Math.random() * 75}%` });
-    }, 4000);
-    return () => clearInterval(id);
-  }, [active]);
-  return pos;
-}
+const absoluteApiUrl = (path: string) => {
+  if (/^https?:\/\//i.test(path)) return path;
+  const base = getApiBaseUrl() || window.location.origin;
+  return new URL(path, base).toString();
+};
 
-// ─── Heartbeat hook ───────────────────────────
-function useHeartbeat(lessonId: string, active: boolean) {
-  const tick = useRef(0);
-  useEffect(() => {
-    if (!active) return;
-    tick.current = 0;
-    const id = setInterval(() => {
-      tick.current++;
-      console.log(`♥ [Heartbeat] Lesson ${lessonId} — tick #${tick.current} @ ${new Date().toISOString()}`);
-    }, HEARTBEAT_MS);
-    return () => clearInterval(id);
-  }, [lessonId, active]);
-}
-
-// ─── Props ────────────────────────────────────
 interface VideoPlayerProps {
-  lessonId: string;
-  lessonTitle: string;
-  lessonMeta?: string;
+  courseId: string;
+  lesson: ILesson;
+  accessSource?: 'PURCHASE' | 'SUBSCRIPTION';
   watermarkText?: string;
+  onTimeChange?: (seconds: number) => void;
 }
 
-// ─── Component ────────────────────────────────
 export function VideoPlayer({
-  lessonId,
-  lessonTitle,
-  lessonMeta = 'Video · 25:10',
-  watermarkText = 'Minh Tuấn · minhtuan@email.com',
+  courseId,
+  lesson,
+  accessSource,
+  watermarkText,
+  onTimeChange,
 }: VideoPlayerProps) {
-  const [loaded, setLoaded] = useState(false);
-  const watermarkPos = useWatermark(loaded);
-  useHeartbeat(lessonId, loaded);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const sessionId = useMemo(() => crypto.randomUUID(), [lesson._id]);
+  const lastPositionRef = useRef(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const videoAssetQuery = useLearningVideoAsset(lesson.videoAssetId);
+  const heartbeat = useSubscriptionHeartbeat();
+  const sendHeartbeat = heartbeat.mutate;
+  const heartbeatPending = heartbeat.isPending;
+  const isSubscription = accessSource === 'SUBSCRIPTION';
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => e.preventDefault(), []);
+  useEffect(() => {
+    const video = videoRef.current;
+    const manifestPath = videoAssetQuery.data?.manifestPath;
+    if (!video || !manifestPath) return;
+
+    const manifestUrl = absoluteApiUrl(manifestPath);
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        xhrSetup: (xhr, url) => {
+          if (url.includes('/api/')) {
+            const token = getAccessToken();
+            if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            xhr.withCredentials = true;
+          }
+        },
+      });
+      hls.loadSource(manifestUrl);
+      hls.attachMedia(video);
+      return () => hls.destroy();
+    }
+
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = manifestUrl;
+    }
+  }, [videoAssetQuery.data?.manifestPath, lesson._id]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isSubscription || !lesson._id) return;
+
+    const startSession = () => {
+      lastPositionRef.current = video.currentTime;
+      sendHeartbeat({
+        courseId,
+        lessonId: lesson._id!,
+        sessionId,
+        segmentIndex: Math.max(0, Math.floor(video.currentTime / 15)),
+        qualifiedSeconds: 1,
+      });
+    };
+
+    const interval = window.setInterval(() => {
+      if (
+        !isPlaying ||
+        isSeeking ||
+        document.visibilityState !== 'visible' ||
+        video.paused ||
+        video.ended ||
+        heartbeatPending
+      ) return;
+
+      const watchedSeconds = Math.floor(video.currentTime - lastPositionRef.current);
+      if (watchedSeconds < 1 || watchedSeconds > 17) {
+        lastPositionRef.current = video.currentTime;
+        return;
+      }
+      const segmentIndex = Math.max(0, Math.floor(Math.max(0, video.currentTime - 1) / 15));
+      sendHeartbeat({
+        courseId,
+        lessonId: lesson._id!,
+        sessionId,
+        segmentIndex,
+        qualifiedSeconds: Math.min(15, watchedSeconds),
+      });
+      lastPositionRef.current = video.currentTime;
+    }, HEARTBEAT_MS);
+
+    video.addEventListener('play', startSession);
+    return () => {
+      window.clearInterval(interval);
+      video.removeEventListener('play', startSession);
+    };
+  }, [
+    courseId,
+    heartbeatPending,
+    isPlaying,
+    isSeeking,
+    isSubscription,
+    lesson._id,
+    sendHeartbeat,
+    sessionId,
+  ]);
+
+  const handleContextMenu = useCallback((event: React.MouseEvent) => event.preventDefault(), []);
+
+  if (!lesson.videoAssetId) {
+    return (
+      <div className="flex aspect-video items-center justify-center bg-black text-zinc-300">
+        <div className="text-center">
+          <VideoOff className="mx-auto h-8 w-8" />
+          <p className="mt-2 text-sm">Bài học chưa có video.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (videoAssetQuery.isLoading) {
+    return (
+      <div className="flex aspect-video items-center justify-center bg-black text-white">
+        <Loader2 className="h-7 w-7 animate-spin" />
+      </div>
+    );
+  }
+
+  if (videoAssetQuery.error || videoAssetQuery.data?.status !== 'READY') {
+    return (
+      <div className="flex aspect-video items-center justify-center bg-black px-6 text-center text-sm text-zinc-300">
+        Video chưa sẵn sàng hoặc bạn không còn quyền truy cập.
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col">
-      {/* Video */}
-      <div
-        className="relative w-full bg-black select-none"
-        style={{ aspectRatio: '16/9' }}
-        onContextMenu={handleContextMenu}
-      >
-        <iframe
-          key={lessonId}
-          src={VIMEO_URL}
-          className="absolute inset-0 w-full h-full"
-          frameBorder="0"
-          allow="autoplay; fullscreen; picture-in-picture"
-          allowFullScreen
-          onLoad={() => setLoaded(true)}
+      <div className="relative aspect-video w-full select-none bg-black" onContextMenu={handleContextMenu}>
+        <video
+          ref={videoRef}
+          controls
+          playsInline
+          className="absolute inset-0 h-full w-full"
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onEnded={() => setIsPlaying(false)}
+          onSeeking={() => setIsSeeking(true)}
+          onSeeked={(event) => {
+            lastPositionRef.current = event.currentTarget.currentTime;
+            setIsSeeking(false);
+          }}
+          onTimeUpdate={(event) => onTimeChange?.(event.currentTarget.currentTime)}
         />
 
-        {/* Watermark */}
-        {loaded && (
-          <div
-            className="absolute pointer-events-none z-20 transition-all duration-[2000ms] ease-in-out"
-            style={{ top: watermarkPos.top, left: watermarkPos.left }}
-          >
-            <span className="text-white text-xs font-mono whitespace-nowrap select-none"
-              style={{ opacity: 0.16, textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-              {watermarkText}
-            </span>
-          </div>
+        {watermarkText && (
+          <span className="pointer-events-none absolute bottom-12 right-4 z-20 text-xs font-mono text-white/20">
+            {watermarkText}
+          </span>
         )}
 
-        {/* DRM badge */}
-        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm">
-          <Shield className="w-3 h-3 text-emerald-400" />
-          <span className="text-white text-xs font-medium">DRM Protected</span>
+        <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 backdrop-blur-sm">
+          <Shield className="h-3 w-3 text-emerald-400" />
+          <span className="text-xs font-medium text-white">Nội dung được bảo vệ</span>
         </div>
       </div>
 
-      {/* Lesson info */}
-      <div className="px-5 py-3.5 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
-        <h2 className="text-base font-semibold text-zinc-900 dark:text-white line-clamp-1">
-          {lessonTitle}
-        </h2>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{lessonMeta}</p>
+      <div className="border-b border-zinc-200 bg-white px-5 py-3.5 dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="line-clamp-1 text-base font-semibold text-zinc-900 dark:text-white">{lesson.title}</h2>
+        <p className="mt-0.5 text-xs text-zinc-500">
+          Video · {Math.max(1, Math.round((lesson.duration || 0) / 60))} phút
+        </p>
       </div>
     </div>
   );
