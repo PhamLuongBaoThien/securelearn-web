@@ -84,6 +84,10 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
       price: course.price,
       thumbnail: course.thumbnail,
       instructorName: course.instructorName,
+      level: course.level,
+      totalLessons: course.totalLessons,
+      totalDuration: course.totalDuration,
+      rating: course.rating,
     });
   };
 

@@ -3,7 +3,10 @@ import type { ICourse } from '@/services/courseApi';
 
 import { readGuestCart, readUserCart } from './cartStorage';
 
-export type CartItem = Pick<ICourse, '_id' | 'slug' | 'title' | 'price' | 'thumbnail' | 'instructorName'>;
+export type CartItem = Pick<
+  ICourse,
+  '_id' | 'slug' | 'title' | 'price' | 'thumbnail' | 'instructorName' | 'level' | 'totalLessons' | 'totalDuration' | 'rating'
+>;
 
 interface CartState {
   cartItems: CartItem[];

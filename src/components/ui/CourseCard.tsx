@@ -228,6 +228,10 @@ export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode
                 price: course.price,
                 thumbnail: course.thumbnail,
                 instructorName: course.instructorName,
+                level: course.level,
+                totalLessons: course.totalLessons,
+                totalDuration: course.totalDuration,
+                rating: course.rating,
               });
             }}
             disabled={isInCart || isAdding}

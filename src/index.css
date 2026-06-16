@@ -129,3 +129,75 @@
   border: 2px solid hsl(var(--background));
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
+
+/* ── Cart & Checkout Redesign ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes subtlePulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.03); }
+}
+@keyframes emptyBounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out both;
+}
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out both;
+}
+
+/* Cart item staggered entrance */
+.cart-item { animation: fadeInUp 0.4s ease-out both; }
+.cart-item:nth-child(1) { animation-delay: 0ms; }
+.cart-item:nth-child(2) { animation-delay: 60ms; }
+.cart-item:nth-child(3) { animation-delay: 120ms; }
+.cart-item:nth-child(4) { animation-delay: 180ms; }
+.cart-item:nth-child(5) { animation-delay: 240ms; }
+
+/* Payment method card */
+.payment-method-card {
+  @apply relative flex items-center gap-4 p-5 border-2 rounded-xl cursor-pointer transition-all duration-200;
+}
+.payment-method-card:hover {
+  @apply shadow-md;
+}
+.payment-method-card.selected {
+  @apply border-zinc-900 bg-zinc-50 shadow-sm;
+}
+.dark .payment-method-card.selected {
+  @apply border-zinc-100 bg-zinc-800/60;
+}
+.payment-method-card .check-indicator {
+  @apply w-5 h-5 rounded-full border-2 border-zinc-300 transition-all duration-200 flex items-center justify-center shrink-0;
+}
+.payment-method-card.selected .check-indicator {
+  @apply border-zinc-900 bg-zinc-900;
+}
+.dark .payment-method-card.selected .check-indicator {
+  @apply border-zinc-100 bg-zinc-100;
+}
+
+/* Empty cart illustration bounce */
+.empty-cart-icon {
+  animation: emptyBounce 3s ease-in-out infinite;
+}
+
+/* Checkout stepper */
+.checkout-step {
+  @apply flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors;
+}
+.checkout-step.active {
+  @apply text-foreground;
+}
+.checkout-step.completed {
+  @apply text-emerald-600 dark:text-emerald-400;
+}

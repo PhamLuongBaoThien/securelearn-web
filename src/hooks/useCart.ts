@@ -25,6 +25,10 @@ export const toCartItem = (course: CartItem): CartItem => ({
   price: course.price,
   thumbnail: course.thumbnail,
   instructorName: course.instructorName,
+  level: course.level,
+  totalLessons: course.totalLessons,
+  totalDuration: course.totalDuration,
+  rating: course.rating,
 });
 
 export function useCartSync(options?: { enabled?: boolean }) {
