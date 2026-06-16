@@ -48,7 +48,7 @@ export function CourseInstructor({ instructorId, instructorName, enrollmentCount
       <h2 className="text-2xl font-bold font-serif mb-6">Giảng viên</h2>
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
         {/* Avatar thật nếu API có profile, fallback về chữ viết tắt */}
-        <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 overflow-hidden">
           {displayedAvatarUrl ? (
             <img
               src={displayedAvatarUrl}
