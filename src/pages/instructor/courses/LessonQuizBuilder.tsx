@@ -46,9 +46,6 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
   const saveQuizMutation = useSaveLessonQuiz();
   const [title, setTitle] = useState(initialQuiz?.title ?? 'Quiz');
   const [passingScore, setPassingScore] = useState(initialQuiz?.passingScore ?? 70);
-  const [shuffleQuestions, setShuffleQuestions] = useState(initialQuiz?.shuffleQuestions ?? false);
-  const [shuffleOptions, setShuffleOptions] = useState(initialQuiz?.shuffleOptions ?? false);
-  const [timeLimitSec, setTimeLimitSec] = useState<number | ''>(initialQuiz?.timeLimitSec ?? '');
   const [questions, setQuestions] = useState<IQuizQuestion[]>(
     initialQuiz && initialQuiz.questions.length > 0 ? initialQuiz.questions : [createEmptyQuestion()]
   );
@@ -67,9 +64,6 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
       const payload: Omit<IQuiz, '_id'> = {
         title,
         passingScore,
-        shuffleQuestions,
-        shuffleOptions,
-        timeLimitSec: timeLimitSec === '' ? null : Number(timeLimitSec),
         questions,
       };
 
@@ -98,21 +92,6 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
           <div>
             <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Điểm đạt (%)</label>
             <Input type="number" value={passingScore} onChange={(event) => setPassingScore(Number(event.target.value) || 0)} placeholder="VD: 70" className="h-10" min={0} max={100} />
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3 p-4 bg-zinc-50 dark:bg-zinc-950/50 rounded-xl border border-zinc-200 dark:border-zinc-800/60">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={shuffleQuestions} onChange={(e) => setShuffleQuestions(e.target.checked)} className="w-4 h-4 rounded border-zinc-300 text-primary focus:ring-primary bg-white dark:bg-zinc-900 dark:border-zinc-700" />
-            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Trộn thứ tự câu hỏi</span>
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" checked={shuffleOptions} onChange={(e) => setShuffleOptions(e.target.checked)} className="w-4 h-4 rounded border-zinc-300 text-primary focus:ring-primary bg-white dark:bg-zinc-900 dark:border-zinc-700" />
-            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Trộn thứ tự đáp án</span>
-          </label>
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 whitespace-nowrap">Thời gian (giây):</span>
-            <Input type="number" value={timeLimitSec} onChange={(e) => setTimeLimitSec(e.target.value ? Number(e.target.value) : '')} placeholder="Không giới hạn" className="h-8 text-sm" min={0} />
           </div>
         </div>
       </div>

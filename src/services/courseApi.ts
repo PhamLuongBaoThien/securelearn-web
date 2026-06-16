@@ -147,10 +147,62 @@ export interface IQuiz {
   _id: string;
   title: string;
   passingScore: number;
-  shuffleQuestions: boolean;
-  shuffleOptions: boolean;
-  timeLimitSec?: number | null;
   questions: IQuizQuestion[];
+}
+
+export type IQuizQuestionForAttempt = Omit<IQuizQuestion, 'correctOptionIndexes'> & {
+  correctOptionIndexes?: never;
+};
+
+export interface IQuizForAttempt extends Omit<IQuiz, 'questions'> {
+  questions: IQuizQuestionForAttempt[];
+}
+
+export type QuizAttemptStatus = 'IN_PROGRESS' | 'SUBMITTED';
+
+export type QuizAttemptAnswerPayload = {
+  questionId: string;
+  selectedIndex?: number;
+  selectedIndexes?: number[];
+};
+
+export interface IQuizAttempt {
+  _id: string;
+  quizId: string;
+  lessonId: string;
+  courseId: string;
+  courseVersionId: string;
+  userId: string;
+  answers: Array<{ questionId: string; selectedIndexes: number[] }>;
+  score: number;
+  passed: boolean;
+  status: QuizAttemptStatus;
+  startedAt: string;
+  completedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface IQuizAttemptQuestionResult {
+  questionId: string;
+  type: IQuizQuestion['type'];
+  prompt: string;
+  options: IQuizQuestionOption[];
+  selectedIndexes: number[];
+  correctOptionIndexes: number[];
+  isCorrect: boolean;
+  points: number;
+  earnedPoints: number;
+  explanation?: string;
+}
+
+export interface IQuizAttemptResult {
+  attemptId: string;
+  score: number;
+  passed: boolean;
+  status: QuizAttemptStatus;
+  completedAt?: string | null;
+  results: IQuizAttemptQuestionResult[];
 }
 
 export interface IEnrollment {
@@ -501,6 +553,32 @@ export const updateLessonQuiz = async (courseId: string, lessonId: string, paylo
 
 export const getLessonQuiz = async (courseId: string, lessonId: string) => {
   const { data } = await apiClient.get<ApiResponse<IQuiz | null>>(`/api/courses/${courseId}/lessons/${lessonId}/quiz`);
+  return data;
+};
+
+export const getQuizForAttempt = async (courseId: string, lessonId: string) => {
+  const { data } = await apiClient.get<ApiResponse<IQuizForAttempt>>(`/api/courses/${courseId}/lessons/${lessonId}/quiz/play`);
+  return data;
+};
+
+export const startQuizAttempt = async (courseId: string, lessonId: string, quizId: string) => {
+  const { data } = await apiClient.post<ApiResponse<IQuizAttempt>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/quiz/${quizId}/attempts`,
+  );
+  return data;
+};
+
+export const submitQuizAttempt = async (
+  courseId: string,
+  lessonId: string,
+  quizId: string,
+  attemptId: string,
+  answers: QuizAttemptAnswerPayload[],
+) => {
+  const { data } = await apiClient.post<ApiResponse<IQuizAttemptResult>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/quiz/${quizId}/attempts/${attemptId}/submit`,
+    { answers },
+  );
   return data;
 };
 

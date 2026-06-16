@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronLeft, ChevronRight, HelpCircle, Loader2, Menu, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Menu, X } from 'lucide-react';
 import { useAppSelector } from '@/app/hooks';
 import { useCourseLearning } from '@/hooks/useCourseLearning';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import logoWeb from '@/assets/logoweb.png';
 import { CurriculumSidebar } from './CurriculumSidebar';
 import { VideoPlayer } from './VideoPlayer';
 import { InteractiveTabs } from './InteractiveTabs';
+import { QuizPlayer } from './QuizPlayer';
 
 export function LearningInterface() {
   const navigate = useNavigate();
@@ -127,13 +128,7 @@ export function LearningInterface() {
               pauseSignal={pauseSignal}
             />
           ) : activeLesson ? (
-            <div className="flex aspect-video items-center justify-center bg-zinc-950 text-white">
-              <div className="text-center">
-                <HelpCircle className="mx-auto h-9 w-9 text-primary" />
-                <p className="mt-3 font-semibold">{activeLesson.title}</p>
-                <p className="mt-1 text-sm text-zinc-400">Mở phần bài kiểm tra để bắt đầu làm bài.</p>
-              </div>
-            </div>
+            <QuizPlayer key={`quiz-${activeLesson._id}`} courseId={courseId} lesson={activeLesson} />
           ) : (
             <div className="flex aspect-video items-center justify-center bg-zinc-950 text-sm text-zinc-400">
               Khóa học chưa có nội dung.
