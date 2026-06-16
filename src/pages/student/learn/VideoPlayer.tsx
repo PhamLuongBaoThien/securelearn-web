@@ -19,6 +19,7 @@ interface VideoPlayerProps {
   accessSource?: 'PURCHASE' | 'SUBSCRIPTION';
   watermarkText?: string;
   onTimeChange?: (seconds: number) => void;
+  pauseSignal?: number;
 }
 
 export function VideoPlayer({
@@ -27,9 +28,10 @@ export function VideoPlayer({
   accessSource,
   watermarkText,
   onTimeChange,
+  pauseSignal = 0,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const sessionId = useMemo(() => crypto.randomUUID(), [lesson._id]);
+  const sessionId = useMemo(() => crypto.randomUUID(), []);
   const lastPositionRef = useRef(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
@@ -64,6 +66,11 @@ export function VideoPlayer({
       video.src = manifestUrl;
     }
   }, [videoAssetQuery.data?.manifestPath, lesson._id]);
+
+  useEffect(() => {
+    if (!pauseSignal) return;
+    videoRef.current?.pause();
+  }, [pauseSignal]);
 
   useEffect(() => {
     const video = videoRef.current;

@@ -1193,9 +1193,6 @@ export const CourseEditor: React.FC = () => {
                   <span>Tự động lưu</span>
                 </div>
               )}
-              <Button variant="outline" onClick={() => void handleAddSection()} className="gap-2 rounded-xl text-sm" disabled={isMutatingCurriculum || effectiveReadOnly}>
-                <Plus className="w-4 h-4" /> Thêm chương
-              </Button>
             </div>
           </div>
 
@@ -1299,6 +1296,16 @@ export const CourseEditor: React.FC = () => {
               ))}
             </div>
           )}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void handleAddSection()}
+            className="gap-2 text-xs text-muted-foreground"
+            disabled={isMutatingCurriculum || effectiveReadOnly}
+          >
+            <Plus className="w-3.5 h-3.5" /> Thêm chương
+          </Button>
         </div>
       )}
 

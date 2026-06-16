@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ChevronLeft, ChevronRight, GraduationCap, HelpCircle, Loader2, Menu, X } from 'lucide-react';
@@ -14,21 +14,17 @@ export function LearningInterface() {
   const { courseId = '' } = useParams();
   const user = useAppSelector((state) => state.auth.user);
   const courseQuery = useCourseLearning(courseId);
-  const [activeLessonId, setActiveLessonId] = useState('');
+  const [selectedLessonId, setSelectedLessonId] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [playbackTime, setPlaybackTime] = useState(0);
+  const [pauseSignal, setPauseSignal] = useState(0);
 
   const lessons = useMemo(
     () => (courseQuery.data?.sections || []).flatMap((section) => section.lessons),
     [courseQuery.data?.sections],
   );
 
-  useEffect(() => {
-    if (!activeLessonId && lessons.length > 0) {
-      setActiveLessonId(lessons[0]._id || '');
-    }
-  }, [activeLessonId, lessons]);
-
+  const activeLessonId = selectedLessonId || lessons[0]?._id || '';
   const activeIndex = lessons.findIndex((lesson) => lesson._id === activeLessonId);
   const activeLesson = activeIndex >= 0 ? lessons[activeIndex] : lessons[0];
   const currentSection = courseQuery.data?.sections.find((section) =>
@@ -37,11 +33,10 @@ export function LearningInterface() {
   const previousLesson = activeIndex > 0 ? lessons[activeIndex - 1] : null;
   const nextLesson = activeIndex >= 0 && activeIndex < lessons.length - 1 ? lessons[activeIndex + 1] : null;
 
-  const selectLesson = (lesson: ILesson) => setActiveLessonId(lesson._id || '');
-
-  useEffect(() => {
+  const selectLesson = (lesson: ILesson) => {
+    setSelectedLessonId(lesson._id || '');
     setPlaybackTime(0);
-  }, [activeLessonId]);
+  };
 
   if (courseQuery.isLoading) {
     return (
@@ -117,6 +112,7 @@ export function LearningInterface() {
               accessSource={course.accessSource}
               watermarkText={user ? `${user.fullName} · ${user.email}` : undefined}
               onTimeChange={setPlaybackTime}
+              pauseSignal={pauseSignal}
             />
           ) : activeLesson ? (
             <div className="flex aspect-video items-center justify-center bg-zinc-950 text-white">
@@ -138,6 +134,7 @@ export function LearningInterface() {
               course={course}
               lesson={activeLesson}
               playbackTime={playbackTime}
+              onRequestPauseVideo={() => setPauseSignal((current) => current + 1)}
             />
           )}
         </main>

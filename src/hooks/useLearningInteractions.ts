@@ -6,15 +6,17 @@
 // ========================
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  createLearningNote,
   createLessonDiscussion,
-  getLearningNote,
+  deleteLearningNote,
+  getLearningNotes,
   getLessonDiscussions,
-  saveLearningNote,
+  updateLearningNote,
 } from '@/services/courseApi';
 import { getDocumentAsset } from '@/services/mediaApi';
 
 export const learningInteractionKeys = {
-  note: (courseId: string, lessonId: string) => ['learning', 'note', courseId, lessonId] as const,
+  notes: (courseId: string, lessonId: string) => ['learning', 'notes', courseId, lessonId] as const,
   discussions: (courseId: string, lessonId: string) =>
     ['learning', 'discussions', courseId, lessonId] as const,
 };
@@ -35,23 +37,50 @@ export function useLearningResources(attachmentIds: string[]) {
   });
 }
 
-export function useLearningNote(courseId: string, lessonId: string) {
+export function useLearningNotes(courseId: string, lessonId: string) {
   return useQuery({
-    queryKey: learningInteractionKeys.note(courseId, lessonId),
-    queryFn: async () => (await getLearningNote(courseId, lessonId)).data || null,
+    queryKey: learningInteractionKeys.notes(courseId, lessonId),
+    queryFn: async () => (await getLearningNotes(courseId, lessonId)).data || [],
     enabled: Boolean(courseId && lessonId),
   });
 }
 
-export function useSaveLearningNote(courseId: string, lessonId: string) {
+export function useCreateLearningNote(courseId: string, lessonId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: { content: string; timestampSec: number }) =>
-      saveLearningNote(courseId, lessonId, payload),
+      createLearningNote(courseId, lessonId, payload),
     onSuccess: (response) => {
       queryClient.setQueryData(
-        learningInteractionKeys.note(courseId, lessonId),
-        response.data || null,
+        learningInteractionKeys.notes(courseId, lessonId),
+        response.data || [],
+      );
+    },
+  });
+}
+
+export function useUpdateLearningNote(courseId: string, lessonId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ noteId, content, timestampSec }: { noteId: string; content: string; timestampSec: number }) =>
+      updateLearningNote(courseId, lessonId, noteId, { content, timestampSec }),
+    onSuccess: (response) => {
+      queryClient.setQueryData(
+        learningInteractionKeys.notes(courseId, lessonId),
+        response.data || [],
+      );
+    },
+  });
+}
+
+export function useDeleteLearningNote(courseId: string, lessonId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (noteId: string) => deleteLearningNote(courseId, lessonId, noteId),
+    onSuccess: (response) => {
+      queryClient.setQueryData(
+        learningInteractionKeys.notes(courseId, lessonId),
+        response.data || [],
       );
     },
   });

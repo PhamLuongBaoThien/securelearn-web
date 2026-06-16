@@ -4,17 +4,19 @@
 // - hiển thị tổng quan, tài liệu, ghi chú và thảo luận dưới bài học
 // - dùng dữ liệu thật theo course/lesson và quyền học hiện tại
 // ========================
-import { useEffect, useState } from 'react';
-import { BookOpen, Download, FileText, Loader2, MessageSquare, NotebookPen, Send } from 'lucide-react';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useState } from 'react';
+import { BookOpen, Clock3, Download, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Send, Trash2 } from 'lucide-react';
 import {
+  useCreateLearningNote,
+  useDeleteLearningNote,
   useCreateLessonDiscussion,
-  useLearningNote,
+  useLearningNotes,
   useLearningResources,
   useLessonDiscussions,
-  useSaveLearningNote,
+  useUpdateLearningNote,
 } from '@/hooks/useLearningInteractions';
-import type { ICourse, ILesson } from '@/services/courseApi';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
+import type { ICourse, ILearningNote, ILesson } from '@/services/courseApi';
 
 type TabId = 'overview' | 'resources' | 'notes' | 'discussions';
 
@@ -40,10 +42,12 @@ export function InteractiveTabs({
   course,
   lesson,
   playbackTime,
+  onRequestPauseVideo,
 }: {
   course: ICourse;
   lesson: ILesson;
   playbackTime: number;
+  onRequestPauseVideo: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
@@ -71,10 +75,15 @@ export function InteractiveTabs({
       </div>
 
       <div className="min-h-64 p-5 md:p-6">
-        {activeTab === 'overview' && <OverviewPanel course={course} lesson={lesson} />}
+        {activeTab === 'overview' && <OverviewPanel lesson={lesson} />}
         {activeTab === 'resources' && <ResourcesPanel attachmentIds={lesson.attachments || []} />}
         {activeTab === 'notes' && (
-          <NotesPanel courseId={course._id || ''} lessonId={lesson._id || ''} playbackTime={playbackTime} />
+          <NotesPanel
+            courseId={course._id || ''}
+            lessonId={lesson._id || ''}
+            playbackTime={playbackTime}
+            onRequestPauseVideo={onRequestPauseVideo}
+          />
         )}
         {activeTab === 'discussions' && (
           <DiscussionsPanel courseId={course._id || ''} lessonId={lesson._id || ''} playbackTime={playbackTime} />
@@ -84,9 +93,9 @@ export function InteractiveTabs({
   );
 }
 
-function OverviewPanel({ course, lesson }: { course: ICourse; lesson: ILesson }) {
+function OverviewPanel({ lesson }: { lesson: ILesson }) {
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-4xl">
       <div>
         <p className="text-xs font-semibold uppercase text-zinc-400">Bài học hiện tại</p>
         <h2 className="mt-1 text-xl font-bold">{lesson.title}</h2>
@@ -96,19 +105,6 @@ function OverviewPanel({ course, lesson }: { course: ICourse; lesson: ILesson })
           <p className="mt-2 text-sm text-zinc-500">Bài học chưa có mô tả.</p>
         )}
       </div>
-      {(course.whatYouWillLearn?.length || 0) > 0 && (
-        <div>
-          <h3 className="text-sm font-bold">Bạn sẽ học được</h3>
-          <ul className="mt-3 grid gap-2 md:grid-cols-2">
-            {(course.whatYouWillLearn || []).map((item) => (
-              <li key={item} className="flex gap-2 text-sm text-zinc-600 dark:text-zinc-300">
-                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }
@@ -147,38 +143,197 @@ function ResourcesPanel({ attachmentIds }: { attachmentIds: string[] }) {
   );
 }
 
-function NotesPanel({ courseId, lessonId, playbackTime }: { courseId: string; lessonId: string; playbackTime: number }) {
-  const noteQuery = useLearningNote(courseId, lessonId);
-  const saveNote = useSaveLearningNote(courseId, lessonId);
-  const [content, setContent] = useState('');
-  const [edited, setEdited] = useState(false);
-  const debouncedContent = useDebounce(content, 1000);
+type NoteComposerState =
+  | { mode: 'create'; content: string; timestampSec: number }
+  | { mode: 'edit'; noteId: string; content: string; timestampSec: number };
 
-  useEffect(() => {
-    setContent(noteQuery.data?.content || '');
-    setEdited(false);
-  }, [lessonId, noteQuery.data?.content]);
+const EMPTY_NOTE_HTML = '<p></p>';
 
-  useEffect(() => {
-    if (!edited || saveNote.isPending) return;
-    saveNote.mutate({ content: debouncedContent, timestampSec: playbackTime });
-    setEdited(false);
-  }, [debouncedContent, edited, playbackTime, saveNote]);
+const stripRichText = (html: string) =>
+  html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+function NotesPanel({
+  courseId,
+  lessonId,
+  playbackTime,
+  onRequestPauseVideo,
+}: {
+  courseId: string;
+  lessonId: string;
+  playbackTime: number;
+  onRequestPauseVideo: () => void;
+}) {
+  const notesQuery = useLearningNotes(courseId, lessonId);
+  const createNote = useCreateLearningNote(courseId, lessonId);
+  const updateNote = useUpdateLearningNote(courseId, lessonId);
+  const deleteNote = useDeleteLearningNote(courseId, lessonId);
+  const [composer, setComposer] = useState<NoteComposerState | null>(null);
+  const currentTimestamp = Math.max(0, Math.floor(playbackTime || 0));
+  const isMutating = createNote.isPending || updateNote.isPending || deleteNote.isPending;
+
+  const openCreateComposer = () => {
+    onRequestPauseVideo();
+    setComposer({ mode: 'create', content: EMPTY_NOTE_HTML, timestampSec: currentTimestamp });
+  };
+
+  const openEditComposer = (note: ILearningNote) => {
+    onRequestPauseVideo();
+    setComposer({
+      mode: 'edit',
+      noteId: note._id,
+      content: note.content || EMPTY_NOTE_HTML,
+      timestampSec: note.timestampSec,
+    });
+  };
+
+  const handleSubmit = () => {
+    if (!composer) return;
+    if (!stripRichText(composer.content)) return;
+
+    if (composer.mode === 'create') {
+      createNote.mutate(
+        { content: composer.content, timestampSec: composer.timestampSec },
+        { onSuccess: () => setComposer(null) },
+      );
+      return;
+    }
+
+    updateNote.mutate(
+      {
+        noteId: composer.noteId,
+        content: composer.content,
+        timestampSec: composer.timestampSec,
+      },
+      { onSuccess: () => setComposer(null) },
+    );
+  };
+
+  const notes = notesQuery.data || [];
+  const actionLabel =
+    composer?.mode === 'edit' ? 'Lưu chỉnh sửa' : 'Tạo ghi chú';
 
   return (
-    <div className="max-w-3xl">
-      <div className="mb-3 flex justify-between gap-3 text-xs text-zinc-500">
-        <span>Mốc video: <strong className="font-mono text-primary">{formatTime(playbackTime)}</strong></span>
-        <span>{saveNote.isPending ? 'Đang lưu...' : saveNote.isSuccess ? 'Đã lưu' : 'Tự động lưu'}</span>
+    <div className="max-w-4xl space-y-5">
+      <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Ghi chú bài học</p>
+            <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Lưu lại ý quan trọng theo từng mốc video</h3>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Khi tạo ghi chú mới, video sẽ tạm dừng để bạn tập trung soạn nội dung.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={openCreateComposer}
+            disabled={Boolean(composer)}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+          >
+            <Plus className="h-4 w-4" />
+            {`Thêm ghi chú tại ${formatTime(currentTimestamp)}`}
+          </button>
+        </div>
       </div>
-      <textarea
-        value={content}
-        onChange={(event) => { setContent(event.target.value); setEdited(true); }}
-        rows={8}
-        maxLength={10_000}
-        placeholder="Viết ghi chú cá nhân cho bài học này..."
-        className="w-full resize-y border border-zinc-300 bg-white p-4 text-sm outline-none focus:border-primary dark:border-zinc-700 dark:bg-zinc-900"
-      />
+
+      {composer && (
+        <div className="rounded-3xl border border-primary/20 bg-white p-5 shadow-sm ring-1 ring-primary/10 dark:border-primary/25 dark:bg-zinc-950">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-white">
+              <NotebookPen className="h-4 w-4 text-primary" />
+              {composer.mode === 'edit' ? 'Chỉnh sửa ghi chú' : 'Ghi chú mới'}
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <Clock3 className="h-3.5 w-3.5" />
+              {formatTime(composer.timestampSec)}
+            </div>
+          </div>
+
+          <RichTextEditor
+            value={composer.content}
+            onChange={(value) => setComposer((current) => (current ? { ...current, content: value } : current))}
+            placeholder="Viết ghi chú của bạn tại mốc thời gian này..."
+            minHeight="220px"
+            disabled={isMutating}
+          />
+
+          <div className="mt-4 flex flex-wrap justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setComposer(null)}
+              disabled={isMutating}
+              className="inline-flex h-10 items-center justify-center rounded-2xl border border-zinc-300 px-4 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isMutating || !stripRichText(composer.content)}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {(createNote.isPending || updateNote.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
+              {actionLabel}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {notesQuery.isLoading ? (
+        <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700">
+          <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+        </div>
+      ) : notes.length ? (
+        <div className="space-y-4">
+          {notes.map((note) => (
+            <article
+              key={note._id}
+              className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-white">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-primary">
+                    <Clock3 className="h-3.5 w-3.5" />
+                    {formatTime(note.timestampSec)}
+                  </span>
+                  <span className="text-xs font-normal text-zinc-400">
+                    {note.updatedAt ? `Cập nhật ${new Date(note.updatedAt).toLocaleString('vi-VN')}` : ''}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditComposer(note)}
+                    disabled={Boolean(composer) || isMutating}
+                    className="inline-flex h-9 items-center gap-2 rounded-xl border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Chỉnh sửa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteNote.mutate(note._id)}
+                    disabled={Boolean(composer) || isMutating}
+                    className="inline-flex h-9 items-center gap-2 rounded-xl border border-red-200 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30"
+                  >
+                    {deleteNote.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    Xóa
+                  </button>
+                </div>
+              </div>
+              <div
+                className="prose prose-sm mt-4 max-w-none text-zinc-700 dark:prose-invert dark:text-zinc-300"
+                dangerouslySetInnerHTML={{ __html: note.content }}
+              />
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyState icon={NotebookPen} message="Chưa có ghi chú nào cho bài học này." />
+      )}
     </div>
   );
 }

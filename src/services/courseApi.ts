@@ -106,9 +106,10 @@ export interface ILesson {
 }
 
 export interface ILearningNote {
-  _id?: string;
+  _id: string;
   content: string;
   timestampSec: number;
+  createdAt?: string;
   updatedAt?: string;
 }
 
@@ -405,21 +406,45 @@ export const getCourseForLearning = async (courseId: string) => {
   return data;
 };
 
-export const getLearningNote = async (courseId: string, lessonId: string) => {
-  const { data } = await apiClient.get<ApiResponse<ILearningNote | null>>(
-    `/api/courses/${courseId}/lessons/${lessonId}/note`,
+export const getLearningNotes = async (courseId: string, lessonId: string) => {
+  const { data } = await apiClient.get<ApiResponse<ILearningNote[]>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/notes`,
   );
   return data;
 };
 
-export const saveLearningNote = async (
+export const createLearningNote = async (
   courseId: string,
   lessonId: string,
   payload: { content: string; timestampSec: number },
 ) => {
-  const { data } = await apiClient.put<ApiResponse<ILearningNote>>(
-    `/api/courses/${courseId}/lessons/${lessonId}/note`,
+  const { data } = await apiClient.post<ApiResponse<ILearningNote[]>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/notes`,
     payload,
+  );
+  return data;
+};
+
+export const updateLearningNote = async (
+  courseId: string,
+  lessonId: string,
+  noteId: string,
+  payload: { content: string; timestampSec: number },
+) => {
+  const { data } = await apiClient.put<ApiResponse<ILearningNote[]>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/notes/${noteId}`,
+    payload,
+  );
+  return data;
+};
+
+export const deleteLearningNote = async (
+  courseId: string,
+  lessonId: string,
+  noteId: string,
+) => {
+  const { data } = await apiClient.delete<ApiResponse<ILearningNote[]>>(
+    `/api/courses/${courseId}/lessons/${lessonId}/notes/${noteId}`,
   );
   return data;
 };

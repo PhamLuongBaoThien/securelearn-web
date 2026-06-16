@@ -1,6 +1,8 @@
 // User Profile Public Panel: Hiển thị thông tin hồ sơ công khai của người dùng.
 import React from 'react';
+import { Loader2 } from 'lucide-react';
 import { AnimatedTabContent } from '@/components/animations/TabTransition';
+import { useMySubscription } from '@/hooks/useMySubscription';
 import type { ProfileUser } from './profile.types';
 import { formatProfileDate, publicInfoIcons } from './profile.utils';
 
@@ -10,6 +12,9 @@ interface ProfilePublicPanelProps {
 
 export const ProfilePublicPanel: React.FC<ProfilePublicPanelProps> = ({ user }) => {
   const { briefcase: Briefcase, calendar: Calendar, fileText: FileText, mail: Mail, phone: Phone } = publicInfoIcons;
+  const subscriptionQuery = useMySubscription();
+  const currentSubscription = subscriptionQuery.data?.current ?? null;
+  const nextSubscription = subscriptionQuery.data?.scheduled?.[0] ?? null;
 
   return (
     <AnimatedTabContent activeKey="public" className="space-y-6">
@@ -52,15 +57,38 @@ export const ProfilePublicPanel: React.FC<ProfilePublicPanelProps> = ({ user }) 
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-1">Gói đăng ký</p>
-              <div
-                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                  user.subscriptionStatus === 'ACTIVE'
-                    ? 'bg-green-500/10 text-green-600 border-green-500/20'
-                    : 'bg-muted text-muted-foreground border-border'
-                }`}
-              >
-                {user.subscriptionStatus === 'ACTIVE' ? 'Đang hoạt động' : 'Chưa kích hoạt'}
-              </div>
+              {subscriptionQuery.isLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 size={16} className="animate-spin" />
+                  Đang tải thông tin gói học...
+                </div>
+              ) : currentSubscription ? (
+                <div className="space-y-2">
+                  <div className="inline-flex items-center rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-0.5 text-xs font-semibold text-green-600">
+                    Đang sử dụng
+                  </div>
+                  <div className="text-sm text-foreground">
+                    <p className="font-medium">{currentSubscription.planName}</p>
+                    <p className="text-muted-foreground">
+                      Có hiệu lực đến ngày {formatProfileDate(currentSubscription.endsAt)}
+                    </p>
+                    {nextSubscription && (
+                      <p className="text-muted-foreground">
+                        Gói kế tiếp: {nextSubscription.planName}, bắt đầu từ ngày {formatProfileDate(nextSubscription.startsAt)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                    Chưa có gói hoạt động
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Bạn chưa đăng ký gói học nào hoặc gói cũ đã hết hạn.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
