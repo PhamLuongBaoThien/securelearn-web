@@ -34,6 +34,10 @@ export interface ICourse {
   requirements?: string[];        // Điều kiện tiên quyết (danh sách)
   instructorId: string;
   instructorName: string;
+  instructorProfile?: {
+    avatarUrl?: string;
+    bio?: string;
+  };
   categoryId?: string | null;
   category?: ICourseCategory | null;
   categoryResolutionStatus?: 'NONE' | 'NEEDS_ADMIN_CLASSIFICATION';
@@ -64,6 +68,8 @@ export interface ICourse {
   } | null;
   totalDuration: number;    // Tổng thời lượng (giây)
   totalLessons: number;     // Tổng số bài học
+  totalQuizzes?: number;    // Tổng số bài kiểm tra
+  totalDocuments?: number;  // Tổng số tài liệu đính kèm
   enrollmentCount: number;  // Số lượt ghi danh
   sections: ISection[];
   createdAt: string;

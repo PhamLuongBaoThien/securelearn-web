@@ -82,13 +82,12 @@ function LessonRow({ lesson }: LessonRowProps) {
 
 interface SectionAccordionProps {
   section: ISection;    // Dữ liệu một chương học (section)
-  index: number;        // Vị trí thứ tự của section (0-based), dùng để hiển thị "Phần X"
   defaultOpen: boolean; // Trạng thái mở/đóng ban đầu
 }
 
 // Accordion của một chương học. Click vào header để mở/đóng danh sách bài giảng.
 // Hiển thị tiêu đề section, số bài giảng và tổng thời lượng.
-function SectionAccordion({ section, index, defaultOpen }: SectionAccordionProps) {
+function SectionAccordion({ section, defaultOpen }: SectionAccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const sectionDuration = formatSectionDuration(section.lessons);
 
@@ -107,7 +106,7 @@ function SectionAccordion({ section, index, defaultOpen }: SectionAccordionProps
             }`}
           />
           <span className="font-semibold text-sm truncate">
-            Phần {index + 1}: {section.title}
+            {section.title}
           </span>
         </span>
 
@@ -171,7 +170,6 @@ export function CourseCurriculum({ sections, totalDuration, totalLessons }: Prop
           <SectionAccordion
             key={section._id ?? idx}
             section={section}
-            index={idx}
             defaultOpen={idx === 0} // Mặc định chỉ mở section đầu tiên
           />
         ))}

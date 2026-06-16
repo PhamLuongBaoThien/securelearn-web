@@ -21,6 +21,7 @@ import { CourseCurriculum } from './CourseCurriculum';
 import { CourseWhatYouLearn } from './CourseWhatYouLearn';
 import { CourseRequirements } from './CourseRequirements';
 import { CourseInstructor } from './CourseInstructor';
+import { CourseIncludes } from './CourseIncludes';
 
 // Skeleton cho phần hero banner — hiển thị trong lúc API đang tải
 function HeroBannerSkeleton() {
@@ -145,6 +146,15 @@ export function CourseDetail() {
             </StaggerItem>
           )}
 
+          <StaggerItem>
+            <CourseIncludes
+              totalDuration={course.totalDuration}
+              totalLessons={course.totalLessons}
+              totalQuizzes={course.totalQuizzes}
+              totalDocuments={course.totalDocuments}
+            />
+          </StaggerItem>
+
           {/* Nội dung chương trình học — chỉ hiện khi có section */}
           {course.sections && course.sections.length > 0 && (
             <StaggerItem>
@@ -169,8 +179,11 @@ export function CourseDetail() {
           {/* Thông tin giảng viên — luôn hiện */}
           <StaggerItem>
             <CourseInstructor
+              instructorId={course.instructorId}
               instructorName={course.instructorName}
               enrollmentCount={course.enrollmentCount}
+              avatarUrl={course.instructorProfile?.avatarUrl}
+              bio={course.instructorProfile?.bio}
             />
           </StaggerItem>
 

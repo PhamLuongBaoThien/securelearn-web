@@ -5,7 +5,7 @@
 //   - Kiểm tra enrollment: nếu đã mua → nút "Vào học ngay", chưa mua → nút mua hàng
 //   - Kiểm tra giỏ hàng: nếu đã thêm → nút "Xem giỏ hàng", chưa thêm → "Thêm vào giỏ"
 //   - Dispatch action addToCart vào Redux store khi người dùng mua
-// Được ghép với CourseIncludes để hiển thị thông tin "Khóa học bao gồm".
+// Phần "Khóa học bao gồm" nằm ở main content để học viên đọc trước curriculum.
 
 import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,7 +17,7 @@ import { useCartActions } from '@/hooks/useCart';
 import { enrollWithSubscription, type ICourse } from '@/services/courseApi';
 import { enrolledKeys } from '@/hooks/useEnrolledCourses';
 import { useMySubscription } from '@/hooks/useMySubscription';
-import { CourseIncludes } from './CourseIncludes';
+import { CheckCircle2, CreditCard } from 'lucide-react';
 
 interface Props {
   course: ICourse;     // Dữ liệu khóa học cần hiển thị
@@ -100,7 +100,7 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
 
       {/* Container sticky — bám theo viewport khi cuộn */}
       <div className="lg:sticky lg:top-[88px]">
-        <div className="bg-card w-full shadow-2xl border border-border">
+        <div className="bg-card w-full shadow-xl border border-border rounded-lg overflow-hidden">
 
           {/* Thumbnail — ẩn dần (max-h về 0) khi sidebar đang sticky trên desktop */}
           <div
@@ -124,15 +124,16 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
             )}
           </div>
 
-          <div className="p-6">
+          <div className="p-5 lg:p-6">
             {isEnrolled ? (
               // Trường hợp đã ghi danh: hiện thông báo và nút vào học
-              <div className="mb-6">
-                <div className="mb-3 text-sm text-emerald-600 font-semibold">
-                  ✓ Bạn đã sở hữu khóa học này
+              <div>
+                <div className="mb-4 flex items-start gap-3 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+                  <span className="font-semibold">Bạn đã sở hữu khóa học này</span>
                 </div>
                 <Button
-                  className="w-full py-6 font-bold text-lg rounded-none"
+                  className="w-full py-6 font-bold text-base rounded-lg"
                   onClick={() => navigate('/student/dashboard')}
                 >
                   Vào học ngay
@@ -140,54 +141,37 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
               </div>
             ) : (
               // Trường hợp chưa mua: hiện giá và nút mua hàng
-              <div className="mb-6">
+              <div>
                 {/* Hiển thị giá */}
                 <div className="mb-4">
-                  <div className="flex flex-wrap items-baseline gap-2 mb-1">
-                    <span className="text-3xl font-extrabold">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Mua riêng khóa học
+                  </p>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-3xl font-extrabold tracking-tight">
                       {course.price === 0
                         ? 'Miễn phí'
                         : `${course.price.toLocaleString('vi-VN')} ₫`}
                     </span>
                   </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Sở hữu khóa học này với quyền truy cập trọn đời.
+                  </p>
                 </div>
 
                 {/* Nút hành động: thêm giỏ hoặc xem giỏ nếu đã thêm */}
                 <div className="space-y-3">
-                  {isSubscriptionCourse && (
-                    <Button
-                      variant={hasActiveSubscription ? 'default' : 'outline'}
-                      className="w-full py-6 font-bold text-lg rounded-none"
-                      onClick={() => {
-                        if (!user) {
-                          navigate('/auth/login', { state: { from: `/course/${course.slug}` } });
-                          return;
-                        }
-                        if (!hasActiveSubscription) {
-                          navigate('/pricing');
-                          return;
-                        }
-                        subscriptionEnrollMutation.mutate();
-                      }}
-                      disabled={subscriptionEnrollMutation.isPending}
-                    >
-                      {hasActiveSubscription
-                        ? (subscriptionEnrollMutation.isPending ? 'Đang mở quyền học...' : 'Dùng gói để vào học')
-                        : 'Mua gói để học khóa này'}
-                    </Button>
-                  )}
                   {isInCart ? (
                     <Button
                       variant="outline"
-                      className="w-full py-6 font-bold border-foreground rounded-none"
+                      className="w-full py-6 font-bold rounded-lg"
                       onClick={() => navigate('/cart')}
                     >
                       Xem giỏ hàng
                     </Button>
                   ) : (
                     <Button
-                      variant="udemy_dark"
-                      className="w-full py-6 font-bold text-lg rounded-none"
+                      className="w-full py-6 font-bold text-base rounded-lg"
                       onClick={handleAddToCart}
                       disabled={isAdding}
                     >
@@ -196,26 +180,60 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
                   )}
                   <Button
                     variant="outline"
-                    className="w-full py-6 font-bold border-foreground rounded-none"
+                    className="w-full py-6 font-bold rounded-lg"
                     onClick={handleBuyNow}
                   >
+                    <CreditCard className="mr-2 h-4 w-4" />
                     Mua ngay
                   </Button>
+
+                  {isSubscriptionCourse && (
+                    <>
+                      <div className="flex items-center gap-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span className="h-px flex-1 bg-border" />
+                        <span>hoặc</span>
+                        <span className="h-px flex-1 bg-border" />
+                      </div>
+
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                        <div className="mb-3">
+                          <p className="font-bold">Học bằng gói thuê bao</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Mở khóa khóa học này cùng catalog thuê bao nếu gói của bạn còn hiệu lực.
+                          </p>
+                        </div>
+                        <Button
+                          variant={hasActiveSubscription ? 'default' : 'outline'}
+                          className="w-full py-6 font-bold rounded-lg"
+                          onClick={() => {
+                            if (!user) {
+                              navigate('/auth/login', { state: { from: `/course/${course.slug}` } });
+                              return;
+                            }
+                            if (!hasActiveSubscription) {
+                              navigate('/pricing');
+                              return;
+                            }
+                            subscriptionEnrollMutation.mutate();
+                          }}
+                          disabled={subscriptionEnrollMutation.isPending}
+                        >
+                          {hasActiveSubscription
+                            ? (subscriptionEnrollMutation.isPending ? 'Đang mở quyền học...' : 'Dùng gói để vào học')
+                            : 'Xem các gói học'}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Danh sách những gì khóa học bao gồm */}
-            <CourseIncludes
-              totalDuration={course.totalDuration}
-              totalLessons={course.totalLessons}
-            />
-
             {/* Liên kết phụ: chia sẻ, tặng, coupon */}
-            <div className="flex justify-between mt-6 pt-6 border-t font-semibold text-sm underline underline-offset-4 cursor-pointer">
-              <span className="hover:text-primary">Chia sẻ</span>
-              <span className="hover:text-primary">Tặng bạn bè</span>
-              <span className="hover:text-primary">Dùng Coupon</span>
+            <div className="flex flex-wrap justify-between gap-3 mt-6 pt-5 border-t text-sm font-semibold text-muted-foreground">
+              <span className="hover:text-primary cursor-pointer">Chia sẻ</span>
+              <span className="hover:text-primary cursor-pointer">Tặng bạn bè</span>
+              <span className="hover:text-primary cursor-pointer">Dùng Coupon</span>
             </div>
           </div>
         </div>

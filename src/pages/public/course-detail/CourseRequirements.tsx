@@ -13,15 +13,20 @@ interface Props {
 }
 
 export function CourseRequirements({ requirements, description }: Props) {
+  const hasRequirements = requirements.length > 0;
+  const hasDescription = !!description;
+
+  if (!hasRequirements && !hasDescription) return null;
+
   return (
-    <div className="space-y-10">
+    <div className="rounded-lg border border-border bg-card divide-y divide-border shadow-sm">
       {/* Yêu cầu đầu vào — chỉ hiện khi có ít nhất 1 item */}
-      {requirements.length > 0 && (
-        <div>
-          <h2 className="text-2xl font-bold font-serif mb-4">Yêu cầu khóa học</h2>
-          <ul className="list-disc pl-5 space-y-2">
+      {hasRequirements && (
+        <div className="p-6 lg:p-7">
+          <h2 className="text-xl font-bold font-serif mb-4 text-foreground">Yêu cầu khóa học</h2>
+          <ul className="list-disc pl-5 space-y-2 text-muted-foreground text-sm md:text-base">
             {requirements.map((req, i) => (
-              <li key={i} className="text-sm md:text-base leading-relaxed">
+              <li key={i} className="leading-relaxed">
                 {req}
               </li>
             ))}
@@ -30,11 +35,11 @@ export function CourseRequirements({ requirements, description }: Props) {
       )}
 
       {/* Mô tả chi tiết dạng HTML — chỉ hiện khi có */}
-      {description && (
-        <div>
-          <h2 className="text-2xl font-bold font-serif mb-4">Mô tả chi tiết</h2>
+      {hasDescription && (
+        <div className="p-6 lg:p-7">
+          <h2 className="text-xl font-bold font-serif mb-4 text-foreground">Mô tả chi tiết</h2>
           <div
-            className="prose dark:prose-invert max-w-none text-sm md:text-base"
+            className="prose dark:prose-invert max-w-none text-sm md:text-base text-muted-foreground"
             dangerouslySetInnerHTML={{ __html: description }}
           />
         </div>

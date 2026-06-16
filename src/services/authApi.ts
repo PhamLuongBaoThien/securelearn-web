@@ -59,6 +59,23 @@ export const getMe = async () => {
   return data;
 };
 
+export interface PublicInstructorProfile {
+  _id: string;
+  fullName: string;
+  profile?: {
+    avatarUrl?: string;
+    bio?: string;
+    headline?: string;
+  };
+}
+
+export const getPublicInstructorProfile = async (instructorId: string) => {
+  const { data } = await apiClient.get<ApiResponse<PublicInstructorProfile>>(
+    `/api/auth/instructors/${instructorId}/public-profile`
+  );
+  return data;
+};
+
 /**
  * Cấp lại access token từ refresh token (cookie).
  * POST /api/auth/refresh-token
