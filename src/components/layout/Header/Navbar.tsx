@@ -249,7 +249,10 @@ export const Navbar = () => {
                 >
                   <ShoppingCart className="h-5 w-5 text-foreground group-hover:text-primary transition-colors" />
                   {cartItems.length > 0 && (
-                    <span className="absolute top-0 right-0 h-[14px] w-[14px] rounded-full bg-primary text-[9px] font-bold text-primary-foreground flex items-center justify-center pointer-events-none">
+                    <span
+                      key={cartItems.length}
+                      className="absolute top-0 right-0 h-[14px] w-[14px] rounded-full bg-primary text-[9px] font-bold text-primary-foreground flex items-center justify-center pointer-events-none animate-badge-pop"
+                    >
                       {cartItems.length}
                     </span>
                   )}

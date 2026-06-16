@@ -201,3 +201,21 @@
 .checkout-step.completed {
   @apply text-emerald-600 dark:text-emerald-400;
 }
+
+/* Cart badge scale-pop animation when quantity changes */
+@keyframes badgePop {
+  0% {
+    transform: scale(0.6);
+  }
+  50% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-badge-pop {
+  animation: badgePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
