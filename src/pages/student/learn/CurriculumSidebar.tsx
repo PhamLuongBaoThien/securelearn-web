@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Clock, HelpCircle, PlayCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { ILesson, ISection } from '@/services/courseApi';
 
 const formatDuration = (seconds = 0) => {
@@ -34,17 +35,18 @@ export function CurriculumSidebar({
           const isCollapsed = collapsed[sectionKey];
           return (
             <section key={sectionKey} className="border-b border-zinc-100 dark:border-zinc-800">
-              <button
+              <Button
                 type="button"
                 onClick={() => setCollapsed((current) => ({ ...current, [sectionKey]: !isCollapsed }))}
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                variant="ghost"
+                className="h-auto w-full justify-between gap-3 rounded-none px-4 py-3 text-left hover:bg-zinc-50 dark:hover:bg-zinc-900"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-zinc-800 dark:text-zinc-100">{section.title}</p>
                   <p className="mt-0.5 text-xs text-zinc-400">{section.lessons.length} bài</p>
                 </div>
                 {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
+              </Button>
 
               {!isCollapsed && (
                 <div className="pb-2">
@@ -52,11 +54,12 @@ export function CurriculumSidebar({
                     const lessonId = lesson._id || `${sectionKey}-${lessonIndex}`;
                     const isActive = lessonId === activeLessonId;
                     return (
-                      <button
+                      <Button
                         key={lessonId}
                         type="button"
                         onClick={() => onSelectLesson(lesson)}
-                        className={`flex w-full gap-3 px-4 py-3 text-left transition-colors ${
+                        variant="ghost"
+                        className={`h-auto w-full justify-start gap-3 rounded-none px-4 py-3 text-left transition-colors ${
                           isActive
                             ? 'bg-primary/10 text-primary'
                             : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-900'
@@ -72,7 +75,7 @@ export function CurriculumSidebar({
                             {lesson.type === 'VIDEO' ? formatDuration(lesson.duration) : 'Bài kiểm tra'}
                           </p>
                         </div>
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>

@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronLeft, ChevronRight, GraduationCap, HelpCircle, Loader2, Menu, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, HelpCircle, Loader2, Menu, X } from 'lucide-react';
 import { useAppSelector } from '@/app/hooks';
 import { useCourseLearning } from '@/hooks/useCourseLearning';
+import { Button } from '@/components/ui/button';
 import type { ILesson } from '@/services/courseApi';
+import logoWeb from '@/assets/logoweb.png';
 import { CurriculumSidebar } from './CurriculumSidebar';
 import { VideoPlayer } from './VideoPlayer';
 import { InteractiveTabs } from './InteractiveTabs';
@@ -51,7 +53,9 @@ export function LearningInterface() {
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950 px-6 text-center text-white">
         <p className="text-lg font-semibold">Không thể mở khóa học</p>
         <p className="mt-2 text-sm text-zinc-400">{(courseQuery.error as Error)?.message || 'Bạn không còn quyền truy cập.'}</p>
-        <button onClick={() => navigate('/student/dashboard')} className="mt-5 text-sm text-primary">Quay lại khóa học của tôi</button>
+        <Button variant="link" className="mt-5 text-sm text-primary" onClick={() => navigate('/student/dashboard')}>
+          Quay lại khóa học của tôi
+        </Button>
       </div>
     );
   }
@@ -61,13 +65,15 @@ export function LearningInterface() {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-zinc-50 text-zinc-900 dark:bg-[#0A0A0A] dark:text-zinc-100">
       <header className="z-10 flex h-14 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white/90 px-4 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90">
-        <button
+        <Button
           onClick={() => navigate('/student/dashboard')}
-          className="flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+          variant="ghost"
+          size="sm"
+          className="h-9 gap-2 px-2 text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
-          <GraduationCap className="h-4 w-4" />
-        </button>
+          <img src={logoWeb} alt="SecureLearn" className="h-8 w-auto object-contain" />
+        </Button>
         <div className="h-5 w-px bg-zinc-200 dark:bg-zinc-700" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{course.title}</p>
@@ -76,30 +82,36 @@ export function LearningInterface() {
           </p>
         </div>
         <div className="flex items-center gap-0.5">
-          <button
+          <Button
             onClick={() => previousLesson && selectLesson(previousLesson)}
             disabled={!previousLesson}
             title="Bài trước"
-            className="rounded-lg p-2 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-zinc-800"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-lg"
           >
             <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => nextLesson && selectLesson(nextLesson)}
             disabled={!nextLesson}
             title="Bài tiếp theo"
-            className="rounded-lg p-2 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-zinc-800"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-lg"
           >
             <ChevronRight className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
-        <button
+        <Button
           onClick={() => setSidebarOpen((current) => !current)}
           title={sidebarOpen ? 'Ẩn giáo trình' : 'Hiện giáo trình'}
-          className="rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 rounded-lg"
         >
           {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </button>
+        </Button>
       </header>
 
       <div className="flex flex-1 overflow-hidden">

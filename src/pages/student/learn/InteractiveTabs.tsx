@@ -5,7 +5,8 @@
 // - dùng dữ liệu thật theo course/lesson và quyền học hiện tại
 // ========================
 import { useState } from 'react';
-import { BookOpen, Clock3, Download, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Send, Trash2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { BookOpen, Clock3, Download, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Send, Star, Trash2 } from 'lucide-react';
 import {
   useCreateLearningNote,
   useDeleteLearningNote,
@@ -15,16 +16,40 @@ import {
   useLessonDiscussions,
   useUpdateLearningNote,
 } from '@/hooks/useLearningInteractions';
+import { Button } from '@/components/ui/button';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
+import { Rating } from '@/components/ui/rating';
 import type { ICourse, ILearningNote, ILesson } from '@/services/courseApi';
 
-type TabId = 'overview' | 'resources' | 'notes' | 'discussions';
+type TabId = 'overview' | 'resources' | 'notes' | 'discussions' | 'reviews';
 
 const TABS = [
   { id: 'overview' as const, label: 'Tổng quan', icon: BookOpen },
   { id: 'resources' as const, label: 'Tài liệu', icon: FileText },
   { id: 'notes' as const, label: 'Ghi chú', icon: NotebookPen },
   { id: 'discussions' as const, label: 'Thảo luận', icon: MessageSquare },
+  { id: 'reviews' as const, label: 'Đánh giá', icon: Star },
+];
+
+const reviewSamples = [
+  {
+    name: 'Minh Anh',
+    rating: 5,
+    time: '2 ngày trước',
+    content: 'Bài giảng rõ ràng, tốc độ vừa phải và phần thực hành giúp mình nắm kiến thức nhanh hơn.',
+  },
+  {
+    name: 'Quốc Bảo',
+    rating: 4,
+    time: '1 tuần trước',
+    content: 'Nội dung ổn, ví dụ dễ theo dõi. Mình muốn có thêm bài tập tổng hợp ở cuối chương.',
+  },
+  {
+    name: 'Thanh Trúc',
+    rating: 5,
+    time: '2 tuần trước',
+    content: 'Giảng viên giải thích chắc, tài liệu đi kèm hữu ích khi xem lại sau giờ học.',
+  },
 ];
 
 const formatTime = (seconds: number) => {
@@ -58,18 +83,26 @@ export function InteractiveTabs({
           const Icon = tab.icon;
           const active = activeTab === tab.id;
           return (
-            <button
+            <Button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
+              variant="ghost"
+              size="sm"
               className={`relative flex min-w-max items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
                 active ? 'text-zinc-950 dark:text-white' : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400'
               }`}
             >
               <Icon className="h-4 w-4" />
               {tab.label}
-              {active && <span className="absolute inset-x-3 bottom-0 h-0.5 bg-primary" />}
-            </button>
+              {active && (
+                <motion.div
+                  layoutId="learning-tabs-underline"
+                  className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-zinc-950 dark:bg-white"
+                  transition={{ type: 'spring', stiffness: 500, damping: 36 }}
+                />
+              )}
+            </Button>
           );
         })}
       </div>
@@ -88,6 +121,7 @@ export function InteractiveTabs({
         {activeTab === 'discussions' && (
           <DiscussionsPanel courseId={course._id || ''} lessonId={lesson._id || ''} playbackTime={playbackTime} />
         )}
+        {activeTab === 'reviews' && <ReviewsPanel />}
       </div>
     </section>
   );
@@ -227,15 +261,16 @@ function NotesPanel({
               Khi tạo ghi chú mới, video sẽ tạm dừng để bạn tập trung soạn nội dung.
             </p>
           </div>
-          <button
+          <Button
             type="button"
             onClick={openCreateComposer}
             disabled={Boolean(composer)}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+            variant="udemy_dark"
+            className="h-11 gap-2 rounded-2xl px-4 text-sm"
           >
             <Plus className="h-4 w-4" />
             {`Thêm ghi chú tại ${formatTime(currentTimestamp)}`}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -261,23 +296,24 @@ function NotesPanel({
           />
 
           <div className="mt-4 flex flex-wrap justify-end gap-3">
-            <button
+            <Button
               type="button"
               onClick={() => setComposer(null)}
               disabled={isMutating}
-              className="inline-flex h-10 items-center justify-center rounded-2xl border border-zinc-300 px-4 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              variant="outline"
+              className="h-10 rounded-2xl px-4 text-sm"
             >
               Hủy bỏ
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleSubmit}
               disabled={isMutating || !stripRichText(composer.content)}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-10 gap-2 rounded-2xl px-4 text-sm"
             >
               {(createNote.isPending || updateNote.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
               {actionLabel}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -304,24 +340,28 @@ function NotesPanel({
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => openEditComposer(note)}
                     disabled={Boolean(composer) || isMutating}
-                    className="inline-flex h-9 items-center gap-2 rounded-xl border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-2 rounded-xl px-3 text-xs"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                     Chỉnh sửa
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={() => deleteNote.mutate(note._id)}
                     disabled={Boolean(composer) || isMutating}
-                    className="inline-flex h-9 items-center gap-2 rounded-xl border border-red-200 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30"
+                    variant="destructive"
+                    size="sm"
+                    className="h-9 gap-2 rounded-xl px-3 text-xs"
                   >
                     {deleteNote.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                     Xóa
-                  </button>
+                  </Button>
                 </div>
               </div>
               <div
@@ -361,15 +401,16 @@ function DiscussionsPanel({ courseId, lessonId, playbackTime }: { courseId: stri
         />
         <div className="mt-3 flex items-center justify-between gap-3">
           <span className="text-xs text-zinc-500">Mốc {formatTime(playbackTime)}</span>
-          <button
+          <Button
             type="button"
             onClick={submit}
             disabled={!content.trim() || createDiscussion.isPending}
-            className="inline-flex h-9 items-center gap-2 bg-zinc-950 px-4 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-zinc-950"
+            variant="udemy_dark"
+            className="h-9 gap-2 px-4 text-sm"
           >
             {createDiscussion.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Đăng thảo luận
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -392,6 +433,84 @@ function DiscussionsPanel({ courseId, lessonId, playbackTime }: { courseId: stri
       ) : (
         <EmptyState icon={MessageSquare} message="Chưa có thảo luận nào cho bài học này." />
       )}
+    </div>
+  );
+}
+
+function ReviewsPanel() {
+  const [selectedRating, setSelectedRating] = useState(5);
+
+  return (
+    <div className="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs font-semibold uppercase text-zinc-400">Đánh giá khóa học</p>
+          <h2 className="mt-1 text-xl font-bold text-zinc-950 dark:text-white">Cảm nhận từ học viên</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+            Khu vực này sẽ hiển thị đánh giá thật sau khi chức năng đánh giá được kết nối với backend.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="border border-zinc-200 p-4 dark:border-zinc-800">
+            <p className="text-3xl font-bold text-zinc-950 dark:text-white">4.8</p>
+            <Rating value={5} readOnly className="mt-2" />
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Điểm trung bình</p>
+          </div>
+          <div className="border border-zinc-200 p-4 dark:border-zinc-800">
+            <p className="text-3xl font-bold text-zinc-950 dark:text-white">128</p>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Lượt đánh giá</p>
+          </div>
+          <div className="border border-zinc-200 p-4 dark:border-zinc-800">
+            <p className="text-3xl font-bold text-zinc-950 dark:text-white">92%</p>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Hài lòng với nội dung</p>
+          </div>
+        </div>
+
+        <div className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+          {reviewSamples.map((review) => (
+            <article key={`${review.name}-${review.time}`} className="py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-zinc-950 dark:text-white">{review.name}</p>
+                  <p className="mt-0.5 text-xs text-zinc-400">{review.time}</p>
+                </div>
+                <Rating value={review.rating} readOnly />
+              </div>
+              <p className="mt-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{review.content}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <aside className="border border-zinc-200 p-5 dark:border-zinc-800">
+        <h3 className="text-base font-bold text-zinc-950 dark:text-white">Viết đánh giá</h3>
+        <p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+          Chia sẻ cảm nhận của bạn về chất lượng bài giảng, tài liệu và trải nghiệm học.
+        </p>
+
+        <div className="mt-5">
+          <p className="mb-2 text-sm font-semibold text-zinc-800 dark:text-zinc-200">Mức độ hài lòng</p>
+          <Rating value={selectedRating} onValueChange={setSelectedRating} iconClassName="h-6 w-6" />
+        </div>
+
+        <label className="mt-5 block">
+          <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Nội dung đánh giá</span>
+          <textarea
+            rows={5}
+            placeholder="Viết đánh giá của bạn..."
+            className="mt-2 w-full resize-none border border-zinc-200 bg-transparent p-3 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-800 dark:focus:border-zinc-500"
+          />
+        </label>
+
+        <Button
+          type="button"
+          variant="udemy_dark"
+          className="mt-4 h-10 w-full rounded-lg px-4 text-sm"
+        >
+          Gửi đánh giá
+        </Button>
+      </aside>
     </div>
   );
 }

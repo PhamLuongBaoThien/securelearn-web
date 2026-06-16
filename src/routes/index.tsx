@@ -109,6 +109,14 @@ const router = createBrowserRouter([
               </ProtectedRoute>
             ),
           },
+          {
+            path: 'student/dashboard',
+            element: (
+              <ProtectedRoute>
+                <StudentDashboard />
+              </ProtectedRoute>
+            ),
+          },
         ]
       },
       {
@@ -132,15 +140,6 @@ const router = createBrowserRouter([
       {
         path: '/payment/momo-return',
         element: <MomoReturn />,
-      },
-      // ===== Protected Routes: Yêu cầu đăng nhập =====
-      {
-        path: '/student/dashboard',
-        element: (
-          <ProtectedRoute>
-            <StudentDashboard />
-          </ProtectedRoute>
-        ),
       },
       {
         path: '/student/courses/:courseId/learn',
