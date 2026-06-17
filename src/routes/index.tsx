@@ -5,65 +5,65 @@
 // - gắn thêm pricing route cho flow thuê bao song song với checkout giỏ khóa học
 // ========================
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
-import { Home } from '../pages/public/Home';
+import { Home } from '../pages/public/home';
 
 import { StudentDashboard } from '../pages/student/dashboard';
 import { LearningInterface } from '../pages/student/learn';
-import { Profile } from '../pages/user/profile';
+import { Profile } from '../pages/shared/profile';
 
 // Public & Auth Imports
 import { PublicLayout } from '../components/layout/PublicLayout';
-import { Catalog } from '../pages/public/catalog/Catalog';
+import { Catalog } from '../pages/public/catalog';
 import { CourseDetail } from '../pages/public/course-detail';
-import { AuthLayout } from '../pages/auth/AuthLayout';
-import { Login } from '../pages/auth/Login';
-import { Signup } from '../pages/auth/Signup';
-import { ForgotPassword } from '../pages/auth/ForgotPassword';
-import { Checkout } from '../pages/public/Checkout';
-import { Cart } from '../pages/public/Cart';
-import { VnpayReturn } from '../pages/public/VnpayReturn';
-import { MomoReturn } from '../pages/public/MomoReturn';
-import { Teach } from '../pages/public/Teach';
-import { Pricing } from '../pages/public/Pricing';
-import { SubscriptionCatalog } from '../pages/public/SubscriptionCatalog';
+import { AuthLayout } from '../pages/shared/auth/layout';
+import { Login } from '../pages/shared/auth/login';
+import { Signup } from '../pages/shared/auth/signup';
+import { ForgotPassword } from '../pages/shared/auth/forgot-password';
+import { Checkout } from '../pages/public/checkout';
+import { Cart } from '../pages/public/cart';
+import { VnpayReturn } from '../pages/shared/payments/vnpay-return';
+import { MomoReturn } from '../pages/shared/payments/momo-return';
+import { Teach } from '../pages/public/teach';
+import { Pricing } from '../pages/public/pricing';
+import { SubscriptionCatalog } from '../pages/public/subscription-catalog';
 import { ScrollToTop } from '../components/layout/ScrollToTop';
-import { NotFound } from '../pages/public/NotFound';
+import { NotFound } from '../pages/public/not-found';
 
 // Auth Components
-import { OAuthCallback } from '../pages/auth/OAuthCallback';
+import { OAuthCallback } from '../pages/shared/auth/oauth-callback';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 
 // Admin Components
-import { AdminLogin } from '../pages/admin/auth/AdminLogin';
+import { AdminLogin } from '../pages/admin/login';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { AdminGuestRoute } from '../components/auth/AdminGuestRoute';
 import { AdminProtectedRoute } from '../components/auth/AdminProtectedRoute';
 import { AdminRoleRoute } from '../components/auth/AdminRoleRoute';
-import { Dashboard as AdminDashboard } from '../pages/admin/Dashboard';
-import { AdminProfile } from '../pages/admin/AdminProfile';
+import { AdminDashboard } from '../pages/admin/dashboard';
+import { AdminProfile } from '../pages/admin/profile';
 
 // Admin — System & CMS (System & Content Management System dịch sang tiếng việt là quản lý hệ thống và quản lý nội dung ) 
-import { WebsiteConfig } from '../pages/admin/system/WebsiteConfig';
-import { BannerManager } from '../pages/admin/system/BannerManager';
+import { WebsiteConfig } from '../pages/admin/system/website-config';
+import { BannerManager } from '../pages/admin/system/banner-manager';
 import { CategoryManager } from '../pages/admin/system/categories';
 
 // Admin — Users & RBAC (RBAC là viết tắt của Role Based Access Control có nghĩa là quản lý vai trò và quyền)
-import { UserList } from '../pages/admin/users/userList';
+import { UserList } from '../pages/admin/users/user-list';
 import { StaffList } from '../pages/admin/users/staff';
 import { RbacManager } from '../pages/admin/users/rbac';
 
 // Admin — Courses
-import { CourseReview } from '../pages/admin/courses/CourseReview';
-import { ResourceManager } from '../pages/admin/courses/ResourceManager';
+import { CourseReview } from '../pages/admin/courses/course-review';
+import { ResourceManager } from '../pages/admin/courses/resource-manager';
 
 // Admin — Finance
-import { Transactions } from '../pages/admin/finance/Transactions';
-import { PlanManager } from '../pages/admin/finance/PlanManager';
+import { Transactions } from '../pages/admin/finance/transactions';
+import { PlanManager } from '../pages/admin/finance/plan-manager';
 
 // Admin — Notifications & Progress
-import { NotificationConfig } from '../pages/admin/notifications/NotificationConfig';
-import { SendNotification } from '../pages/admin/notifications/SendNotification';
-import { Inbox } from '../pages/admin/notifications/Inbox';
+import { NotificationConfig } from '../pages/admin/notifications/notification-config';
+import { SendNotification } from '../pages/admin/notifications/send-notification';
+import { Inbox } from '../pages/admin/notifications/inbox';
 
 // Instructor Components
 import { InstructorLayout } from '../components/layout/InstructorLayout';

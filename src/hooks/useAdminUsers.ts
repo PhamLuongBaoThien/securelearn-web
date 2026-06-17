@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getUsers, lockUser, unlockUser } from '@/services/adminApi';
-import { getEffectiveUserStatus } from '@/pages/admin/users/userList/constants';
+import { getEffectiveUserStatus } from '@/pages/admin/users/user-list/constants';
 
 export interface UserFilters {
   role?: string;

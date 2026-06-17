@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { useAppSelector } from '../../app/hooks';
-import { SlideUp } from '../../components/animations/SlideUp';
-import { FadeIn } from '../../components/animations/FadeIn';
-import { buttonVariants } from '../../components/ui/button';
-import { useSwitchToInstructor } from '../../hooks/useAuth';
+import { useAppSelector } from '@/app/hooks';
+import { SlideUp } from '@/components/animations/SlideUp';
+import { FadeIn } from '@/components/animations/FadeIn';
+import { buttonVariants } from '@/components/ui/button';
+import { useSwitchToInstructor } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 export const Teach = () => {

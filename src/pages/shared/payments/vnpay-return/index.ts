@@ -1,0 +1,1 @@
+export { VnpayReturn } from './VnpayReturn';

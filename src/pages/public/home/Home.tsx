@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
-import { HorizontalStaggerContainer, HorizontalStaggerItem } from '../../components/animations/HorizontalStagger';
-import { SectionReveal, SectionSequence, SectionSequenceItem } from '../../components/animations/SectionReveal';
-import { CourseCarousel } from '../../components/ui/CourseCarousel';
-import { buttonVariants } from '../../components/ui/button';
+import { HorizontalStaggerContainer, HorizontalStaggerItem } from '@/components/animations/HorizontalStagger';
+import { SectionReveal, SectionSequence, SectionSequenceItem } from '@/components/animations/SectionReveal';
+import { CourseCarousel } from '@/components/ui/CourseCarousel';
+import { buttonVariants } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, ShieldCheck, Lock,Zap, CreditCard } from 'lucide-react';
 
 const bannerSlides = [

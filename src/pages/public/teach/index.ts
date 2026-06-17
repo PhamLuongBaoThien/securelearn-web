@@ -1,0 +1,1 @@
+export { Teach } from './Teach';

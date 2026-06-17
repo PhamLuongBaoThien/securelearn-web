@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useAppSelector } from '../../app/hooks';
+import { useAppSelector } from '@/app/hooks';
 import { Button } from '@/components/ui/button';
 import { Trash2, ShoppingCart, ArrowRight, ShieldCheck, BookOpen, CreditCard, CheckCircle2, ChevronRight, Star, Clock } from 'lucide-react';
 import { useCartActions } from '@/hooks/useCart';
