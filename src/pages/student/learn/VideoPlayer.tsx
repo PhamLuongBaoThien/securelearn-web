@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type SyntheticEvent } from 'react';
 import Hls from 'hls.js';
 import { Loader2, Shield, VideoOff } from 'lucide-react';
 import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
 import { useCreatePlaybackSession, useSubscriptionHeartbeat } from '@/hooks/useCourseLearning';
 import type { ILesson } from '@/services/courseApi';
+import {
+  formatWatermarkText,
+  isBlockedProtectionKey,
+  shouldIgnoreProtectionShortcut,
+  type WatermarkIdentity,
+  watermarkPositions,
+  WATERMARK_ROTATION_MS,
+} from '@/lib/contentProtection';
 
 const HEARTBEAT_MS = 15_000;
 
@@ -17,7 +25,7 @@ interface VideoPlayerProps {
   courseId: string;
   lesson: ILesson;
   accessSource?: 'PURCHASE' | 'SUBSCRIPTION';
-  watermarkText?: string;
+  watermarkIdentity?: WatermarkIdentity;
   onTimeChange?: (seconds: number) => void;
   pauseSignal?: number;
 }
@@ -26,7 +34,7 @@ export function VideoPlayer({
   courseId,
   lesson,
   accessSource,
-  watermarkText,
+  watermarkIdentity,
   onTimeChange,
   pauseSignal = 0,
 }: VideoPlayerProps) {
@@ -41,6 +49,12 @@ export function VideoPlayer({
   const sendHeartbeat = heartbeat.mutate;
   const heartbeatPending = heartbeat.isPending;
   const isSubscription = accessSource === 'SUBSCRIPTION';
+  const [watermarkIndex, setWatermarkIndex] = useState(0);
+  const [watermarkTime, setWatermarkTime] = useState(() => new Date());
+  const watermarkText = formatWatermarkText(
+    { ...watermarkIdentity, sessionId },
+    watermarkTime,
+  );
 
   useEffect(() => {
     const video = videoRef.current;
@@ -92,6 +106,26 @@ export function VideoPlayer({
     if (!pauseSignal) return;
     videoRef.current?.pause();
   }, [pauseSignal]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setWatermarkIndex((current) => (current + 1) % watermarkPositions.length);
+      setWatermarkTime(new Date());
+    }, WATERMARK_ROTATION_MS);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (shouldIgnoreProtectionShortcut()) return;
+      if (isBlockedProtectionKey(event)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -152,7 +186,11 @@ export function VideoPlayer({
     sessionId,
   ]);
 
-  const handleContextMenu = useCallback((event: React.MouseEvent) => event.preventDefault(), []);
+  const handleContextMenu = useCallback((event: MouseEvent) => event.preventDefault(), []);
+  const blockProtectedEvent = useCallback((event: SyntheticEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
 
   if (!lesson.videoAssetId) {
     return (
@@ -175,7 +213,13 @@ export function VideoPlayer({
 
   return (
     <div className="flex flex-col">
-      <div className="relative aspect-video w-full select-none bg-black" onContextMenu={handleContextMenu}>
+      <div
+        className="relative aspect-video w-full select-none bg-black"
+        onContextMenu={handleContextMenu}
+        onCopy={blockProtectedEvent}
+        onCut={blockProtectedEvent}
+        onDragStart={blockProtectedEvent}
+      >
         <video
           ref={videoRef}
           controls
@@ -193,7 +237,7 @@ export function VideoPlayer({
         />
 
         {watermarkText && (
-          <span className="pointer-events-none absolute bottom-12 right-4 z-20 text-xs font-mono text-white/20">
+          <span className={`pointer-events-none absolute z-20 text-xs font-mono text-white/20 ${watermarkPositions[watermarkIndex]}`}>
             {watermarkText}
           </span>
         )}

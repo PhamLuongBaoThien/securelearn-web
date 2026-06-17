@@ -6,7 +6,7 @@
 // ========================
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Clock3, Download, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Send, Star, Trash2 } from 'lucide-react';
+import { BookOpen, Clock3, Download, Eye, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Send, Star, Trash2 } from 'lucide-react';
 import {
   useCreateLearningNote,
   useDeleteLearningNote,
@@ -16,10 +16,30 @@ import {
   useLessonDiscussions,
   useUpdateLearningNote,
 } from '@/hooks/useLearningInteractions';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { Rating } from '@/components/ui/rating';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ICourse, ILearningNote, ILesson } from '@/services/courseApi';
+import {
+  createDocumentDownloadSession,
+  createDocumentViewSession,
+  downloadDocumentFromSession,
+  type IDocumentAsset,
+  type IDocumentViewSession,
+} from '@/services/mediaApi';
+import type { WatermarkIdentity } from '@/lib/contentProtection';
+import { ProtectedPdfViewer } from './ProtectedPdfViewer';
 
 type TabId = 'overview' | 'resources' | 'notes' | 'discussions' | 'reviews';
 
@@ -68,11 +88,13 @@ export function InteractiveTabs({
   lesson,
   playbackTime,
   onRequestPauseVideo,
+  watermarkIdentity,
 }: {
   course: ICourse;
   lesson: ILesson;
   playbackTime: number;
   onRequestPauseVideo: () => void;
+  watermarkIdentity?: WatermarkIdentity;
 }) {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
@@ -109,7 +131,9 @@ export function InteractiveTabs({
 
       <div className="min-h-64 p-5 md:p-6">
         {activeTab === 'overview' && <OverviewPanel lesson={lesson} />}
-        {activeTab === 'resources' && <ResourcesPanel attachmentIds={lesson.attachments || []} />}
+        {activeTab === 'resources' && (
+          <ResourcesPanel attachmentIds={lesson.attachments || []} watermarkIdentity={watermarkIdentity} />
+        )}
         {activeTab === 'notes' && (
           <NotesPanel
             courseId={course._id || ''}
@@ -143,37 +167,146 @@ function OverviewPanel({ lesson }: { lesson: ILesson }) {
   );
 }
 
-function ResourcesPanel({ attachmentIds }: { attachmentIds: string[] }) {
+function ResourcesPanel({
+  attachmentIds,
+  watermarkIdentity,
+}: {
+  attachmentIds: string[];
+  watermarkIdentity?: WatermarkIdentity;
+}) {
   const resources = useLearningResources(attachmentIds);
+  const [viewerSession, setViewerSession] = useState<IDocumentViewSession | null>(null);
+  const [openingId, setOpeningId] = useState('');
+  const [downloadCandidate, setDownloadCandidate] = useState<IDocumentAsset | null>(null);
   if (attachmentIds.length === 0) return <EmptyState icon={FileText} message="Bài học này chưa có tài liệu đính kèm." />;
 
+  const openPdf = async (resource: IDocumentAsset) => {
+    setOpeningId(resource._id);
+    try {
+      const response = await createDocumentViewSession(resource._id);
+      if (response.status === 'OK' && response.data) {
+        setViewerSession(response.data);
+      }
+    } finally {
+      setOpeningId('');
+    }
+  };
+
+  const confirmDownload = async () => {
+    if (!downloadCandidate) return;
+    setOpeningId(downloadCandidate._id);
+    try {
+      const response = await createDocumentDownloadSession(downloadCandidate._id);
+      if (response.status === 'OK' && response.data?.downloadUrl) {
+        const blob = await downloadDocumentFromSession(response.data.downloadUrl);
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = downloadCandidate.originalFileName || 'tai-lieu';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      }
+    } finally {
+      setOpeningId('');
+      setDownloadCandidate(null);
+    }
+  };
+
   return (
-    <div className="grid max-w-4xl gap-3 md:grid-cols-2">
-      {resources.map((resource, index) => {
-        if (resource.isLoading) {
-          return <div key={attachmentIds[index]} className="flex h-20 items-center justify-center border"><Loader2 className="h-5 w-5 animate-spin" /></div>;
-        }
-        if (!resource.data) {
-          return <div key={attachmentIds[index]} className="border border-red-200 p-4 text-sm text-red-600">Không thể tải tài liệu.</div>;
-        }
-        return (
-          <a
-            key={resource.data._id}
-            href={resource.data.filePath}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-3 border border-zinc-200 p-4 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-          >
-            <FileText className="h-5 w-5 shrink-0 text-primary" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{resource.data.originalFileName || 'Tài liệu bài học'}</p>
-              <p className="mt-1 text-xs text-zinc-500">{formatBytes(resource.data.sizeBytes)}</p>
+    <>
+      <div className="grid max-w-4xl gap-3 md:grid-cols-2">
+        {resources.map((resource, index) => {
+          if (resource.isLoading) {
+            return <div key={attachmentIds[index]} className="flex h-20 items-center justify-center border"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+          }
+          if (!resource.data) {
+            return <div key={attachmentIds[index]} className="border border-red-200 p-4 text-sm text-red-600">Không thể tải tài liệu.</div>;
+          }
+          const isPdf = resource.data.mimeType === 'application/pdf';
+          const isBusy = openingId === resource.data._id;
+          return (
+            <div
+              key={resource.data._id}
+              className="flex min-h-20 items-center gap-3 border border-zinc-200 p-4 transition hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+            >
+              <FileText className="h-5 w-5 shrink-0 text-primary" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{resource.data.originalFileName || 'Tài liệu bài học'}</p>
+                <p className="mt-1 text-xs text-zinc-500">{formatBytes(resource.data.sizeBytes)}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <TooltipProvider delayDuration={120}>
+                  {isPdf && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => openPdf(resource.data)}
+                          disabled={isBusy}
+                          className="h-9 w-9 rounded-xl"
+                          aria-label="Xem tài liệu PDF"
+                        >
+                          {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Xem tài liệu PDF</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setDownloadCandidate(resource.data)}
+                        disabled={isBusy}
+                        className="h-9 w-9 rounded-xl"
+                        aria-label="Tải tài liệu xuống"
+                      >
+                        {isBusy && !isPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Tải tài liệu xuống</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
-            <Download className="h-4 w-4 text-zinc-400" />
-          </a>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+      {viewerSession && (
+        <ProtectedPdfViewer
+          asset={viewerSession.asset}
+          viewerUrl={viewerSession.viewerUrl}
+          watermarkIdentity={watermarkIdentity}
+          onClose={() => setViewerSession(null)}
+        />
+      )}
+      <AlertDialog open={Boolean(downloadCandidate)} onOpenChange={(open) => !open && setDownloadCandidate(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tải tài liệu xuống thiết bị?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tài liệu này sẽ được tải xuống sau khi hệ thống xác nhận quyền học hiện tại của bạn.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+            <p className="font-semibold">{downloadCandidate?.originalFileName || 'Tài liệu bài học'}</p>
+            <p className="mt-1 text-xs text-zinc-500">{formatBytes(downloadCandidate?.sizeBytes)}</p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDownload}>
+              Tải xuống
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

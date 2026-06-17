@@ -123,7 +123,7 @@ export function LearningInterface() {
               courseId={courseId}
               lesson={activeLesson}
               accessSource={course.accessSource}
-              watermarkText={user ? `${user.fullName} · ${user.email}` : undefined}
+              watermarkIdentity={user ? { email: user.email, userId: user._id } : undefined}
               onTimeChange={setPlaybackTime}
               pauseSignal={pauseSignal}
             />
@@ -140,6 +140,7 @@ export function LearningInterface() {
               key={`tabs-${activeLesson._id}`}
               course={course}
               lesson={activeLesson}
+              watermarkIdentity={user ? { email: user.email, userId: user._id } : undefined}
               playbackTime={playbackTime}
               onRequestPauseVideo={() => setPauseSignal((current) => current + 1)}
             />
