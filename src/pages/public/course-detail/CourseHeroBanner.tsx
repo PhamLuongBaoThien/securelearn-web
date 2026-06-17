@@ -1,7 +1,7 @@
 // File: CourseHeroBanner.tsx
 // Banner phần trên của trang Course Detail — nền tối (zinc-900).
 // Hiển thị: breadcrumb danh mục, tiêu đề khóa học, mô tả ngắn,
-// cấp độ, rating mock (4.8 — chờ backend hỗ trợ), số học viên,
+// cấp độ, rating, số học viên,
 // tên giảng viên và ngày cập nhật cuối.
 // Component này nằm sát header nên có padding-top lớn để không bị header che.
 
@@ -15,9 +15,6 @@ const LEVEL_LABEL: Record<ICourse['level'], string> = {
   ADVANCED: 'Nâng cao',
 };
 
-// Số sao mock — sẽ thay bằng dữ liệu thật khi backend có trường averageRating
-const MOCK_RATING = 4.8;
-
 interface Props {
   course: ICourse; // Toàn bộ dữ liệu khóa học lấy từ API
 }
@@ -28,6 +25,8 @@ export function CourseHeroBanner({ course }: Props) {
     month: '2-digit',
     year: 'numeric',
   });
+  const rating = course.rating ?? 0;
+  const reviewCount = course.reviews ?? 0;
 
   return (
     <div className="bg-zinc-900 text-zinc-50 pt-[120px] pb-8 lg:pt-[136px] lg:pb-12 px-6">
@@ -68,15 +67,26 @@ export function CourseHeroBanner({ course }: Props) {
               {LEVEL_LABEL[course.level]}
             </div>
 
-            {/* Rating mock 4.8 — thay bằng dữ liệu thật khi backend hỗ trợ */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[#f4c150] font-bold">{MOCK_RATING}</span>
-              <div className="flex" aria-label={`${MOCK_RATING} sao`}>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="w-3.5 h-3.5 fill-[#f4c150] text-[#f4c150]" />
-                ))}
+            {reviewCount > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[#f4c150] font-bold">{rating.toFixed(1)}</span>
+                <div className="flex" aria-label={`${rating.toFixed(1)} sao`}>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-3.5 h-3.5 ${
+                        i < Math.round(rating)
+                          ? 'fill-[#f4c150] text-[#f4c150]'
+                          : 'text-zinc-600'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-zinc-300">({reviewCount.toLocaleString('vi-VN')} đánh giá)</span>
               </div>
-            </div>
+            ) : (
+              <span className="text-zinc-300">Chưa có đánh giá</span>
+            )}
 
             {/* Số học viên thật từ API */}
             <div className="flex items-center gap-1.5 text-zinc-300">

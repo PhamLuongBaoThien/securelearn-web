@@ -129,6 +129,35 @@ export interface ILessonDiscussion {
   createdAt: string;
 }
 
+export interface ICourseReview {
+  _id: string;
+  courseId: string;
+  userId: string;
+  userName: string;
+  userAvatarUrl?: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IInstructorRatingStats {
+  instructorId: string;
+  averageRating: number;
+  reviewCount: number;
+  fiveStarCount: number;
+  courseCount: number;
+  studentCount: number;
+  courses: Array<{
+    _id: string;
+    title: string;
+    slug: string;
+    rating: number;
+    reviews: number;
+    enrollmentCount: number;
+  }>;
+}
+
 export interface IQuizQuestionOption {
   text: string;
 }
@@ -225,6 +254,13 @@ interface ApiResponse<T = undefined> {
 
 interface PaginatedData {
   courses: ICourse[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+interface PaginatedCourseReviews {
+  reviews: ICourseReview[];
   total: number;
   page: number;
   totalPages: number;
@@ -456,6 +492,29 @@ export const getPublishedCourses = async (params?: {
   sort?: string;
 }) => {
   const { data } = await apiClient.get<ApiResponse<PaginatedData>>('/api/courses', { params });
+  return data;
+};
+
+export const getCourseReviews = async (courseId: string, params?: { page?: number; limit?: number }) => {
+  const { data } = await apiClient.get<ApiResponse<PaginatedCourseReviews>>(`/api/courses/${courseId}/reviews`, { params });
+  return data;
+};
+
+export const getInstructorRatingStats = async (instructorId: string) => {
+  const { data } = await apiClient.get<ApiResponse<IInstructorRatingStats>>(`/api/courses/instructors/${instructorId}/rating`);
+  return data;
+};
+
+export const getMyCourseReview = async (courseId: string) => {
+  const { data } = await apiClient.get<ApiResponse<ICourseReview | null>>(`/api/courses/${courseId}/reviews/me`);
+  return data;
+};
+
+export const upsertCourseReview = async (
+  courseId: string,
+  payload: { rating: number; comment?: string; userAvatarUrl?: string },
+) => {
+  const { data } = await apiClient.post<ApiResponse<ICourseReview>>(`/api/courses/${courseId}/reviews`, payload);
   return data;
 };
 

@@ -137,12 +137,16 @@ export function Catalog() {
 
   // Derive minDuration/maxDuration from selectedDuration key
   const durationOpt = DURATION_OPTIONS.find((o) => o.key === selectedDuration);
+  const ratingFilter = selectedRatings.length > 0
+    ? Math.max(...selectedRatings.map((value) => Number(value)).filter(Number.isFinite))
+    : undefined;
 
   const { data, isLoading, isError, isFetching } = useCatalog({
     category:    selectedCategories.length > 0 ? selectedCategories : undefined,
     level:       selectedLevels.length > 0     ? selectedLevels     : undefined,
     minPrice:    isPriceFiltered ? priceRange.min : undefined,
     maxPrice:    isPriceFiltered ? priceRange.max : undefined,
+    rating:      ratingFilter,
     minDuration: durationOpt?.minDuration,
     maxDuration: durationOpt?.maxDuration,
     sort: sortKey,

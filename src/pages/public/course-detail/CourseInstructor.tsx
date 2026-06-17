@@ -4,8 +4,10 @@
 // fallback về chữ viết tắt khi giảng viên chưa cập nhật ảnh.
 
 import { useQuery } from '@tanstack/react-query';
-import { GraduationCap, Users, UserRoundCheck } from 'lucide-react';
+import { Star, Users, UserRoundCheck } from 'lucide-react';
 import { getPublicInstructorProfile } from '@/services/authApi';
+import { useInstructorRatingStats } from '@/hooks/useCourseReviews';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 interface Props {
   instructorId: string;
@@ -17,6 +19,7 @@ interface Props {
 
 export function CourseInstructor({ instructorId, instructorName, enrollmentCount, avatarUrl, bio }: Props) {
   const shouldFetchProfile = Boolean(instructorId && (!avatarUrl || !bio));
+  const { data: ratingStats } = useInstructorRatingStats(instructorId);
   const { data: publicProfile } = useQuery({
     queryKey: ['public-instructor-profile', instructorId],
     queryFn: async () => {
@@ -33,32 +36,18 @@ export function CourseInstructor({ instructorId, instructorName, enrollmentCount
   const displayedAvatarUrl = avatarUrl || publicProfile?.profile?.avatarUrl || '';
   const displayedBio = bio || publicProfile?.profile?.bio || '';
   const displayedName = publicProfile?.fullName || instructorName;
-
-  // Tạo chữ viết tắt từ tên: lấy ký tự đầu của tối đa 2 từ rồi viết hoa.
-  // Ví dụ: "Nguyễn Văn An" → "NV"
-  const initials = displayedName
-    .split(' ')
-    .map((word) => word[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  const instructorStudentCount = ratingStats?.studentCount ?? enrollmentCount;
+  const instructorReviewCount = ratingStats?.reviewCount ?? 0;
+  const instructorRating = ratingStats?.averageRating ?? 0;
 
   return (
     <section className="rounded-lg border border-border bg-card p-6 lg:p-7 shadow-sm">
       <h2 className="text-2xl font-bold font-serif mb-6">Giảng viên</h2>
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-        {/* Avatar thật nếu API có profile, fallback về chữ viết tắt */}
-        <div className="w-20 h-20 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 overflow-hidden">
-          {displayedAvatarUrl ? (
-            <img
-              src={displayedAvatarUrl}
-              alt={displayedName}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <span className="text-xl font-bold text-primary">{initials}</span>
-          )}
-        </div>
+        <UserAvatar
+          user={{ fullName: displayedName, avatarUrl: displayedAvatarUrl }}
+          className="h-20 w-20 text-xl"
+        />
 
         {/* Thông tin giảng viên */}
         <div className="min-w-0 flex-1">
@@ -73,11 +62,13 @@ export function CourseInstructor({ instructorId, instructorName, enrollmentCount
             </span>
             <span className="flex items-center gap-1.5">
               <Users className="w-4 h-4 text-primary" />
-              {enrollmentCount.toLocaleString('vi-VN')} học viên
+              {instructorStudentCount.toLocaleString('vi-VN')} học viên
             </span>
             <span className="flex items-center gap-1.5">
-              <GraduationCap className="w-4 h-4 text-primary" />
-              Chuyên môn thực chiến
+              <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+              {instructorReviewCount > 0
+                ? `${instructorRating.toFixed(1)} (${instructorReviewCount.toLocaleString('vi-VN')} đánh giá)`
+                : 'Chưa có đánh giá'}
             </span>
           </div>
           {displayedBio && (

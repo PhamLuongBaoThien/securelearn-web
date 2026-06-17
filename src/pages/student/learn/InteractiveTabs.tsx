@@ -4,7 +4,7 @@
 // - hiển thị tổng quan, tài liệu, ghi chú và thảo luận dưới bài học
 // - dùng dữ liệu thật theo course/lesson và quyền học hiện tại
 // ========================
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Clock3, Download, Eye, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Send, Star, Trash2 } from 'lucide-react';
 import {
@@ -16,6 +16,8 @@ import {
   useLessonDiscussions,
   useUpdateLearningNote,
 } from '@/hooks/useLearningInteractions';
+import { useCourseReviews, useMyCourseReview, useUpsertCourseReview } from '@/hooks/useCourseReviews';
+import { useAppSelector } from '@/app/hooks';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +31,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { Rating } from '@/components/ui/rating';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ICourse, ILearningNote, ILesson } from '@/services/courseApi';
 import {
@@ -40,6 +43,7 @@ import {
 } from '@/services/mediaApi';
 import type { WatermarkIdentity } from '@/lib/contentProtection';
 import { ProtectedPdfViewer } from './ProtectedPdfViewer';
+import { toast } from 'sonner';
 
 type TabId = 'overview' | 'resources' | 'notes' | 'discussions' | 'reviews';
 
@@ -49,27 +53,6 @@ const TABS = [
   { id: 'notes' as const, label: 'Ghi chú', icon: NotebookPen },
   { id: 'discussions' as const, label: 'Thảo luận', icon: MessageSquare },
   { id: 'reviews' as const, label: 'Đánh giá', icon: Star },
-];
-
-const reviewSamples = [
-  {
-    name: 'Minh Anh',
-    rating: 5,
-    time: '2 ngày trước',
-    content: 'Bài giảng rõ ràng, tốc độ vừa phải và phần thực hành giúp mình nắm kiến thức nhanh hơn.',
-  },
-  {
-    name: 'Quốc Bảo',
-    rating: 4,
-    time: '1 tuần trước',
-    content: 'Nội dung ổn, ví dụ dễ theo dõi. Mình muốn có thêm bài tập tổng hợp ở cuối chương.',
-  },
-  {
-    name: 'Thanh Trúc',
-    rating: 5,
-    time: '2 tuần trước',
-    content: 'Giảng viên giải thích chắc, tài liệu đi kèm hữu ích khi xem lại sau giờ học.',
-  },
 ];
 
 const formatTime = (seconds: number) => {
@@ -82,6 +65,16 @@ const formatBytes = (bytes?: number) => {
   if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 };
+
+const formatReviewDate = (value: string) =>
+  new Date(value).toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 
 export function InteractiveTabs({
   course,
@@ -145,7 +138,7 @@ export function InteractiveTabs({
         {activeTab === 'discussions' && (
           <DiscussionsPanel courseId={course._id || ''} lessonId={lesson._id || ''} playbackTime={playbackTime} />
         )}
-        {activeTab === 'reviews' && <ReviewsPanel />}
+        {activeTab === 'reviews' && <ReviewsPanel course={course} />}
       </div>
     </section>
   );
@@ -570,8 +563,40 @@ function DiscussionsPanel({ courseId, lessonId, playbackTime }: { courseId: stri
   );
 }
 
-function ReviewsPanel() {
+function ReviewsPanel({ course }: { course: ICourse }) {
+  const user = useAppSelector((state) => state.auth.user);
   const [selectedRating, setSelectedRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const reviewsQuery = useCourseReviews(course._id || '');
+  const myReviewQuery = useMyCourseReview(course._id || '');
+  const upsertReview = useUpsertCourseReview(course._id || '', course.slug);
+  const reviews = reviewsQuery.data?.reviews ?? [];
+  const averageRating = course.rating ?? 0;
+  const reviewCount = course.reviews ?? 0;
+  const existingReview = myReviewQuery.data;
+  const hasReviewChanged = !existingReview
+    || existingReview.rating !== selectedRating
+    || (existingReview.comment || '').trim() !== comment.trim();
+
+  useEffect(() => {
+    if (!myReviewQuery.data) return;
+    setSelectedRating(myReviewQuery.data.rating);
+    setComment(myReviewQuery.data.comment || '');
+  }, [myReviewQuery.data]);
+
+  const handleSubmit = async () => {
+    try {
+      const response = await upsertReview.mutateAsync({
+        rating: selectedRating,
+        comment,
+        userAvatarUrl: user?.profile?.avatarUrl || user?.avatarUrl || '',
+      });
+      if (response.status === 'ERR') throw new Error(response.message || 'Không thể lưu đánh giá.');
+      toast.success(existingReview ? 'Đã cập nhật đánh giá.' : 'Đã gửi đánh giá.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể lưu đánh giá.');
+    }
+  };
 
   return (
     <div className="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -580,40 +605,58 @@ function ReviewsPanel() {
           <p className="text-xs font-semibold uppercase text-zinc-400">Đánh giá khóa học</p>
           <h2 className="mt-1 text-xl font-bold text-zinc-950 dark:text-white">Cảm nhận từ học viên</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Khu vực này sẽ hiển thị đánh giá thật sau khi chức năng đánh giá được kết nối với backend.
+            Chia sẻ đánh giá của bạn và xem phản hồi từ những học viên khác.
           </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-3xl font-bold text-zinc-950 dark:text-white">4.8</p>
-            <Rating value={5} readOnly className="mt-2" />
+            <p className="text-3xl font-bold text-zinc-950 dark:text-white">
+              {reviewCount > 0 ? averageRating.toFixed(1) : '--'}
+            </p>
+            <Rating value={Math.round(averageRating)} readOnly className="mt-2" />
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Điểm trung bình</p>
           </div>
           <div className="border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-3xl font-bold text-zinc-950 dark:text-white">128</p>
+            <p className="text-3xl font-bold text-zinc-950 dark:text-white">{reviewCount}</p>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Lượt đánh giá</p>
           </div>
           <div className="border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-3xl font-bold text-zinc-950 dark:text-white">92%</p>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Hài lòng với nội dung</p>
+            <p className="text-3xl font-bold text-zinc-950 dark:text-white">{reviews.filter((review) => review.rating >= 4).length}</p>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Đánh giá tích cực</p>
           </div>
         </div>
 
-        <div className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
-          {reviewSamples.map((review) => (
-            <article key={`${review.name}-${review.time}`} className="py-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-bold text-zinc-950 dark:text-white">{review.name}</p>
-                  <p className="mt-0.5 text-xs text-zinc-400">{review.time}</p>
+        {reviewsQuery.isLoading ? (
+          <EmptyState icon={Loader2} message="Đang tải đánh giá khóa học..." />
+        ) : reviews.length > 0 ? (
+          <div className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+            {reviews.map((review) => (
+              <article key={review._id} className="py-4">
+                <div className="flex gap-3">
+                  <UserAvatar
+                    user={{ fullName: review.userName, avatarUrl: review.userAvatarUrl }}
+                    className="h-10 w-10 text-sm"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-zinc-950 dark:text-white">{review.userName || 'Học viên SecureLearn'}</p>
+                        <p className="mt-0.5 text-xs text-zinc-400">{formatReviewDate(review.updatedAt)}</p>
+                      </div>
+                      <Rating value={review.rating} readOnly />
+                    </div>
+                    {review.comment && (
+                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">{review.comment}</p>
+                    )}
+                  </div>
                 </div>
-                <Rating value={review.rating} readOnly />
-              </div>
-              <p className="mt-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{review.content}</p>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState icon={MessageSquare} message="Khóa học này chưa có đánh giá nào." />
+        )}
       </div>
 
       <aside className="border border-zinc-200 p-5 dark:border-zinc-800">
@@ -631,6 +674,9 @@ function ReviewsPanel() {
           <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Nội dung đánh giá</span>
           <textarea
             rows={5}
+            maxLength={1000}
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
             placeholder="Viết đánh giá của bạn..."
             className="mt-2 w-full resize-none border border-zinc-200 bg-transparent p-3 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-800 dark:focus:border-zinc-500"
           />
@@ -640,8 +686,10 @@ function ReviewsPanel() {
           type="button"
           variant="udemy_dark"
           className="mt-4 h-10 w-full rounded-lg px-4 text-sm"
+          disabled={upsertReview.isPending || myReviewQuery.isLoading || !hasReviewChanged}
+          onClick={handleSubmit}
         >
-          Gửi đánh giá
+          {existingReview ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}
         </Button>
       </aside>
     </div>

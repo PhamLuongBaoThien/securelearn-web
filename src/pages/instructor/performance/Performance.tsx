@@ -15,6 +15,9 @@ import {
 } from '@/services/paymentApi';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useInstructorRevenueStats, useInstructorSubscriptionFinance } from '@/hooks/useInstructorFinance';
+import { useAppSelector } from '@/app/hooks';
+import { useInstructorRatingStats } from '@/hooks/useCourseReviews';
+import type { IInstructorRatingStats } from '@/services/courseApi';
 
 type PerfTab = 'revenue' | 'students' | 'reviews';
 
@@ -245,41 +248,65 @@ const StudentsTab = () => (
 );
 
 /* ─── Tab: Đánh giá (placeholder) ─── */
-const ReviewsTab = () => (
+const ReviewsTab = ({ stats }: { stats: IInstructorRatingStats | undefined }) => (
   <div className="space-y-6">
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center">
-      <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
-        <MessageSquare className="w-8 h-8 text-amber-500" />
-      </div>
-      <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Đánh giá từ học viên</h3>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-md">
-        Tính năng đang được phát triển. Bạn sẽ sớm có thể xem đánh giá, xếp hạng sao và phản hồi từ học viên cho các khóa học của mình tại đây.
-      </p>
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-lg">
-        <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-4 text-center">
-          <Star className="w-5 h-5 text-zinc-400 mx-auto mb-1" />
-          <p className="text-xs text-zinc-400">Đánh giá TB</p>
-          <p className="text-lg font-bold text-zinc-300 dark:text-zinc-600">—</p>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <StatCard
+        label="Xếp hạng giảng viên"
+        value={stats?.reviewCount ? stats.averageRating.toFixed(1) : '—'}
+        sub={stats?.reviewCount ? 'trung bình tất cả đánh giá' : 'chưa có đánh giá'}
+        icon={<Star className="w-4 h-4" />}
+      />
+      <StatCard
+        label="Tổng đánh giá"
+        value={`${(stats?.reviewCount ?? 0).toLocaleString('vi-VN')}`}
+        icon={<MessageSquare className="w-4 h-4" />}
+      />
+      <StatCard
+        label="Đánh giá 5 sao"
+        value={`${(stats?.fiveStarCount ?? 0).toLocaleString('vi-VN')}`}
+        icon={<Star className="w-4 h-4" />}
+      />
+      <StatCard
+        label="Khóa đã xuất bản"
+        value={`${(stats?.courseCount ?? 0).toLocaleString('vi-VN')}`}
+        icon={<BookOpen className="w-4 h-4" />}
+      />
+    </div>
+
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5">
+      <h3 className="font-bold text-zinc-900 dark:text-white mb-4">Đánh giá theo khóa học</h3>
+      {stats?.courses.length ? (
+        <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          {stats.courses.map((course) => (
+            <div key={course._id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">{course.title}</p>
+                <p className="text-xs text-zinc-500">{course.enrollmentCount.toLocaleString('vi-VN')} học viên</p>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="inline-flex items-center gap-1 font-bold text-amber-600">
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  {course.reviews > 0 ? course.rating.toFixed(1) : '—'}
+                </span>
+                <span className="text-zinc-500">{course.reviews.toLocaleString('vi-VN')} đánh giá</span>
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-4 text-center">
-          <MessageSquare className="w-5 h-5 text-zinc-400 mx-auto mb-1" />
-          <p className="text-xs text-zinc-400">Tổng đánh giá</p>
-          <p className="text-lg font-bold text-zinc-300 dark:text-zinc-600">—</p>
-        </div>
-        <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-4 text-center">
-          <Star className="w-5 h-5 text-zinc-400 mx-auto mb-1" />
-          <p className="text-xs text-zinc-400">5 sao</p>
-          <p className="text-lg font-bold text-zinc-300 dark:text-zinc-600">—</p>
-        </div>
-      </div>
+      ) : (
+        <p className="text-sm text-zinc-500">Chưa có khóa học đã xuất bản hoặc chưa có đánh giá.</p>
+      )}
     </div>
   </div>
 );
 
 export const InstructorPerformance: React.FC = () => {
   const [activeTab, setActiveTab] = useState<PerfTab>('revenue');
+  const { user } = useAppSelector((state) => state.auth);
   const { data: revenue, isLoading } = useInstructorRevenueStats();
   const { data: subscriptionFinance } = useInstructorSubscriptionFinance();
+  const { data: ratingStats, isLoading: ratingLoading } = useInstructorRatingStats(user?._id || '', Boolean(user?._id));
 
   const monthlyTrend = useMemo(() => (revenue?.monthlyData ?? []).map((m) => m.instructorRevenue), [revenue]);
   const latestRevenue = monthlyTrend.length > 0 ? monthlyTrend[monthlyTrend.length - 1] : 0;
@@ -314,7 +341,9 @@ export const InstructorPerformance: React.FC = () => {
         <>
           {activeTab === 'revenue' && <RevenueTab revenue={revenue} subscription={subscriptionFinance} />}
           {activeTab === 'students' && <StudentsTab />}
-          {activeTab === 'reviews' && <ReviewsTab />}
+          {activeTab === 'reviews' && (ratingLoading ? (
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-sm text-zinc-500">Đang tải dữ liệu đánh giá...</div>
+          ) : <ReviewsTab stats={ratingStats} />)}
         </>
       )}
 

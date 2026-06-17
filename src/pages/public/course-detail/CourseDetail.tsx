@@ -22,6 +22,7 @@ import { CourseWhatYouLearn } from './CourseWhatYouLearn';
 import { CourseRequirements } from './CourseRequirements';
 import { CourseInstructor } from './CourseInstructor';
 import { CourseIncludes } from './CourseIncludes';
+import { CourseReviews } from './CourseReviews';
 
 // Skeleton cho phần hero banner — hiển thị trong lúc API đang tải
 function HeroBannerSkeleton() {
@@ -185,6 +186,10 @@ export function CourseDetail() {
               avatarUrl={course.instructorProfile?.avatarUrl}
               bio={course.instructorProfile?.bio}
             />
+          </StaggerItem>
+
+          <StaggerItem>
+            <CourseReviews course={course} canReview={isEnrolled} />
           </StaggerItem>
 
         </StaggerContainer>

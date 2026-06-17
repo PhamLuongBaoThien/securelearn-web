@@ -12,6 +12,7 @@ export interface CatalogFilters {
   level?: string[];
   minPrice?: number;
   maxPrice?: number;
+  rating?: number;
   minDuration?: number; // seconds
   maxDuration?: number; // seconds
   sort?: string;
@@ -43,6 +44,7 @@ export function useCatalog(filters: CatalogFilters = {}) {
         level: filters.level?.join(',') || undefined,
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
+        rating: filters.rating,
         minDuration: filters.minDuration,
         maxDuration: filters.maxDuration,
         sort: filters.sort,

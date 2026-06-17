@@ -29,6 +29,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useAppSelector } from '@/app/hooks';
 import { useGetMyCourses } from '@/hooks/useInstructorCourses';
+import { useInstructorRatingStats } from '@/hooks/useCourseReviews';
 import { getInstructorRevenueStats } from '@/services/paymentApi';
 
 const formatCurrency = (value: number) =>
@@ -37,6 +38,7 @@ const formatCurrency = (value: number) =>
 export const InstructorDashboard: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   const { data: courses = [], isLoading: coursesLoading } = useGetMyCourses();
+  const { data: ratingStats, isLoading: ratingLoading } = useInstructorRatingStats(user?._id || '', Boolean(user?._id));
 
   const { data: revenue, isLoading: revenueLoading } = useQuery({
     queryKey: ['instructor', 'finance', 'revenue'],
@@ -49,7 +51,7 @@ export const InstructorDashboard: React.FC = () => {
     },
   });
 
-  const isLoading = coursesLoading || revenueLoading;
+  const isLoading = coursesLoading || revenueLoading || ratingLoading;
 
   // Course stats — dữ liệu thật
   const totalCourses = courses.length;
@@ -57,6 +59,8 @@ export const InstructorDashboard: React.FC = () => {
   const draftCourses = courses.filter((c) => c.status === 'DRAFT').length;
   const pendingCourses = courses.filter((c) => c.status === 'PENDING').length;
   const totalStudents = courses.reduce((sum, c) => sum + (c.enrollmentCount || 0), 0);
+  const instructorRating = ratingStats?.averageRating ?? 0;
+  const instructorReviewCount = ratingStats?.reviewCount ?? 0;
 
   // Revenue stats — dữ liệu thật
   const totalInstructorRevenue = revenue?.totalInstructorRevenue ?? 0;
@@ -149,14 +153,18 @@ export const InstructorDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Đánh giá</p>
-              <h3 className="text-2xl font-bold mt-1 text-zinc-300 dark:text-zinc-600">—</h3>
+              <h3 className="text-2xl font-bold mt-1 text-zinc-900 dark:text-white">
+                {instructorReviewCount > 0 ? instructorRating.toFixed(1) : '—'}
+              </h3>
             </div>
             <div className="h-12 w-12 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center">
               <Star className="w-6 h-6" />
             </div>
           </div>
           <p className="mt-3 text-xs text-zinc-400">
-            Sắp ra mắt
+            {instructorReviewCount > 0
+              ? `${instructorReviewCount.toLocaleString('vi-VN')} lượt đánh giá`
+              : 'Chưa có đánh giá'}
           </p>
         </div>
       </div>

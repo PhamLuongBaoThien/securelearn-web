@@ -18,6 +18,7 @@ export const RATING_OPTIONS = [
 export const SORT_OPTIONS = [
   { value: "newest", label: "Mới nhất" },
   { value: "popular", label: "Phổ biến nhất" },
+  { value: "rating_desc", label: "Đánh giá cao nhất" },
   { value: "price_asc", label: "Giá từ thấp đến cao" },
   { value: "price_desc", label: "Giá từ cao đến thấp" },
 ];
