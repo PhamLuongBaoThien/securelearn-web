@@ -8,7 +8,7 @@ import { useAppSelector, useAppDispatch } from '../../../app/hooks';
 import { toggleTheme } from '../../../features/dashboard/uiSlice';
 import { useLogout } from '@/hooks/useAuth';
 import {
-  ShoppingCart, Search, Menu, Sun, Moon,
+  ShoppingCart, Search, Menu, Sun, Moon, Heart,
   Layers, Minus, BookOpen, User, Settings, Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ export const Navbar = () => {
   const location = useLocation();
   const theme = useAppSelector((state) => state.ui.theme);
   const cartItems = useAppSelector((state) => state.cart.cartItems);
+  const wishlist = useAppSelector((state) => state.cart.wishlist);
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const { data: categories = [], isLoading: isCategoriesLoading } = usePublicCourseCategories();
   const showAuthenticatedUI = isAuthenticated && !!user;
@@ -242,6 +243,23 @@ export const Navbar = () => {
 
               {/* Actions */}
               <div className="flex items-center gap-2 shrink-0">
+                {/* Wishlist */}
+                <Link
+                  to="/student/dashboard?tab=wishlist"
+                  className="relative p-2 hover:bg-secondary rounded-full transition-colors cursor-pointer group shrink-0"
+                  title="Danh sách mong muốn"
+                >
+                  <Heart className="h-5 w-5 text-foreground group-hover:text-primary transition-colors" />
+                  {wishlist.length > 0 && (
+                    <span
+                      key={wishlist.length}
+                      className="absolute top-0 right-0 h-[14px] w-[14px] rounded-full bg-rose-500 text-[9px] font-bold text-white flex items-center justify-center pointer-events-none animate-badge-pop"
+                    >
+                      {wishlist.length}
+                    </span>
+                  )}
+                </Link>
+
                 {/* Cart */}
                 <Link
                   to="/cart"

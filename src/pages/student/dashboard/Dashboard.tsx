@@ -1,5 +1,5 @@
-import { useMemo, useState, type ElementType } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState, type ElementType } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -24,6 +24,8 @@ import {
 } from '../../../components/ui/dropdown-menu';
 import { useEnrolledCourses, type EnrolledCourseItem } from '../../../hooks/useEnrolledCourses';
 import { useAppSelector } from '../../../app/hooks';
+import { CourseCard as CatalogCourseCard } from '../../../components/ui/CourseCard';
+import type { ICourse } from '../../../services/courseApi';
 import type { CartItem } from '../../../features/courses/cartSlice';
 
 type TabId = 'my-courses' | 'wishlist' | 'certificates';
@@ -143,7 +145,7 @@ function CourseCardSkeleton() {
   );
 }
 
-function CourseCard({ course }: { course: EnrolledCourseItem }) {
+function EnrolledCourseCard({ course }: { course: EnrolledCourseItem }) {
   const navigate = useNavigate();
   const progress = getStableProgress(course.enrollmentId || course.courseId || course.title);
 
@@ -224,51 +226,25 @@ function CourseCard({ course }: { course: EnrolledCourseItem }) {
   );
 }
 
-function WishlistCard({ course }: { course: CartItem }) {
-  return (
-    <article className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <Link to={`/course/${course.slug}`} className="block aspect-video overflow-hidden bg-zinc-100 dark:bg-zinc-900">
-        {course.thumbnail ? (
-          <img
-            src={course.thumbnail}
-            alt={course.title}
-            className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <Heart className="h-9 w-9 text-zinc-400" />
-          </div>
-        )}
-      </Link>
-
-      <div className="p-4">
-        <div className="mb-3 flex items-center gap-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-          <Heart className="h-3.5 w-3.5" />
-          Đã lưu
-        </div>
-        <Link
-          to={`/course/${course.slug}`}
-          className="line-clamp-2 min-h-[40px] text-sm font-semibold leading-5 text-zinc-950 hover:text-zinc-700 dark:text-white dark:hover:text-zinc-200"
-        >
-          {course.title}
-        </Link>
-        <p className="mt-1 truncate text-sm text-zinc-500 dark:text-zinc-400">
-          {course.instructorName || 'Hệ thống'}
-        </p>
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <span className="text-base font-bold text-zinc-950 dark:text-white">
-            {course.price.toLocaleString('vi-VN')} ₫
-          </span>
-          <Link
-            to={`/course/${course.slug}`}
-            className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-200 px-3 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
-          >
-            Xem
-          </Link>
-        </div>
-      </div>
-    </article>
-  );
+function toCatalogCourse(course: CartItem): ICourse {
+  return {
+    _id: course._id,
+    slug: course.slug,
+    title: course.title,
+    thumbnail: course.thumbnail,
+    instructorId: '',
+    instructorName: course.instructorName,
+    level: course.level,
+    price: course.price,
+    rating: course.rating,
+    status: 'PUBLISHED',
+    totalDuration: course.totalDuration ?? 0,
+    totalLessons: course.totalLessons ?? 0,
+    enrollmentCount: 0,
+    sections: [],
+    createdAt: '',
+    updatedAt: '',
+  };
 }
 
 function EmptyState({
@@ -303,7 +279,14 @@ function EmptyState({
 }
 
 export function StudentDashboard() {
-  const [activeTab, setActiveTab] = useState<TabId>('my-courses');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const resolveTabFromParams = (params: URLSearchParams): TabId => {
+    const tab = params.get('tab');
+    if (tab === 'wishlist' || tab === 'certificates') return tab;
+    return 'my-courses';
+  };
+  const initialTab = resolveTabFromParams(searchParams);
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [sortKey, setSortKey] = useState<SortKey>('recent');
 
   const user = useAppSelector((state) => state.auth.user);
@@ -334,6 +317,10 @@ export function StudentDashboard() {
     wishlist: wishlist.length,
     certificates: 0,
   };
+
+  useEffect(() => {
+    setActiveTab(resolveTabFromParams(searchParams));
+  }, [searchParams]);
 
   return (
     <div className="relative -mt-[88px] min-h-screen bg-zinc-50 text-zinc-950 antialiased dark:bg-zinc-950 dark:text-zinc-100">
@@ -369,7 +356,14 @@ export function StudentDashboard() {
                   key={tab.id}
                   type="button"
                   variant="ghost"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    if (tab.id === 'my-courses') {
+                      setSearchParams({});
+                    } else {
+                      setSearchParams({ tab: tab.id });
+                    }
+                  }}
                   className={`relative flex shrink-0 items-center gap-2 pb-3 text-sm transition-colors rounded-none bg-transparent hover:bg-transparent px-0 pt-0 h-auto ${
                     activeTab === tab.id
                       ? 'font-semibold text-zinc-950 dark:text-white'
@@ -443,7 +437,7 @@ export function StudentDashboard() {
                 {!isLoading && !isError && sortedCourses.length > 0 && (
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {sortedCourses.map((course) => (
-                      <CourseCard key={course.enrollmentId} course={course} />
+                      <EnrolledCourseCard key={course.enrollmentId} course={course} />
                     ))}
                   </div>
                 )}
@@ -462,13 +456,13 @@ export function StudentDashboard() {
                   <EmptyState
                     icon={Heart}
                     title="Chưa có khóa học mong muốn"
-                    description="Tab này đã sẵn sàng cho chức năng tim khóa học. Khi người học lưu khóa học, danh sách sẽ xuất hiện tại đây."
+                    description="Thả tim các khóa học bạn quan tâm để quay lại mua hoặc xem chi tiết sau."
                     action={{ label: 'Tìm khóa học để lưu', to: '/courses' }}
                   />
                 ) : (
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {wishlist.map((course) => (
-                      <WishlistCard key={course._id} course={course} />
+                      <CatalogCourseCard key={course._id} course={toCatalogCourse(course)} />
                     ))}
                   </div>
                 )}

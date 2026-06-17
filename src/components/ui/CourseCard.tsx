@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Star, Clock, BookOpen, Check, GraduationCap } from 'lucide-react';
+import { Star, Clock, BookOpen, Check, GraduationCap, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HoverCard } from '@/components/animations/HoverCard';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { enrollWithSubscription, type ICourse } from '@/services/courseApi';
 import { useAppSelector } from '@/app/hooks';
 import { useCartActions } from '@/hooks/useCart';
+import { useWishlistActions } from '@/hooks/useWishlist';
 import { enrolledKeys, useEnrolledCourses } from '@/hooks/useEnrolledCourses';
 import { useMySubscription } from '@/hooks/useMySubscription';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -33,10 +34,25 @@ export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const cartItems = useAppSelector((state) => state.cart.cartItems);
+  const wishlist = useAppSelector((state) => state.cart.wishlist);
   const user = useAppSelector((state) => state.auth.user);
   const isInCart = cartItems.some((item) => item._id === course._id);
+  const isInWishlist = wishlist.some((item) => item._id === course._id);
   const { addItem, isAdding } = useCartActions();
+  const { toggleItem: toggleWishlistItem, isAdding: isSavingWishlist, isRemoving: isRemovingWishlist } = useWishlistActions();
   const hasLearningPoints = Array.isArray(course.whatYouWillLearn) && course.whatYouWillLearn.length > 0;
+  const wishlistItem = {
+    _id: course._id,
+    slug: course.slug,
+    title: course.title,
+    price: course.price,
+    thumbnail: course.thumbnail,
+    instructorName: course.instructorName,
+    level: course.level,
+    totalLessons: course.totalLessons,
+    totalDuration: course.totalDuration,
+    rating: course.rating,
+  };
 
   // Kiểm tra đã ghi danh chưa — dùng lại cache từ useEnrolledCourses (không gây thêm request)
   const isAuthenticated = Boolean(user);
@@ -66,34 +82,48 @@ export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode
   const cardContent = (
     <HoverCard className="group flex flex-col h-full cursor-pointer bg-zinc-50 dark:bg-card border border-border rounded-xl overflow-hidden hover:shadow-md transition-shadow">
       {/* Thumbnail — bọc trong Link */}
-      <Link
-        to={`/course/${course.slug}`}
-        className="block w-full aspect-video overflow-hidden bg-secondary relative shrink-0"
-      >
-        {/* Badge thông thường (Bestseller, ...) — chỉ hiện khi chưa enrolled */}
-        {!isEnrolled && course.badge && (
-          <div className="absolute top-2 left-2 bg-[#eceb98] text-yellow-900 text-xs font-bold px-2 py-1 rounded-sm z-10 shadow-sm">
-            {course.badge}
-          </div>
-        )}
+      <div className="relative w-full aspect-video overflow-hidden bg-secondary shrink-0">
+        <Link to={`/course/${course.slug}`} className="block h-full w-full">
+          {/* Badge thông thường (Bestseller, ...) — chỉ hiện khi chưa enrolled */}
+          {!isEnrolled && course.badge && (
+            <div className="absolute top-2 left-2 bg-[#eceb98] text-yellow-900 text-xs font-bold px-2 py-1 rounded-sm z-10 shadow-sm">
+              {course.badge}
+            </div>
+          )}
 
-        {/* Badge "Đã sở hữu" — overlay thumbnail, không chiếm chiều cao card */}
-        {isEnrolled && (
-          <div className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600/90 to-emerald-500/80 backdrop-blur-sm z-20">
-            <GraduationCap className="w-3.5 h-3.5 text-white shrink-0" />
-            <span className="text-white text-xs font-semibold tracking-wide">Đã sở hữu</span>
-          </div>
-        )}
+          {/* Badge "Đã sở hữu" — overlay thumbnail, không chiếm chiều cao card */}
+          {isEnrolled && (
+            <div className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600/90 to-emerald-500/80 backdrop-blur-sm z-20">
+              <GraduationCap className="w-3.5 h-3.5 text-white shrink-0" />
+              <span className="text-white text-xs font-semibold tracking-wide">Đã sở hữu</span>
+            </div>
+          )}
 
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity z-10" />
-        {course.thumbnail ? (
-          <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-700 to-zinc-900">
-            <BookOpen className="w-10 h-10 text-zinc-500" />
-          </div>
-        )}
-      </Link>
+          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity z-10" />
+          {course.thumbnail ? (
+            <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-700 to-zinc-900">
+              <BookOpen className="w-10 h-10 text-zinc-500" />
+            </div>
+          )}
+        </Link>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          title={isInWishlist ? 'Bỏ khỏi danh sách mong muốn' : 'Lưu vào danh sách mong muốn'}
+          className="absolute right-2 top-2 z-30 h-9 w-9 rounded-full bg-white/95 text-zinc-800 shadow-sm hover:bg-white dark:bg-zinc-950/90 dark:text-zinc-100 dark:hover:bg-zinc-950"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleWishlistItem(wishlistItem, isInWishlist);
+          }}
+          disabled={isSavingWishlist || isRemovingWishlist}
+        >
+          <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-rose-500 text-rose-500' : ''}`} />
+        </Button>
+      </div>
 
       {/* Info area */}
       <div className="flex flex-col flex-1 p-4">
@@ -222,16 +252,7 @@ export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode
               e.preventDefault();
               if (isInCart) return;
               addItem({
-                _id: course._id,
-                slug: course.slug,
-                title: course.title,
-                price: course.price,
-                thumbnail: course.thumbnail,
-                instructorName: course.instructorName,
-                level: course.level,
-                totalLessons: course.totalLessons,
-                totalDuration: course.totalDuration,
-                rating: course.rating,
+                ...wishlistItem,
               });
             }}
             disabled={isInCart || isAdding}

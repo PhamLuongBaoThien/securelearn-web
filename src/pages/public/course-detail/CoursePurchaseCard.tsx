@@ -14,10 +14,11 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAppSelector } from '@/app/hooks';
 import { useCartActions } from '@/hooks/useCart';
+import { useWishlistActions } from '@/hooks/useWishlist';
 import { enrollWithSubscription, type ICourse } from '@/services/courseApi';
 import { enrolledKeys } from '@/hooks/useEnrolledCourses';
 import { useMySubscription } from '@/hooks/useMySubscription';
-import { CheckCircle2, CreditCard } from 'lucide-react';
+import { CheckCircle2, CreditCard, Heart } from 'lucide-react';
 
 interface Props {
   course: ICourse;     // Dữ liệu khóa học cần hiển thị
@@ -28,6 +29,7 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addItem, isAdding } = useCartActions();
+  const { toggleItem: toggleWishlistItem, isAdding: isSavingWishlist, isRemoving: isRemovingWishlist } = useWishlistActions();
   const user = useAppSelector((state) => state.auth.user);
   const { data: subscription } = useMySubscription();
   const hasActiveSubscription = Boolean(subscription?.current);
@@ -35,7 +37,21 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
 
   // Kiểm tra khóa học này đã có trong giỏ hàng Redux chưa
   const cartItems = useAppSelector((state) => state.cart.cartItems);
+  const wishlist = useAppSelector((state) => state.cart.wishlist);
   const isInCart = cartItems.some((item) => item._id === course._id);
+  const isInWishlist = wishlist.some((item) => item._id === course._id);
+  const wishlistItem = {
+    _id: course._id,
+    slug: course.slug,
+    title: course.title,
+    price: course.price,
+    thumbnail: course.thumbnail,
+    instructorName: course.instructorName,
+    level: course.level,
+    totalLessons: course.totalLessons,
+    totalDuration: course.totalDuration,
+    rating: course.rating,
+  };
   const subscriptionEnrollMutation = useMutation({
     mutationFn: async () => {
       const response = await enrollWithSubscription(course._id);
@@ -78,16 +94,7 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
   // Thêm khóa học vào giỏ hàng Redux
   const handleAddToCart = () => {
     addItem({
-      _id: course._id,
-      slug: course.slug,
-      title: course.title,
-      price: course.price,
-      thumbnail: course.thumbnail,
-      instructorName: course.instructorName,
-      level: course.level,
-      totalLessons: course.totalLessons,
-      totalDuration: course.totalDuration,
-      rating: course.rating,
+      ...wishlistItem,
     });
   };
 
@@ -189,6 +196,16 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
                   >
                     <CreditCard className="mr-2 h-4 w-4" />
                     Mua ngay
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full py-6 font-bold rounded-lg border border-transparent hover:border-border"
+                    onClick={() => toggleWishlistItem(wishlistItem, isInWishlist)}
+                    disabled={isSavingWishlist || isRemovingWishlist}
+                  >
+                    <Heart className={`mr-2 h-4 w-4 ${isInWishlist ? 'fill-rose-500 text-rose-500' : ''}`} />
+                    {isInWishlist ? 'Đã lưu' : 'Lưu vào danh sách mong muốn'}
                   </Button>
 
                   {isSubscriptionCourse && (

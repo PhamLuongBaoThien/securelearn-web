@@ -2,6 +2,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { ICourse } from '@/services/courseApi';
 
 import { readGuestCart, readUserCart } from './cartStorage';
+import { readGuestWishlist, readUserWishlist } from './wishlistStorage';
 
 export type CartItem = Pick<
   ICourse,
@@ -30,9 +31,22 @@ const getInitialCartItems = (): CartItem[] => {
   }
 };
 
+const getInitialWishlistItems = (): CartItem[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const status = localStorage.getItem('sl_auth_status');
+    if (status === 'authenticated') {
+      return readUserWishlist();
+    }
+    return readGuestWishlist();
+  } catch {
+    return [];
+  }
+};
+
 const initialState: CartState = {
   cartItems: getInitialCartItems(), // Khởi tạo dữ liệu tức thì cho UI
-  wishlist: [],
+  wishlist: getInitialWishlistItems(),
 };
 
 const cartSlice = createSlice({
@@ -50,6 +64,9 @@ const cartSlice = createSlice({
     removeFromCart: (state, action: PayloadAction<string>) => {
       state.cartItems = state.cartItems.filter(item => item._id !== action.payload);
     },
+    setWishlistItems: (state, action: PayloadAction<CartItem[]>) => {
+      state.wishlist = action.payload;
+    },
     addToWishlist: (state, action: PayloadAction<CartItem>) => {
       if (!state.wishlist.find(item => item._id === action.payload._id)) {
         state.wishlist.push(action.payload);
@@ -60,9 +77,21 @@ const cartSlice = createSlice({
     },
     clearCart: (state) => {
       state.cartItems = [];
+    },
+    clearWishlist: (state) => {
+      state.wishlist = [];
     }
   },
 });
 
-export const { setCartItems, addToCart, removeFromCart, addToWishlist, removeFromWishlist, clearCart } = cartSlice.actions;
+export const {
+  setCartItems,
+  addToCart,
+  removeFromCart,
+  setWishlistItems,
+  addToWishlist,
+  removeFromWishlist,
+  clearCart,
+  clearWishlist,
+} = cartSlice.actions;
 export default cartSlice.reducer;

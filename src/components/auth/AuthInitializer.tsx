@@ -11,6 +11,7 @@ import { setAccessToken } from '@/services/apiClient';
 import { useInitializeAuth } from '@/hooks/useAuth';
 import { useInitializeAdminAuth } from '@/hooks/useAdminAuth';
 import { useCartSync, useMergeGuestCart } from '@/hooks/useCart';
+import { useMergeGuestWishlist, useWishlistSync } from '@/hooks/useWishlist';
 
 interface AuthInitializerProps {
   children: React.ReactNode;
@@ -22,8 +23,11 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
   const userSession = useInitializeAuth({ enabled: !isAdminPath });
   const adminSession = useInitializeAdminAuth({ enabled: isAdminPath });
   const { mutate: mergeGuestCartAfterSessionRestore } = useMergeGuestCart();
+  const { mutate: mergeGuestWishlistAfterSessionRestore } = useMergeGuestWishlist();
   const hasMergedGuestCart = useRef(false);
+  const hasMergedGuestWishlist = useRef(false);
   useCartSync({ enabled: !isAdminPath });
+  useWishlistSync({ enabled: !isAdminPath });
 
   // Khôi phục session user khi app khởi động ở nhánh user.
   useEffect(() => {
@@ -33,10 +37,21 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
         hasMergedGuestCart.current = true;
         mergeGuestCartAfterSessionRestore();
       }
+      if (!hasMergedGuestWishlist.current) {
+        hasMergedGuestWishlist.current = true;
+        mergeGuestWishlistAfterSessionRestore();
+      }
     } else if (userSession.status === 'error' && !isAdminPath) {
       dispatch(clearUser());
     }
-  }, [userSession.status, userSession.data, dispatch, isAdminPath, mergeGuestCartAfterSessionRestore]);
+  }, [
+    userSession.status,
+    userSession.data,
+    dispatch,
+    isAdminPath,
+    mergeGuestCartAfterSessionRestore,
+    mergeGuestWishlistAfterSessionRestore,
+  ]);
 
   // Khôi phục session admin khi app khởi động ở nhánh admin.
   useEffect(() => {

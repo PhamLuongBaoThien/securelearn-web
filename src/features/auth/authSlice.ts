@@ -6,6 +6,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { AuthState, AuthUser } from '@/types/auth.types';
 
 import { clearUserCart } from '@/features/courses/cartStorage';
+import { clearUserWishlist } from '@/features/courses/wishlistStorage';
 
 // ===== localStorage helpers =====
 // Chỉ lưu user profile (public info), KHÔNG lưu accessToken (bảo mật)
@@ -75,6 +76,7 @@ function clearAuthFromStorage(): void {
     localStorage.setItem(AUTH_STATUS_KEY, 'guest');
     localStorage.removeItem(AUTH_USER_KEY);
     clearUserCart();
+    clearUserWishlist();
   } catch { /* bỏ qua */ }
 }
 

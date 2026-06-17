@@ -6,14 +6,17 @@ import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppDispatch } from '@/app/hooks';
 import { setUser } from '@/features/auth/authSlice';
-import { setCartItems } from '@/features/courses/cartSlice';
+import { setCartItems, setWishlistItems } from '@/features/courses/cartSlice';
 import { setAccessToken } from '@/services/apiClient';
 import { getMe } from '@/services/authApi';
 import { mergeGuestCart } from '@/services/cartApi';
+import { mergeGuestWishlist } from '@/services/wishlistApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { authKeys } from '@/hooks/useAuth';
 import { cartKeys } from '@/hooks/useCart';
+import { wishlistKeys } from '@/hooks/useWishlist';
 import { clearGuestCart, getGuestCartCourseIds } from '@/features/courses/cartStorage';
+import { clearGuestWishlist, getGuestWishlistCourseIds } from '@/features/courses/wishlistStorage';
 import { toast } from 'sonner';
 
 export function OAuthCallback() {
@@ -46,8 +49,12 @@ export function OAuthCallback() {
         const profileRes = await getMe();
         if (profileRes.status === 'OK' && profileRes.data) {
           const guestCourseIds = getGuestCartCourseIds();
+          const guestWishlistCourseIds = getGuestWishlistCourseIds();
           const mergedCart = guestCourseIds.length > 0
             ? await mergeGuestCart(guestCourseIds)
+            : null;
+          const mergedWishlist = guestWishlistCourseIds.length > 0
+            ? await mergeGuestWishlist(guestWishlistCourseIds)
             : null;
 
           dispatch(setUser({ user: profileRes.data }));
@@ -57,6 +64,11 @@ export function OAuthCallback() {
             clearGuestCart();
             dispatch(setCartItems(mergedCart.data.items));
             queryClient.setQueryData(cartKeys.items, mergedCart.data);
+          }
+          if (mergedWishlist?.status === 'OK' && mergedWishlist.data) {
+            clearGuestWishlist();
+            dispatch(setWishlistItems(mergedWishlist.data.items));
+            queryClient.setQueryData(wishlistKeys.items, mergedWishlist.data);
           }
           toast.success(profileRes.message || `Chào mừng ${profileRes.data.fullName}!`);
           navigate('/', { replace: true });
