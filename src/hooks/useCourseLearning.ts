@@ -13,11 +13,10 @@ import {
   submitQuizAttempt,
   type QuizAttemptAnswerPayload,
 } from '@/services/courseApi';
-import { getVideoAsset } from '@/services/mediaApi';
+import { createPlaybackSession } from '@/services/mediaApi';
 
 export const courseLearningKeys = {
   course: (courseId: string) => ['learning', 'course', courseId] as const,
-  video: (videoAssetId: string) => ['learning', 'video', videoAssetId] as const,
   quiz: (courseId: string, lessonId: string) => ['learning', 'quiz', courseId, lessonId] as const,
 };
 
@@ -36,24 +35,21 @@ export function useCourseLearning(courseId: string) {
   });
 }
 
-export function useLearningVideoAsset(videoAssetId?: string | null) {
-  return useQuery({
-    queryKey: courseLearningKeys.video(videoAssetId || ''),
-    queryFn: async () => {
-      const response = await getVideoAsset(videoAssetId!);
-      if (response.status === 'ERR' || !response.data) {
-        throw new Error(response.message || 'Không thể tải video bài học.');
-      }
-      return response.data;
-    },
-    enabled: Boolean(videoAssetId),
-    staleTime: 4 * 60_000,
-  });
-}
-
 export function useSubscriptionHeartbeat() {
   return useMutation({
     mutationFn: sendSubscriptionHeartbeat,
+  });
+}
+
+export function useCreatePlaybackSession() {
+  return useMutation({
+    mutationFn: async (videoAssetId: string) => {
+      const response = await createPlaybackSession(videoAssetId);
+      if (response.status === 'ERR' || !response.data) {
+        throw new Error(response.message || 'Không thể tạo phiên phát video.');
+      }
+      return response.data;
+    },
   });
 }
 

@@ -18,7 +18,6 @@ export interface IVideoAsset {
   mimeType?: string;
   sourceSizeBytes?: number;
   durationSec?: number;
-  manifestPath?: string;
   errorMessage?: string | null;
   uploadCompletedAt?: string | null;
   createdAt?: string;
@@ -98,6 +97,19 @@ export const abortVideoUpload = async (videoAssetId: string) => {
 export const getVideoAsset = async (videoAssetId: string) => {
   const { data } = await apiClient.get<ApiResponse<IVideoAsset>>(
     `/api/media/videos/${videoAssetId}`,
+  );
+  return data;
+};
+
+export interface IVideoPlaybackSession {
+  asset: IVideoAsset;
+  playbackUrl: string;
+  expiresIn: number;
+}
+
+export const createPlaybackSession = async (videoAssetId: string) => {
+  const { data } = await apiClient.post<ApiResponse<IVideoPlaybackSession>>(
+    `/api/media/videos/${videoAssetId}/playback-session`,
   );
   return data;
 };

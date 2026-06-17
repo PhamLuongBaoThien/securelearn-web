@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, ShieldCheck, ShoppingCart, CreditCard, CheckCircle2, ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppSelector } from '@/app/hooks';
@@ -29,6 +29,8 @@ export const Checkout = () => {
   const totalPrice = useMemo(() => cartItems.reduce((sum, item) => sum + item.price, 0), [cartItems]);
 
   const checkoutMutation = useMutation({
+    // Tạo giao dịch mua đứt từ FE.
+    // Backend sẽ đọc cart hiện tại, tạo PaymentTransaction PENDING và trả paymentUrl để redirect sang cổng thanh toán.
     mutationFn: async () => {
       const response = await createCourseCheckout({
         paymentMethod,
@@ -42,6 +44,8 @@ export const Checkout = () => {
       return response.data;
     },
     onSuccess: (data) => {
+      // FE không tự mở quyền học ở bước này.
+      // Sau khi có paymentUrl, browser được chuyển sang cổng thanh toán; quyền học chỉ được mở sau callback confirm thành công.
       if (!data?.paymentUrl) {
         toast.error('Không tìm thấy đường dẫn thanh toán.');
         return;

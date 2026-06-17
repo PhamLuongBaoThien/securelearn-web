@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { Loader2, Shield, VideoOff } from 'lucide-react';
 import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
-import { useLearningVideoAsset, useSubscriptionHeartbeat } from '@/hooks/useCourseLearning';
+import { useCreatePlaybackSession, useSubscriptionHeartbeat } from '@/hooks/useCourseLearning';
 import type { ILesson } from '@/services/courseApi';
 
 const HEARTBEAT_MS = 15_000;
@@ -35,7 +35,8 @@ export function VideoPlayer({
   const lastPositionRef = useRef(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
-  const videoAssetQuery = useLearningVideoAsset(lesson.videoAssetId);
+  const playbackSession = useCreatePlaybackSession();
+  const createPlayback = playbackSession.mutateAsync;
   const heartbeat = useSubscriptionHeartbeat();
   const sendHeartbeat = heartbeat.mutate;
   const heartbeatPending = heartbeat.isPending;
@@ -43,29 +44,49 @@ export function VideoPlayer({
 
   useEffect(() => {
     const video = videoRef.current;
-    const manifestPath = videoAssetQuery.data?.manifestPath;
-    if (!video || !manifestPath) return;
+    const videoAssetId = lesson.videoAssetId;
+    if (!video || !videoAssetId) return;
 
-    const manifestUrl = absoluteApiUrl(manifestPath);
-    if (Hls.isSupported()) {
-      const hls = new Hls({
-        xhrSetup: (xhr, url) => {
-          if (url.includes('/api/')) {
-            const token = getAccessToken();
-            if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-            xhr.withCredentials = true;
-          }
-        },
-      });
-      hls.loadSource(manifestUrl);
-      hls.attachMedia(video);
-      return () => hls.destroy();
-    }
+    let hls: Hls | null = null;
+    let canceled = false;
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = manifestUrl;
-    }
-  }, [videoAssetQuery.data?.manifestPath, lesson._id]);
+    const setupPlayback = async () => {
+      // Mỗi lần mở video, FE phải xin playback session mới.
+      // Backend không trả thẳng manifest hoặc key ngay từ đầu mà chỉ trả one-time playbackUrl.
+      const session = await createPlayback(videoAssetId);
+      if (canceled) return;
+      const manifestUrl = absoluteApiUrl(session.playbackUrl);
+
+      if (Hls.isSupported()) {
+        hls = new Hls({
+          xhrSetup: (xhr, url) => {
+            if (url.includes('/api/')) {
+              const token = getAccessToken();
+              if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+              xhr.withCredentials = true;
+            }
+          },
+        });
+        hls.loadSource(manifestUrl);
+        hls.attachMedia(video);
+        return;
+      }
+
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = manifestUrl;
+      }
+    };
+
+    setupPlayback().catch(() => {
+      if (!canceled) video.removeAttribute('src');
+    });
+
+    return () => {
+      canceled = true;
+      hls?.destroy();
+      video.removeAttribute('src');
+    };
+  }, [createPlayback, lesson.videoAssetId, lesson._id]);
 
   useEffect(() => {
     if (!pauseSignal) return;
@@ -77,6 +98,8 @@ export function VideoPlayer({
     if (!video || !isSubscription || !lesson._id) return;
 
     const startSession = () => {
+      // Heartbeat chỉ dùng cho flow thuê bao để tính usage.
+      // Mua đứt vẫn xem video theo playback session nhưng không gửi usage về payment-service.
       lastPositionRef.current = video.currentTime;
       sendHeartbeat({
         courseId,
@@ -142,15 +165,7 @@ export function VideoPlayer({
     );
   }
 
-  if (videoAssetQuery.isLoading) {
-    return (
-      <div className="flex aspect-video items-center justify-center bg-black text-white">
-        <Loader2 className="h-7 w-7 animate-spin" />
-      </div>
-    );
-  }
-
-  if (videoAssetQuery.error || videoAssetQuery.data?.status !== 'READY') {
+  if (playbackSession.error || playbackSession.data?.asset.status === 'FAILED') {
     return (
       <div className="flex aspect-video items-center justify-center bg-black px-6 text-center text-sm text-zinc-300">
         Video chưa sẵn sàng hoặc bạn không còn quyền truy cập.
@@ -181,6 +196,12 @@ export function VideoPlayer({
           <span className="pointer-events-none absolute bottom-12 right-4 z-20 text-xs font-mono text-white/20">
             {watermarkText}
           </span>
+        )}
+
+        {(playbackSession.isIdle || playbackSession.isPending) && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black text-white">
+            <Loader2 className="h-7 w-7 animate-spin" />
+          </div>
         )}
 
         <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 backdrop-blur-sm">
