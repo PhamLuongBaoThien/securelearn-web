@@ -42,6 +42,8 @@ export function MomoReturn() {
     hasRun.current = true;
 
     const finishSuccess = async (payment: PaymentTransaction) => {
+      // Với mua đứt, page này chỉ đồng bộ lại UI.
+      // Quyền học thật được mở ở backend khi payment-service finalize giao dịch và course-service xử lý event.
       setTransaction(payment);
       setIsDone(true);
       if (payment.productType === 'COURSE') {
@@ -84,6 +86,8 @@ export function MomoReturn() {
       });
 
       try {
+        // Xác minh chữ ký và trạng thái giao dịch với backend trước.
+        // Nếu MoMo return chưa đủ dữ liệu, backend sẽ còn cơ chế reconcile hoặc IPN cập nhật sau đó.
         const confirmRes = await confirmMomoPayment(payload);
         if (confirmRes.status === 'OK' && confirmRes.data) {
           setTransaction(confirmRes.data);
@@ -108,6 +112,7 @@ export function MomoReturn() {
       }
 
       try {
+        // Poll transaction để chờ IPN hoặc bước reconcile của backend cập nhật trạng thái cuối cùng.
         for (let attempt = 0; attempt < 60; attempt++) {
           const res = await getTransactionByCode(orderId);
           if (res.status === 'ERR') {

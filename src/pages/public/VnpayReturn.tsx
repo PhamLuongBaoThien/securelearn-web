@@ -41,6 +41,8 @@ export function VnpayReturn() {
     hasRun.current = true;
 
     const finishSuccess = async (payment: PaymentTransaction) => {
+      // Với mua đứt, page này chỉ dọn cart và refresh danh sách enrolled cho UI.
+      // Enrollment thật được mở ở backend qua event PAYMENT_COURSE_SUCCEEDED.
       setTransaction(payment);
       setIsDone(true);
       if (payment.productType === 'COURSE') {
@@ -85,6 +87,7 @@ export function VnpayReturn() {
 
       try {
         // Bước 1: Thử verify trực tiếp với backend bằng payload trên Return URL
+        // Nếu bước này thành công thì transaction đã được backend đánh dấu SUCCEEDED và downstream có thể đã mở quyền học.
         const confirmRes = await confirmVnpayPayment(payload);
         if (confirmRes.status === 'OK' && confirmRes.data) {
           setTransaction(confirmRes.data);
@@ -104,6 +107,7 @@ export function VnpayReturn() {
 
       try {
         // Bước 2: Fallback polling kiểm tra trạng thái DB
+        // FE chỉ cần đợi tới khi transaction chuyển sang SUCCEEDED hoặc FAILED.
         for (let attempt = 0; attempt < 15; attempt++) {
           const res = await getTransactionByCode(txnRef);
           if (res.status === 'ERR') {
