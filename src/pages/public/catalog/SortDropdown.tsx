@@ -25,7 +25,7 @@ export function SortDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 z-20 min-w-[180px] bg-background border border-border rounded-lg shadow-lg overflow-hidden py-1">
+          <div className="absolute right-0 top-full mt-2 z-50 min-w-[180px] bg-background border border-border rounded-lg shadow-lg overflow-hidden py-1">
             {SORT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}

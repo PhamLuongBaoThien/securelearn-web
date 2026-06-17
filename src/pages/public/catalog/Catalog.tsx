@@ -192,7 +192,7 @@ export function Catalog() {
       </div>
 
       {/* ── Horizontal Filter Bar ── */}
-      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+      <div className="relative z-40 flex items-center justify-between gap-3 mb-6 flex-wrap">
         {/* Left: filter chips */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Tất cả bộ lọc — Mở Drawer */}

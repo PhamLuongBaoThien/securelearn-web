@@ -12,6 +12,7 @@ import { enrolledKeys, useEnrolledCourses } from '@/hooks/useEnrolledCourses';
 import { useMySubscription } from '@/hooks/useMySubscription';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const LEVEL_LABEL: Record<string, string> = {
@@ -113,7 +114,12 @@ export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode
           variant="ghost"
           size="icon"
           title={isInWishlist ? 'Bỏ khỏi danh sách mong muốn' : 'Lưu vào danh sách mong muốn'}
-          className="absolute right-2 top-2 z-30 h-9 w-9 rounded-full bg-white/95 text-zinc-800 shadow-sm hover:bg-white dark:bg-zinc-950/90 dark:text-zinc-100 dark:hover:bg-zinc-950"
+          className={cn(
+            "absolute right-2 top-2 z-30 h-9 w-9 text-white transition-all duration-300 ease-out hover:scale-110 active:scale-95 hover:bg-transparent hover:text-white active:bg-transparent",
+            isInWishlist
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 -translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto"
+          )}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -121,7 +127,12 @@ export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode
           }}
           disabled={isSavingWishlist || isRemovingWishlist}
         >
-          <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-rose-500 text-rose-500' : ''}`} />
+          <Heart
+            className={cn(
+              "h-5 w-5 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] transition-colors",
+              isInWishlist ? 'fill-rose-500 text-rose-500' : 'text-white'
+            )}
+          />
         </Button>
       </div>
 

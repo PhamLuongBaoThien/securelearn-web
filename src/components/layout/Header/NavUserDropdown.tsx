@@ -3,7 +3,7 @@
 // ========================
 import { useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, User, BookOpen, Settings } from 'lucide-react';
+import { LogOut, User, BookOpen, Settings, ShoppingCart, Heart, LayoutDashboard, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { NavbarUser } from './navbar.utils';
@@ -72,20 +72,12 @@ export const NavUserDropdown = ({
           {/* Menu Items */}
           <div className="py-2">
             <Link
-              to="/student/dashboard"
-              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
-              onClick={onClose}
-            >
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-              Khóa học của tôi
-            </Link>
-            <Link
               to="/profile"
               className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
               onClick={onClose}
             >
               <User className="h-4 w-4 text-muted-foreground" />
-              Hồ sơ cá nhân
+              Hồ sơ công khai
             </Link>
             <Link
               to="/settings"
@@ -94,6 +86,48 @@ export const NavUserDropdown = ({
             >
               <Settings className="h-4 w-4 text-muted-foreground" />
               Cài đặt
+            </Link>
+            <Link
+              to="/student/dashboard"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
+              onClick={onClose}
+            >
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              Học tập
+            </Link>
+            <Link
+              to="/cart"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
+              onClick={onClose}
+            >
+              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+              Giỏ hàng
+            </Link>
+            <Link
+              to="/student/dashboard?tab=wishlist"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
+              onClick={onClose}
+            >
+              <Heart className="h-4 w-4 text-muted-foreground" />
+              Khóa học mong muốn
+            </Link>
+            {user.role === 'INSTRUCTOR' && (
+              <Link
+                to="/instructor/dashboard"
+                className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors text-primary font-semibold"
+                onClick={onClose}
+              >
+                <LayoutDashboard className="h-4 w-4 text-primary" />
+                Bảng điều khiển Giảng viên
+              </Link>
+            )}
+            <Link
+              to="/student/dashboard?tab=payments"
+              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
+              onClick={onClose}
+            >
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+              Lịch sử thanh toán
             </Link>
           </div>
 

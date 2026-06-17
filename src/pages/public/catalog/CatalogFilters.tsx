@@ -33,7 +33,7 @@ export function MultiSelectDropdown({ label, options, selected, onSelect }: Mult
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-20 min-w-[200px] max-h-72 overflow-y-auto bg-background border border-border rounded-lg shadow-lg py-1">
+          <div className="absolute left-0 top-full mt-2 z-50 min-w-[200px] max-h-72 overflow-y-auto bg-background border border-border rounded-lg shadow-lg py-1">
             {options.map((opt) => {
               const isSelected = selected.includes(opt.value);
               return (
@@ -115,7 +115,7 @@ export function PriceRangeFilter({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-20 w-76 bg-background border border-border rounded-lg shadow-lg p-5">
+          <div className="absolute left-0 top-full mt-2 z-50 w-76 bg-background border border-border rounded-lg shadow-lg p-5">
             <h4 className="font-semibold text-sm mb-4">Khoảng giá</h4>
             <div className="flex items-center justify-between text-sm font-medium mb-4">
               <span className="px-2.5 py-1 bg-secondary rounded text-xs">{formatPrice(local.min)}</span>
@@ -217,7 +217,7 @@ export function CategoryTreeDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-20 min-w-[280px] max-h-[400px] overflow-y-auto bg-background border border-border rounded-lg shadow-lg py-3 px-3">
+          <div className="absolute left-0 top-full mt-2 z-50 min-w-[280px] max-h-[400px] overflow-y-auto bg-background border border-border rounded-lg shadow-lg py-3 px-3">
             <CategoryTreeFilter nodes={nodes} selected={selected} onChange={onChange} />
           </div>
         </>
@@ -392,7 +392,7 @@ export function DurationDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-20 min-w-[200px] bg-background border border-border rounded-lg shadow-lg py-1">
+          <div className="absolute left-0 top-full mt-2 z-50 min-w-[200px] bg-background border border-border rounded-lg shadow-lg py-1">
             {DURATION_OPTIONS.map((opt) => {
               const isSelected = selected === opt.key;
               return (
