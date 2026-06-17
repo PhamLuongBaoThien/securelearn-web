@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import sidebarLogo from '@/assets/logoweb.png';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 import { Sidebar } from './Sidebar';
 import type { SidebarEntry } from './Sidebar';
@@ -151,13 +152,10 @@ export const AdminLayout: React.FC = () => {
         userFullName={user?.fullName}
         userEmail={user?.email}
         userAvatarNode={
-          <div className="w-10 h-10 min-w-[2.5rem] min-h-[2.5rem] rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary border border-primary/30 shrink-0 overflow-hidden aspect-square">
-            {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              user?.fullName?.charAt(0) || 'A'
-            )}
-          </div>
+          <UserAvatar
+            user={user}
+            className="w-10 h-10 min-w-[2.5rem] min-h-[2.5rem] text-base aspect-square"
+          />
         }
         profileLink="/admin/profile"
         theme={theme}

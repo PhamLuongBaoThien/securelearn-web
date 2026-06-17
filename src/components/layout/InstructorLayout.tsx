@@ -91,8 +91,7 @@ export const InstructorLayout: React.FC = () => {
         userAvatarNode={
           <UserAvatar
             user={user}
-            className="w-10 h-10 min-w-[2.5rem] min-h-[2.5rem] text-base border border-primary/30 aspect-square"
-            fallbackClassName="bg-primary/20 text-primary"
+            className="w-10 h-10 min-w-[2.5rem] min-h-[2.5rem] text-base aspect-square"
           />
         }
         theme={theme}

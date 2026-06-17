@@ -63,7 +63,6 @@ export const UserTable: React.FC<UserTableProps> = ({
                   <UserAvatar
                     user={user}
                     className="w-9 h-9 text-sm"
-                    fallbackClassName="bg-gradient-to-br from-primary/30 to-primary/10 text-primary"
                   />
                   <div>
                     <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">

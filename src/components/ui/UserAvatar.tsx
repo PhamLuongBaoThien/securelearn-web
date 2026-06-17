@@ -17,7 +17,7 @@ interface UserAvatarProps {
 export function UserAvatar({ 
   user, 
   className = "w-10 h-10 text-base", 
-  fallbackClassName = "bg-primary text-primary-foreground" 
+  fallbackClassName = "bg-primary/10 text-primary border border-primary/20" 
 }: UserAvatarProps) {
   const [imageError, setImageError] = useState(false); // giúp vẫn có avatar khi ảnh bị lỗi
   const avatarUrl = user?.profile?.avatarUrl || user?.avatarUrl;
@@ -36,7 +36,7 @@ export function UserAvatar({
       <img 
         src={avatarUrl} 
         alt={user.fullName || "Avatar"} 
-        className={`rounded-full object-cover shrink-0 ${className}`} 
+        className={`rounded-full object-cover shrink-0 border border-primary/20 ${className}`} 
         onError={() => setImageError(true)}
         referrerPolicy="no-referrer" // giúp không gửi thông tin về google
       />

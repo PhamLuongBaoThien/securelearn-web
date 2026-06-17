@@ -1,7 +1,6 @@
 // ========================
 // NavMobileDrawer: Mobile sidebar drawer + overlay
 // ========================
-import { User } from 'lucide-react';
 import { Sidebar } from '../Sidebar';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { SidebarEntry } from '../Sidebar';
@@ -57,9 +56,7 @@ export const NavMobileDrawer = ({
               isAuthenticated && user ? (
                 <UserAvatar user={user} className="h-10 w-10 text-base" />
               ) : (
-                <div className="h-10 w-10 flex items-center justify-center bg-secondary rounded-full">
-                  <User className="h-5 w-5 text-muted-foreground" />
-                </div>
+                <UserAvatar user={null} className="h-10 w-10 text-base" />
               )
             }
             profileLink={isAuthenticated ? '/profile' : undefined}

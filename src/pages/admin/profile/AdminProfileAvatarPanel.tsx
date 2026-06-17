@@ -3,6 +3,7 @@ import React from 'react';
 import { Camera, Loader2, Save } from 'lucide-react';
 import { AnimatedTabContent } from '@/components/animations/TabTransition';
 import { Button } from '@/components/ui/button';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { IAdminUser } from '@/types/auth.types';
 
 interface AdminProfileAvatarPanelProps {
@@ -30,12 +31,11 @@ export const AdminProfileAvatarPanel: React.FC<AdminProfileAvatarPanelProps> = (
       <div className="flex flex-col items-start gap-8">
         <div className="flex items-center gap-8">
           <div className="relative group">
-            <div className="w-40 h-40 rounded-3xl overflow-hidden border-4 border-white dark:border-zinc-900 shadow-xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center relative">
-              {avatarPreview ? (
-                <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-6xl font-bold text-primary">{adminUser.fullName?.charAt(0) || 'A'}</span>
-              )}
+            <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-white dark:border-zinc-900 shadow-xl relative">
+              <UserAvatar
+                user={avatarPreview ? { ...adminUser, avatarUrl: avatarPreview } : adminUser}
+                className="w-full h-full text-6xl"
+              />
               <div
                 className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                 onClick={() => fileInputRef.current?.click()}

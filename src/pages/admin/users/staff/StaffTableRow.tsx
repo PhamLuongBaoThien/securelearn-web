@@ -33,7 +33,6 @@ export const StaffTableRow: React.FC<StaffTableRowProps> = ({
           <UserAvatar
             user={staff}
             className="w-9 h-9 text-sm"
-            fallbackClassName="bg-gradient-to-br from-primary/30 to-primary/10 text-primary"
           />
           <div>
             <div className="flex items-center gap-2">
