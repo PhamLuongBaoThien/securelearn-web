@@ -41,8 +41,8 @@ import {
   type IDocumentAsset,
   type IDocumentViewSession,
 } from '@/services/mediaApi';
-import type { WatermarkIdentity } from '@/lib/contentProtection';
 import { ProtectedPdfViewer } from './ProtectedPdfViewer';
+import { ImageDocumentViewer } from './ImageDocumentViewer';
 import { toast } from 'sonner';
 
 type TabId = 'overview' | 'resources' | 'notes' | 'discussions' | 'reviews';
@@ -81,13 +81,11 @@ export function InteractiveTabs({
   lesson,
   playbackTime,
   onRequestPauseVideo,
-  watermarkIdentity,
 }: {
   course: ICourse;
   lesson: ILesson;
   playbackTime: number;
   onRequestPauseVideo: () => void;
-  watermarkIdentity?: WatermarkIdentity;
 }) {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
@@ -125,7 +123,7 @@ export function InteractiveTabs({
       <div className="min-h-64 p-5 md:p-6">
         {activeTab === 'overview' && <OverviewPanel lesson={lesson} />}
         {activeTab === 'resources' && (
-          <ResourcesPanel attachmentIds={lesson.attachments || []} watermarkIdentity={watermarkIdentity} />
+          <ResourcesPanel attachmentIds={lesson.attachments || []} />
         )}
         {activeTab === 'notes' && (
           <NotesPanel
@@ -162,10 +160,8 @@ function OverviewPanel({ lesson }: { lesson: ILesson }) {
 
 function ResourcesPanel({
   attachmentIds,
-  watermarkIdentity,
 }: {
   attachmentIds: string[];
-  watermarkIdentity?: WatermarkIdentity;
 }) {
   const resources = useLearningResources(attachmentIds);
   const [viewerSession, setViewerSession] = useState<IDocumentViewSession | null>(null);
@@ -173,7 +169,11 @@ function ResourcesPanel({
   const [downloadCandidate, setDownloadCandidate] = useState<IDocumentAsset | null>(null);
   if (attachmentIds.length === 0) return <EmptyState icon={FileText} message="Bài học này chưa có tài liệu đính kèm." />;
 
-  const openPdf = async (resource: IDocumentAsset) => {
+  const isPdf = (mimeType?: string) => mimeType === 'application/pdf';
+  const isImage = (mimeType?: string) => Boolean(mimeType?.startsWith('image/'));
+  const canPreviewInline = (mimeType?: string) => isPdf(mimeType) || isImage(mimeType);
+
+  const openPreview = async (resource: IDocumentAsset) => {
     setOpeningId(resource._id);
     try {
       const response = await createDocumentViewSession(resource._id);
@@ -217,7 +217,8 @@ function ResourcesPanel({
           if (!resource.data) {
             return <div key={attachmentIds[index]} className="border border-red-200 p-4 text-sm text-red-600">Không thể tải tài liệu.</div>;
           }
-          const isPdf = resource.data.mimeType === 'application/pdf';
+          const resourceIsPdf = isPdf(resource.data.mimeType);
+          const inlinePreview = canPreviewInline(resource.data.mimeType);
           const isBusy = openingId === resource.data._id;
           return (
             <div
@@ -231,22 +232,22 @@ function ResourcesPanel({
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <TooltipProvider delayDuration={120}>
-                  {isPdf && (
+                  {inlinePreview && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           type="button"
                           variant="outline"
                           size="icon"
-                          onClick={() => openPdf(resource.data)}
+                          onClick={() => openPreview(resource.data)}
                           disabled={isBusy}
                           className="h-9 w-9 rounded-xl"
-                          aria-label="Xem tài liệu PDF"
+                          aria-label={resourceIsPdf ? 'Xem tài liệu PDF' : 'Xem hình ảnh'}
                         >
                           {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Xem tài liệu PDF</TooltipContent>
+                      <TooltipContent>{resourceIsPdf ? 'Xem tài liệu PDF' : 'Xem hình ảnh'}</TooltipContent>
                     </Tooltip>
                   )}
                   <Tooltip>
@@ -260,7 +261,7 @@ function ResourcesPanel({
                         className="h-9 w-9 rounded-xl"
                         aria-label="Tải tài liệu xuống"
                       >
-                        {isBusy && !isPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                        {isBusy && !inlinePreview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>Tải tài liệu xuống</TooltipContent>
@@ -272,12 +273,19 @@ function ResourcesPanel({
         })}
       </div>
       {viewerSession && (
-        <ProtectedPdfViewer
-          asset={viewerSession.asset}
-          viewerUrl={viewerSession.viewerUrl}
-          watermarkIdentity={watermarkIdentity}
-          onClose={() => setViewerSession(null)}
-        />
+        isPdf(viewerSession.asset.mimeType) ? (
+          <ProtectedPdfViewer
+            asset={viewerSession.asset}
+            viewerUrl={viewerSession.viewerUrl}
+            onClose={() => setViewerSession(null)}
+          />
+        ) : (
+          <ImageDocumentViewer
+            asset={viewerSession.asset}
+            viewerUrl={viewerSession.viewerUrl}
+            onClose={() => setViewerSession(null)}
+          />
+        )
       )}
       <AlertDialog open={Boolean(downloadCandidate)} onOpenChange={(open) => !open && setDownloadCandidate(null)}>
         <AlertDialogContent>

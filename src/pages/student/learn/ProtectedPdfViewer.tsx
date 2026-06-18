@@ -1,16 +1,8 @@
-import { useEffect, useMemo, useState, type SyntheticEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ChevronLeft, ChevronRight, Loader2, Minus, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
-import {
-  formatWatermarkText,
-  isBlockedProtectionKey,
-  shouldIgnoreProtectionShortcut,
-  type WatermarkIdentity,
-  watermarkPositions,
-  WATERMARK_ROTATION_MS,
-} from '@/lib/contentProtection';
 import type { IDocumentAsset } from '@/services/mediaApi';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -29,22 +21,17 @@ const absoluteApiUrl = (path: string) => {
 type ProtectedPdfViewerProps = {
   asset: IDocumentAsset;
   viewerUrl: string;
-  watermarkIdentity?: WatermarkIdentity;
   onClose: () => void;
 };
 
 export function ProtectedPdfViewer({
   asset,
   viewerUrl,
-  watermarkIdentity,
   onClose,
 }: ProtectedPdfViewerProps) {
-  const sessionId = useMemo(() => crypto.randomUUID(), []);
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1);
-  const [watermarkIndex, setWatermarkIndex] = useState(0);
-  const [watermarkTime, setWatermarkTime] = useState(() => new Date());
   const token = getAccessToken();
   const file = useMemo(
     () => ({
@@ -54,45 +41,9 @@ export function ProtectedPdfViewer({
     }),
     [token, viewerUrl],
   );
-  const watermarkText = formatWatermarkText(
-    { ...watermarkIdentity, sessionId },
-    watermarkTime,
-  );
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setWatermarkIndex((current) => (current + 1) % watermarkPositions.length);
-      setWatermarkTime(new Date());
-    }, WATERMARK_ROTATION_MS);
-    return () => window.clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (shouldIgnoreProtectionShortcut()) return;
-      if (isBlockedProtectionKey(event)) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, []);
-
-  const blockEvent = (event: SyntheticEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex flex-col bg-zinc-950 text-white"
-      onContextMenu={blockEvent}
-      onCopy={blockEvent}
-      onCut={blockEvent}
-      onDragStart={blockEvent}
-      onSelect={blockEvent}
-    >
+    <div className="fixed inset-0 z-[80] flex flex-col bg-zinc-950 text-white">
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-white/10 bg-zinc-950/95 px-3">
         <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-white hover:bg-white/10" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -145,14 +96,7 @@ export function ProtectedPdfViewer({
         </Button>
       </div>
 
-      <div className="relative flex-1 overflow-auto select-none bg-zinc-900 px-3 py-6">
-        {watermarkText && (
-          <span
-            className={`pointer-events-none fixed z-[90] font-mono text-xs text-white/20 ${watermarkPositions[watermarkIndex]}`}
-          >
-            {watermarkText}
-          </span>
-        )}
+      <div className="relative flex-1 overflow-auto bg-zinc-900 px-3 py-6">
         <div className="mx-auto flex min-h-full w-fit items-start justify-center">
           <Document
             file={file}
@@ -166,8 +110,6 @@ export function ProtectedPdfViewer({
             <Page
               pageNumber={pageNumber}
               scale={scale}
-              renderAnnotationLayer={false}
-              renderTextLayer={false}
               className="overflow-hidden rounded border border-white/10 shadow-2xl"
             />
           </Document>

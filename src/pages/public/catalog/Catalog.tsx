@@ -5,7 +5,6 @@ import { StaggerContainer, StaggerItem } from "@/components/animations/Stagger";
 import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
-  BookOpen,
   SlidersHorizontal,
 } from "lucide-react";
 import { useCatalog } from "@/hooks/useCatalog";
