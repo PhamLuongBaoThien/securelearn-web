@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ElementType } from 'react';
+import { useMemo, useState, type ElementType } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -485,15 +485,12 @@ export function StudentDashboard() {
     if (tab === 'wishlist' || tab === 'payments' || tab === 'certificates') return tab;
     return 'my-courses';
   };
-  const initialTab = resolveTabFromParams(searchParams);
-  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+  const activeTab = resolveTabFromParams(searchParams);
+  const paymentSearch = searchParams.get('paymentSearch') || '';
+  const paymentStatusFilter = (searchParams.get('paymentStatus') as PaymentStatusFilter) || '';
+  const paymentPage = Math.max(Number(searchParams.get('paymentPage') || '1'), 1);
   const [sortKey, setSortKey] = useState<SortKey>('recent');
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatusFilter>(
-    (searchParams.get('paymentStatus') as PaymentStatusFilter) || ''
-  );
-  const [paymentSearch, setPaymentSearch] = useState(searchParams.get('paymentSearch') || '');
   const debouncedPaymentSearch = useDebounce(paymentSearch.trim(), 300);
-  const [paymentPage, setPaymentPage] = useState(Math.max(Number(searchParams.get('paymentPage') || '1'), 1));
   const paymentLimit = 10;
 
   const user = useAppSelector((state) => state.auth.user);
@@ -535,41 +532,6 @@ export function StudentDashboard() {
     certificates: 0,
   };
 
-  useEffect(() => {
-    setActiveTab(resolveTabFromParams(searchParams));
-  }, [searchParams]);
-
-  useEffect(() => {
-    const nextSearch = searchParams.get('paymentSearch') || '';
-    const nextStatus = (searchParams.get('paymentStatus') as PaymentStatusFilter) || '';
-    const nextPage = Math.max(Number(searchParams.get('paymentPage') || '1'), 1);
-
-    setPaymentSearch((current) => (current !== nextSearch ? nextSearch : current));
-    setPaymentStatusFilter((current) => (current !== nextStatus ? nextStatus : current));
-    setPaymentPage((current) => (current !== nextPage ? nextPage : current));
-  }, [searchParams]);
-
-  useEffect(() => {
-    setPaymentPage(1);
-  }, [debouncedPaymentSearch]);
-
-  useEffect(() => {
-    setPaymentPage(1);
-  }, [paymentStatusFilter]);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (activeTab !== 'my-courses') {
-      params.set('tab', activeTab);
-    }
-    if (activeTab === 'payments') {
-      if (paymentSearch) params.set('paymentSearch', paymentSearch);
-      if (paymentStatusFilter) params.set('paymentStatus', paymentStatusFilter);
-      if (paymentPage > 1) params.set('paymentPage', paymentPage.toString());
-    }
-    setSearchParams(params, { replace: true });
-  }, [activeTab, paymentPage, paymentSearch, paymentStatusFilter, setSearchParams]);
-
   return (
     <div className="relative -mt-[88px] min-h-screen bg-zinc-50 text-zinc-950 antialiased dark:bg-zinc-950 dark:text-zinc-100">
         <section className="bg-zinc-900 px-4 pb-20 pt-[120px] text-zinc-50 sm:px-6 lg:pb-24 lg:pt-[136px]">
@@ -605,11 +567,12 @@ export function StudentDashboard() {
                   type="button"
                   variant="ghost"
                   onClick={() => {
-                    setActiveTab(tab.id);
                     if (tab.id === 'my-courses') {
                       setSearchParams({});
                     } else {
-                      setSearchParams({ tab: tab.id });
+                      const params = new URLSearchParams(searchParams);
+                      params.set('tab', tab.id);
+                      setSearchParams(params, { replace: true });
                     }
                   }}
                   className={`relative flex shrink-0 items-center gap-2 pb-3 text-sm transition-colors rounded-none bg-transparent hover:bg-transparent px-0 pt-0 h-auto ${
@@ -650,14 +613,26 @@ export function StudentDashboard() {
                     <Search className="h-4 w-4 shrink-0 text-zinc-400" />
                     <Input
                       value={paymentSearch}
-                      onChange={(event) => setPaymentSearch(event.target.value)}
+                      onChange={(event) => {
+                        const params = new URLSearchParams(searchParams);
+                        if (event.target.value) params.set('paymentSearch', event.target.value);
+                        else params.delete('paymentSearch');
+                        params.delete('paymentPage');
+                        setSearchParams(params, { replace: true });
+                      }}
                       placeholder="Mã giao dịch, khóa học, gói..."
                       className="h-auto w-56 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
                     />
                   </div>
                   <Select
                     value={paymentStatusFilter}
-                    onChange={(event) => setPaymentStatusFilter(event.target.value as PaymentStatusFilter)}
+                    onChange={(event) => {
+                      const params = new URLSearchParams(searchParams);
+                      if (event.target.value) params.set('paymentStatus', event.target.value);
+                      else params.delete('paymentStatus');
+                      params.delete('paymentPage');
+                      setSearchParams(params, { replace: true });
+                    }}
                     className="h-10 w-[190px] rounded-lg border-zinc-200 bg-white text-sm font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
                   >
                     {PAYMENT_STATUS_FILTERS.map((option) => (
@@ -794,7 +769,11 @@ export function StudentDashboard() {
                               className={paymentPage <= 1 ? 'pointer-events-none opacity-50' : ''}
                               onClick={(event) => {
                                 event.preventDefault();
-                                setPaymentPage((current) => Math.max(current - 1, 1));
+                                const params = new URLSearchParams(searchParams);
+                                const nextPage = Math.max(paymentPage - 1, 1);
+                                if (nextPage > 1) params.set('paymentPage', nextPage.toString());
+                                else params.delete('paymentPage');
+                                setSearchParams(params, { replace: true });
                               }}
                             />
                           </PaginationItem>
@@ -806,7 +785,10 @@ export function StudentDashboard() {
                                   isActive={item === paymentPage}
                                   onClick={(event) => {
                                     event.preventDefault();
-                                    setPaymentPage(item);
+                                    const params = new URLSearchParams(searchParams);
+                                    if (item > 1) params.set('paymentPage', item.toString());
+                                    else params.delete('paymentPage');
+                                    setSearchParams(params, { replace: true });
                                   }}
                                 >
                                   {item}
@@ -824,7 +806,11 @@ export function StudentDashboard() {
                               className={paymentPage >= paymentTotalPages ? 'pointer-events-none opacity-50' : ''}
                               onClick={(event) => {
                                 event.preventDefault();
-                                setPaymentPage((current) => Math.min(current + 1, paymentTotalPages));
+                                const params = new URLSearchParams(searchParams);
+                                const nextPage = Math.min(paymentPage + 1, paymentTotalPages);
+                                if (nextPage > 1) params.set('paymentPage', nextPage.toString());
+                                else params.delete('paymentPage');
+                                setSearchParams(params, { replace: true });
                               }}
                             />
                           </PaginationItem>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Search, Filter, CreditCard, Download, CheckCircle, XCircle, Clock, Percent, Save, Undo2, ChevronDown } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import type { ITransaction, PaymentProvider, TransactionStatus, IRevenueSplitConfig, IRevenueStats } from '@/types/admin.types';
@@ -119,45 +119,16 @@ function FilterDropdown({
 
 export const Transactions: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [search, setSearch] = useState(searchParams.get('q') || '');
-  const debouncedSearch = useDebounce(search.trim(), 300);
-  const [providerFilter, setProviderFilter] = useState<string>(searchParams.get('provider') || '');
-  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || '');
-  const [page, setPage] = useState(Math.max(Number(searchParams.get('page') || '1'), 1));
-  const [limit] = useState(10);
+  const urlSearch = searchParams.get('q') || '';
+  const providerFilter = searchParams.get('provider') || '';
+  const statusFilter = searchParams.get('status') || '';
+  const page = Math.max(Number(searchParams.get('page') || '1'), 1);
+  const debouncedSearch = useDebounce(urlSearch.trim(), 300);
+  const limit = 10;
   const [draftConfig, setDraftConfig] = useState<IRevenueSplitConfig | null>(null);
 
   const splitConfigQuery = useAdminRevenueSplitConfig();
   const revenueQuery = useAdminRevenueStats();
-
-  useEffect(() => {
-    setPage(1);
-  }, [providerFilter, statusFilter]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch]);
-
-  useEffect(() => {
-    const nextSearch = searchParams.get('q') || '';
-    const nextProvider = searchParams.get('provider') || '';
-    const nextStatus = searchParams.get('status') || '';
-    const nextPage = Math.max(Number(searchParams.get('page') || '1'), 1);
-
-    setSearch((current) => (current !== nextSearch ? nextSearch : current));
-    setProviderFilter((current) => (current !== nextProvider ? nextProvider : current));
-    setStatusFilter((current) => (current !== nextStatus ? nextStatus : current));
-    setPage((current) => (current !== nextPage ? nextPage : current));
-  }, [searchParams]);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (search) params.set('q', search);
-    if (providerFilter) params.set('provider', providerFilter);
-    if (statusFilter) params.set('status', statusFilter);
-    if (page > 1) params.set('page', page.toString());
-    setSearchParams(params, { replace: true });
-  }, [page, providerFilter, search, setSearchParams, statusFilter]);
 
   const transactionsQuery = useAdminTransactions({
     search: debouncedSearch,
@@ -279,7 +250,18 @@ export const Transactions: React.FC = () => {
       <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm flex flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-48 px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl">
           <Search className="w-4 h-4 text-zinc-400 shrink-0" />
-          <Input className="bg-transparent text-sm flex-1 border-0 shadow-none px-0 py-0 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus-visible:ring-0" placeholder="Mã GD, tên, email, tên khóa..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input
+            className="bg-transparent text-sm flex-1 border-0 shadow-none px-0 py-0 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus-visible:ring-0"
+            placeholder="Mã GD, tên, email, tên khóa..."
+            value={urlSearch}
+            onChange={(e) => {
+              const params = new URLSearchParams(searchParams);
+              if (e.target.value) params.set('q', e.target.value);
+              else params.delete('q');
+              params.delete('page');
+              setSearchParams(params, { replace: true });
+            }}
+          />
         </div>
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-zinc-400" />
@@ -287,13 +269,25 @@ export const Transactions: React.FC = () => {
             label="Tất cả cổng"
             value={providerFilter}
             options={providerFilters}
-            onChange={setProviderFilter}
+            onChange={(value) => {
+              const params = new URLSearchParams(searchParams);
+              if (value) params.set('provider', value);
+              else params.delete('provider');
+              params.delete('page');
+              setSearchParams(params, { replace: true });
+            }}
           />
           <FilterDropdown
             label="Tất cả trạng thái"
             value={statusFilter}
             options={statusFilters}
-            onChange={setStatusFilter}
+            onChange={(value) => {
+              const params = new URLSearchParams(searchParams);
+              if (value) params.set('status', value);
+              else params.delete('status');
+              params.delete('page');
+              setSearchParams(params, { replace: true });
+            }}
           />
         </div>
       </div>
@@ -395,7 +389,11 @@ export const Transactions: React.FC = () => {
                   className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
                   onClick={(event) => {
                     event.preventDefault();
-                    setPage((current) => Math.max(current - 1, 1));
+                    const params = new URLSearchParams(searchParams);
+                    const nextPage = Math.max(page - 1, 1);
+                    if (nextPage > 1) params.set('page', nextPage.toString());
+                    else params.delete('page');
+                    setSearchParams(params, { replace: true });
                   }}
                 />
               </PaginationItem>
@@ -407,7 +405,10 @@ export const Transactions: React.FC = () => {
                       isActive={item === page}
                       onClick={(event) => {
                         event.preventDefault();
-                        setPage(item);
+                        const params = new URLSearchParams(searchParams);
+                        if (item > 1) params.set('page', item.toString());
+                        else params.delete('page');
+                        setSearchParams(params, { replace: true });
                       }}
                     >
                       {item}
@@ -425,7 +426,11 @@ export const Transactions: React.FC = () => {
                   className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
                   onClick={(event) => {
                     event.preventDefault();
-                    setPage((current) => Math.min(current + 1, totalPages));
+                    const params = new URLSearchParams(searchParams);
+                    const nextPage = Math.min(page + 1, totalPages);
+                    if (nextPage > 1) params.set('page', nextPage.toString());
+                    else params.delete('page');
+                    setSearchParams(params, { replace: true });
                   }}
                 />
               </PaginationItem>
