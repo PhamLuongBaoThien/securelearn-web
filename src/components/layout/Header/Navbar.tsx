@@ -2,7 +2,7 @@
 // Navbar: Thanh điều hướng chính
 // Hiển thị user menu + chức năng đăng xuất khi đã đăng nhập.
 // ========================
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../../app/hooks';
 import { toggleTheme } from '../../../features/dashboard/uiSlice';
@@ -21,7 +21,7 @@ import {
   NavigationMenuTrigger,
 } from '@/components/ui/navigation-menu';
 import { usePublicCourseCategories } from '@/hooks/usePublicCourseCategories';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useCourseSearchSuggestions } from '@/hooks/useCourseSearchSuggestions';
 import { toast } from 'sonner';
 import brandLogo from '@/assets/logoweb.png';
 
@@ -62,15 +62,30 @@ export const Navbar = () => {
   const [activeChildId, setActiveChildId] = useState<string | null>(null);
   const [activeGrandchildId, setActiveGrandchildId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement | null>(null);
+  const trimmedSearchQuery = searchQuery.trim();
+  const suggestionsQuery = useCourseSearchSuggestions(searchQuery, 5);
+  const suggestions = suggestionsQuery.data?.courses ?? [];
+  const totalSuggestions = suggestionsQuery.data?.total ?? 0;
+  const hasMoreSuggestions = totalSuggestions > suggestions.length;
+  const shouldShowSuggestions = isSearchActive && trimmedSearchQuery.length > 0;
 
   useEffect(() => {
-    // Chỉ gọi API tìm kiếm sau khi user ngừng gõ 500ms
-    if (debouncedSearchQuery.trim()) {
-      console.log('Tiến hành gọi API tìm kiếm với từ khóa:', debouncedSearchQuery);
-      // Bạn có thể xử lý logic filter hoặc gọi API tìm kiếm ở đây...
-    }
-  }, [debouncedSearchQuery]);
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!searchContainerRef.current?.contains(event.target as Node)) {
+        setIsSearchActive(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, []);
+
+  useEffect(() => {
+    setIsSearchActive(false);
+    setIsMobileSearchOpen(false);
+  }, [location.pathname, location.search]);
 
   // ─── Mega menu derived state ──────────────────────────────────
   const activeRoot = activeRootId ? navCategories.find((c) => c._id === activeRootId) : null;
@@ -99,6 +114,22 @@ export const Navbar = () => {
   const handleThemeToggle = () =>
     dispatch(toggleTheme(currentTheme === 'dark' ? 'light' : 'dark'));
 
+  const handleSearchSubmit = () => {
+    if (!trimmedSearchQuery) return;
+
+    const params = new URLSearchParams();
+    params.set('search', trimmedSearchQuery);
+    navigate(`/courses?${params.toString()}`);
+    setIsSearchActive(false);
+    setIsMobileSearchOpen(false);
+  };
+
+  const handleSuggestionSelect = (slug: string) => {
+    navigate(`/course/${slug}`);
+    setIsSearchActive(false);
+    setIsMobileSearchOpen(false);
+  };
+
   // ─── Mobile Sidebar Entries ───────────────────────────────────
   const mobileSidebarEntries = buildMobileSidebarEntries(
     categories,
@@ -118,7 +149,10 @@ export const Navbar = () => {
 
   return (
     <>
-      <nav className="sticky top-4 mx-auto z-50 mb-6 w-[96%] max-w-[1440px] rounded-full border border-border/50 bg-background/80 shadow-lg backdrop-blur-md transition-all duration-300 dark:border-zinc-700/70 dark:bg-zinc-900/85 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_10px_30px_rgba(255,255,255,0.08)]">
+      <nav
+        ref={searchContainerRef}
+        className="sticky top-4 mx-auto z-50 mb-6 w-[96%] max-w-[1440px] rounded-full border border-border/50 bg-background/80 shadow-lg backdrop-blur-md transition-all duration-300 dark:border-zinc-700/70 dark:bg-zinc-900/85 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_10px_30px_rgba(255,255,255,0.08)]"
+      >
         <div className="px-4 sm:px-6 flex h-[64px] items-center justify-between relative">
 
           {/* LEFT: Khám phá và Tìm kiếm */}
@@ -204,14 +238,89 @@ export const Navbar = () => {
 
             {/* Search Bar Desktop */}
             <div className="hidden md:flex w-full max-w-[220px] lg:max-w-[280px] items-center relative group">
-              <Search className="absolute left-4 h-4 w-4 text-muted-foreground group-focus-within:text-foreground transition-colors z-10" />
+              <Search className="pointer-events-none absolute left-4 h-4 w-4 text-muted-foreground group-focus-within:text-foreground transition-colors z-10" />
               <Input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchActive(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchActive(true);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleSearchSubmit();
+                  }
+                }}
                 placeholder="Tìm kiếm khóa học..."
-                className="w-full h-[36px] pl-11 pr-4 bg-secondary/60 border-transparent rounded-full focus-visible:ring-1 focus-visible:ring-primary/30 transition-all text-sm"
+                className="w-full h-[36px] pl-11 pr-11 bg-secondary/60 border-transparent rounded-full focus-visible:ring-1 focus-visible:ring-primary/30 transition-all text-sm"
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={handleSearchSubmit}
+                className="absolute right-1 h-8 w-8 rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                title="Tìm kiếm"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+
+              {shouldShowSuggestions && (
+                <div className="absolute left-0 right-0 top-[calc(100%+10px)] overflow-hidden rounded-2xl border border-border/70 bg-background/95 shadow-xl backdrop-blur-md">
+                  {suggestionsQuery.isLoading ? (
+                    <div className="space-y-2 p-3">
+                      {Array.from({ length: 3 }).map((_, index) => (
+                        <div key={index} className="flex items-center gap-3 rounded-xl px-2 py-2">
+                          <div className="h-11 w-16 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-800" />
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="h-4 w-4/5 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+                            <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : suggestions.length > 0 ? (
+                    <div className="p-2">
+                      {suggestions.map((course) => (
+                        <button
+                          key={course._id}
+                          type="button"
+                          onClick={() => handleSuggestionSelect(course.slug)}
+                          className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-secondary"
+                        >
+                          <div className="h-11 w-16 shrink-0 overflow-hidden rounded-lg bg-secondary">
+                            {course.thumbnail ? (
+                              <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center">
+                                <BookOpen className="h-4 w-4 text-zinc-400" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-1 text-sm font-semibold text-foreground">{course.title}</p>
+                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{course.instructorName}</p>
+                          </div>
+                        </button>
+                      ))}
+                      {hasMoreSuggestions && (
+                        <button
+                          type="button"
+                          onClick={handleSearchSubmit}
+                          className="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-secondary"
+                        >
+                          <span>Xem tất cả kết quả</span>
+                          <Search className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-sm text-muted-foreground">Không tìm thấy khóa học phù hợp.</div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -333,15 +442,93 @@ export const Navbar = () => {
         {/* Mobile Search Bar Dropdown */}
         {isMobileSearchOpen && (
           <div className="absolute top-full left-0 right-0 mt-2 px-4 pb-2 md:hidden animate-in fade-in slide-in-from-top-2">
-            <div className="relative flex items-center bg-background rounded-full border border-border shadow-md">
-              <Search className="absolute left-4 h-4 w-4 text-muted-foreground z-10" />
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm kiếm nâng cao..."
-                className="w-full h-12 pl-12 pr-4 bg-transparent border-transparent rounded-full focus-visible:ring-0 text-sm"
-              />
+            <div className="overflow-hidden rounded-3xl border border-border bg-background shadow-md">
+              <div className="relative flex items-center">
+                <Search className="absolute left-4 h-4 w-4 text-muted-foreground z-10" />
+                <Input
+                  type="text"
+                  value={searchQuery}
+                  onFocus={() => setIsSearchActive(true)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setIsSearchActive(true);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      handleSearchSubmit();
+                    }
+                  }}
+                  placeholder="Tìm kiếm nâng cao..."
+                  className="w-full h-12 pl-12 pr-14 bg-transparent border-transparent rounded-full focus-visible:ring-0 text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleSearchSubmit}
+                  className="absolute right-1 h-10 w-10 rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                  title="Tìm kiếm"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {shouldShowSuggestions && (
+                <>
+                  <div className="border-t border-border/70" />
+                  {suggestionsQuery.isLoading ? (
+                    <div className="space-y-2 p-3">
+                      {Array.from({ length: 3 }).map((_, index) => (
+                        <div key={index} className="flex items-center gap-3 rounded-xl px-2 py-2">
+                          <div className="h-11 w-16 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-800" />
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="h-4 w-4/5 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+                            <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : suggestions.length > 0 ? (
+                    <div className="p-2">
+                      {suggestions.map((course) => (
+                        <button
+                          key={course._id}
+                          type="button"
+                          onClick={() => handleSuggestionSelect(course.slug)}
+                          className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-secondary"
+                        >
+                          <div className="h-11 w-16 shrink-0 overflow-hidden rounded-lg bg-secondary">
+                            {course.thumbnail ? (
+                              <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center">
+                                <BookOpen className="h-4 w-4 text-zinc-400" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-1 text-sm font-semibold text-foreground">{course.title}</p>
+                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{course.instructorName}</p>
+                          </div>
+                        </button>
+                      ))}
+                      {hasMoreSuggestions && (
+                        <button
+                          type="button"
+                          onClick={handleSearchSubmit}
+                          className="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-secondary"
+                        >
+                          <span>Xem tất cả kết quả</span>
+                          <Search className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-sm text-muted-foreground">Không tìm thấy khóa học phù hợp.</div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}

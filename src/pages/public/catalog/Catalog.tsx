@@ -39,6 +39,7 @@ export function Catalog() {
   const ratingParam = searchParams.get("rating") || "";
   const minPriceParam = searchParams.get("minPrice") || "";
   const maxPriceParam = searchParams.get("maxPrice") || "";
+  const searchParam = searchParams.get("search") || "";
   const durationParam = searchParams.get("duration") || "";
   const sortParam = searchParams.get("sort") || "newest";
   const pageParam = searchParams.get("page") || "1";
@@ -96,6 +97,7 @@ export function Catalog() {
       if (selectedRatings.length > 0) next.set("rating", selectedRatings.join(","));
       if (priceRange.min > 0) next.set("minPrice", priceRange.min.toString());
       if (priceRange.max < PRICE_MAX) next.set("maxPrice", priceRange.max.toString());
+      if (searchParam) next.set("search", searchParam);
       if (selectedDuration) next.set("duration", selectedDuration);
       if (sortKey !== "newest") next.set("sort", sortKey);
       if (page > 1) next.set("page", page.toString());
@@ -147,6 +149,7 @@ export function Catalog() {
     minPrice:    isPriceFiltered ? priceRange.min : undefined,
     maxPrice:    isPriceFiltered ? priceRange.max : undefined,
     rating:      ratingFilter,
+    search:      searchParam || undefined,
     minDuration: durationOpt?.minDuration,
     maxDuration: durationOpt?.maxDuration,
     sort: sortKey,
