@@ -330,6 +330,7 @@ export const updateSecurityConfig = async (data: Partial<ISecurityConfig>): Prom
 // ===== Finance =====
 
 export const getTransactions = async (params?: {
+  search?: string;
   provider?: string;
   status?: string;
   startDate?: string;

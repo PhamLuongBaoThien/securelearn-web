@@ -1,9 +1,26 @@
-import React, { useMemo, useState } from 'react';
-import { Search, Filter, DollarSign, CreditCard, Download, CheckCircle, XCircle, Clock, Percent, Save, Undo2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Search, Filter, CreditCard, Download, CheckCircle, XCircle, Clock, Percent, Save, Undo2, ChevronDown } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import type { ITransaction, PaymentProvider, TransactionStatus, IRevenueSplitConfig, IRevenueStats } from '@/types/admin.types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   useAdminRevenueSplitConfig,
   useAdminRevenueStats,
@@ -26,17 +43,129 @@ const providerBadge: Record<PaymentProvider, { label: string; cls: string }> = {
 
 const fmt = (n: number) => n.toLocaleString('vi-VN') + '₫';
 
+const providerFilters: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Tất cả cổng' },
+  { value: 'VNPAY', label: 'VNPay' },
+  { value: 'MOMO', label: 'MoMo' },
+];
+
+const statusFilters: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Tất cả trạng thái' },
+  { value: 'SUCCEEDED', label: 'Thành công' },
+  { value: 'PENDING', label: 'Đang xử lý' },
+  { value: 'FAILED', label: 'Thất bại' },
+  { value: 'REFUNDED', label: 'Đã hoàn tiền' },
+];
+
+function getVisiblePages(currentPage: number, totalPages: number): Array<number | 'ellipsis-start' | 'ellipsis-end'> {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+  const sortedPages = Array.from(pages)
+    .filter((pageNumber) => pageNumber >= 1 && pageNumber <= totalPages)
+    .sort((a, b) => a - b);
+
+  const items: Array<number | 'ellipsis-start' | 'ellipsis-end'> = [];
+  sortedPages.forEach((pageNumber, index) => {
+    const previous = sortedPages[index - 1];
+    if (previous && pageNumber - previous > 1) {
+      items.push(previous === 1 ? 'ellipsis-start' : 'ellipsis-end');
+    }
+    items.push(pageNumber);
+  });
+
+  return items;
+}
+
+function FilterDropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  const selected = options.find((option) => option.value === value)?.label ?? label;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 min-w-[160px] justify-between rounded-xl border-zinc-200 bg-zinc-50 px-3 text-sm font-medium text-zinc-700 shadow-none hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          <span className="truncate">{selected}</span>
+          <ChevronDown className="h-4 w-4 text-zinc-400" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          {options.map((option) => (
+            <DropdownMenuRadioItem key={option.value || 'all'} value={option.value} className="cursor-pointer">
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export const Transactions: React.FC = () => {
-  const [search, setSearch] = useState('');
-  const [providerFilter, setProviderFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [page] = useState(1);
-  const [limit] = useState(20);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get('q') || '');
+  const debouncedSearch = useDebounce(search.trim(), 300);
+  const [providerFilter, setProviderFilter] = useState<string>(searchParams.get('provider') || '');
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || '');
+  const [page, setPage] = useState(Math.max(Number(searchParams.get('page') || '1'), 1));
+  const [limit] = useState(10);
   const [draftConfig, setDraftConfig] = useState<IRevenueSplitConfig | null>(null);
 
   const splitConfigQuery = useAdminRevenueSplitConfig();
   const revenueQuery = useAdminRevenueStats();
-  const transactionsQuery = useAdminTransactions({ search, providerFilter, statusFilter, page, limit });
+
+  useEffect(() => {
+    setPage(1);
+  }, [providerFilter, statusFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get('q') || '';
+    const nextProvider = searchParams.get('provider') || '';
+    const nextStatus = searchParams.get('status') || '';
+    const nextPage = Math.max(Number(searchParams.get('page') || '1'), 1);
+
+    setSearch((current) => (current !== nextSearch ? nextSearch : current));
+    setProviderFilter((current) => (current !== nextProvider ? nextProvider : current));
+    setStatusFilter((current) => (current !== nextStatus ? nextStatus : current));
+    setPage((current) => (current !== nextPage ? nextPage : current));
+  }, [searchParams]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search) params.set('q', search);
+    if (providerFilter) params.set('provider', providerFilter);
+    if (statusFilter) params.set('status', statusFilter);
+    if (page > 1) params.set('page', page.toString());
+    setSearchParams(params, { replace: true });
+  }, [page, providerFilter, search, setSearchParams, statusFilter]);
+
+  const transactionsQuery = useAdminTransactions({
+    search: debouncedSearch,
+    providerFilter,
+    statusFilter,
+    page,
+    limit,
+  });
 
   const currentSplitConfig = useMemo(() => {
     if (draftConfig !== null) return draftConfig;
@@ -46,22 +175,13 @@ export const Transactions: React.FC = () => {
 
   const updateSplitMutation = useUpdateRevenueSplitConfig();
 
-  const filtered = useMemo(() => {
-    const transactions = transactionsQuery.data?.transactions ?? [];
-    return transactions.filter((t) => {
-      const transactionCode = t.transactionCode || t.transactionId;
-      const matchSearch =
-        !search ||
-        transactionCode.toLowerCase().includes(search.toLowerCase()) ||
-        t.fullName.toLowerCase().includes(search.toLowerCase()) ||
-        t.email.toLowerCase().includes(search.toLowerCase()) ||
-        t.items?.some((item) => item.title.toLowerCase().includes(search.toLowerCase()));
-      return matchSearch;
-    });
-  }, [search, transactionsQuery.data?.transactions]);
+  const transactions = transactionsQuery.data?.transactions ?? [];
+  const totalTransactions = transactionsQuery.data?.total ?? 0;
+  const totalPages = Math.max(Math.ceil(totalTransactions / limit), 1);
+  const visiblePages = getVisiblePages(page, totalPages);
 
   const summary = revenueQuery.data as IRevenueStats | undefined;
-  const totalAmount = filtered.filter((t) => t.status === 'SUCCEEDED').reduce((s, t) => s + (t.grossAmount ?? t.amount), 0);
+  const totalAmount = transactions.filter((t) => t.status === 'SUCCEEDED').reduce((s, t) => s + (t.grossAmount ?? t.amount), 0);
 
   return (
     <div className="w-full space-y-6">
@@ -163,24 +283,29 @@ export const Transactions: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-zinc-400" />
-          <Select className="w-[140px] px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none text-zinc-700 dark:text-zinc-300" value={providerFilter} onChange={(e) => setProviderFilter(e.target.value)}>
-            <option value="">Tất cả cổng</option>
-            <option value="VNPAY">VNPay</option>
-            <option value="MOMO">MoMo</option>
-          </Select>
-          <Select className="w-[160px] px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none text-zinc-700 dark:text-zinc-300" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="">Tất cả TT</option>
-            <option value="SUCCEEDED">Thành công</option>
-            <option value="FAILED">Thất bại</option>
-            <option value="PENDING">Đang xử lý</option>
-            <option value="REFUNDED">Đã hoàn tiền</option>
-          </Select>
+          <FilterDropdown
+            label="Tất cả cổng"
+            value={providerFilter}
+            options={providerFilters}
+            onChange={setProviderFilter}
+          />
+          <FilterDropdown
+            label="Tất cả trạng thái"
+            value={statusFilter}
+            options={statusFilters}
+            onChange={setStatusFilter}
+          />
         </div>
       </div>
 
       <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="relative min-h-[580px] overflow-x-auto">
+          {transactionsQuery.isFetching && (
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+              <div className="h-full w-1/3 animate-pulse bg-zinc-900 dark:bg-white" />
+            </div>
+          )}
+          <table className={`w-full transition-opacity duration-150 ${transactionsQuery.isFetching ? 'opacity-70' : 'opacity-100'}`}>
             <thead>
               <tr className="border-b border-zinc-100 dark:border-zinc-800">
                 {['Mã giao dịch', 'Người dùng', 'Nội dung', 'Cổng TT', 'Tổng / Chia', 'Trạng thái', 'Thời gian'].map((h) => (
@@ -189,7 +314,7 @@ export const Transactions: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {filtered.map((t: ITransaction) => {
+              {transactions.map((t: ITransaction) => {
                 const sc = statusConfig[t.status];
                 const pb = providerBadge[t.provider];
                 const gross = t.grossAmount ?? t.amount;
@@ -206,7 +331,24 @@ export const Transactions: React.FC = () => {
                       <p className="text-xs text-zinc-400">{t.email}</p>
                     </td>
                     <td className="px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-400 max-w-44">
-                      {t.course ? (
+                      {t.productType === 'SUBSCRIPTION' || t.subscriptionSnapshot ? (
+                        <div className="min-w-0">
+                          <span className="truncate block font-medium text-violet-600 dark:text-violet-400">
+                            {t.subscriptionSnapshot?.name || (t.subscriptionSnapshot?.planType === 'YEARLY' ? 'Thuê bao 1 năm' : 'Thuê bao 1 tháng')}
+                          </span>
+                          <span className="text-xs text-zinc-400">
+                            {t.subscriptionSnapshot?.planType === 'YEARLY' ? 'Gói năm' : 'Gói tháng'}
+                            {t.subscriptionSnapshot?.durationDays ? ` · ${t.subscriptionSnapshot.durationDays} ngày` : ''}
+                          </span>
+                        </div>
+                      ) : t.items?.length ? (
+                        <div className="min-w-0">
+                          <span className="truncate block">{t.items[0].title}</span>
+                          {t.items.length > 1 && (
+                            <span className="text-xs text-zinc-400">+{t.items.length - 1} khóa học khác</span>
+                          )}
+                        </div>
+                      ) : t.course ? (
                         <span className="truncate block">{t.course.title}</span>
                       ) : (
                         <span className="text-violet-500 font-medium">{t.plan === 'MONTHLY' ? 'Thuê bao 1 tháng' : t.plan === 'YEARLY' ? 'Thuê bao 1 năm' : t.plan}</span>
@@ -232,21 +374,63 @@ export const Transactions: React.FC = () => {
               })}
             </tbody>
           </table>
-          {filtered.length === 0 && (
+          {transactions.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-zinc-400">
               <CreditCard className="w-10 h-10 mb-3 opacity-30" />
               <p className="text-sm">Không có giao dịch nào.</p>
             </div>
           )}
         </div>
-        <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-sm text-zinc-500">
-            {filtered.length} giao dịch · Tổng chia: <strong className="text-emerald-600">{fmt(totalAmount)}</strong>
+            {transactions.length} / {totalTransactions} giao dịch · Trang {page}/{totalPages} · Tổng thành công trang này: <strong className="text-emerald-600">{fmt(totalAmount)}</strong>
           </span>
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
-            <DollarSign className="w-3.5 h-3.5" />
-            Số liệu lấy từ payment-service
-          </div>
+          <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  text="Trước"
+                  aria-disabled={page <= 1}
+                  className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setPage((current) => Math.max(current - 1, 1));
+                  }}
+                />
+              </PaginationItem>
+              {visiblePages.map((item) => (
+                <PaginationItem key={item}>
+                  {typeof item === 'number' ? (
+                    <PaginationLink
+                      href="#"
+                      isActive={item === page}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setPage(item);
+                      }}
+                    >
+                      {item}
+                    </PaginationLink>
+                  ) : (
+                    <PaginationEllipsis />
+                  )}
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  text="Sau"
+                  aria-disabled={page >= totalPages}
+                  className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setPage((current) => Math.min(current + 1, totalPages));
+                  }}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       </div>
     </div>

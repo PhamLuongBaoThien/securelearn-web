@@ -104,6 +104,13 @@ export interface CourseCheckoutResponse {
   paymentUrl: string;
 }
 
+export interface MyPaymentTransactionsResponse {
+  transactions: PaymentTransaction[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface SubscriptionPlan {
   _id: string;
   type: 'MONTHLY' | 'YEARLY';
@@ -243,6 +250,17 @@ export const getTransaction = async (transactionId: string) => {
 
 export const getTransactionByCode = async (transactionCode: string) => {
   const { data } = await apiClient.get<ApiResponse<PaymentTransaction>>(`/api/payments/transactions/code/${transactionCode}`);
+  return data;
+};
+
+export const getMyPaymentTransactions = async (params?: {
+  search?: string;
+  productType?: PaymentTransaction['productType'];
+  status?: PaymentTransaction['status'];
+  page?: number;
+  limit?: number;
+}) => {
+  const { data } = await apiClient.get<ApiResponse<MyPaymentTransactionsResponse>>('/api/payments/transactions/me', { params });
   return data;
 };
 

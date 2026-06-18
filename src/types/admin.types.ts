@@ -327,6 +327,17 @@ export interface ITransaction {
   };
   plan?: PlanType;
   amount: number; // VND
+  productType?: 'COURSE' | 'SUBSCRIPTION';
+  subscriptionSnapshot?: {
+    planId: string;
+    planType: 'MONTHLY' | 'YEARLY';
+    name: string;
+    durationDays: number;
+    adminPercent: number;
+    instructorPercent: number;
+    adminAmount: number;
+    instructorPoolAmount: number;
+  } | null;
   grossAmount?: number;
   adminAmount?: number;
   instructorAmount?: number;

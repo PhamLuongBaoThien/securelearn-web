@@ -3,7 +3,7 @@
 // ========================
 import { useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, User, BookOpen, Settings, ShoppingCart, Heart, LayoutDashboard, CreditCard } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { NavbarUser } from './navbar.utils';
@@ -70,65 +70,30 @@ export const NavUserDropdown = ({
           </div>
 
           {/* Menu Items */}
-          <div className="py-2">
-            <Link
-              to="/profile"
-              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
-              onClick={onClose}
-            >
-              <User className="h-4 w-4 text-muted-foreground" />
-              Hồ sơ công khai
-            </Link>
-            <Link
-              to="/settings"
-              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
-              onClick={onClose}
-            >
-              <Settings className="h-4 w-4 text-muted-foreground" />
-              Cài đặt
-            </Link>
-            <Link
-              to="/student/dashboard"
-              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
-              onClick={onClose}
-            >
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-              Học tập
-            </Link>
-            <Link
-              to="/cart"
-              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
-              onClick={onClose}
-            >
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-              Giỏ hàng
-            </Link>
-            <Link
-              to="/student/dashboard?tab=wishlist"
-              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
-              onClick={onClose}
-            >
-              <Heart className="h-4 w-4 text-muted-foreground" />
-              Khóa học mong muốn
-            </Link>
-            {user.role === 'INSTRUCTOR' && (
-              <Link
-                to="/instructor/dashboard"
-                className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors text-primary font-semibold"
-                onClick={onClose}
-              >
-                <LayoutDashboard className="h-4 w-4 text-primary" />
-                Bảng điều khiển Giảng viên
-              </Link>
-            )}
-            <Link
-              to="/student/dashboard?tab=payments"
-              className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-secondary transition-colors"
-              onClick={onClose}
-            >
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-              Lịch sử thanh toán
-            </Link>
+          <div className="py-1">
+            {[
+              { to: '/profile', label: 'Hồ sơ công khai' },
+              { to: '/settings', label: 'Cài đặt' },
+              { to: '/student/dashboard', label: 'Học tập' },
+              { to: '/cart', label: 'Giỏ hàng' },
+              { to: '/student/dashboard?tab=wishlist', label: 'Khóa học mong muốn' },
+              { to: '/pricing', label: 'Thuê bao' },
+              ...(user.role === 'INSTRUCTOR' ? [{ to: '/instructor/dashboard', label: 'Bảng điều khiển Giảng viên', isInstructor: true }] : []),
+              { to: '/student/dashboard?tab=payments', label: 'Lịch sử thanh toán' },
+            ].map((item, idx) => (
+              <div key={item.to}>
+                {idx > 0 && <div className="mx-6 border-b border-border/40" />}
+                <Link
+                  to={item.to}
+                  className={`flex items-center px-6 py-2.5 text-sm hover:bg-secondary transition-colors ${
+                    item.isInstructor ? 'text-primary font-semibold' : 'text-foreground/85'
+                  }`}
+                  onClick={onClose}
+                >
+                  {item.label}
+                </Link>
+              </div>
+            ))}
           </div>
 
           {/* Logout */}

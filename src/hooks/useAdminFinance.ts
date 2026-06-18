@@ -77,6 +77,7 @@ export function useAdminTransactions(params: {
     queryKey: adminFinanceKeys.transactions(params),
     queryFn: async () => {
       const response = await getTransactions({
+        search: params.search || undefined,
         provider: params.providerFilter || undefined,
         status: params.statusFilter || undefined,
         page: params.page,
@@ -87,6 +88,7 @@ export function useAdminTransactions(params: {
       }
       return response.data;
     },
+    placeholderData: (previousData) => previousData,
   });
 }
 

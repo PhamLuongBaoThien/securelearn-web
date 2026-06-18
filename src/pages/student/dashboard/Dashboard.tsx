@@ -9,27 +9,44 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock,
+  CreditCard,
   Download,
   GraduationCap,
   Heart,
   Library,
   PlayCircle,
+  Search,
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from '../../../components/ui/dropdown-menu';
+import { Select } from '../../../components/ui/select';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '../../../components/ui/pagination';
 import { useEnrolledCourses, type EnrolledCourseItem } from '../../../hooks/useEnrolledCourses';
 import { useAppSelector } from '../../../app/hooks';
 import { CourseCard as CatalogCourseCard } from '../../../components/ui/CourseCard';
 import type { ICourse } from '../../../services/courseApi';
 import type { CartItem } from '../../../features/courses/cartSlice';
+import { useMyPaymentTransactions } from '../../../hooks/useMyPaymentTransactions';
+import { useDebounce } from '../../../hooks/useDebounce';
+import type { PaymentTransaction } from '../../../services/paymentApi';
 
-type TabId = 'my-courses' | 'wishlist' | 'certificates';
+type TabId = 'my-courses' | 'wishlist' | 'payments' | 'certificates';
 type SortKey = 'recent' | 'name-az';
+type PaymentStatusFilter = '' | PaymentTransaction['status'];
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'recent', label: 'Ghi danh gần đây' },
@@ -51,14 +68,88 @@ const LEVEL_COLOR: Record<string, string> = {
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: 'my-courses', label: 'Khóa học của tôi' },
   { id: 'wishlist', label: 'Khóa học mong muốn' },
+  { id: 'payments', label: 'Lịch sử thanh toán' },
   { id: 'certificates', label: 'Chứng chỉ' },
 ];
+
+const TRANSACTION_STATUS_META: Record<PaymentTransaction['status'], { label: string; cls: string }> = {
+  PENDING: {
+    label: 'Đang xử lý',
+    cls: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300',
+  },
+  SUCCEEDED: {
+    label: 'Thành công',
+    cls: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300',
+  },
+  FAILED: {
+    label: 'Thất bại',
+    cls: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300',
+  },
+  REFUNDED: {
+    label: 'Đã hoàn tiền',
+    cls: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300',
+  },
+};
+
+const PRODUCT_TYPE_LABEL: Record<PaymentTransaction['productType'], string> = {
+  COURSE: 'Khóa học',
+  SUBSCRIPTION: 'Gói thuê bao',
+};
+
+const PAYMENT_STATUS_FILTERS: Array<{ value: PaymentStatusFilter; label: string }> = [
+  { value: '', label: 'Tất cả đã ghi nhận' },
+  { value: 'SUCCEEDED', label: 'Thành công' },
+  { value: 'FAILED', label: 'Thất bại' },
+  { value: 'REFUNDED', label: 'Đã hoàn tiền' },
+  { value: 'PENDING', label: 'Đang xử lý' },
+];
+
+function getVisiblePages(currentPage: number, totalPages: number): Array<number | 'ellipsis-start' | 'ellipsis-end'> {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+  const sortedPages = Array.from(pages)
+    .filter((pageNumber) => pageNumber >= 1 && pageNumber <= totalPages)
+    .sort((a, b) => a - b);
+
+  const items: Array<number | 'ellipsis-start' | 'ellipsis-end'> = [];
+  sortedPages.forEach((pageNumber, index) => {
+    const previous = sortedPages[index - 1];
+    if (previous && pageNumber - previous > 1) {
+      items.push(previous === 1 ? 'ellipsis-start' : 'ellipsis-end');
+    }
+    items.push(pageNumber);
+  });
+
+  return items;
+}
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   if (h > 0) return `${h}h${m > 0 ? ` ${m}m` : ''}`;
   return `${m}m`;
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatTransactionDate(value?: string | null): string {
+  if (!value) return 'Chưa có thời gian';
+  return new Date(value).toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
 function sortCourses(courses: EnrolledCourseItem[], key: SortKey): EnrolledCourseItem[] {
@@ -278,22 +369,147 @@ function EmptyState({
   );
 }
 
+function PaymentHistorySkeleton() {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div key={index} className="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-3">
+              <div className="h-4 w-36 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+              <div className="h-5 w-56 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+              <div className="h-3 w-44 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+            </div>
+            <div className="h-8 w-28 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PaymentTransactionCard({ transaction }: { transaction: PaymentTransaction }) {
+  const statusMeta = TRANSACTION_STATUS_META[transaction.status];
+  const displayDate = transaction.paidAt || transaction.failedAt || transaction.refundedAt || transaction.createdAt;
+  const message = transaction.status === 'FAILED'
+    ? transaction.failureReason
+    : transaction.status === 'REFUNDED'
+      ? transaction.refundReason
+      : '';
+
+  return (
+    <article className="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-md border px-2 py-1 text-xs font-semibold ${statusMeta.cls}`}>
+              {statusMeta.label}
+            </span>
+            <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-semibold text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+              {PRODUCT_TYPE_LABEL[transaction.productType]}
+            </span>
+            <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-semibold text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+              {transaction.provider}
+            </span>
+          </div>
+
+          <h3 className="mt-3 truncate text-sm font-semibold text-zinc-950 dark:text-white">
+            Mã giao dịch {transaction.transactionCode}
+          </h3>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            {formatTransactionDate(displayDate)} · {transaction.paymentMethod}
+          </p>
+        </div>
+
+        <div className="text-left md:text-right">
+          <p className="text-xl font-bold text-zinc-950 dark:text-white">{formatCurrency(transaction.amount)}</p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            {transaction.productType === 'COURSE'
+              ? `${transaction.items.length} khóa học`
+              : `${transaction.subscriptionSnapshot?.durationDays ?? 0} ngày truy cập`}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {transaction.productType === 'SUBSCRIPTION' ? (
+          <div className="flex items-center gap-3 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900/70">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+              <CalendarClock className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-zinc-900 dark:text-white">
+                {transaction.subscriptionSnapshot?.name || 'Gói thuê bao SecureLearn'}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                {transaction.subscriptionSnapshot?.planType === 'YEARLY' ? 'Gói năm' : 'Gói tháng'} · {transaction.subscriptionSnapshot?.durationDays ?? 0} ngày
+              </p>
+            </div>
+          </div>
+        ) : (
+          transaction.items.map((item) => (
+            <div key={`${transaction._id}-${item.courseId}`} className="flex items-center gap-3 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900/70">
+              <div className="h-12 w-16 shrink-0 overflow-hidden rounded-md bg-zinc-200 dark:bg-zinc-800">
+                {item.thumbnail ? (
+                  <img src={item.thumbnail} alt={item.title} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <BookOpen className="h-5 w-5 text-zinc-400" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-1 text-sm font-semibold text-zinc-900 dark:text-white">{item.title}</p>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  {item.instructorName || 'SecureLearn'} · {formatCurrency(item.price)}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {message && (
+        <p className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300">
+          {message}
+        </p>
+      )}
+    </article>
+  );
+}
+
 export function StudentDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const resolveTabFromParams = (params: URLSearchParams): TabId => {
     const tab = params.get('tab');
-    if (tab === 'wishlist' || tab === 'certificates') return tab;
+    if (tab === 'wishlist' || tab === 'payments' || tab === 'certificates') return tab;
     return 'my-courses';
   };
   const initialTab = resolveTabFromParams(searchParams);
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [sortKey, setSortKey] = useState<SortKey>('recent');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatusFilter>(
+    (searchParams.get('paymentStatus') as PaymentStatusFilter) || ''
+  );
+  const [paymentSearch, setPaymentSearch] = useState(searchParams.get('paymentSearch') || '');
+  const debouncedPaymentSearch = useDebounce(paymentSearch.trim(), 300);
+  const [paymentPage, setPaymentPage] = useState(Math.max(Number(searchParams.get('paymentPage') || '1'), 1));
+  const paymentLimit = 10;
 
   const user = useAppSelector((state) => state.auth.user);
   const wishlist = useAppSelector((state) => state.cart.wishlist);
   const firstName = user?.fullName?.split(' ').pop() ?? 'bạn';
 
   const { data: enrolledCourses = [], isLoading, isError } = useEnrolledCourses();
+  const paymentsQuery = useMyPaymentTransactions({
+    search: debouncedPaymentSearch,
+    page: paymentPage,
+    limit: paymentLimit,
+    status: paymentStatusFilter || undefined,
+  });
+  const paymentTotal = paymentsQuery.data?.total ?? 0;
+  const paymentTotalPages = Math.max(Math.ceil(paymentTotal / paymentLimit), 1);
+  const paymentVisiblePages = getVisiblePages(paymentPage, paymentTotalPages);
 
   const sortedCourses = useMemo(
     () => sortCourses(enrolledCourses, sortKey),
@@ -315,12 +531,44 @@ export function StudentDashboard() {
   const tabCounts: Record<TabId, number> = {
     'my-courses': enrolledCourses.length,
     wishlist: wishlist.length,
+    payments: paymentsQuery.data?.total ?? 0,
     certificates: 0,
   };
 
   useEffect(() => {
     setActiveTab(resolveTabFromParams(searchParams));
   }, [searchParams]);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get('paymentSearch') || '';
+    const nextStatus = (searchParams.get('paymentStatus') as PaymentStatusFilter) || '';
+    const nextPage = Math.max(Number(searchParams.get('paymentPage') || '1'), 1);
+
+    setPaymentSearch((current) => (current !== nextSearch ? nextSearch : current));
+    setPaymentStatusFilter((current) => (current !== nextStatus ? nextStatus : current));
+    setPaymentPage((current) => (current !== nextPage ? nextPage : current));
+  }, [searchParams]);
+
+  useEffect(() => {
+    setPaymentPage(1);
+  }, [debouncedPaymentSearch]);
+
+  useEffect(() => {
+    setPaymentPage(1);
+  }, [paymentStatusFilter]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (activeTab !== 'my-courses') {
+      params.set('tab', activeTab);
+    }
+    if (activeTab === 'payments') {
+      if (paymentSearch) params.set('paymentSearch', paymentSearch);
+      if (paymentStatusFilter) params.set('paymentStatus', paymentStatusFilter);
+      if (paymentPage > 1) params.set('paymentPage', paymentPage.toString());
+    }
+    setSearchParams(params, { replace: true });
+  }, [activeTab, paymentPage, paymentSearch, paymentStatusFilter, setSearchParams]);
 
   return (
     <div className="relative -mt-[88px] min-h-screen bg-zinc-50 text-zinc-950 antialiased dark:bg-zinc-950 dark:text-zinc-100">
@@ -391,12 +639,35 @@ export function StudentDashboard() {
               ))}
             </div>
 
-            <div className={`pb-3 md:pb-2.5 transition-opacity duration-200 ${
-              activeTab === 'my-courses' && !isLoading && enrolledCourses.length > 0
-                ? 'opacity-100 pointer-events-auto block'
-                : 'opacity-0 pointer-events-none hidden md:block'
-            }`}>
-              <SortDropdown value={sortKey} onChange={setSortKey} />
+            <div className="pb-3 md:pb-2.5">
+              {activeTab === 'my-courses' && !isLoading && enrolledCourses.length > 0 && (
+                <SortDropdown value={sortKey} onChange={setSortKey} />
+              )}
+
+              {activeTab === 'payments' && (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-950">
+                    <Search className="h-4 w-4 shrink-0 text-zinc-400" />
+                    <Input
+                      value={paymentSearch}
+                      onChange={(event) => setPaymentSearch(event.target.value)}
+                      placeholder="Mã giao dịch, khóa học, gói..."
+                      className="h-auto w-56 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
+                    />
+                  </div>
+                  <Select
+                    value={paymentStatusFilter}
+                    onChange={(event) => setPaymentStatusFilter(event.target.value as PaymentStatusFilter)}
+                    className="h-10 w-[190px] rounded-lg border-zinc-200 bg-white text-sm font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
+                  >
+                    {PAYMENT_STATUS_FILTERS.map((option) => (
+                      <option key={option.value || 'all'} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
 
@@ -464,6 +735,102 @@ export function StudentDashboard() {
                     {wishlist.map((course) => (
                       <CatalogCourseCard key={course._id} course={toCatalogCourse(course)} />
                     ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {activeTab === 'payments' && (
+              <motion.div
+                key="payments"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                {paymentsQuery.isError && (
+                  <EmptyState
+                    icon={AlertCircle}
+                    title="Không thể tải lịch sử thanh toán"
+                    description="Vui lòng thử lại sau hoặc kiểm tra kết nối của bạn."
+                  />
+                )}
+
+                {paymentsQuery.isLoading && <PaymentHistorySkeleton />}
+
+                {!paymentsQuery.isLoading && !paymentsQuery.isError && (paymentsQuery.data?.transactions.length ?? 0) === 0 && (
+                  <EmptyState
+                    icon={CreditCard}
+                    title="Chưa có giao dịch thanh toán"
+                    description="Các giao dịch đã thành công, thất bại hoặc hoàn tiền sẽ được lưu lại tại đây."
+                    action={{ label: 'Khám phá khóa học', to: '/courses' }}
+                  />
+                )}
+
+                {!paymentsQuery.isLoading && !paymentsQuery.isError && Boolean(paymentsQuery.data?.transactions.length) && (
+                  <div className="relative min-h-[560px] space-y-4">
+                    {paymentsQuery.isFetching && (
+                      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                        <div className="h-full w-1/3 animate-pulse bg-zinc-900 dark:bg-white" />
+                      </div>
+                    )}
+                    <div className={`space-y-4 transition-opacity duration-150 ${paymentsQuery.isFetching ? 'opacity-70' : 'opacity-100'}`}>
+                      {paymentsQuery.data!.transactions.map((transaction) => (
+                        <PaymentTransactionCard key={transaction._id} transaction={transaction} />
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                        {paymentsQuery.data!.transactions.length} / {paymentTotal} giao dịch · Trang {paymentPage}/{paymentTotalPages}
+                      </p>
+                      <Pagination className="mx-0 w-auto justify-start sm:justify-end">
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              href="#"
+                              text="Trước"
+                              aria-disabled={paymentPage <= 1}
+                              className={paymentPage <= 1 ? 'pointer-events-none opacity-50' : ''}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                setPaymentPage((current) => Math.max(current - 1, 1));
+                              }}
+                            />
+                          </PaginationItem>
+                          {paymentVisiblePages.map((item) => (
+                            <PaginationItem key={item}>
+                              {typeof item === 'number' ? (
+                                <PaginationLink
+                                  href="#"
+                                  isActive={item === paymentPage}
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    setPaymentPage(item);
+                                  }}
+                                >
+                                  {item}
+                                </PaginationLink>
+                              ) : (
+                                <PaginationEllipsis />
+                              )}
+                            </PaginationItem>
+                          ))}
+                          <PaginationItem>
+                            <PaginationNext
+                              href="#"
+                              text="Sau"
+                              aria-disabled={paymentPage >= paymentTotalPages}
+                              className={paymentPage >= paymentTotalPages ? 'pointer-events-none opacity-50' : ''}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                setPaymentPage((current) => Math.min(current + 1, paymentTotalPages));
+                              }}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
                   </div>
                 )}
               </motion.div>
