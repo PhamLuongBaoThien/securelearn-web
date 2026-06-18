@@ -163,12 +163,6 @@ function sortCourses(courses: EnrolledCourseItem[], key: SortKey): EnrolledCours
   });
 }
 
-function getStableProgress(seed: string): number {
-  const value = seed.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  if (value % 7 === 0) return 100;
-  return (value % 58) + 12;
-}
-
 function SortDropdown({ value, onChange }: { value: SortKey; onChange: (k: SortKey) => void }) {
   const current = SORT_OPTIONS.find((o) => o.key === value)!;
 
@@ -238,12 +232,15 @@ function CourseCardSkeleton() {
 
 function EnrolledCourseCard({ course }: { course: EnrolledCourseItem }) {
   const navigate = useNavigate();
-  const progress = getStableProgress(course.enrollmentId || course.courseId || course.title);
+  const progress = Math.max(0, Math.min(100, Math.round(course.progressPercent || 0)));
+  const learnPath = course.lastLessonId
+    ? `/student/courses/${course.courseId}/learn?lessonId=${course.lastLessonId}`
+    : `/student/courses/${course.courseId}/learn`;
 
   return (
     <article
       className="group flex cursor-pointer flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700"
-      onClick={() => navigate(`/student/courses/${course.courseId}/learn`)}
+      onClick={() => navigate(learnPath)}
     >
       <div className="relative aspect-video overflow-hidden bg-zinc-100 dark:bg-zinc-900">
         {course.thumbnail ? (
@@ -289,7 +286,6 @@ function EnrolledCourseCard({ course }: { course: EnrolledCourseItem }) {
             </span>
           )}
         </div>
-
         <div className="mt-5 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="text-zinc-500 dark:text-zinc-400">Tiến độ</span>
@@ -298,14 +294,16 @@ function EnrolledCourseCard({ course }: { course: EnrolledCourseItem }) {
           <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-900">
             <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progress}%` }} />
           </div>
+          <p className="text-xs text-zinc-400">
+            {course.completedLessons}/{course.progressTotalLessons || course.totalLessons || 0} bài hoàn thành
+          </p>
         </div>
-
         <Button
           type="button"
           variant="udemy_dark"
           onClick={(event) => {
             event.stopPropagation();
-            navigate(`/student/courses/${course.courseId}/learn`);
+            navigate(learnPath);
           }}
           className="mt-5 w-full gap-2 rounded-lg"
         >
@@ -513,17 +511,10 @@ export function StudentDashboard() {
     [enrolledCourses, sortKey]
   );
 
-  const courseProgress = useMemo(
-    () =>
-      enrolledCourses.map((course) => ({
-        id: course.enrollmentId,
-        progress: getStableProgress(course.enrollmentId || course.courseId || course.title),
-      })),
-    [enrolledCourses]
-  );
-
-  const inProgressCount = courseProgress.filter((course) => course.progress > 0 && course.progress < 100).length;
-  const completedCount = courseProgress.filter((course) => course.progress >= 100).length;
+  const inProgressCount = enrolledCourses.filter(
+    (course) => course.progressPercent > 0 && course.progressPercent < 100
+  ).length;
+  const completedCount = enrolledCourses.filter((course) => course.progressPercent >= 100).length;
 
   const tabCounts: Record<TabId, number> = {
     'my-courses': enrolledCourses.length,
@@ -853,9 +844,9 @@ export function StudentDashboard() {
           <div className="flex items-start gap-3">
             <BookOpen className="mt-0.5 h-5 w-5 text-zinc-500" />
             <div>
-              <p className="text-sm font-semibold text-zinc-950 dark:text-white">Theo dõi tiến độ</p>
+              <p className="text-sm font-semibold text-zinc-950 dark:text-white">Tiến độ học tập</p>
               <p className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                Tiến độ sẽ được cập nhật rõ hơn khi backend trả dữ liệu học tập thực tế.
+                Dashboard dùng dữ liệu từ Progress Service để cập nhật phần trăm và trạng thái hoàn thành.
               </p>
             </div>
           </div>

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Menu, X } from 'lucide-react';
 import { useAppSelector } from '@/app/hooks';
 import { useCourseLearning } from '@/hooks/useCourseLearning';
+import { useCourseProgress } from '@/hooks/useLearningProgress';
 import { Button } from '@/components/ui/button';
 import type { ILesson } from '@/services/courseApi';
 import logoWeb from '@/assets/logoweb.png';
@@ -15,8 +16,10 @@ import { QuizPlayer } from './QuizPlayer';
 export function LearningInterface() {
   const navigate = useNavigate();
   const { courseId = '' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const user = useAppSelector((state) => state.auth.user);
   const courseQuery = useCourseLearning(courseId);
+  const progressQuery = useCourseProgress(courseId);
   const [selectedLessonId, setSelectedLessonId] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [playbackTime, setPlaybackTime] = useState(0);
@@ -27,7 +30,8 @@ export function LearningInterface() {
     [courseQuery.data?.sections],
   );
 
-  const activeLessonId = selectedLessonId || lessons[0]?._id || '';
+  const requestedLessonId = searchParams.get('lessonId') || '';
+  const activeLessonId = selectedLessonId || requestedLessonId || progressQuery.data?.course.lastLessonId || lessons[0]?._id || '';
   const activeIndex = lessons.findIndex((lesson) => lesson._id === activeLessonId);
   const activeLesson = activeIndex >= 0 ? lessons[activeIndex] : lessons[0];
   const currentSection = courseQuery.data?.sections.find((section) =>
@@ -37,7 +41,9 @@ export function LearningInterface() {
   const nextLesson = activeIndex >= 0 && activeIndex < lessons.length - 1 ? lessons[activeIndex + 1] : null;
 
   const selectLesson = (lesson: ILesson) => {
-    setSelectedLessonId(lesson._id || '');
+    const lessonId = lesson._id || '';
+    setSelectedLessonId(lessonId);
+    if (lessonId) setSearchParams({ lessonId }, { replace: true });
     setPlaybackTime(0);
   };
 
@@ -125,6 +131,7 @@ export function LearningInterface() {
               accessSource={course.accessSource}
               watermarkIdentity={user ? { email: user.email, userId: user._id } : undefined}
               onTimeChange={setPlaybackTime}
+              initialPositionSeconds={progressQuery.data?.lessons[activeLesson._id || '']?.lastPositionSeconds || 0}
               pauseSignal={pauseSignal}
             />
           ) : activeLesson ? (
@@ -157,6 +164,7 @@ export function LearningInterface() {
             <CurriculumSidebar
               sections={course.sections}
               activeLessonId={activeLesson?._id || ''}
+              progressByLessonId={progressQuery.data?.lessons || {}}
               onSelectLesson={selectLesson}
             />
           </div>

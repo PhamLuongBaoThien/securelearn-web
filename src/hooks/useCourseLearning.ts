@@ -2,13 +2,11 @@
 // Hook: useCourseLearning
 // Mục đích:
 // - tải curriculum thật và video asset cho màn học
-// - gửi heartbeat thuê bao qua course-service khi player xác nhận thời gian xem hợp lệ
 // ========================
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   getCourseForLearning,
   getQuizForAttempt,
-  sendSubscriptionHeartbeat,
   startQuizAttempt,
   submitQuizAttempt,
   type QuizAttemptAnswerPayload,
@@ -32,12 +30,6 @@ export function useCourseLearning(courseId: string) {
     },
     enabled: Boolean(courseId),
     staleTime: 30_000,
-  });
-}
-
-export function useSubscriptionHeartbeat() {
-  return useMutation({
-    mutationFn: sendSubscriptionHeartbeat,
   });
 }
 

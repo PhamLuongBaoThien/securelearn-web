@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Clock, HelpCircle, PlayCircle } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronRight, Clock, HelpCircle, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ILesson, ISection } from '@/services/courseApi';
+import type { LessonProgressSummary } from '@/services/progressApi';
 
 const formatDuration = (seconds = 0) => {
   const minutes = Math.max(1, Math.round(seconds / 60));
@@ -11,12 +12,14 @@ const formatDuration = (seconds = 0) => {
 interface CurriculumSidebarProps {
   sections: ISection[];
   activeLessonId: string;
+  progressByLessonId?: Record<string, LessonProgressSummary>;
   onSelectLesson: (lesson: ILesson) => void;
 }
 
 export function CurriculumSidebar({
   sections,
   activeLessonId,
+  progressByLessonId = {},
   onSelectLesson,
 }: CurriculumSidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -53,6 +56,8 @@ export function CurriculumSidebar({
                   {section.lessons.map((lesson, lessonIndex) => {
                     const lessonId = lesson._id || `${sectionKey}-${lessonIndex}`;
                     const isActive = lessonId === activeLessonId;
+                    const progress = progressByLessonId[lessonId];
+                    const isCompleted = progress?.status === 'COMPLETED';
                     return (
                       <Button
                         key={lessonId}
@@ -65,14 +70,22 @@ export function CurriculumSidebar({
                             : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-900'
                         }`}
                       >
-                        {lesson.type === 'VIDEO'
-                          ? <PlayCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                          : <HelpCircle className="mt-0.5 h-4 w-4 shrink-0" />}
+                        {isCompleted
+                          ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                          : lesson.type === 'VIDEO'
+                            ? <PlayCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                            : <HelpCircle className="mt-0.5 h-4 w-4 shrink-0" />}
                         <div className="min-w-0">
                           <p className="text-sm font-medium">{lesson.title}</p>
                           <p className="mt-1 flex items-center gap-1 text-xs text-zinc-400">
                             <Clock className="h-3 w-3" />
-                            {lesson.type === 'VIDEO' ? formatDuration(lesson.duration) : 'Bài kiểm tra'}
+                            {isCompleted
+                              ? 'Đã hoàn thành'
+                              : lesson.type === 'VIDEO'
+                                ? progress?.watchPercent
+                                  ? `${progress.watchPercent}% · ${formatDuration(lesson.duration)}`
+                                  : formatDuration(lesson.duration)
+                                : 'Bài kiểm tra'}
                           </p>
                         </div>
                       </Button>

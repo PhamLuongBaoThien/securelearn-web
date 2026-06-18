@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle2, HelpCircle, Loader2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -6,6 +6,7 @@ import {
   useStartQuizAttempt,
   useSubmitQuizAttempt,
 } from '@/hooks/useCourseLearning';
+import { useCompleteQuizProgress, useProgressHeartbeat } from '@/hooks/useLearningProgress';
 import type {
   ILesson,
   IQuizAttempt,
@@ -18,6 +19,7 @@ import type {
 } from '@/services/courseApi';
 
 type SelectedAnswers = Record<string, number[]>;
+const QUIZ_HEARTBEAT_MS = 15_000;
 
 const QUESTION_TYPE_LABEL: Record<IQuizQuestion['type'], string> = {
   SINGLE_CHOICE: 'Một đáp án đúng',
@@ -65,9 +67,13 @@ export function QuizPlayer({ courseId, lesson }: { courseId: string; lesson: ILe
   const [attempt, setAttempt] = useState<IQuizAttempt | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<SelectedAnswers>({});
   const [result, setResult] = useState<IQuizAttemptResult | null>(null);
+  const sessionId = useMemo(() => crypto.randomUUID(), []);
 
   const startAttempt = useStartQuizAttempt(courseId, lessonId, quiz?._id || '');
   const submitAttempt = useSubmitQuizAttempt(courseId, lessonId, quiz?._id || '', attempt?._id || '');
+  const progressHeartbeat = useProgressHeartbeat(courseId);
+  const sendProgressHeartbeat = progressHeartbeat.mutate;
+  const completeProgress = useCompleteQuizProgress(courseId);
 
   const answeredCount = useMemo(() => {
     if (!quiz) return 0;
@@ -75,6 +81,23 @@ export function QuizPlayer({ courseId, lesson }: { courseId: string; lesson: ILe
   }, [quiz, selectedAnswers]);
 
   const allAnswered = Boolean(quiz?.questions.length) && answeredCount === quiz?.questions.length;
+
+  useEffect(() => {
+    if (!attempt || result || !lessonId) return;
+    const sendHeartbeat = () => {
+      sendProgressHeartbeat({
+        courseId,
+        lessonId,
+        lessonType: 'QUIZ',
+        sessionId,
+        quizAttemptId: attempt._id,
+      });
+    };
+
+    sendHeartbeat();
+    const interval = window.setInterval(sendHeartbeat, QUIZ_HEARTBEAT_MS);
+    return () => window.clearInterval(interval);
+  }, [attempt, courseId, lessonId, result, sendProgressHeartbeat, sessionId]);
 
   const handleSelect = (question: IQuizQuestionForAttempt, optionIndex: number, checked: boolean) => {
     if (result || !question.questionId) return;
@@ -106,6 +129,13 @@ export function QuizPlayer({ courseId, lesson }: { courseId: string; lesson: ILe
     if (!quiz || !attempt) return;
     const submittedResult = await submitAttempt.mutateAsync(normalizeAnswers(quiz, selectedAnswers));
     setResult(submittedResult);
+    completeProgress.mutate({
+      courseId,
+      lessonId,
+      attemptId: submittedResult.attemptId,
+      score: submittedResult.score,
+      passed: submittedResult.passed,
+    });
   };
 
   if (quizQuery.isLoading) {

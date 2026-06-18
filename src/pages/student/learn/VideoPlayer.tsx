@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, typ
 import Hls from 'hls.js';
 import { Loader2, Shield, VideoOff } from 'lucide-react';
 import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
-import { useCreatePlaybackSession, useSubscriptionHeartbeat } from '@/hooks/useCourseLearning';
+import { useCreatePlaybackSession } from '@/hooks/useCourseLearning';
+import { useProgressHeartbeat } from '@/hooks/useLearningProgress';
 import type { ILesson } from '@/services/courseApi';
 import {
   formatWatermarkText,
@@ -13,13 +14,13 @@ import {
   WATERMARK_ROTATION_MS,
 } from '@/lib/contentProtection';
 
-const HEARTBEAT_MS = 15_000;
-
 const absoluteApiUrl = (path: string) => {
   if (/^https?:\/\//i.test(path)) return path;
   const base = getApiBaseUrl() || window.location.origin;
   return new URL(path, base).toString();
 };
+
+const HEARTBEAT_MS = 15_000;
 
 interface VideoPlayerProps {
   courseId: string;
@@ -27,28 +28,30 @@ interface VideoPlayerProps {
   accessSource?: 'PURCHASE' | 'SUBSCRIPTION';
   watermarkIdentity?: WatermarkIdentity;
   onTimeChange?: (seconds: number) => void;
+  initialPositionSeconds?: number;
   pauseSignal?: number;
 }
 
 export function VideoPlayer({
   courseId,
   lesson,
-  accessSource,
+  accessSource: _accessSource,
   watermarkIdentity,
   onTimeChange,
+  initialPositionSeconds = 0,
   pauseSignal = 0,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const sessionId = useMemo(() => crypto.randomUUID(), []);
   const lastPositionRef = useRef(0);
+  const hasAppliedInitialPositionRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
   const playbackSession = useCreatePlaybackSession();
   const createPlayback = playbackSession.mutateAsync;
-  const heartbeat = useSubscriptionHeartbeat();
-  const sendHeartbeat = heartbeat.mutate;
-  const heartbeatPending = heartbeat.isPending;
-  const isSubscription = accessSource === 'SUBSCRIPTION';
+  const progressHeartbeat = useProgressHeartbeat(courseId);
+  const sendProgressHeartbeat = progressHeartbeat.mutate;
+  const progressHeartbeatPending = progressHeartbeat.isPending;
   const [watermarkIndex, setWatermarkIndex] = useState(0);
   const [watermarkTime, setWatermarkTime] = useState(() => new Date());
   const watermarkText = formatWatermarkText(
@@ -108,6 +111,85 @@ export function VideoPlayer({
   }, [pauseSignal]);
 
   useEffect(() => {
+    hasAppliedInitialPositionRef.current = false;
+    lastPositionRef.current = Math.max(0, Math.floor(initialPositionSeconds || 0));
+  }, [initialPositionSeconds, lesson._id]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !lesson._id) return;
+
+    const sendHeartbeat = (deltaSeconds = 0) => {
+      sendProgressHeartbeat({
+        courseId,
+        lessonId: lesson._id!,
+        lessonType: 'VIDEO',
+        sessionId,
+        positionSeconds: Math.floor(video.currentTime),
+        watchedSecondsDelta: deltaSeconds,
+      });
+    };
+
+    const flushProgress = () => {
+      const currentTime = Math.floor(video.currentTime);
+      const watchedSeconds = Math.floor(video.currentTime - lastPositionRef.current);
+      if (currentTime <= 0) return;
+      sendHeartbeat(watchedSeconds > 0 && watchedSeconds <= 20 ? Math.min(15, watchedSeconds) : 0);
+      lastPositionRef.current = video.currentTime;
+    };
+
+    const interval = window.setInterval(() => {
+      if (
+        !isPlaying ||
+        isSeeking ||
+        document.visibilityState !== 'visible' ||
+        video.paused ||
+        video.ended ||
+        progressHeartbeatPending
+      ) return;
+
+      const watchedSeconds = Math.floor(video.currentTime - lastPositionRef.current);
+      if (watchedSeconds < 1 || watchedSeconds > 20) {
+        lastPositionRef.current = video.currentTime;
+        return;
+      }
+
+      sendHeartbeat(Math.min(15, watchedSeconds));
+      lastPositionRef.current = video.currentTime;
+    }, HEARTBEAT_MS);
+
+    const handlePlay = () => {
+      lastPositionRef.current = video.currentTime;
+      sendHeartbeat(0);
+    };
+    const handlePause = () => flushProgress();
+    const handleEnded = () => flushProgress();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') flushProgress();
+    };
+
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
+    video.addEventListener('ended', handleEnded);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
+      video.removeEventListener('ended', handleEnded);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [
+    courseId,
+    isPlaying,
+    isSeeking,
+    lesson._id,
+    progressHeartbeatPending,
+    sendProgressHeartbeat,
+    sessionId,
+  ]);
+
+  useEffect(() => {
     const interval = window.setInterval(() => {
       setWatermarkIndex((current) => (current + 1) % watermarkPositions.length);
       setWatermarkTime(new Date());
@@ -126,65 +208,6 @@ export function VideoPlayer({
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !isSubscription || !lesson._id) return;
-
-    const startSession = () => {
-      // Heartbeat chỉ dùng cho flow thuê bao để tính usage.
-      // Mua đứt vẫn xem video theo playback session nhưng không gửi usage về payment-service.
-      lastPositionRef.current = video.currentTime;
-      sendHeartbeat({
-        courseId,
-        lessonId: lesson._id!,
-        sessionId,
-        segmentIndex: Math.max(0, Math.floor(video.currentTime / 15)),
-        qualifiedSeconds: 1,
-      });
-    };
-
-    const interval = window.setInterval(() => {
-      if (
-        !isPlaying ||
-        isSeeking ||
-        document.visibilityState !== 'visible' ||
-        video.paused ||
-        video.ended ||
-        heartbeatPending
-      ) return;
-
-      const watchedSeconds = Math.floor(video.currentTime - lastPositionRef.current);
-      if (watchedSeconds < 1 || watchedSeconds > 17) {
-        lastPositionRef.current = video.currentTime;
-        return;
-      }
-      const segmentIndex = Math.max(0, Math.floor(Math.max(0, video.currentTime - 1) / 15));
-      sendHeartbeat({
-        courseId,
-        lessonId: lesson._id!,
-        sessionId,
-        segmentIndex,
-        qualifiedSeconds: Math.min(15, watchedSeconds),
-      });
-      lastPositionRef.current = video.currentTime;
-    }, HEARTBEAT_MS);
-
-    video.addEventListener('play', startSession);
-    return () => {
-      window.clearInterval(interval);
-      video.removeEventListener('play', startSession);
-    };
-  }, [
-    courseId,
-    heartbeatPending,
-    isPlaying,
-    isSeeking,
-    isSubscription,
-    lesson._id,
-    sendHeartbeat,
-    sessionId,
-  ]);
 
   const handleContextMenu = useCallback((event: MouseEvent) => event.preventDefault(), []);
   const blockProtectedEvent = useCallback((event: SyntheticEvent) => {
@@ -225,6 +248,15 @@ export function VideoPlayer({
           controls
           playsInline
           className="absolute inset-0 h-full w-full"
+          onLoadedMetadata={(event) => {
+            if (hasAppliedInitialPositionRef.current || initialPositionSeconds <= 0) return;
+            const video = event.currentTarget;
+            if (Number.isFinite(video.duration) && initialPositionSeconds < video.duration - 2) {
+              video.currentTime = initialPositionSeconds;
+              lastPositionRef.current = initialPositionSeconds;
+            }
+            hasAppliedInitialPositionRef.current = true;
+          }}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           onEnded={() => setIsPlaying(false)}

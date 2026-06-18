@@ -6,6 +6,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAppSelector } from '@/app/hooks';
 import { getEnrolledCourses, type IEnrollment, type ICourse, type ICourseCategory } from '@/services/courseApi';
+import { getMyCoursesProgress, type CourseProgressSummary } from '@/services/progressApi';
 
 // Shape đã được transform — Dashboard chỉ cần dùng interface này
 export interface EnrolledCourseItem {
@@ -19,6 +20,13 @@ export interface EnrolledCourseItem {
   totalLessons: number;
   totalDuration: number; // giây
   enrolledAt: string;
+  progressPercent: number;
+  completedLessons: number;
+  progressTotalLessons: number;
+  lastLessonId: string;
+  lastPositionSeconds: number;
+  progressCompletedAt?: string | null;
+  progressUpdatedAt?: string;
 }
 
 export const enrolledKeys = {
@@ -47,8 +55,7 @@ export function useEnrolledCourses() {
       }
 
       const enrollments = (response.data || []) as IEnrollment[];
-
-      return enrollments
+      const courses = enrollments
         .filter((e) => isPopulatedCourse(e.courseId))
         .map((e) => {
           const course = e.courseId as Parameters<typeof isPopulatedCourse>[0] & { title: string };
@@ -64,9 +71,40 @@ export function useEnrolledCourses() {
             totalLessons: course.totalLessons,
             totalDuration: course.totalDuration,
             enrolledAt: e.enrolledAt,
+            progressPercent: 0,
+            completedLessons: 0,
+            progressTotalLessons: course.totalLessons,
+            lastLessonId: '',
+            lastPositionSeconds: 0,
           } as EnrolledCourseItem;
         })
         .filter((item): item is EnrolledCourseItem => item !== null);
+
+      if (courses.length === 0) return courses;
+
+      try {
+        const progressResponse = await getMyCoursesProgress(courses.map((course) => course.courseId));
+        const progressByCourseId = new Map<string, CourseProgressSummary>(
+          (progressResponse.data || []).map((progress) => [progress.courseId, progress])
+        );
+
+        return courses.map((course) => {
+          const progress = progressByCourseId.get(course.courseId);
+          if (!progress) return course;
+          return {
+            ...course,
+            progressPercent: progress.progressPercent,
+            completedLessons: progress.completedLessons,
+            progressTotalLessons: progress.totalLessons || course.totalLessons,
+            lastLessonId: progress.lastLessonId || '',
+            lastPositionSeconds: progress.lastPositionSeconds || 0,
+            progressCompletedAt: progress.completedAt,
+            progressUpdatedAt: progress.updatedAt,
+          };
+        });
+      } catch {
+        return courses;
+      }
     },
     enabled: isAuthenticated,
     staleTime: 30 * 1000,

@@ -2,7 +2,7 @@
 // Course API Client
 // Mục đích:
 // - gom type và API cho catalog, editor, enrollment và learning của course-service
-// - thêm endpoint entitlement, subscription enroll và heartbeat cho flow thuê bao
+// - thêm endpoint entitlement và subscription enroll cho flow thuê bao
 // ========================
 import apiClient from './apiClient';
 
@@ -342,18 +342,6 @@ export const withdrawCourseSubscription = async (courseId: string, reason?: stri
 
 export const enrollWithSubscription = async (courseId: string) => {
   const { data } = await apiClient.post<ApiResponse<IEnrollment>>(`/api/courses/${courseId}/subscription-enroll`);
-  return data;
-};
-
-export const sendSubscriptionHeartbeat = async (payload: {
-  courseId: string;
-  lessonId: string;
-  sessionId: string;
-  segmentIndex: number;
-  qualifiedSeconds: number;
-}) => {
-  // Frontend player chỉ gửi heartbeat qua course-service để backend tự check entitlement trước khi tính usage.
-  const { data } = await apiClient.post<ApiResponse>('/api/courses/subscription/heartbeat', payload);
   return data;
 };
 
