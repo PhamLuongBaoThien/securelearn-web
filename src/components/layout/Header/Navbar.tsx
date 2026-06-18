@@ -153,10 +153,10 @@ export const Navbar = () => {
         ref={searchContainerRef}
         className="sticky top-4 mx-auto z-50 mb-6 w-[96%] max-w-[1440px] rounded-full border border-border/50 bg-background/80 shadow-lg backdrop-blur-md transition-all duration-300 dark:border-zinc-700/70 dark:bg-zinc-900/85 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_10px_30px_rgba(255,255,255,0.08)]"
       >
-        <div className="px-4 sm:px-6 flex h-[64px] items-center justify-between relative">
+        <div className="relative flex h-[64px] items-center justify-between px-4 sm:px-6">
 
           {/* LEFT: Khám phá và Tìm kiếm */}
-          <div className="flex items-center gap-3 flex-1 justify-start z-10">
+          <div className="z-10 flex min-w-0 flex-1 items-center justify-start gap-3 pr-3">
             {/* Mobile Search Icon */}
             <Button
               type="button"
@@ -237,7 +237,7 @@ export const Navbar = () => {
             </NavigationMenu>
 
             {/* Search Bar Desktop */}
-            <div className="hidden md:flex w-full max-w-[220px] lg:max-w-[280px] items-center relative group">
+            <div className="group relative hidden w-full max-w-[260px] items-center md:flex lg:max-w-[360px] xl:max-w-[420px]">
               <Search className="pointer-events-none absolute left-4 h-4 w-4 text-muted-foreground group-focus-within:text-foreground transition-colors z-10" />
               <Input
                 type="text"
@@ -254,21 +254,11 @@ export const Navbar = () => {
                   }
                 }}
                 placeholder="Tìm kiếm khóa học..."
-                className="w-full h-[36px] pl-11 pr-11 bg-secondary/60 border-transparent rounded-full focus-visible:ring-1 focus-visible:ring-primary/30 transition-all text-sm"
+                className="w-full h-[36px] pl-11 pr-4 bg-secondary/60 border-transparent rounded-full focus-visible:ring-1 focus-visible:ring-primary/30 transition-all text-sm"
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={handleSearchSubmit}
-                className="absolute right-1 h-8 w-8 rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                title="Tìm kiếm"
-              >
-                <Search className="h-4 w-4" />
-              </Button>
 
               {shouldShowSuggestions && (
-                <div className="absolute left-0 right-0 top-[calc(100%+10px)] overflow-hidden rounded-2xl border border-border/70 bg-background/95 shadow-xl backdrop-blur-md">
+                <div className="absolute left-0 right-0 top-[calc(100%+10px)] overflow-hidden rounded-2xl border border-border/70 bg-background/95 shadow-xl backdrop-blur-md xl:min-w-[420px]">
                   {suggestionsQuery.isLoading ? (
                     <div className="space-y-2 p-3">
                       {Array.from({ length: 3 }).map((_, index) => (
@@ -325,17 +315,17 @@ export const Navbar = () => {
           </div>
 
           {/* CENTER: Logo */}
-          <div className="flex items-center justify-center shrink-0 pointer-events-none z-20 px-2 lg:px-4">
-            <Link to="/" className="flex items-center pointer-events-auto">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 px-2 lg:px-4">
+            <Link to="/" className="flex items-center pointer-events-auto whitespace-nowrap">
               <img src={brandLogo} alt="SecureLearn logo" className="h-9 w-9 object-contain" />
-              <span className="font-bold text-xl tracking-tight text-foreground transition-opacity hover:opacity-70">
+              <span className="hidden text-xl font-bold tracking-tight text-foreground transition-opacity hover:opacity-70 sm:inline">
                 SecureLearn
               </span>
             </Link>
           </div>
 
           {/* RIGHT */}
-          <div className="flex items-center gap-2 sm:gap-4 flex-1 justify-end z-10">
+          <div className="z-10 flex flex-1 items-center justify-end gap-2 pl-3 sm:gap-4">
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
 
               {/* Desktop Links */}
@@ -460,18 +450,8 @@ export const Navbar = () => {
                     }
                   }}
                   placeholder="Tìm kiếm nâng cao..."
-                  className="w-full h-12 pl-12 pr-14 bg-transparent border-transparent rounded-full focus-visible:ring-0 text-sm"
+                  className="w-full h-12 pl-12 pr-4 bg-transparent border-transparent rounded-full focus-visible:ring-0 text-sm"
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleSearchSubmit}
-                  className="absolute right-1 h-10 w-10 rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                  title="Tìm kiếm"
-                >
-                  <Search className="h-4 w-4" />
-                </Button>
               </div>
 
               {shouldShowSuggestions && (

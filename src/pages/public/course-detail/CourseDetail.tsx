@@ -93,7 +93,7 @@ export function CourseDetail() {
   // Trạng thái đang tải: hiển thị skeleton
   if (isLoading) {
     return (
-      <div className="bg-background min-h-screen pb-20 relative -mt-[88px]">
+      <div className="bg-zinc-50 dark:bg-zinc-950 min-h-screen pb-20 relative -mt-[88px]">
         <HeroBannerSkeleton />
         <ContentSkeleton />
       </div>
@@ -128,7 +128,7 @@ export function CourseDetail() {
   }
 
   return (
-    <div className="bg-background min-h-screen pb-20 relative -mt-[88px]">
+    <div className="bg-zinc-50 dark:bg-zinc-950 min-h-screen pb-20 relative -mt-[88px]">
       {/* Banner tối phía trên — chứa thông tin tổng quan */}
       <FadeIn>
         <CourseHeroBanner course={course} />

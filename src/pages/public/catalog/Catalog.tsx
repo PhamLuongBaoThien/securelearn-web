@@ -29,6 +29,125 @@ import {
 import { CourseCardSkeleton } from "./CourseCardSkeleton";
 import { SortDropdown } from "./SortDropdown";
 
+
+// ── Empty State Illustration SVG ──────────────────────────────────────────────
+function EmptyStateIllustration() {
+  return (
+    <div className="relative w-48 h-48 mb-2 flex items-center justify-center">
+      <svg
+        viewBox="0 0 200 200"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-full drop-shadow-xl"
+      >
+
+        {/* Các vòng sóng lan tỏa */}
+        <circle
+          cx="100"
+          cy="100"
+          r="60"
+          stroke="currentColor"
+          strokeWidth="1"
+          strokeDasharray="4 4"
+          className="text-primary/30 animate-[spin_40s_linear_infinite]"
+        />
+        <circle
+          cx="100"
+          cy="100"
+          r="45"
+          stroke="currentColor"
+          strokeWidth="1"
+          strokeDasharray="3 3"
+          className="text-primary/20 animate-[spin_20s_linear_infinite_reverse]"
+        />
+
+        {/* Các chấm lấp lánh nhỏ */}
+        <circle cx="50" cy="60" r="3" fill="#3B82F6" className="animate-pulse" />
+        <circle cx="150" cy="70" r="2" fill="#8B5CF6" className="animate-pulse" style={{ animationDelay: '1s' }} />
+        <circle cx="60" cy="130" r="2.5" fill="#EC4899" className="animate-pulse" style={{ animationDelay: '0.5s' }} />
+        <circle cx="140" cy="140" r="3.5" fill="#F59E0B" className="animate-pulse" style={{ animationDelay: '1.5s' }} />
+
+        {/* Hình ảnh Ngôi sao nhỏ */}
+        <path
+          d="M100 25L102 31L108 33L102 35L100 41L98 35L92 33L98 31Z"
+          fill="#F59E0B"
+          className="animate-bounce"
+          style={{ animationDuration: '2s' }}
+        />
+        
+        {/* Quyển sách mở nằm ở tâm */}
+        <g transform="translate(60, 65)">
+          <path
+            d="M10 55C10 55 30 50 40 55C50 50 70 55 70 55V15C70 15 50 10 40 15C30 10 10 15 10 15V55Z"
+            fill="var(--background)"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinejoin="round"
+            className="text-primary"
+          />
+          <path
+            d="M40 15V55"
+            stroke="currentColor"
+            strokeWidth="3"
+            className="text-primary"
+          />
+          {/* Các dòng chữ giả dạng sóng */}
+          <path d="M18 23H32" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-muted-foreground/40" />
+          <path d="M18 31H32" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-muted-foreground/40" />
+          <path d="M18 39H26" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-muted-foreground/40" />
+          <path d="M48 23H62" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-muted-foreground/40" />
+          <path d="M48 31H58" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-muted-foreground/40" />
+          <path d="M48 39H62" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-muted-foreground/40" />
+        </g>
+
+        {/* Chiếc kính lúp bay quanh/đè lên quyển sách */}
+        <g className="animate-bounce" style={{ animationDuration: '4s' }} transform="translate(10, 0)">
+          {/* Tay cầm kính lúp */}
+          <path
+            d="M125 125L145 145"
+            stroke="currentColor"
+            strokeWidth="6"
+            strokeLinecap="round"
+            className="text-primary"
+          />
+          {/* Khung kính lúp */}
+          <circle
+            cx="110"
+            cy="110"
+            r="20"
+            fill="var(--background)"
+            stroke="currentColor"
+            strokeWidth="6"
+            className="text-primary"
+          />
+          {/* Mặt kính phản quang */}
+          <path
+            d="M98 108A14 14 0 0 1 112 94"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            className="text-primary/50"
+          />
+          {/* Dấu chấm hỏi bên trong kính lúp */}
+          <text
+            x="110"
+            y="116"
+            fontSize="18"
+            fontWeight="bold"
+            fill="currentColor"
+            textAnchor="middle"
+            className="text-primary fill-current"
+          >
+            ?
+          </text>
+        </g>
+
+
+      </svg>
+    </div>
+  );
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 export function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -254,7 +373,7 @@ export function Catalog() {
       {/* ── Empty ── */}
       {!isLoading && !isFetching && !isError && courses.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-          <BookOpen className="w-12 h-12 text-muted-foreground" />
+          <EmptyStateIllustration />
           <p className="text-lg font-semibold">Không tìm thấy khóa học</p>
           <p className="text-muted-foreground text-sm">
             {hasActiveFilter ? "Thử thay đổi bộ lọc." : "Chưa có khóa học nào được xuất bản."}
