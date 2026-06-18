@@ -1254,9 +1254,9 @@ export const CourseEditor: React.FC = () => {
                       </TooltipTrigger>
                       <TooltipContent>Xóa chương</TooltipContent>
                     </Tooltip>
-                    <button type="button" onClick={() => toggleSection(sectionIndex)} className="h-7 w-7 flex items-center justify-center rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors shrink-0">
+                    <Button type="button" variant="ghost" size="icon" onClick={() => toggleSection(sectionIndex)} className="h-7 w-7 flex items-center justify-center rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors shrink-0 focus-visible:ring-0">
                       {expandedSections.has(sectionIndex) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
+                    </Button>
                   </div>
                   {expandedSections.has(sectionIndex) && (
                     <div className="p-4 space-y-3 border-t border-zinc-200 dark:border-zinc-800">
@@ -1461,9 +1461,9 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
           onOpenChange={(open) => { if (!open) setPendingType(null); }}
           onConfirm={() => { if (pendingType) { onChangeType(pendingType); setPendingType(null); } }}
         />
-        <button type="button" onClick={() => setIsExpanded(!isExpanded)} className="h-7 w-7 flex items-center justify-center rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors shrink-0">
+        <Button type="button" variant="ghost" size="icon" onClick={() => setIsExpanded(!isExpanded)} className="h-7 w-7 flex items-center justify-center rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors shrink-0 focus-visible:ring-0">
           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
+        </Button>
       </div>
 
       {isExpanded && (

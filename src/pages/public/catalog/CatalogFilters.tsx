@@ -18,17 +18,14 @@ export function MultiSelectDropdown({ label, options, selected, onSelect }: Mult
 
   return (
     <div className="relative hidden md:block z-20">
-      <button
+      <Button
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium border rounded-full transition-all ${
-          isActive
-            ? 'border-foreground bg-foreground text-background'
-            : 'border-border hover:border-foreground bg-background text-foreground'
-        }`}
+        variant={isActive ? 'udemy_dark' : 'outline'}
+        className="rounded-full px-3.5 py-2 text-sm font-medium"
       >
         {label} {isActive && `(${selected.length})`}
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
 
       {open && (
         <>
@@ -37,10 +34,11 @@ export function MultiSelectDropdown({ label, options, selected, onSelect }: Mult
             {options.map((opt) => {
               const isSelected = selected.includes(opt.value);
               return (
-                <button
+                <Button
                   key={opt.value}
+                  variant="ghost"
                   onClick={() => onSelect(opt.value)}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-secondary transition-colors"
+                  className="w-full justify-start gap-2 px-4 py-2.5 text-sm font-normal rounded-none hover:bg-secondary text-left transition-colors"
                 >
                   <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-border'}`}>
                     {isSelected && <Check className="w-3 h-3" />}
@@ -48,7 +46,7 @@ export function MultiSelectDropdown({ label, options, selected, onSelect }: Mult
                   <span className={isSelected ? 'font-medium' : ''}>
                     {opt.label}
                   </span>
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -102,15 +100,14 @@ export function PriceRangeFilter({
 
   return (
     <div className="relative hidden md:block z-20">
-      <button
+      <Button
         onClick={() => { setLocal(value); setOpen((v) => !v); }}
-        className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium border rounded-full transition-all ${
-          isActive ? 'border-foreground bg-foreground text-background' : 'border-border hover:border-foreground bg-background text-foreground'
-        }`}
+        variant={isActive ? 'udemy_dark' : 'outline'}
+        className="rounded-full px-3.5 py-2 text-sm font-medium"
       >
         {isActive ? `${formatPrice(value.min)} – ${formatPrice(value.max)}` : 'Giá'}
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
 
       {open && (
         <>
@@ -175,12 +172,14 @@ export function InlinePriceRange({
         />
       </div>
       {isActive && (
-        <button
+        <Button
+          variant="link"
+          size="sm"
           onClick={() => onChange({ min: 0, max: PRICE_MAX })}
-          className="text-xs text-muted-foreground underline hover:text-foreground"
+          className="p-0 h-auto text-xs text-muted-foreground underline hover:text-foreground font-normal"
         >
           Hủy lọc giá
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -202,17 +201,14 @@ export function CategoryTreeDropdown({
 
   return (
     <div className="relative hidden md:block z-20">
-      <button
+      <Button
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium border rounded-full transition-all ${
-          isActive
-            ? 'border-foreground bg-foreground text-background'
-            : 'border-border hover:border-foreground bg-background text-foreground'
-        }`}
+        variant={isActive ? 'udemy_dark' : 'outline'}
+        className="rounded-full px-3.5 py-2 text-sm font-medium"
       >
         {label} {isActive && `(${selected.length})`}
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
 
       {open && (
         <>
@@ -300,9 +296,15 @@ function CategoryNode({ node, selected, onToggle, depth = 0, ancestors = [] }: {
     <div className="flex flex-col">
       <div className="flex items-center gap-1 group py-1.5" style={{ paddingLeft: `${depth * 1.25}rem` }}>
         {hasChildren ? (
-          <button onClick={() => setOpen(!open)} className="p-1 text-muted-foreground hover:text-foreground shrink-0 flex items-center justify-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setOpen(!open)}
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground hover:bg-transparent shrink-0"
+          >
             <ChevronRight className={`w-4 h-4 transition-transform ${open ? 'rotate-90' : ''}`} />
-          </button>
+          </Button>
         ) : (
           <div className="w-6 shrink-0" />
         )}
@@ -379,15 +381,14 @@ export function DurationDropdown({
 
   return (
     <div className="relative hidden md:block z-20">
-      <button
+      <Button
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium border rounded-full transition-all ${
-          isActive ? 'border-foreground bg-foreground text-background' : 'border-border hover:border-foreground bg-background text-foreground'
-        }`}
+        variant={isActive ? 'udemy_dark' : 'outline'}
+        className="rounded-full px-3.5 py-2 text-sm font-medium"
       >
         {isActive ? current.label : 'Thời lượng'}
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      </Button>
 
       {open && (
         <>
@@ -396,16 +397,17 @@ export function DurationDropdown({
             {DURATION_OPTIONS.map((opt) => {
               const isSelected = selected === opt.key;
               return (
-                <button
+                <Button
                   key={opt.key}
+                  variant="ghost"
                   onClick={() => { onChange(isSelected ? '' : opt.key); setOpen(false); }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-secondary transition-colors"
+                  className="w-full justify-start gap-2 px-4 py-2.5 text-sm font-normal rounded-none hover:bg-secondary text-left transition-colors"
                 >
                   <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-border'}`}>
                     {isSelected && <Check className="w-3 h-3" />}
                   </div>
                   <span className={isSelected ? 'font-medium' : ''}>{opt.label}</span>
-                </button>
+                </Button>
               );
             })}
           </div>

@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
 import { SlideUp } from '@/components/animations/SlideUp';
 import { FadeIn } from '@/components/animations/FadeIn';
-import { buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { useSwitchToInstructor } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -48,9 +48,14 @@ export const Teach = () => {
             <p className="mx-auto mb-8 max-w-2xl text-xl leading-snug text-slate-700 md:text-2xl dark:text-white/85">
               Trở thành giảng viên trên SecureLearn và tiếp cận hàng triệu học viên toàn thế giới. Nền tảng của chúng tôi cung cấp hệ thống bảo mật bảo vệ triệt để chất xám của bạn.
             </p>
-            <button onClick={handleStartTeaching} disabled={switchToInstructorMutation.isPending} className={buttonVariants({ variant: 'default', className: 'h-14 px-8 text-lg font-bold rounded-none bg-blue-600 text-white hover:bg-blue-700 border-0 dark:bg-white dark:text-blue-700 dark:hover:bg-white/90' })}>
+            <Button
+              onClick={handleStartTeaching}
+              disabled={switchToInstructorMutation.isPending}
+              variant="default"
+              className="h-14 px-8 text-lg font-bold rounded-none bg-blue-600 text-white hover:bg-blue-700 border-0 dark:bg-white dark:text-blue-700 dark:hover:bg-white/90 cursor-pointer"
+            >
               {switchToInstructorMutation.isPending ? 'Đang chuyển...' : 'Bắt đầu giảng dạy'}
-            </button>
+            </Button>
           </SlideUp>
         </div>
       </section>
@@ -87,9 +92,14 @@ export const Teach = () => {
       <section className="bg-secondary/40 px-6 py-20 text-center border-t border-border">
         <h2 className="text-3xl font-bold font-serif mb-6">Bạn đã sẵn sàng bước lên bục giảng?</h2>
         <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">Tham gia cùng hàng ngàn giảng viên uy tín trên mạng lưới của SecureLearn để truyền đạt kiến thức ngay hôm nay.</p>
-        <button onClick={handleStartTeaching} disabled={switchToInstructorMutation.isPending} className={buttonVariants({ variant: 'udemy_dark', className: 'h-14 px-12 text-lg font-bold rounded-none' })}>
+        <Button
+          onClick={handleStartTeaching}
+          disabled={switchToInstructorMutation.isPending}
+          variant="udemy_dark"
+          className="h-14 px-12 text-lg font-bold rounded-none cursor-pointer"
+        >
           {switchToInstructorMutation.isPending ? 'Đang xử lý...' : 'Bắt đầu ngay bây giờ'}
-        </button>
+        </Button>
       </section>
     </div>
   );

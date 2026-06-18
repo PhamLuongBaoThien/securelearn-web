@@ -2,6 +2,8 @@
 import React from 'react';
 import type { FieldErrors, UseFormHandleSubmit, UseFormRegister } from 'react-hook-form';
 import { Briefcase, FileText, Loader2, Mail, Phone, Save, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { AnimatedTabContent } from '@/components/animations/TabTransition';
 import type { ProfileFormData, ProfileUser } from './profile.types';
 import { profileInputClassName, profileInputDisabledClassName } from './profile.utils';
@@ -31,7 +33,7 @@ export const ProfileEditPanel: React.FC<ProfileEditPanelProps> = ({
           <label htmlFor="email" className="text-sm font-medium leading-none flex items-center gap-2">
             <Mail size={16} className="text-muted-foreground" /> Email
           </label>
-          <input id="email" value={user.email} disabled className={profileInputDisabledClassName} />
+          <Input id="email" value={user.email} disabled className={profileInputDisabledClassName} />
           <p className="text-xs text-muted-foreground">Email không thể thay đổi.</p>
         </div>
 
@@ -39,7 +41,7 @@ export const ProfileEditPanel: React.FC<ProfileEditPanelProps> = ({
           <label htmlFor="fullName" className="text-sm font-medium leading-none flex items-center gap-2">
             <User size={16} className="text-muted-foreground" /> Họ và tên
           </label>
-          <input
+          <Input
             id="fullName"
             {...register('fullName', { required: 'Vui lòng nhập họ và tên' })}
             className={profileInputClassName}
@@ -51,7 +53,7 @@ export const ProfileEditPanel: React.FC<ProfileEditPanelProps> = ({
           <label htmlFor="phone" className="text-sm font-medium leading-none flex items-center gap-2">
             <Phone size={16} className="text-muted-foreground" /> Số điện thoại
           </label>
-          <input
+          <Input
             id="phone"
             placeholder="VD: 0912345678"
             {...register('phone', {
@@ -69,7 +71,7 @@ export const ProfileEditPanel: React.FC<ProfileEditPanelProps> = ({
           <label htmlFor="headline" className="text-sm font-medium leading-none flex items-center gap-2">
             <Briefcase size={16} className="text-muted-foreground" /> Chức danh / Định danh
           </label>
-          <input
+          <Input
             id="headline"
             placeholder="VD: Software Engineer, Designer..."
             {...register('headline')}
@@ -90,14 +92,14 @@ export const ProfileEditPanel: React.FC<ProfileEditPanelProps> = ({
           />
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={isUpdating}
-          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8"
+          className="h-11 px-8 font-semibold cursor-pointer"
         >
           {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
           Lưu Thay Đổi
-        </button>
+        </Button>
       </form>
     </div>
   </AnimatedTabContent>

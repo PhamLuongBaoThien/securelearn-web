@@ -78,11 +78,16 @@ export const Pricing = () => {
         )}
       </div>
 
-      <div className="mb-6 flex max-w-md border border-zinc-200 p-1 dark:border-zinc-800">
+      <div className="mb-6 flex max-w-md border border-zinc-200 p-1 dark:border-zinc-800 gap-1 bg-zinc-50/50 dark:bg-zinc-900/40 rounded-lg">
         {(['VNPAY', 'MOMO'] as PaymentMethod[]).map((item) => (
-          <button key={item} className={`h-10 flex-1 text-sm font-semibold ${method === item ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : ''}`} onClick={() => setMethod(item)}>
+          <Button
+            key={item}
+            variant={method === item ? 'default' : 'ghost'}
+            className="h-10 flex-1 text-sm font-semibold rounded-md transition-all cursor-pointer"
+            onClick={() => setMethod(item)}
+          >
             {item}
-          </button>
+          </Button>
         ))}
       </div>
 

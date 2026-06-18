@@ -44,9 +44,10 @@ function FilterSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
     <div className="mb-6 last:mb-0">
-      <button
+      <Button
+        variant="ghost"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full font-semibold flex items-center justify-between text-left focus:outline-none"
+        className="w-full font-semibold flex items-center justify-between p-0 h-auto hover:bg-transparent text-left focus-visible:ring-0"
       >
         {title}
         <ChevronDown
@@ -54,7 +55,7 @@ function FilterSection({
             isOpen ? "rotate-180" : ""
           }`}
         />
-      </button>
+      </Button>
       {isOpen && <div className="mt-4">{children}</div>}
     </div>
   );

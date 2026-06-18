@@ -184,13 +184,14 @@ export function ForgotPassword() {
           </form>
 
           <StaggerItem className="mt-8 flex justify-center text-sm">
-            <button 
+            <Button 
               type="button"
+              variant="ghost"
               onClick={() => setStep(1)} 
-              className="flex items-center gap-2 font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-2 font-medium text-muted-foreground hover:text-foreground hover:bg-transparent transition-colors h-auto p-0 focus-visible:ring-0"
             >
               <ArrowLeft className="h-4 w-4" /> Đổi email nhận mã
-            </button>
+            </Button>
           </StaggerItem>
         </>
       )}

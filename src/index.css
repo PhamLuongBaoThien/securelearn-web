@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    --background: 45 15% 98%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
     --card-foreground: 240 10% 3.9%;
@@ -233,4 +233,70 @@
   -ms-overflow-style: none;  /* IE và Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Ẩn icon con mắt mặc định của các trình duyệt như Edge */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+}
+
+/* ── Infinite Marquee Loop for Logos ── */
+@keyframes marquee-horizontal-left {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes marquee-horizontal-right {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+.animate-marquee-left {
+  display: flex;
+  width: max-content;
+  animation: marquee-horizontal-left 25s linear infinite;
+}
+
+.animate-marquee-right {
+  display: flex;
+  width: max-content;
+  animation: marquee-horizontal-right 25s linear infinite;
+}
+
+/* ── Partner Auto-slider step transitions ── */
+:root {
+  --partner-visible: 2;
+}
+@media (min-width: 640px) {
+  :root {
+    --partner-visible: 2;
+  }
+}
+@media (min-width: 768px) {
+  :root {
+    --partner-visible: 3;
+  }
+}
+@media (min-width: 1024px) {
+  :root {
+    --partner-visible: 4;
+  }
+}
+
+.partner-slider-item {
+  width: calc(100% / var(--partner-visible));
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 

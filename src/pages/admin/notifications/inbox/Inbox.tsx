@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Inbox as InboxIcon, CheckCircle2, MessageSquare, AlertTriangle, HelpCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 type MsgType = 'ALL' | 'REPORT' | 'SUPPORT' | 'FEEDBACK';
 
@@ -45,12 +47,13 @@ export const Inbox: React.FC = () => {
           <p className="text-zinc-500 dark:text-zinc-400">Quản lý tin nhắn, báo cáo và yêu cầu hỗ trợ từ người dùng.</p>
         </div>
         {unreadCount > 0 && (
-          <button 
+          <Button 
+            variant="outline"
             onClick={markAllAsRead}
             className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
           >
             <CheckCircle2 className="w-4 h-4 text-primary" /> Đánh dấu tất cả đã đọc
-          </button>
+          </Button>
         )}
       </div>
 
@@ -59,7 +62,7 @@ export const Inbox: React.FC = () => {
         <div className="w-full sm:w-64 shrink-0 space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-            <input 
+            <Input 
               className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               placeholder="Tìm kiếm tin nhắn..."
               value={search}

@@ -4,7 +4,148 @@ import { HorizontalStaggerContainer, HorizontalStaggerItem } from '@/components/
 import { SectionReveal, SectionSequence, SectionSequenceItem } from '@/components/animations/SectionReveal';
 import { CourseCarousel } from '@/components/ui/CourseCarousel';
 import { buttonVariants } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ShieldCheck, Lock,Zap, CreditCard } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+const CopyrightIllustration = () => (
+  <svg className="h-20 w-20 mb-4 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="docGrad" x1="20" y1="20" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#4F46E5" />
+        <stop offset="100%" stopColor="#818CF8" />
+      </linearGradient>
+      <linearGradient id="shieldGrad" x1="10" y1="30" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="hsl(var(--primary))" />
+        <stop offset="100%" stopColor="#06B6D4" />
+      </linearGradient>
+      <linearGradient id="laserGrad" x1="10" y1="50" x2="90" y2="50" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#F43F5E" stopOpacity="0" />
+        <stop offset="50%" stopColor="#F43F5E" stopOpacity="1" />
+        <stop offset="100%" stopColor="#F43F5E" stopOpacity="0" />
+      </linearGradient>
+    </defs>
+    
+    {/* Vòng tròn quỹ đạo quét bảo mật ở hậu cảnh */}
+    <circle cx="50" cy="50" r="42" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 6" />
+    <circle cx="50" cy="50" r="35" stroke="url(#shieldGrad)" strokeWidth="1.5" strokeDasharray="10 5" opacity="0.3" />
+
+    {/* Tài liệu bản quyền (Document) phối cảnh nghiêng */}
+    <g transform="translate(10, 10)">
+      {/* Tài liệu bóng đổ */}
+      <rect x="23" y="13" width="34" height="46" rx="3" fill="#000" fillOpacity="0.05" />
+      {/* Tài liệu chính */}
+      <rect x="20" y="10" width="34" height="46" rx="3" fill="white" stroke="url(#docGrad)" strokeWidth="2.5" />
+      {/* Góc gấp tài liệu */}
+      <path d="M46 10H54V18H46V10Z" fill="#EEF2F6" />
+      <path d="M46 18L54 18L46 10V18Z" fill="url(#docGrad)" />
+      {/* Các dòng text tượng trưng */}
+      <line x1="26" y1="24" x2="44" y2="24" stroke="#D1D5DB" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="26" y1="32" x2="38" y2="32" stroke="#D1D5DB" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="26" y1="40" x2="48" y2="40" stroke="#D1D5DB" strokeWidth="2.5" strokeLinecap="round" />
+      {/* Ký hiệu chữ C Bản Quyền ở góc tài liệu */}
+      <circle cx="43" cy="48" r="5" stroke="url(#docGrad)" strokeWidth="1.5" />
+      <path d="M44.5 46.5A2 2 0 1 0 44.5 49.5" stroke="url(#docGrad)" strokeWidth="1.5" strokeLinecap="round" />
+    </g>
+
+    {/* Khiên Hologram bảo vệ ở tiền cảnh, che phủ một phần tài liệu */}
+    <path d="M50 78C50 78 80 64 80 38V20L50 8L20 20V38C20 64 50 78 50 78Z" fill="url(#shieldGrad)" fillOpacity="0.15" stroke="url(#shieldGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+    {/* Đường Laser Quét Bảo Mật thời gian thực nằm ngang qua khiên */}
+    <line x1="15" y1="46" x2="85" y2="46" stroke="url(#laserGrad)" strokeWidth="3" strokeLinecap="round" />
+    {/* Điểm phát sáng laser ở hai đầu */}
+    <circle cx="16" cy="46" r="2" fill="#F43F5E" />
+    <circle cx="84" cy="46" r="2" fill="#F43F5E" />
+  </svg>
+);
+
+const FastLearningIllustration = () => (
+  <svg className="h-20 w-20 mb-4 transition-transform duration-500 group-hover:scale-110 group-hover:-translate-y-1" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="laptopGrad" x1="10" y1="20" x2="90" y2="80" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="hsl(var(--primary))" />
+        <stop offset="100%" stopColor="#8B5CF6" />
+      </linearGradient>
+      <linearGradient id="speedGrad" x1="20" y1="20" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#F59E0B" />
+        <stop offset="100%" stopColor="#EF4444" />
+      </linearGradient>
+    </defs>
+    {/* Laptop thân dưới */}
+    <path d="M15 68H85L88 74H12L15 68Z" fill="#E5E7EB" stroke="url(#laptopGrad)" strokeWidth="2" />
+    <path d="M45 74H55" stroke="#9CA3AF" strokeWidth="3" strokeLinecap="round" />
+    {/* Màn hình laptop */}
+    <rect x="22" y="22" width="56" height="42" rx="4" fill="url(#laptopGrad)" fillOpacity="0.1" stroke="url(#laptopGrad)" strokeWidth="2" />
+    {/* Nút Play phát sóng */}
+    <polygon points="45,35 63,43 45,51" fill="url(#laptopGrad)" />
+    {/* Các tia sét/sóng tốc độ mượt mà bay ra khỏi màn hình */}
+    <path d="M10 30L25 35L20 42" stroke="url(#speedGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M90 45L75 50L80 57" stroke="url(#speedGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    {/* Ngôi sao lấp lánh */}
+    <path d="M30 15L32 20L37 22L32 24L30 29L28 24L23 22L28 20L30 15Z" fill="#F59E0B" opacity="0.8" />
+    <path d="M72 12L73 15L76 16L73 17L72 20L71 17L68 16L71 15L72 12Z" fill="#F59E0B" opacity="0.8" />
+  </svg>
+);
+
+const PaymentIllustration = () => (
+  <svg className="h-20 w-20 mb-4 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-2" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="cardGrad" x1="10" y1="30" x2="80" y2="90" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="hsl(var(--primary))" />
+        <stop offset="100%" stopColor="#10B981" />
+      </linearGradient>
+      <linearGradient id="coinGrad" x1="0" y1="0" x2="10" y2="10" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#FBBF24" />
+        <stop offset="100%" stopColor="#D97706" />
+      </linearGradient>
+    </defs>
+    {/* Thẻ tín dụng phía sau */}
+    <rect x="25" y="20" width="50" height="32" rx="4" fill="url(#cardGrad)" fillOpacity="0.2" stroke="url(#cardGrad)" strokeWidth="2" transform="rotate(-8 50 36)" />
+    <line x1="28" y1="28" x2="72" y2="22" stroke="url(#cardGrad)" strokeWidth="6" />
+    
+    {/* Thẻ tín dụng phía trước bay phối cảnh */}
+    <rect x="18" y="38" width="52" height="34" rx="5" fill="white" stroke="url(#cardGrad)" strokeWidth="2.5" />
+    <rect x="18" y="44" width="52" height="8" fill="url(#cardGrad)" />
+    <rect x="24" y="58" width="10" height="7" rx="1" fill="#F59E0B" />
+    <circle cx="58" cy="61" r="4" fill="#EF4444" fillOpacity="0.8" />
+    <circle cx="63" cy="61" r="4" fill="#F59E0B" fillOpacity="0.8" />
+
+    {/* Các đồng xu vàng lơ lửng */}
+    <circle cx="82" cy="55" r="7" fill="url(#coinGrad)" stroke="#F59E0B" strokeWidth="1" />
+    <path d="M82 51V59M80 53H84M80 57H84" stroke="white" strokeWidth="1" />
+    
+    <circle cx="12" cy="65" r="5" fill="url(#coinGrad)" stroke="#F59E0B" strokeWidth="1" />
+    <circle cx="78" cy="22" r="4" fill="url(#coinGrad)" stroke="#F59E0B" strokeWidth="1" />
+  </svg>
+);
+
+const TrustIllustration = () => (
+  <svg className="h-20 w-20 mb-4 transition-transform duration-500 group-hover:scale-110 group-hover:-translate-y-1" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="heartGrad" x1="10" y1="10" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="hsl(var(--primary))" />
+        <stop offset="100%" stopColor="#3B82F6" />
+      </linearGradient>
+      <linearGradient id="checkGrad" x1="30" y1="35" x2="70" y2="75" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#10B981" />
+        <stop offset="100%" stopColor="#059669" />
+      </linearGradient>
+    </defs>
+    {/* Trái tim / Khiên lớn cách điệu */}
+    <path d="M50 82C50 82 82 60 82 38C82 23.5 70.5 15 58 15C50 15 45 20 43 22C41 20 36 15 28 15C15.5 15 4 23.5 4 38C4 60 36 82 50 82Z" fill="url(#heartGrad)" fillOpacity="0.1" stroke="url(#heartGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    
+    {/* Các vòng tròn sóng bảo mật */}
+    <path d="M22 35C22 20 35 18 50 18" stroke="url(#heartGrad)" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.5" />
+    <path d="M78 35C78 20 65 18 50 18" stroke="url(#heartGrad)" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.5" />
+
+    {/* Quả cầu hoặc huy hiệu bảo mật hình tròn nổi bật */}
+    <circle cx="50" cy="46" r="20" fill="white" stroke="url(#heartGrad)" strokeWidth="2.5" />
+    
+    {/* Dấu check an toàn màu xanh lục */}
+    <path d="M40 46L47 53L60 38" stroke="url(#checkGrad)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+
+    {/* Dải ruy băng/lá chắn phía dưới */}
+    <path d="M25 65C35 72 65 72 75 65" stroke="url(#heartGrad)" strokeWidth="2" strokeLinecap="round" strokeDasharray="4 2" />
+  </svg>
+);
 
 const bannerSlides = [
   {
@@ -47,6 +188,76 @@ const mockCourses: Partial<ICourse>[] = [
 ];
 
 const SLIDE_INTERVAL = 5000; // 5 giây mỗi slide
+
+const PARTNER_LOGOS = [
+  { id: 'ctu', node: <div className="text-2xl md:text-3xl font-black tracking-widest text-blue-700 select-none">CTU</div> },
+  { id: 'ctump', node: <div className="text-2xl md:text-3xl font-black tracking-widest text-teal-600 select-none">CTUMP</div> },
+  { id: 'vnpay', node: <div className="text-xl md:text-2xl font-black tracking-tight select-none"><span className="text-red-600">VN</span><span className="text-blue-800">PAY</span></div> },
+  { id: 'momo', node: <div className="text-2xl md:text-3xl font-bold lowercase tracking-tighter text-pink-600 select-none">momo</div> },
+  { id: 'google', node: <div className="text-xl md:text-2xl font-black tracking-tighter select-none">Google</div> }
+];
+
+const PartnerSlider = () => {
+  const N = PARTNER_LOGOS.length;
+  const [currentIndex, setCurrentIndex] = useState(N);
+  const [isTransitioning, setIsTransitioning] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const transitionSpeed = 700;
+  const autoPlayDelay = 3000;
+
+  // Render 2 bộ logo nối tiếp để hỗ trợ trượt sang phải
+  const extendedLogos = [...PARTNER_LOGOS, ...PARTNER_LOGOS];
+
+  useEffect(() => {
+    if (isPaused) return;
+    const timer = setInterval(() => {
+      setIsTransitioning(true);
+      setCurrentIndex((prev) => prev - 1);
+    }, autoPlayDelay);
+
+    return () => clearInterval(timer);
+  }, [isPaused]);
+
+  useEffect(() => {
+    if (currentIndex === 0) {
+      const timer = setTimeout(() => {
+        setIsTransitioning(false);
+        setCurrentIndex(N);
+      }, transitionSpeed);
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex, N]);
+
+  return (
+    <div 
+      className="relative w-full overflow-hidden py-4"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      {/* Fading Edge Overlays */}
+      <div className="absolute left-0 top-0 bottom-0 w-16 md:w-28 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-16 md:w-28 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+
+      <div 
+        className={`flex items-center ${
+          isTransitioning ? 'transition-transform duration-700 ease-in-out' : 'transition-none'
+        }`}
+        style={{
+          transform: `translateX(calc(-${currentIndex} * 100% / var(--partner-visible)))`,
+        }}
+      >
+        {extendedLogos.map((logo, idx) => (
+          <div key={`${logo.id}-${idx}`} className="partner-slider-item">
+            <div className="opacity-60 hover:opacity-100 grayscale hover:grayscale-0 transition-all duration-300 transform hover:scale-105 py-2">
+              {logo.node}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const Home = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -155,7 +366,7 @@ export const Home = () => {
       </section>
 
         {/* Dành cho bạn */}
-        <section className="bg-secondary/10 py-12 px-6 mt-16 overflow-hidden">
+        <section className="bg-secondary/10 px-6 overflow-hidden md:h-screen w-full flex items-center justify-center">
           <div className="max-w-[1340px] mx-auto">
             <SectionReveal>
               <div className="text-center mb-10">
@@ -168,16 +379,14 @@ export const Home = () => {
 
             <HorizontalStaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { icon: ShieldCheck, title: "Bảo Vệ Bản Quyền", desc: "Nội dung khóa học luôn được an toàn, tự động ngăn chặn mọi hành vi sao chép hay quay lén trái phép." },
-                { icon: Zap, title: "Học Tập Mượt Mà", desc: "Trải nghiệm xem video bài giảng với tốc độ cao, không giật lag kể cả khi có hàng ngàn người truy cập." },
-                { icon: CreditCard, title: "Thanh Toán Tiện Lợi", desc: "Đa dạng phương thức thanh toán an toàn, dễ dàng mua đứt từng khóa hoặc đăng ký học trọn gói theo tháng." },
-                { icon: Lock, title: "An Tâm Tuyệt Đối", desc: "Hệ thống bảo mật thông tin chuẩn quốc tế, giúp bạn tập trung hoàn toàn vào việc giảng dạy và học tập." },
+                { icon: CopyrightIllustration, title: "Bảo Vệ Bản Quyền", desc: "Nội dung khóa học luôn được an toàn, tự động ngăn chặn mọi hành vi sao chép hay quay lén trái phép." },
+                { icon: FastLearningIllustration, title: "Học Tập Mượt Mà", desc: "Trải nghiệm xem video bài giảng với tốc độ cao, không giật lag kể cả khi có hàng ngàn người truy cập." },
+                { icon: PaymentIllustration, title: "Thanh Toán Tiện Lợi", desc: "Đa dạng phương thức thanh toán an toàn, dễ dàng mua đứt từng khóa hoặc đăng ký học trọn gói theo tháng." },
+                { icon: TrustIllustration, title: "An Tâm Tuyệt Đối", desc: "Hệ thống bảo mật thông tin chuẩn quốc tế, giúp bạn tập trung hoàn toàn vào việc giảng dạy và học tập." },
               ].map((feature, i) => (
                 <HorizontalStaggerItem key={i}>
                   <div className="group h-full p-6 rounded-2xl bg-background border border-border/50 shadow-sm hover:shadow-lg hover:border-primary/50 transition-all duration-300 flex flex-col items-center text-center">
-                    <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:-translate-y-1 group-hover:bg-primary group-hover:text-primary-foreground text-primary transition-all duration-300">
-                      <feature.icon className="h-6 w-6 transition-colors duration-300" />
-                    </div>
+                    <feature.icon />
                     <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors">{feature.title}</h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
                   </div>
@@ -266,20 +475,7 @@ export const Home = () => {
               </p>
             </SectionSequenceItem>
             <SectionSequenceItem>
-              <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-60 hover:opacity-100 grayscale hover:grayscale-0 transition-all duration-500">
-                {/* CTU */}
-                <div className="text-3xl font-black tracking-widest text-blue-700 select-none">CTU</div>
-                {/* CTUMP (ĐH Y Dược Cần Thơ) */}
-                <div className="text-3xl font-black tracking-widest text-teal-600 select-none">CTUMP</div>
-                {/* VNPay */}
-                <div className="text-2xl font-black tracking-tight select-none">
-                  <span className="text-red-600">VN</span><span className="text-blue-800">PAY</span>
-                </div>
-                {/* MoMo */}
-                <div className="text-3xl font-bold lowercase tracking-tighter text-pink-600 select-none">momo</div>
-                {/* Google */}
-                <div className="text-2xl font-black tracking-tighter select-none">Google</div>
-              </div>
+              <PartnerSlider />
             </SectionSequenceItem>
           </SectionSequence>
         </section>

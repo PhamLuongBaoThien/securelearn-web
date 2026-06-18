@@ -5,6 +5,7 @@ import { AlertCircle, Key, Loader2, Trash2 } from 'lucide-react';
 import { AnimatedTabContent } from '@/components/animations/TabTransition';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { PasswordFormData } from './profile.types';
 import { profileInputClassName } from './profile.utils';
 
@@ -82,7 +83,7 @@ export const ProfileSecurityPanel: React.FC<ProfileSecurityPanelProps> = ({
         {hasPassword && (
           <div className="space-y-2">
             <label className="text-sm font-medium">Mật khẩu hiện tại</label>
-            <input
+            <Input
               type="password"
               {...registerPassword('oldPassword', { required: 'Vui lòng nhập mật khẩu cũ' })}
               className={profileInputClassName}
@@ -93,7 +94,7 @@ export const ProfileSecurityPanel: React.FC<ProfileSecurityPanelProps> = ({
 
         <div className="space-y-2">
           <label className="text-sm font-medium">Mật khẩu mới</label>
-          <input
+          <Input
             type="password"
             {...registerPassword('newPassword', {
               required: 'Vui lòng nhập mật khẩu mới',
@@ -106,7 +107,7 @@ export const ProfileSecurityPanel: React.FC<ProfileSecurityPanelProps> = ({
 
         <div className="space-y-2">
           <label className="text-sm font-medium">Xác nhận mật khẩu mới</label>
-          <input
+          <Input
             type="password"
             {...registerPassword('confirmPassword', { required: 'Vui lòng xác nhận mật khẩu mới' })}
             className={profileInputClassName}
