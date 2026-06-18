@@ -7,11 +7,47 @@ import { useCourseLearning } from '@/hooks/useCourseLearning';
 import { useCourseProgress } from '@/hooks/useLearningProgress';
 import { Button } from '@/components/ui/button';
 import type { ILesson } from '@/services/courseApi';
+import type { LessonProgressSummary } from '@/services/progressApi';
 import logoWeb from '@/assets/logoweb.png';
 import { CurriculumSidebar } from './CurriculumSidebar';
 import { VideoPlayer } from './VideoPlayer';
 import { InteractiveTabs } from './InteractiveTabs';
 import { QuizPlayer } from './QuizPlayer';
+
+const RESUME_GAP_THRESHOLD_SECONDS = 2;
+
+const getResumePositionSeconds = (lesson: ILesson | undefined, lessonProgress?: LessonProgressSummary) => {
+  if (!lesson || lesson.type !== 'VIDEO' || !lessonProgress) {
+    return lessonProgress?.lastPositionSeconds || 0;
+  }
+
+  const durationSeconds = Math.max(0, Math.floor(lesson.duration || 0));
+  const watchedSegments = [...(lessonProgress.watchedSegments || [])]
+    .map((segment) => ({
+      start: Math.max(0, Math.floor(segment.start)),
+      end: Math.max(0, Math.floor(segment.end)),
+    }))
+    .filter((segment) => segment.end > segment.start)
+    .sort((a, b) => a.start - b.start);
+
+  if (watchedSegments.length === 0) {
+    return lessonProgress.lastPositionSeconds || 0;
+  }
+
+  let cursor = 0;
+  for (const segment of watchedSegments) {
+    if (segment.start - cursor >= RESUME_GAP_THRESHOLD_SECONDS) {
+      return cursor;
+    }
+    cursor = Math.max(cursor, segment.end);
+  }
+
+  if (durationSeconds > 0 && durationSeconds - cursor >= RESUME_GAP_THRESHOLD_SECONDS) {
+    return cursor;
+  }
+
+  return lessonProgress.lastPositionSeconds || 0;
+};
 
 export function LearningInterface() {
   const navigate = useNavigate();
@@ -34,6 +70,8 @@ export function LearningInterface() {
   const activeLessonId = selectedLessonId || requestedLessonId || progressQuery.data?.course.lastLessonId || lessons[0]?._id || '';
   const activeIndex = lessons.findIndex((lesson) => lesson._id === activeLessonId);
   const activeLesson = activeIndex >= 0 ? lessons[activeIndex] : lessons[0];
+  const activeLessonProgress = progressQuery.data?.lessons[activeLesson?._id || ''];
+  const initialPositionSeconds = getResumePositionSeconds(activeLesson, activeLessonProgress);
   const currentSection = courseQuery.data?.sections.find((section) =>
     section.lessons.some((lesson) => lesson._id === activeLesson?._id),
   );
@@ -131,7 +169,7 @@ export function LearningInterface() {
               accessSource={course.accessSource}
               watermarkIdentity={user ? { email: user.email, userId: user._id } : undefined}
               onTimeChange={setPlaybackTime}
-              initialPositionSeconds={progressQuery.data?.lessons[activeLesson._id || '']?.lastPositionSeconds || 0}
+              initialPositionSeconds={initialPositionSeconds}
               pauseSignal={pauseSignal}
             />
           ) : activeLesson ? (

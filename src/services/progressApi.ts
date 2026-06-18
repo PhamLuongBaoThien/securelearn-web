@@ -31,6 +31,8 @@ export interface LessonProgressSummary {
   quizAttemptId: string;
   quizScore: number;
   quizPassed: boolean;
+  watchedSegments?: Array<{ start: number; end: number }>;
+  activeSeconds?: number;
   lastPositionSeconds: number;
   completedAt?: string | null;
   updatedAt?: string;
@@ -48,6 +50,9 @@ export interface ProgressHeartbeatPayload {
   sessionId: string;
   positionSeconds?: number;
   watchedSecondsDelta?: number;
+  segmentStartSeconds?: number;
+  playbackRate?: number;
+  tabVisible?: boolean;
   quizAttemptId?: string;
 }
 

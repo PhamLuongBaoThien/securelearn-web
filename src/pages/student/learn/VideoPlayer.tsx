@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type SyntheticEvent } from 'react';
 import Hls from 'hls.js';
 import { Loader2, Shield, VideoOff } from 'lucide-react';
+import { toast } from 'sonner';
 import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
 import { useCreatePlaybackSession } from '@/hooks/useCourseLearning';
 import { useProgressHeartbeat } from '@/hooks/useLearningProgress';
+import { Button } from '@/components/ui/button';
 import type { ILesson } from '@/services/courseApi';
 import {
   formatWatermarkText,
@@ -21,6 +23,25 @@ const absoluteApiUrl = (path: string) => {
 };
 
 const HEARTBEAT_MS = 15_000;
+const SEEK_WARNING_THRESHOLD_SECONDS = 10;
+const SEEK_WARNING_SUPPRESS_KEY = 'securelearn.progress.seek-warning.until';
+const SEEK_WARNING_SUPPRESS_MS = 24 * 60 * 60 * 1000;
+const SEEK_WARNING_COOLDOWN_MS = 8_000;
+
+const isSeekWarningSuppressed = () => {
+  const raw = window.localStorage.getItem(SEEK_WARNING_SUPPRESS_KEY);
+  if (!raw) return false;
+  const until = Number(raw);
+  if (!Number.isFinite(until)) {
+    window.localStorage.removeItem(SEEK_WARNING_SUPPRESS_KEY);
+    return false;
+  }
+  if (until <= Date.now()) {
+    window.localStorage.removeItem(SEEK_WARNING_SUPPRESS_KEY);
+    return false;
+  }
+  return true;
+};
 
 interface VideoPlayerProps {
   courseId: string;
@@ -44,6 +65,8 @@ export function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const sessionId = useMemo(() => crypto.randomUUID(), []);
   const lastPositionRef = useRef(0);
+  const seekOriginRef = useRef(0);
+  const lastSeekWarningAtRef = useRef(0);
   const hasAppliedInitialPositionRef = useRef(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
@@ -58,6 +81,53 @@ export function VideoPlayer({
     { ...watermarkIdentity, sessionId },
     watermarkTime,
   );
+
+  const showSeekWarning = useCallback(() => {
+    const now = Date.now();
+    if (isSeekWarningSuppressed()) return;
+    if (now - lastSeekWarningAtRef.current < SEEK_WARNING_COOLDOWN_MS) return;
+    lastSeekWarningAtRef.current = now;
+
+    toast.custom((toastId) => (
+      <div className="w-[360px] rounded-lg border border-amber-200 bg-white p-4 shadow-lg dark:border-amber-900/60 dark:bg-zinc-950">
+        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+          Đoạn tua nhanh sẽ không được tính vào tiến độ học.
+        </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+          Bạn vẫn có thể tiếp tục xem video, nhưng hệ thống chỉ ghi nhận các đoạn được phát thực tế.
+        </p>
+        <label className="mt-3 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-zinc-300"
+            onChange={(event) => {
+              if (event.currentTarget.checked) {
+                window.localStorage.setItem(
+                  SEEK_WARNING_SUPPRESS_KEY,
+                  String(Date.now() + SEEK_WARNING_SUPPRESS_MS),
+                );
+              } else {
+                window.localStorage.removeItem(SEEK_WARNING_SUPPRESS_KEY);
+              }
+            }}
+          />
+          Không hiện lại trong 1 ngày
+        </label>
+        <div className="mt-3 flex justify-end">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => toast.dismiss(toastId)}
+          >
+            Đã hiểu
+          </Button>
+        </div>
+      </div>
+    ), {
+      duration: 12000,
+    });
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -119,7 +189,7 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!video || !lesson._id) return;
 
-    const sendHeartbeat = (deltaSeconds = 0) => {
+    const sendHeartbeat = (deltaSeconds = 0, segmentStartSeconds = video.currentTime) => {
       sendProgressHeartbeat({
         courseId,
         lessonId: lesson._id!,
@@ -127,6 +197,9 @@ export function VideoPlayer({
         sessionId,
         positionSeconds: Math.floor(video.currentTime),
         watchedSecondsDelta: deltaSeconds,
+        segmentStartSeconds: Math.floor(segmentStartSeconds),
+        playbackRate: video.playbackRate,
+        tabVisible: document.visibilityState === 'visible',
       });
     };
 
@@ -134,7 +207,8 @@ export function VideoPlayer({
       const currentTime = Math.floor(video.currentTime);
       const watchedSeconds = Math.floor(video.currentTime - lastPositionRef.current);
       if (currentTime <= 0) return;
-      sendHeartbeat(watchedSeconds > 0 && watchedSeconds <= 20 ? Math.min(15, watchedSeconds) : 0);
+      const deltaSeconds = watchedSeconds > 0 && watchedSeconds <= 20 ? Math.min(15, watchedSeconds) : 0;
+      sendHeartbeat(deltaSeconds, deltaSeconds > 0 ? lastPositionRef.current : video.currentTime);
       lastPositionRef.current = video.currentTime;
     };
 
@@ -154,7 +228,7 @@ export function VideoPlayer({
         return;
       }
 
-      sendHeartbeat(Math.min(15, watchedSeconds));
+      sendHeartbeat(Math.min(15, watchedSeconds), lastPositionRef.current);
       lastPositionRef.current = video.currentTime;
     }, HEARTBEAT_MS);
 
@@ -260,9 +334,17 @@ export function VideoPlayer({
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           onEnded={() => setIsPlaying(false)}
-          onSeeking={() => setIsSeeking(true)}
+          onSeeking={(event) => {
+            seekOriginRef.current = lastPositionRef.current || event.currentTarget.currentTime;
+            setIsSeeking(true);
+          }}
           onSeeked={(event) => {
-            lastPositionRef.current = event.currentTarget.currentTime;
+            const nextPosition = event.currentTarget.currentTime;
+            const seekDistance = nextPosition - seekOriginRef.current;
+            if (seekDistance > SEEK_WARNING_THRESHOLD_SECONDS) {
+              showSeekWarning();
+            }
+            lastPositionRef.current = nextPosition;
             setIsSeeking(false);
           }}
           onTimeUpdate={(event) => onTimeChange?.(event.currentTarget.currentTime)}
