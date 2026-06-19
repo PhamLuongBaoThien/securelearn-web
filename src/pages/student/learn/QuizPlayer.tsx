@@ -1,7 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, HelpCircle, Loader2, XCircle } from 'lucide-react';
+﻿import { useEffect, useMemo, useState } from 'react';
+import { AlertCircle, CheckCircle2, HelpCircle, History, Loader2, RotateCcw, XCircle } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  courseLearningKeys,
+  useQuizAttemptHistory,
   useLearningQuiz,
   useStartQuizAttempt,
   useSubmitQuizAttempt,
@@ -10,6 +20,8 @@ import { useCompleteQuizProgress, useProgressHeartbeat } from '@/hooks/useLearni
 import type {
   ILesson,
   IQuizAttempt,
+  IQuizAttemptHistory,
+  IQuizAttemptHistoryItem,
   IQuizAttemptQuestionResult,
   IQuizAttemptResult,
   IQuizForAttempt,
@@ -17,6 +29,7 @@ import type {
   IQuizQuestionForAttempt,
   QuizAttemptAnswerPayload,
 } from '@/services/courseApi';
+import type { LessonAccessSummary } from '@/services/progressApi';
 
 type SelectedAnswers = Record<string, number[]>;
 const QUIZ_HEARTBEAT_MS = 15_000;
@@ -49,6 +62,32 @@ function normalizeAnswers(quiz: IQuizForAttempt, selectedAnswers: SelectedAnswer
   });
 }
 
+function upsertSubmittedAttemptHistory(
+  current: IQuizAttemptHistory | undefined,
+  attempt: IQuizAttempt,
+  result: IQuizAttemptResult,
+): IQuizAttemptHistory {
+  const submittedAt = result.completedAt || new Date().toISOString();
+  const existingAttempts = current?.attempts || [];
+  const nextAttempt: IQuizAttemptHistoryItem = {
+    attemptId: result.attemptId,
+    attemptNumber: existingAttempts.find((item) => item.attemptId === result.attemptId)?.attemptNumber || (current?.totalAttempts || 0) + 1,
+    score: result.score,
+    passed: result.passed,
+    status: result.status,
+    startedAt: attempt.startedAt,
+    completedAt: submittedAt,
+  };
+  const mergedAttempts = [nextAttempt, ...existingAttempts.filter((item) => item.attemptId !== result.attemptId)]
+    .map((item, index, list) => ({ ...item, attemptNumber: list.length - index }));
+
+  return {
+    totalAttempts: mergedAttempts.length,
+    submittedAttempts: mergedAttempts.filter((item) => item.status === 'SUBMITTED').length,
+    bestScore: mergedAttempts.reduce((best, item) => Math.max(best, item.score || 0), 0),
+    attempts: mergedAttempts,
+  };
+}
 function EmptyQuizState({ message }: { message: string }) {
   return (
     <div className="flex min-h-[360px] items-center justify-center border-b border-zinc-200 bg-white px-6 text-center text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
@@ -60,17 +99,29 @@ function EmptyQuizState({ message }: { message: string }) {
   );
 }
 
-export function QuizPlayer({ courseId, lesson }: { courseId: string; lesson: ILesson }) {
+export function QuizPlayer({
+  courseId,
+  lesson,
+  access,
+}: {
+  courseId: string;
+  lesson: ILesson;
+  access?: LessonAccessSummary;
+}) {
   const lessonId = lesson._id || '';
-  const quizQuery = useLearningQuiz(courseId, lessonId, lesson.type === 'QUIZ');
+  const isLocked = Boolean(access?.locked);
+  const quizQuery = useLearningQuiz(courseId, lessonId, lesson.type === 'QUIZ' && !isLocked);
   const quiz = quizQuery.data;
+  const queryClient = useQueryClient();
   const [attempt, setAttempt] = useState<IQuizAttempt | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<SelectedAnswers>({});
   const [result, setResult] = useState<IQuizAttemptResult | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const sessionId = useMemo(() => crypto.randomUUID(), []);
 
   const startAttempt = useStartQuizAttempt(courseId, lessonId, quiz?._id || '');
   const submitAttempt = useSubmitQuizAttempt(courseId, lessonId, quiz?._id || '', attempt?._id || '');
+  const attemptHistory = useQuizAttemptHistory(courseId, lessonId, quiz?._id || '', historyOpen);
   const progressHeartbeat = useProgressHeartbeat(courseId);
   const sendProgressHeartbeat = progressHeartbeat.mutate;
   const completeProgress = useCompleteQuizProgress(courseId);
@@ -118,7 +169,7 @@ export function QuizPlayer({ courseId, lesson }: { courseId: string; lesson: ILe
   };
 
   const handleStart = async () => {
-    if (!quiz) return;
+    if (!quiz || isLocked) return;
     const startedAttempt = await startAttempt.mutateAsync();
     setAttempt(startedAttempt);
     setSelectedAnswers({});
@@ -129,12 +180,20 @@ export function QuizPlayer({ courseId, lesson }: { courseId: string; lesson: ILe
     if (!quiz || !attempt) return;
     const submittedResult = await submitAttempt.mutateAsync(normalizeAnswers(quiz, selectedAnswers));
     setResult(submittedResult);
+    queryClient.setQueryData<IQuizAttemptHistory | undefined>(
+      courseLearningKeys.quizAttempts(courseId, lessonId, quiz._id || ''),
+      (current) => upsertSubmittedAttemptHistory(current, attempt, submittedResult),
+    );
     completeProgress.mutate({
       courseId,
       lessonId,
       attemptId: submittedResult.attemptId,
       score: submittedResult.score,
       passed: submittedResult.passed,
+    });
+    void queryClient.invalidateQueries({
+      queryKey: courseLearningKeys.quizAttempts(courseId, lessonId, quiz._id || ''),
+      refetchType: 'inactive',
     });
   };
 
@@ -147,6 +206,10 @@ export function QuizPlayer({ courseId, lesson }: { courseId: string; lesson: ILe
         </div>
       </div>
     );
+  }
+
+  if (isLocked) {
+    return <EmptyQuizState message={access?.reason || 'Hoàn thành bài trước để mở quiz này.'} />;
   }
 
   if (quizQuery.isError || !quiz) {
@@ -170,14 +233,36 @@ export function QuizPlayer({ courseId, lesson }: { courseId: string; lesson: ILe
             </div>
           </div>
 
-          {!attempt && !result && (
-            <Button onClick={handleStart} disabled={startAttempt.isPending} className="gap-2">
-              {startAttempt.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Bắt đầu làm bài
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Button type="button" variant="outline" onClick={() => setHistoryOpen(true)} className="gap-2">
+              <History className="h-4 w-4" />
+              Lịch sử làm bài
             </Button>
-          )}
+
+            {!attempt && !result && (
+              <Button onClick={handleStart} disabled={startAttempt.isPending} className="gap-2">
+                {startAttempt.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Bắt đầu làm bài
+              </Button>
+            )}
+
+            {result && (
+              <Button onClick={handleStart} disabled={startAttempt.isPending} className="gap-2">
+                {startAttempt.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                Làm bài lại
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+
+      <AttemptHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        history={attemptHistory.data}
+        loading={attemptHistory.isLoading}
+        error={(attemptHistory.error as Error)?.message}
+      />
 
       {startAttempt.isError && (
         <p className="border-b border-red-200 bg-red-50 px-5 py-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400">
@@ -235,6 +320,107 @@ export function QuizPlayer({ courseId, lesson }: { courseId: string; lesson: ILe
       </div>
     </div>
   );
+}
+
+function AttemptHistoryDialog({
+  open,
+  onOpenChange,
+  history,
+  loading,
+  error,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  history?: IQuizAttemptHistory;
+  loading: boolean;
+  error?: string;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Lịch sử làm bài</DialogTitle>
+          <DialogDescription>
+            Xem lại số lần đã làm, điểm từng lần và kết quả đạt/chưa đạt.
+          </DialogDescription>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="flex min-h-32 items-center justify-center text-zinc-500 dark:text-zinc-400">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            Đang tải lịch sử...
+          </div>
+        ) : error ? (
+          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400">
+            {error}
+          </p>
+        ) : !history || history.attempts.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-zinc-300 px-5 py-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            Chưa có lần làm bài nào.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <HistoryStat label="Tổng lần làm" value={history.totalAttempts} />
+              <HistoryStat label="Đã nộp" value={history.submittedAttempts} />
+              <HistoryStat label="Điểm cao nhất" value={`${history.bestScore}%`} />
+            </div>
+
+            <div className="max-h-80 overflow-y-auto rounded-2xl border border-zinc-200 dark:border-zinc-800">
+              {history.attempts.map((attempt) => (
+                <div
+                  key={attempt.attemptId}
+                  className="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 last:border-b-0 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="font-semibold text-zinc-950 dark:text-white">Lần {attempt.attemptNumber}</p>
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      {attempt.completedAt
+                        ? `Nộp lúc ${formatDateTime(attempt.completedAt)}`
+                        : `Bắt đầu lúc ${formatDateTime(attempt.startedAt)}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-black text-zinc-950 dark:text-white">{attempt.score}%</span>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                        attempt.status !== 'SUBMITTED'
+                          ? 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                          : attempt.passed
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+                            : 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-300'
+                      }`}
+                    >
+                      {attempt.status !== 'SUBMITTED' ? 'Đang làm' : attempt.passed ? 'Đạt' : 'Chưa đạt'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function HistoryStat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950">
+      <p className="text-xs font-semibold uppercase text-zinc-400">{label}</p>
+      <p className="mt-1 text-2xl font-black text-zinc-950 dark:text-white">{value}</p>
+    </div>
+  );
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(value));
 }
 
 function ResultSummary({ result, passingScore }: { result: IQuizAttemptResult; passingScore: number }) {
@@ -382,3 +568,6 @@ function AnswerOption({
     </label>
   );
 }
+
+
+

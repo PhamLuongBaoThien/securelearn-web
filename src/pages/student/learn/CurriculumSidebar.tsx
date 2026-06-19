@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { CheckCircle2, ChevronDown, ChevronRight, Clock, HelpCircle, PlayCircle } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronRight, Clock, HelpCircle, Lock, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ILesson, ISection } from '@/services/courseApi';
-import type { LessonProgressSummary } from '@/services/progressApi';
+import type { LessonAccessSummary, LessonProgressSummary } from '@/services/progressApi';
 
 const formatDuration = (seconds = 0) => {
   const minutes = Math.max(1, Math.round(seconds / 60));
@@ -13,6 +13,7 @@ interface CurriculumSidebarProps {
   sections: ISection[];
   activeLessonId: string;
   progressByLessonId?: Record<string, LessonProgressSummary>;
+  accessByLessonId?: Record<string, LessonAccessSummary>;
   onSelectLesson: (lesson: ILesson) => void;
 }
 
@@ -20,6 +21,7 @@ export function CurriculumSidebar({
   sections,
   activeLessonId,
   progressByLessonId = {},
+  accessByLessonId = {},
   onSelectLesson,
 }: CurriculumSidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -58,19 +60,24 @@ export function CurriculumSidebar({
                     const isActive = lessonId === activeLessonId;
                     const progress = progressByLessonId[lessonId];
                     const isCompleted = progress?.status === 'COMPLETED';
+                    const access = accessByLessonId[lessonId];
+                    const isLocked = Boolean(access?.locked);
                     return (
                       <Button
                         key={lessonId}
                         type="button"
                         onClick={() => onSelectLesson(lesson)}
+                        disabled={isLocked}
                         variant="ghost"
                         className={`h-auto w-full justify-start gap-3 rounded-none px-4 py-3 text-left transition-colors ${
                           isActive
                             ? 'bg-primary/10 text-primary'
                             : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-900'
-                        }`}
+                        } ${isLocked ? 'cursor-not-allowed opacity-60 hover:bg-transparent dark:hover:bg-transparent' : ''}`}
                       >
-                        {isCompleted
+                        {isLocked
+                          ? <Lock className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
+                          : isCompleted
                           ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                           : lesson.type === 'VIDEO'
                             ? <PlayCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -79,7 +86,9 @@ export function CurriculumSidebar({
                           <p className="text-sm font-medium">{lesson.title}</p>
                           <p className="mt-1 flex items-center gap-1 text-xs text-zinc-400">
                             <Clock className="h-3 w-3" />
-                            {isCompleted
+                            {isLocked
+                              ? access?.reason || 'Đang khóa'
+                              : isCompleted
                               ? 'Đã hoàn thành'
                               : lesson.type === 'VIDEO'
                                 ? progress?.watchPercent

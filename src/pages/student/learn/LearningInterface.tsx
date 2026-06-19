@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Menu, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAppSelector } from '@/app/hooks';
 import { useCourseLearning } from '@/hooks/useCourseLearning';
-import { useCourseProgress } from '@/hooks/useLearningProgress';
+import { useCourseAccess, useCourseProgress } from '@/hooks/useLearningProgress';
 import { Button } from '@/components/ui/button';
 import type { ILesson } from '@/services/courseApi';
 import type { LessonProgressSummary } from '@/services/progressApi';
@@ -56,6 +57,7 @@ export function LearningInterface() {
   const user = useAppSelector((state) => state.auth.user);
   const courseQuery = useCourseLearning(courseId);
   const progressQuery = useCourseProgress(courseId);
+  const accessQuery = useCourseAccess(courseId);
   const [selectedLessonId, setSelectedLessonId] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [playbackTime, setPlaybackTime] = useState(0);
@@ -67,7 +69,12 @@ export function LearningInterface() {
   );
 
   const requestedLessonId = searchParams.get('lessonId') || '';
-  const activeLessonId = selectedLessonId || requestedLessonId || progressQuery.data?.course.lastLessonId || lessons[0]?._id || '';
+  const accessByLessonId = accessQuery.data?.lessons || {};
+  const requestedOrStoredLessonId = selectedLessonId || requestedLessonId || progressQuery.data?.course.lastLessonId || lessons[0]?._id || '';
+  const firstUnlockedLesson = lessons.find((lesson) => !accessByLessonId[lesson._id || '']?.locked) || lessons[0];
+  const activeLessonId = accessByLessonId[requestedOrStoredLessonId]?.locked
+    ? firstUnlockedLesson?._id || ''
+    : requestedOrStoredLessonId;
   const activeIndex = lessons.findIndex((lesson) => lesson._id === activeLessonId);
   const activeLesson = activeIndex >= 0 ? lessons[activeIndex] : lessons[0];
   const activeLessonProgress = progressQuery.data?.lessons[activeLesson?._id || ''];
@@ -80,6 +87,11 @@ export function LearningInterface() {
 
   const selectLesson = (lesson: ILesson) => {
     const lessonId = lesson._id || '';
+    const access = accessByLessonId[lessonId];
+    if (access?.locked) {
+      toast.info(access.reason || 'Bài học này đang bị khóa.');
+      return;
+    }
     setSelectedLessonId(lessonId);
     if (lessonId) setSearchParams({ lessonId }, { replace: true });
     setPlaybackTime(0);
@@ -166,14 +178,18 @@ export function LearningInterface() {
               key={`video-${activeLesson._id}`}
               courseId={courseId}
               lesson={activeLesson}
-              accessSource={course.accessSource}
               watermarkIdentity={user ? { email: user.email, userId: user._id } : undefined}
               onTimeChange={setPlaybackTime}
               initialPositionSeconds={initialPositionSeconds}
               pauseSignal={pauseSignal}
             />
           ) : activeLesson ? (
-            <QuizPlayer key={`quiz-${activeLesson._id}`} courseId={courseId} lesson={activeLesson} />
+            <QuizPlayer
+              key={`quiz-${activeLesson._id}`}
+              courseId={courseId}
+              lesson={activeLesson}
+              access={accessByLessonId[activeLesson._id || '']}
+            />
           ) : (
             <div className="flex aspect-video items-center justify-center bg-zinc-950 text-sm text-zinc-400">
               Khóa học chưa có nội dung.
@@ -203,6 +219,7 @@ export function LearningInterface() {
               sections={course.sections}
               activeLessonId={activeLesson?._id || ''}
               progressByLessonId={progressQuery.data?.lessons || {}}
+              accessByLessonId={accessByLessonId}
               onSelectLesson={selectLesson}
             />
           </div>

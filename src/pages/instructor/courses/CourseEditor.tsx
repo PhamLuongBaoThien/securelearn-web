@@ -14,6 +14,7 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  CircleHelp,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -21,7 +22,6 @@ import {
   GripVertical,
   Loader2,
   Plus,
-  Save,
   Trash2,
   Upload,
   Video,
@@ -43,8 +43,10 @@ import {
   useValidatePublishCourse,
   instructorKeys,
 } from "@/hooks/useInstructorCourses";
+import { useDebounce } from "@/hooks/useDebounce";
 import { usePublicCourseCategories } from "@/hooks/usePublicCourseCategories";
 import {
+  type CourseProgressionMode,
   type ICourse,
   type ICourseCategoryNode,
   type ILesson,
@@ -127,8 +129,31 @@ type CourseEditorValues = {
   suggestedCategoryName: string;
   suggestedCategoryNote: string;
   level: ICourse["level"];
+  progressionMode: CourseProgressionMode;
   price: number;
 };
+
+const PROGRESSION_MODE_OPTIONS: Array<{
+  value: CourseProgressionMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "FREE",
+    label: "Học tự do",
+    description: "Học viên được mở toàn bộ bài học và bài quiz ngay từ đầu.",
+  },
+  {
+    value: "SEQUENTIAL",
+    label: "Học tuần tự",
+    description: "Học viên phải hoàn thành bài trước thì bài kế tiếp mới được mở.",
+  },
+  {
+    value: "QUIZ_REQUIRES_PREVIOUS_LESSONS",
+    label: "Chặn quiz đến khi học xong",
+    description: "Video vẫn có thể mở, nhưng quiz chỉ mở khi các bài trước trong cùng phần đã hoàn thành.",
+  },
+];
 
 const flattenCategoryOptions = (categories: ICourseCategoryNode[], parentTrail = ""): CategoryOption[] =>
   categories.flatMap((category) => {
@@ -251,6 +276,7 @@ const getInitialCourseEditorValues = (course: ICourse): CourseEditorValues => ({
   suggestedCategoryName: course.suggestedCategoryName || "",
   suggestedCategoryNote: course.suggestedCategoryNote || "",
   level: course.level,
+  progressionMode: course.progressionMode || "FREE",
   price: course.price,
 });
 
@@ -268,6 +294,7 @@ const areCourseEditorValuesEqual = (a: CourseEditorValues, b: CourseEditorValues
   a.suggestedCategoryName === b.suggestedCategoryName &&
   a.suggestedCategoryNote === b.suggestedCategoryNote &&
   a.level === b.level &&
+  a.progressionMode === b.progressionMode &&
   Number(a.price) === Number(b.price) &&
   JSON.stringify(normalizeStringList(a.whatYouWillLearn)) === JSON.stringify(normalizeStringList(b.whatYouWillLearn)) &&
   JSON.stringify(normalizeStringList(a.requirements)) === JSON.stringify(normalizeStringList(b.requirements));
@@ -323,6 +350,8 @@ export const CourseEditor: React.FC = () => {
   const [suggestedCategoryName, setSuggestedCategoryName] = useState("");
   const [suggestedCategoryNote, setSuggestedCategoryNote] = useState("");
   const [level, setLevel] = useState("BEGINNER");
+  const [progressionMode, setProgressionMode] = useState<CourseProgressionMode>("FREE");
+  const debouncedProgressionMode = useDebounce(progressionMode, 600);
   const [price, setPrice] = useState(0);
   const [sections, setSections] = useState<ISection[]>([]);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
@@ -334,12 +363,48 @@ export const CourseEditor: React.FC = () => {
   const [hasEditedInSession, setHasEditedInSession] = useState(false);
   // Lưu snapshot giá trị đã lưu thành công để so sánh khi cần Discard
   const savedSnapshotRef = React.useRef<ReturnType<typeof getInitialCourseEditorValues> | null>(null);
+  const metadataSaveSeqRef = React.useRef(0);
+  const progressionModeSaveSeqRef = React.useRef(0);
   // Giữ nội dung bài học đang gõ để các refetch nền (ví dụ video READY) không ghi đè draft trước khi blur lưu DB.
   const lessonContentDraftsRef = React.useRef<Map<string, string>>(new Map());
 
   // "idle" | "saving" | "saved" | "error" — chỉ dùng cho tab Nội dung khóa học
   const [curriculumSaveStatus, setCurriculumSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const curriculumSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [metadataSaveStatus, setMetadataSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const metadataSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const needsAdminClassification = categoryResolutionStatus === CATEGORY_STATUS_NEEDS_ADMIN_CLASSIFICATION;
+  const metadataDraft = React.useMemo<CourseEditorValues>(() => ({
+    title,
+    shortDescription,
+    description,
+    thumbnail,
+    whatYouWillLearn,
+    requirements,
+    categoryId: needsAdminClassification ? "" : categoryId,
+    categoryResolutionStatus,
+    suggestedCategoryName: needsAdminClassification ? suggestedCategoryName : "",
+    suggestedCategoryNote: needsAdminClassification ? suggestedCategoryNote : "",
+    level: level as ICourse["level"],
+    progressionMode: savedSnapshotRef.current?.progressionMode || progressionMode,
+    price,
+  }), [
+    title,
+    shortDescription,
+    description,
+    thumbnail,
+    whatYouWillLearn,
+    requirements,
+    categoryId,
+    categoryResolutionStatus,
+    suggestedCategoryName,
+    suggestedCategoryNote,
+    needsAdminClassification,
+    level,
+    progressionMode,
+    price,
+  ]);
+  const debouncedMetadataDraft = useDebounce(metadataDraft, 900);
 
   // Wrapper: thiết lập trạng thái lưu im lặng cho mọi thao tác CRUD giáo trình
   const withCurriculumSave = async (fn: () => Promise<void>) => {
@@ -400,6 +465,7 @@ export const CourseEditor: React.FC = () => {
       setSuggestedCategoryName(initialValues.suggestedCategoryName);
       setSuggestedCategoryNote(initialValues.suggestedCategoryNote);
       setLevel(initialValues.level);
+      setProgressionMode(initialValues.progressionMode);
       setPrice(initialValues.price);
       setExpandedSections(new Set(course.sections?.map((_, i) => i) || []));
       setIsInitialized(true);
@@ -423,12 +489,12 @@ export const CourseEditor: React.FC = () => {
       suggestedCategoryName,
       suggestedCategoryNote,
       level: level as ICourse["level"],
+      progressionMode,
       price,
     };
     setHasUnsavedChanges(!areCourseEditorValuesEqual(currentValues, savedSnapshotRef.current));
-  }, [isInitialized, title, shortDescription, description, thumbnail, whatYouWillLearn, requirements, categoryId, categoryResolutionStatus, suggestedCategoryName, suggestedCategoryNote, level, price]);
+  }, [isInitialized, title, shortDescription, description, thumbnail, whatYouWillLearn, requirements, categoryId, categoryResolutionStatus, suggestedCategoryName, suggestedCategoryNote, level, progressionMode, price]);
 
-  const needsAdminClassification = categoryResolutionStatus === CATEGORY_STATUS_NEEDS_ADMIN_CLASSIFICATION;
   const pendingVideos = sections.flatMap((section) => section.lessons).filter((lesson) => {
     const videoStatus = getVideoDisplayStatus(lesson);
     return lesson.type === "VIDEO" && (videoStatus === "PENDING" || videoStatus === "PROCESSING");
@@ -466,76 +532,28 @@ export const CourseEditor: React.FC = () => {
     });
   };
 
-  const handleSave = async () => {
-    if (course && (course.status === "PENDING" || course.status === "PUBLISHED")) {
-      toast.error("Khóa học hiện không thể chỉnh sửa trực tiếp.");
-      return;
-    }
-    try {
-      const payload = new FormData();
-      payload.append("title", title);
-      payload.append("shortDescription", shortDescription);
-      payload.append("description", description);
-      payload.append("thumbnail", thumbnailFile ?? thumbnail);
-      payload.append("categoryId", needsAdminClassification ? "" : categoryId);
-      payload.append("categoryResolutionStatus", categoryResolutionStatus);
-      payload.append("suggestedCategoryName", needsAdminClassification ? suggestedCategoryName : "");
-      payload.append("suggestedCategoryNote", needsAdminClassification ? suggestedCategoryNote : "");
-      payload.append("level", level as ICourse["level"]);
-      payload.append("price", String(price));
-      whatYouWillLearn.filter(Boolean).forEach((item) => payload.append("whatYouWillLearn", item));
-      requirements.filter(Boolean).forEach((item) => payload.append("requirements", item));
-
-      const updatedCourse = await updateMutation.mutateAsync({
-        courseId: courseId!,
-        payload,
-      });
-
-      setThumbnail(updatedCourse.thumbnail || "");
-      setThumbnailFile(null);
-      // Cập nhật snapshot sau khi lưu thành công
-      savedSnapshotRef.current = {
-        title, shortDescription, description,
-        thumbnail: updatedCourse.thumbnail || "",
-        whatYouWillLearn, requirements, categoryId: needsAdminClassification ? "" : categoryId,
-        categoryResolutionStatus,
-        suggestedCategoryName: needsAdminClassification ? suggestedCategoryName : "",
-        suggestedCategoryNote: needsAdminClassification ? suggestedCategoryNote : "",
-        level: level as ICourse["level"], price,
-      };
-      setHasUnsavedChanges(false);
-      setHasEditedInSession(true);
-      toast.success("Đã lưu khóa học!");
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Lưu thất bại.";
-      toast.error(errorMessage);
-    }
+  const buildCourseMetadataPayload = (values: CourseEditorValues, file: File | null) => {
+    const payload = new FormData();
+    payload.append("title", values.title);
+    payload.append("shortDescription", values.shortDescription);
+    payload.append("description", values.description);
+    payload.append("thumbnail", file ?? values.thumbnail);
+    payload.append("categoryId", values.categoryId);
+    payload.append("categoryResolutionStatus", values.categoryResolutionStatus);
+    payload.append("suggestedCategoryName", values.suggestedCategoryName);
+    payload.append("suggestedCategoryNote", values.suggestedCategoryNote);
+    payload.append("level", values.level);
+    payload.append("progressionMode", values.progressionMode);
+    payload.append("price", String(values.price));
+    values.whatYouWillLearn.filter(Boolean).forEach((item) => payload.append("whatYouWillLearn", item));
+    values.requirements.filter(Boolean).forEach((item) => payload.append("requirements", item));
+    return payload;
   };
 
   const handleThumbnailChange = (previewUrl: string, file: File | null) => {
     setThumbnail(previewUrl);
     setThumbnailFile(file);
     setHasUnsavedChanges(true);
-  };
-
-  // Hủy thay đổi — khôi phục về dữ liệu đã lưu gần nhất
-  const handleDiscard = () => {
-    const snap = savedSnapshotRef.current;
-    if (!snap) return;
-    setTitle(snap.title);
-    setShortDescription(snap.shortDescription);
-    setDescription(snap.description);
-    setThumbnail(snap.thumbnail);
-    setThumbnailFile(null);
-    setWhatYouWillLearn(snap.whatYouWillLearn);
-    setRequirements(snap.requirements);
-    setCategoryId(snap.categoryId);
-    setCategoryResolutionStatus(snap.categoryResolutionStatus);
-    setSuggestedCategoryName(snap.suggestedCategoryName);
-    setSuggestedCategoryNote(snap.suggestedCategoryNote);
-    setLevel(snap.level);
-    setPrice(snap.price);
-    setHasUnsavedChanges(false);
   };
 
   // Gửi duyệt có 2 lớp chặn:
@@ -810,6 +828,108 @@ export const CourseEditor: React.FC = () => {
     });
   };
 
+  const isReadOnly = course?.status === "PENDING" || course?.status === "PUBLISHED";
+  const isViewingPublished = viewMode === "published" && Boolean(publishedCourse);
+  const effectiveReadOnly = Boolean(isReadOnly || isViewingPublished);
+
+  const buildCurrentEditorValues = (nextProgressionMode = progressionMode): CourseEditorValues => ({
+    title,
+    shortDescription,
+    description,
+    thumbnail,
+    whatYouWillLearn,
+    requirements,
+    categoryId: needsAdminClassification ? "" : categoryId,
+    categoryResolutionStatus,
+    suggestedCategoryName: needsAdminClassification ? suggestedCategoryName : "",
+    suggestedCategoryNote: needsAdminClassification ? suggestedCategoryNote : "",
+    level: level as ICourse["level"],
+    progressionMode: nextProgressionMode,
+    price,
+  });
+
+  useEffect(() => {
+    if (!isInitialized || effectiveReadOnly || !savedSnapshotRef.current) return;
+    if (!areCourseEditorValuesEqual(debouncedMetadataDraft, metadataDraft)) return;
+    if (!debouncedMetadataDraft.title.trim()) return;
+    if (areCourseEditorValuesEqual(debouncedMetadataDraft, savedSnapshotRef.current)) return;
+
+    let cancelled = false;
+    const saveSeq = metadataSaveSeqRef.current + 1;
+    metadataSaveSeqRef.current = saveSeq;
+    if (metadataSaveTimerRef.current) clearTimeout(metadataSaveTimerRef.current);
+    setMetadataSaveStatus("saving");
+
+    void updateMutation.mutateAsync({
+      courseId: courseId!,
+      payload: buildCourseMetadataPayload(debouncedMetadataDraft, thumbnailFile),
+    }).then((updatedCourse) => {
+      if (cancelled || metadataSaveSeqRef.current !== saveSeq) return;
+
+      const nextSnapshot = {
+        ...debouncedMetadataDraft,
+        thumbnail: updatedCourse.thumbnail || debouncedMetadataDraft.thumbnail,
+        progressionMode: savedSnapshotRef.current?.progressionMode || debouncedMetadataDraft.progressionMode,
+      };
+      savedSnapshotRef.current = nextSnapshot;
+      setThumbnail(nextSnapshot.thumbnail);
+      setThumbnailFile(null);
+      setHasEditedInSession(true);
+      setHasUnsavedChanges(!areCourseEditorValuesEqual(buildCurrentEditorValues(), nextSnapshot));
+      setMetadataSaveStatus("saved");
+      metadataSaveTimerRef.current = setTimeout(() => setMetadataSaveStatus("idle"), 2000);
+    }).catch((error) => {
+      if (cancelled || metadataSaveSeqRef.current !== saveSeq) return;
+      setMetadataSaveStatus("error");
+      metadataSaveTimerRef.current = setTimeout(() => setMetadataSaveStatus("idle"), 3000);
+      toast.error(error instanceof Error ? error.message : "Không thể tự lưu thông tin khóa học.");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedMetadataDraft, effectiveReadOnly, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized || effectiveReadOnly || !savedSnapshotRef.current) return;
+    if (debouncedProgressionMode === savedSnapshotRef.current.progressionMode) return;
+
+    let cancelled = false;
+    const saveSeq = progressionModeSaveSeqRef.current + 1;
+    progressionModeSaveSeqRef.current = saveSeq;
+
+    void withCurriculumSave(async () => {
+      const payload = new FormData();
+      payload.append("progressionMode", debouncedProgressionMode);
+      const updatedCourse = await updateMutation.mutateAsync({
+        courseId: courseId!,
+        payload,
+      });
+      if (cancelled || progressionModeSaveSeqRef.current !== saveSeq) return;
+
+      const nextSnapshot = savedSnapshotRef.current
+        ? { ...savedSnapshotRef.current, progressionMode: updatedCourse.progressionMode || debouncedProgressionMode }
+        : getInitialCourseEditorValues(updatedCourse);
+      savedSnapshotRef.current = nextSnapshot;
+      setHasUnsavedChanges(!areCourseEditorValuesEqual(buildCurrentEditorValues(debouncedProgressionMode), nextSnapshot));
+    }).catch(() => {
+      if (cancelled || progressionModeSaveSeqRef.current !== saveSeq) return;
+      setProgressionMode(savedSnapshotRef.current?.progressionMode || "FREE");
+      setHasUnsavedChanges(savedSnapshotRef.current
+        ? !areCourseEditorValuesEqual(buildCurrentEditorValues(savedSnapshotRef.current.progressionMode), savedSnapshotRef.current)
+        : false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedProgressionMode, effectiveReadOnly, isInitialized]);
+
+  const handleProgressionModeChange = (nextProgressionMode: CourseProgressionMode) => {
+    if (nextProgressionMode === progressionMode || effectiveReadOnly) return;
+    setProgressionMode(nextProgressionMode);
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center py-32"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
@@ -823,10 +943,7 @@ export const CourseEditor: React.FC = () => {
     );
   }
 
-  const isReadOnly = course.status === "PENDING" || course.status === "PUBLISHED";
-  const isViewingPublished = viewMode === "published" && Boolean(publishedCourse);
   const displayCourse = isViewingPublished ? publishedCourse! : course;
-  const effectiveReadOnly = isReadOnly || isViewingPublished;
   const isRevisionDraft = Boolean(course?.isRevision);
   const displayCategoryId = isViewingPublished ? (displayCourse.categoryId || "") : categoryId;
   const displayNeedsAdminClassification = isViewingPublished
@@ -835,6 +952,8 @@ export const CourseEditor: React.FC = () => {
   const displaySections = isViewingPublished ? (displayCourse.sections || []) : sections;
   const displayWhatYouWillLearn = isViewingPublished ? (displayCourse.whatYouWillLearn?.length ? displayCourse.whatYouWillLearn : [""]) : whatYouWillLearn;
   const displayRequirements = isViewingPublished ? (displayCourse.requirements?.length ? displayCourse.requirements : [""]) : requirements;
+  const displayProgressionMode = isViewingPublished ? displayCourse.progressionMode || "FREE" : progressionMode;
+  const selectedProgressionMode = PROGRESSION_MODE_OPTIONS.find((option) => option.value === displayProgressionMode) || PROGRESSION_MODE_OPTIONS[0];
 
   // Tự động kiểm tra xem bản nháp có thực sự khác biệt so với bản đã xuất bản không.
   // Dùng hàm chạy ngay lập tức (IIFE) thay vì React.useMemo để tránh vi phạm "Rules of Hooks" do phía trên có lệnh return sớm (early return)
@@ -853,6 +972,7 @@ export const CourseEditor: React.FC = () => {
       suggestedCategoryName: course.suggestedCategoryName || "",
       suggestedCategoryNote: course.suggestedCategoryNote || "",
       level: course.level,
+      progressionMode: course.progressionMode || "FREE",
       price: course.price,
       whatYouWillLearn: course.whatYouWillLearn || [],
       requirements: course.requirements || [],
@@ -868,6 +988,7 @@ export const CourseEditor: React.FC = () => {
       suggestedCategoryName: publishedCourse.suggestedCategoryName || "",
       suggestedCategoryNote: publishedCourse.suggestedCategoryNote || "",
       level: publishedCourse.level,
+      progressionMode: publishedCourse.progressionMode || "FREE",
       price: publishedCourse.price,
       whatYouWillLearn: publishedCourse.whatYouWillLearn || [],
       requirements: publishedCourse.requirements || [],
@@ -1025,11 +1146,42 @@ export const CourseEditor: React.FC = () => {
 
       {/* ===== TAB: THÔNG TIN KHÓA HỌC ===== */}
       {activeTab === "info" && (
-        <div className="space-y-6">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Thông tin khóa học</h2>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              {metadataSaveStatus === "saving" && (
+                <span className="inline-flex items-center gap-1.5 text-zinc-400 dark:text-zinc-500">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Đang lưu...
+                </span>
+              )}
+              {metadataSaveStatus === "saved" && (
+                <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Đã lưu
+                </span>
+              )}
+              {metadataSaveStatus === "error" && (
+                <span className="inline-flex items-center gap-1.5 text-red-500">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Lưu thất bại
+                </span>
+              )}
+              {metadataSaveStatus === "idle" && (
+                <span className="inline-flex items-center gap-1.5 text-zinc-400 dark:text-zinc-600">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Tự động lưu
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Section 1: Thông tin cơ bản + Thumbnail */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6">
-            <h2 className="text-base font-bold text-zinc-900 dark:text-white mb-5 pb-4 border-b border-zinc-100 dark:border-zinc-800">Thông tin cơ bản</h2>
+          <div className="space-y-5 border-t border-zinc-100 pt-5 dark:border-zinc-800">
+            <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Thông tin cơ bản</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -1118,8 +1270,8 @@ export const CourseEditor: React.FC = () => {
           </div>
 
           {/* Section 2: Nội dung chi tiết */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 space-y-6">
-            <h2 className="text-base font-bold text-zinc-900 dark:text-white pb-4 border-b border-zinc-100 dark:border-zinc-800">Nội dung chi tiết</h2>
+          <div className="mt-6 space-y-6 border-t border-zinc-100 pt-5 dark:border-zinc-800">
+            <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Nội dung chi tiết</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div>
@@ -1193,6 +1345,64 @@ export const CourseEditor: React.FC = () => {
                   <span>Tự động lưu</span>
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,280px)_1fr] lg:items-center">
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Luật mở bài</h3>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Chọn cách học viên đi qua giáo trình để tránh học nhảy cóc nếu khóa học cần theo thứ tự.
+                </p>
+              </div>
+              <div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild disabled={effectiveReadOnly}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 w-full justify-between rounded-xl border-zinc-200 bg-background px-3 text-left text-sm font-normal dark:border-zinc-800"
+                      disabled={effectiveReadOnly}
+                    >
+                      <span>{selectedProgressionMode.label}</span>
+                      <ChevronDown className="h-4 w-4 text-zinc-400" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-[min(92vw,30rem)] rounded-xl p-1">
+                    {PROGRESSION_MODE_OPTIONS.map((option) => (
+                      <DropdownMenuItem
+                        key={option.value}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2"
+                        onClick={() => void handleProgressionModeChange(option.value)}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{option.label}</p>
+                        </div>
+                        <TooltipProvider delayDuration={100}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-500 transition-colors hover:border-zinc-400 hover:text-zinc-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:text-zinc-200"
+                                onClick={(event) => event.preventDefault()}
+                              >
+                                <CircleHelp className="h-3.5 w-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-64 text-pretty leading-5">
+                              {option.description}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  {selectedProgressionMode.description}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -1306,45 +1516,6 @@ export const CourseEditor: React.FC = () => {
           >
             <Plus className="w-3.5 h-3.5" /> Thêm chương
           </Button>
-        </div>
-      )}
-
-      {/* ===== FLOATING ACTION BAR ===== */}
-      {activeTab === "info" && hasUnsavedChanges && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "28px",
-            right: "28px",
-            zIndex: 50,
-            animation: "slideUpFAB 0.25s cubic-bezier(0.16,1,0.3,1)",
-          }}
-        >
-          <style>{`@keyframes slideUpFAB { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-          <div className="flex items-center gap-2 bg-zinc-900 dark:bg-zinc-800 border border-zinc-700 dark:border-zinc-600 rounded-2xl shadow-2xl px-4 py-3">
-            <div className="flex items-center gap-2 mr-2">
-              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-xs font-medium text-zinc-300">Có thay đổi chưa lưu</span>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDiscard}
-              disabled={updateMutation.isPending}
-              className="h-8 px-3 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700 rounded-xl"
-            >
-              Hủy bỏ
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => void handleSave()}
-              disabled={updateMutation.isPending}
-              className="h-8 px-4 text-xs bg-white text-zinc-900 hover:bg-zinc-100 rounded-xl font-semibold gap-1.5"
-            >
-              {updateMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              Lưu thay đổi
-            </Button>
-          </div>
         </div>
       )}
 

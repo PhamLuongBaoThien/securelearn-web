@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // Course API Client
 // Mục đích:
 // - gom type và API cho catalog, editor, enrollment và learning của course-service
@@ -7,6 +7,8 @@
 import apiClient from './apiClient';
 
 // ===== Types =====
+export type CourseProgressionMode = 'FREE' | 'SEQUENTIAL' | 'QUIZ_REQUIRES_PREVIOUS_LESSONS';
+
 export interface ICourseCategory {
   _id: string;
   name: string;
@@ -44,6 +46,7 @@ export interface ICourse {
   suggestedCategoryName?: string;
   suggestedCategoryNote?: string;
   level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  progressionMode?: CourseProgressionMode;
   price: number;
   originalPrice?: number;         // Giá gốc trước khi giảm (UI)
   badge?: string;                 // Nhãn nổi bật (UI)
@@ -210,6 +213,23 @@ export interface IQuizAttempt {
   completedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface IQuizAttemptHistoryItem {
+  attemptId: string;
+  attemptNumber: number;
+  score: number;
+  passed: boolean;
+  status: QuizAttemptStatus;
+  startedAt: string;
+  completedAt?: string | null;
+}
+
+export interface IQuizAttemptHistory {
+  totalAttempts: number;
+  submittedAttempts: number;
+  bestScore: number;
+  attempts: IQuizAttemptHistoryItem[];
 }
 
 export interface IQuizAttemptQuestionResult {
@@ -610,7 +630,14 @@ export const getQuizForAttempt = async (courseId: string, lessonId: string) => {
 
 export const startQuizAttempt = async (courseId: string, lessonId: string, quizId: string) => {
   const { data } = await apiClient.post<ApiResponse<IQuizAttempt>>(
-    `/api/courses/${courseId}/lessons/${lessonId}/quiz/${quizId}/attempts`,
+    `/api/quiz-attempts/${courseId}/lessons/${lessonId}/quiz/${quizId}/attempts`,
+  );
+  return data;
+};
+
+export const getQuizAttemptHistory = async (courseId: string, lessonId: string, quizId: string) => {
+  const { data } = await apiClient.get<ApiResponse<IQuizAttemptHistory>>(
+    `/api/quiz-attempts/${courseId}/lessons/${lessonId}/quiz/${quizId}/attempts`,
   );
   return data;
 };
@@ -623,7 +650,7 @@ export const submitQuizAttempt = async (
   answers: QuizAttemptAnswerPayload[],
 ) => {
   const { data } = await apiClient.post<ApiResponse<IQuizAttemptResult>>(
-    `/api/courses/${courseId}/lessons/${lessonId}/quiz/${quizId}/attempts/${attemptId}/submit`,
+    `/api/quiz-attempts/${courseId}/lessons/${lessonId}/quiz/${quizId}/attempts/${attemptId}/submit`,
     { answers },
   );
   return data;
@@ -655,3 +682,4 @@ export const removeAttachmentFromLesson = async (courseId: string, lessonId: str
   );
   return data;
 };
+
