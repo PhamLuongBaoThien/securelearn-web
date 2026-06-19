@@ -9,6 +9,13 @@ const formatDuration = (seconds = 0) => {
   return `${minutes} phút`;
 };
 
+const normalizeLockedReason = (reason?: string) => {
+  if (!reason) return 'Hoàn thành bài trước để tiếp tục.';
+  if (reason.includes('mở quiz')) return 'Hoàn thành các bài trước trong phần này để mở quiz.';
+  if (reason.includes('mở bài này')) return 'Hoàn thành bài trước để mở bài học này.';
+  return reason;
+};
+
 interface CurriculumSidebarProps {
   sections: ISection[];
   activeLessonId: string;
@@ -62,6 +69,22 @@ export function CurriculumSidebar({
                     const isCompleted = progress?.status === 'COMPLETED';
                     const access = accessByLessonId[lessonId];
                     const isLocked = Boolean(access?.locked);
+                    const statusLabel = isLocked
+                      ? 'Đang khóa'
+                      : isCompleted
+                        ? 'Đã hoàn thành'
+                        : isActive
+                          ? 'Đang học'
+                          : 'Sẵn sàng học';
+                    const detailLabel = isLocked
+                      ? normalizeLockedReason(access?.reason)
+                      : isCompleted
+                        ? 'Bạn đã hoàn thành bài học này.'
+                        : lesson.type === 'VIDEO'
+                          ? progress?.watchPercent
+                            ? `${progress.watchPercent}% đã xem · ${formatDuration(lesson.duration)}`
+                            : formatDuration(lesson.duration)
+                          : 'Bài kiểm tra sẵn sàng bắt đầu.';
                     return (
                       <Button
                         key={lessonId}
@@ -82,19 +105,14 @@ export function CurriculumSidebar({
                           : lesson.type === 'VIDEO'
                             ? <PlayCircle className="mt-0.5 h-4 w-4 shrink-0" />
                             : <HelpCircle className="mt-0.5 h-4 w-4 shrink-0" />}
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium">{lesson.title}</p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-medium">{lesson.title}</p>
+                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isLocked ? 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300' : isCompleted ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300' : isActive ? 'bg-primary/10 text-primary' : 'bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300'}`}>{statusLabel}</span>
+                          </div>
                           <p className="mt-1 flex items-center gap-1 text-xs text-zinc-400">
                             <Clock className="h-3 w-3" />
-                            {isLocked
-                              ? access?.reason || 'Đang khóa'
-                              : isCompleted
-                              ? 'Đã hoàn thành'
-                              : lesson.type === 'VIDEO'
-                                ? progress?.watchPercent
-                                  ? `${progress.watchPercent}% · ${formatDuration(lesson.duration)}`
-                                  : formatDuration(lesson.duration)
-                                : 'Bài kiểm tra'}
+                            {detailLabel}
                           </p>
                         </div>
                       </Button>

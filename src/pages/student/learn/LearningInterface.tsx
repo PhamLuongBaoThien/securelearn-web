@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Menu, X } from 'lucide-react';
@@ -62,6 +62,7 @@ export function LearningInterface() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [pauseSignal, setPauseSignal] = useState(0);
+  const lastLockedToastLessonIdRef = useRef('');
 
   const lessons = useMemo(
     () => (courseQuery.data?.sections || []).flatMap((section) => section.lessons),
@@ -84,6 +85,23 @@ export function LearningInterface() {
   );
   const previousLesson = activeIndex > 0 ? lessons[activeIndex - 1] : null;
   const nextLesson = activeIndex >= 0 && activeIndex < lessons.length - 1 ? lessons[activeIndex + 1] : null;
+
+  useEffect(() => {
+    if (!requestedLessonId) {
+      lastLockedToastLessonIdRef.current = '';
+      return;
+    }
+    const requestedAccess = accessByLessonId[requestedLessonId];
+    if (!requestedAccess?.locked) {
+      if (lastLockedToastLessonIdRef.current === requestedLessonId) {
+        lastLockedToastLessonIdRef.current = '';
+      }
+      return;
+    }
+    if (lastLockedToastLessonIdRef.current === requestedLessonId) return;
+    lastLockedToastLessonIdRef.current = requestedLessonId;
+    toast.info(requestedAccess.reason || 'Bài học này đang bị khóa. Hãy hoàn thành bài trước để tiếp tục.');
+  }, [accessByLessonId, requestedLessonId]);
 
   const selectLesson = (lesson: ILesson) => {
     const lessonId = lesson._id || '';
@@ -228,3 +246,4 @@ export function LearningInterface() {
     </div>
   );
 }
+

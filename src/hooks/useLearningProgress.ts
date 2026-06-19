@@ -1,9 +1,10 @@
-﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   completeQuizProgress,
   getCourseAccess,
   getCourseProgress,
   getLearnerActivity,
+  getInstructorCourseAnalytics,
   sendProgressHeartbeat,
   type CourseAccessDetail,
   type CourseProgressDetail,
@@ -52,11 +53,15 @@ function preserveUnlockedAccess(previous: CourseAccessDetail | undefined, next: 
 
   return { ...next, lessons };
 }
+
+
 export const learningProgressKeys = {
   course: (courseId: string) => ['learning-progress', 'course', courseId] as const,
   access: (courseId: string) => ['learning-progress', 'access', courseId] as const,
   activity: (from?: string, to?: string) => ['learning-progress', 'activity', from || '', to || ''] as const,
+  analytics: (courseId: string) => ['learning-progress', 'analytics', courseId] as const,
 };
+const learningProgressActivityKey = ['learning-progress', 'activity'] as const;
 
 export function useCourseProgress(courseId: string) {
   return useQuery({
@@ -105,6 +110,20 @@ export function useLearnerActivity(params?: { from?: string; to?: string }) {
   });
 }
 
+export function useInstructorCourseAnalytics(courseId: string) {
+  return useQuery({
+    queryKey: learningProgressKeys.analytics(courseId),
+    queryFn: async () => {
+      const response = await getInstructorCourseAnalytics(courseId);
+      if (response.status === 'ERR' || !response.data) {
+        throw new Error(response.message || 'Không thể tải dữ liệu phân tích khóa học.');
+      }
+      return response.data;
+    },
+    enabled: Boolean(courseId),
+    staleTime: 60_000,
+  });
+}
 export function useProgressHeartbeat(courseId: string) {
   const queryClient = useQueryClient();
   const userId = useAppSelector((state) => state.auth.user?._id ?? '');
@@ -125,7 +144,7 @@ export function useProgressHeartbeat(courseId: string) {
         );
       }
       queryClient.invalidateQueries({ queryKey: learningProgressKeys.access(courseId) });
-      queryClient.invalidateQueries({ queryKey: learningProgressKeys.activity('', '') });
+      queryClient.invalidateQueries({ queryKey: learningProgressActivityKey });
       if (userId) queryClient.invalidateQueries({ queryKey: enrolledKeys.byUser(userId) });
     },
   });
@@ -151,11 +170,13 @@ export function useCompleteQuizProgress(courseId: string) {
         );
       }
       queryClient.invalidateQueries({ queryKey: learningProgressKeys.access(courseId) });
-      queryClient.invalidateQueries({ queryKey: learningProgressKeys.activity('', '') });
+      queryClient.invalidateQueries({ queryKey: learningProgressActivityKey });
       if (userId) queryClient.invalidateQueries({ queryKey: enrolledKeys.byUser(userId) });
     },
   });
 }
+
+
 
 
 

@@ -572,6 +572,20 @@ const CourseCurriculumPreview: React.FC<{
         </div>
       )}
 
+      <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/20 dark:bg-blue-500/10">
+        <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-200">Luật mở bài trong bản chờ duyệt</h4>
+        <p className="mt-1 text-sm text-blue-700 dark:text-blue-200">
+          {course.progressionMode === 'SEQUENTIAL'
+            ? 'Học tuần tự'
+            : course.progressionMode === 'QUIZ_REQUIRES_PREVIOUS_LESSONS'
+              ? 'Chặn quiz đến khi học xong'
+              : 'Học tự do'}
+        </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+          Khi admin phê duyệt, luật mở bài này mới áp dụng cho bản public mà học viên đang học.
+        </p>
+      </div>
+
       <div>
         <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
           Mô tả khóa học

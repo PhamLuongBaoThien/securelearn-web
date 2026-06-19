@@ -954,6 +954,9 @@ export const CourseEditor: React.FC = () => {
   const displayRequirements = isViewingPublished ? (displayCourse.requirements?.length ? displayCourse.requirements : [""]) : requirements;
   const displayProgressionMode = isViewingPublished ? displayCourse.progressionMode || "FREE" : progressionMode;
   const selectedProgressionMode = PROGRESSION_MODE_OPTIONS.find((option) => option.value === displayProgressionMode) || PROGRESSION_MODE_OPTIONS[0];
+  const publishedProgressionMode = publishedCourse?.progressionMode || 'FREE';
+  const publishedProgressionModeOption = PROGRESSION_MODE_OPTIONS.find((option) => option.value === publishedProgressionMode) || PROGRESSION_MODE_OPTIONS[0];
+  const draftProgressionModeChanged = Boolean(hasPublishedVersion && course.progressionMode && course.progressionMode !== publishedProgressionMode);
 
   // Tự động kiểm tra xem bản nháp có thực sự khác biệt so với bản đã xuất bản không.
   // Dùng hàm chạy ngay lập tức (IIFE) thay vì React.useMemo để tránh vi phạm "Rules of Hooks" do phía trên có lệnh return sớm (early return)
@@ -1103,6 +1106,18 @@ export const CourseEditor: React.FC = () => {
               <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                 {course.status === "PENDING" ? "Khóa học đang chờ người kiểm duyệt xét duyệt, tạm khóa chỉnh sửa." : "Khóa học đã xuất bản. Hãy tạo bản cập nhật từ danh sách khóa học để chỉnh sửa."}
               </p>
+            )}
+            {hasPublishedVersion && !isReadOnly && (
+              <div className="mt-3 rounded-2xl border border-blue-200 bg-blue-50/90 px-4 py-3 text-sm text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200">
+                <p className="font-semibold">Bạn đang chỉnh sửa bản nháp của khóa học.</p>
+                <p className="mt-1 leading-6 text-blue-700/90 dark:text-blue-100/90">
+                  Mọi thay đổi, bao gồm cả luật mở bài, chỉ áp dụng cho học viên sau khi bạn gửi duyệt và admin phê duyệt bản cập nhật này.
+                </p>
+                <p className="mt-2 text-xs text-blue-700/80 dark:text-blue-100/80">
+                  Bản đang public hiện dùng <span className="font-semibold">{publishedProgressionModeOption.label}</span>
+                  {draftProgressionModeChanged ? `, còn bản nháp hiện tại dùng ${selectedProgressionMode.label}.` : '.'}
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -1402,6 +1417,16 @@ export const CourseEditor: React.FC = () => {
                 <p className="mt-1.5 text-xs text-zinc-500">
                   {selectedProgressionMode.description}
                 </p>
+                <div className="mt-3 space-y-2 rounded-xl border border-zinc-200 bg-white/80 px-3 py-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-300">
+                  <p>
+                    Luật này được lưu trên <span className="font-semibold text-zinc-900 dark:text-white">bản nháp</span>. Học viên chỉ nhận thay đổi sau khi bạn gửi duyệt và admin phê duyệt bản cập nhật.
+                  </p>
+                  {hasPublishedVersion && !isViewingPublished && (
+                    <p>
+                      Bản đang public hiện dùng <span className="font-semibold text-zinc-900 dark:text-white">{publishedProgressionModeOption.label}</span>{draftProgressionModeChanged ? `, còn bản nháp bạn đang sửa dùng ${selectedProgressionMode.label}.` : '.'}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1688,3 +1713,4 @@ const getStatusBadge = (status: string) => {
   if (status === "DRAFT") return <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 text-xs">Bản nháp</Badge>;
   return null;
 };
+

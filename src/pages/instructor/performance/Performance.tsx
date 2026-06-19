@@ -14,8 +14,11 @@ import {
   type InstructorSubscriptionFinance,
 } from '@/services/paymentApi';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Select } from '@/components/ui/select';
 import { useInstructorRevenueStats, useInstructorSubscriptionFinance } from '@/hooks/useInstructorFinance';
+import { useGetMyCourses } from '@/hooks/useInstructorCourses';
 import { useAppSelector } from '@/app/hooks';
+import { useInstructorCourseAnalytics } from '@/hooks/useLearningProgress';
 import { useInstructorRatingStats } from '@/hooks/useCourseReviews';
 import type { IInstructorRatingStats } from '@/services/courseApi';
 
@@ -215,37 +218,157 @@ const RevenueTab = ({ revenue, subscription }: {
   );
 };
 
-/* ─── Tab: Học viên (placeholder) ─── */
-const StudentsTab = () => (
-  <div className="space-y-6">
-    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center">
-      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-        <GraduationCap className="w-8 h-8 text-primary" />
+/* ─── Tab: Học viên / Progress Analytics ─── */
+const StudentsTab = ({
+  courses,
+  selectedCourseId,
+  onSelectCourse,
+}: {
+  courses: Array<{ _id: string; title: string; sections?: Array<{ lessons: Array<{ _id?: string; title: string; type: "VIDEO" | "QUIZ" }> }> }>;
+  selectedCourseId: string;
+  onSelectCourse: (courseId: string) => void;
+}) => {
+  const analyticsQuery = useInstructorCourseAnalytics(selectedCourseId);
+  const selectedCourse = courses.find((course) => course._id === selectedCourseId);
+  const lessonMeta = new Map(
+    (selectedCourse?.sections || []).flatMap((section) =>
+      (section.lessons || []).map((lesson) => [lesson._id || '', { title: lesson.title, type: lesson.type }]),
+    ),
+  );
+
+  const analytics = analyticsQuery.data;
+  const lessons = (analytics?.lessons || []).map((lesson, index) => {
+    const meta = lessonMeta.get(lesson.lessonId);
+    return {
+      ...lesson,
+      title: meta?.title || `Bài học ${index + 1}`,
+      lessonType: meta?.type || lesson.lessonType,
+      dropOffRate: Math.max(0, 100 - lesson.completionRate),
+    };
+  });
+  const dropOffLessons = [...lessons]
+    .filter((lesson) => lesson.startedCount > 0)
+    .sort((a, b) => b.dropOffRate - a.dropOffRate)
+    .slice(0, 3);
+
+  if (courses.length === 0) {
+    return (
+      <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
+        <GraduationCap className="mx-auto h-10 w-10 text-zinc-400" />
+        <h3 className="mt-4 text-lg font-bold text-zinc-900 dark:text-white">Chưa có khóa học để phân tích</h3>
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Hãy xuất bản ít nhất một khóa học để xem dữ liệu tiến độ học tập của học viên.</p>
       </div>
-      <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Quản lý học viên</h3>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-md">
-        Tính năng đang được phát triển. Bạn sẽ sớm có thể xem danh sách học viên, tiến độ học tập và tỷ lệ hoàn thành khóa học tại đây.
-      </p>
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-lg">
-        <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-4 text-center">
-          <Users className="w-5 h-5 text-zinc-400 mx-auto mb-1" />
-          <p className="text-xs text-zinc-400">Tổng học viên</p>
-          <p className="text-lg font-bold text-zinc-300 dark:text-zinc-600">—</p>
-        </div>
-        <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-4 text-center">
-          <Award className="w-5 h-5 text-zinc-400 mx-auto mb-1" />
-          <p className="text-xs text-zinc-400">Hoàn thành</p>
-          <p className="text-lg font-bold text-zinc-300 dark:text-zinc-600">—</p>
-        </div>
-        <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-4 text-center">
-          <Clock className="w-5 h-5 text-zinc-400 mx-auto mb-1" />
-          <p className="text-xs text-zinc-400">Đang học</p>
-          <p className="text-lg font-bold text-zinc-300 dark:text-zinc-600">—</p>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Phân tích học tập theo khóa học</h3>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Theo dõi tỷ lệ hoàn thành, tiến độ xem video và kết quả quiz từ Progress Service.</p>
+          </div>
+          <div className="w-full max-w-sm">
+            <Select value={selectedCourseId} onChange={(event) => onSelectCourse(event.target.value)} className="h-11 rounded-xl border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+              {courses.map((course) => (
+                <option key={course._id} value={course._id}>{course.title}</option>
+              ))}
+            </Select>
+          </div>
         </div>
       </div>
+
+      {analyticsQuery.isLoading ? (
+        <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+          Đang tải dữ liệu tiến độ học tập...
+        </div>
+      ) : analyticsQuery.isError ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-sm text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+          {(analyticsQuery.error as Error)?.message || 'Không thể tải dữ liệu phân tích khóa học.'}
+        </div>
+      ) : !analytics || analytics.totalLearners === 0 ? (
+        <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
+          <Users className="mx-auto h-10 w-10 text-zinc-400" />
+          <h3 className="mt-4 text-lg font-bold text-zinc-900 dark:text-white">Chưa có dữ liệu học tập</h3>
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Khóa học này chưa có học viên hoặc chưa phát sinh tiến độ đủ để hiển thị phân tích.</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <StatCard label="Tổng học viên" value={analytics.totalLearners.toLocaleString('vi-VN')} icon={<Users className="w-4 h-4" />} />
+            <StatCard label="Đã hoàn thành" value={analytics.completedLearners.toLocaleString('vi-VN')} icon={<Award className="w-4 h-4" />} />
+            <StatCard label="Tỷ lệ hoàn thành" value={`${analytics.completionRate.toFixed(0)}%`} icon={<Percent className="w-4 h-4" />} />
+            <StatCard label="Bài có drop-off" value={`${dropOffLessons.length}`} sub="3 bài cao nhất" icon={<Clock className="w-4 h-4" />} />
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+              <h3 className="mb-4 text-lg font-bold text-zinc-900 dark:text-white">Phân tích theo bài học</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-zinc-100 text-left text-zinc-400 dark:border-zinc-800">
+                      <th className="pb-3 font-medium">Bài học</th>
+                      <th className="pb-3 font-medium text-right">Bắt đầu</th>
+                      <th className="pb-3 font-medium text-right">Hoàn thành</th>
+                      <th className="pb-3 font-medium text-right">Tỷ lệ</th>
+                      <th className="pb-3 font-medium text-right">Chỉ số chính</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {lessons.map((lesson) => (
+                      <tr key={lesson.lessonId}>
+                        <td className="py-3">
+                          <p className="font-medium text-zinc-900 dark:text-white">{lesson.title}</p>
+                          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{lesson.lessonType === 'VIDEO' ? 'Video' : 'Quiz'}</p>
+                        </td>
+                        <td className="py-3 text-right text-zinc-600 dark:text-zinc-400">{lesson.startedCount.toLocaleString('vi-VN')}</td>
+                        <td className="py-3 text-right text-zinc-600 dark:text-zinc-400">{lesson.completedCount.toLocaleString('vi-VN')}</td>
+                        <td className="py-3 text-right font-semibold text-zinc-900 dark:text-white">{lesson.completionRate.toFixed(0)}%</td>
+                        <td className="py-3 text-right text-xs text-zinc-500 dark:text-zinc-400">
+                          {lesson.lessonType === 'VIDEO'
+                            ? `${(lesson.averageWatchPercent || 0).toFixed(0)}% xem TB`
+                            : `${(lesson.quizPassRate || 0).toFixed(0)}% đạt · ${(lesson.averageQuizScore || 0).toFixed(0)} điểm TB`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                <h3 className="mb-4 text-lg font-bold text-zinc-900 dark:text-white">Điểm rơi rụng cao</h3>
+                <div className="space-y-3">
+                  {dropOffLessons.length > 0 ? dropOffLessons.map((lesson) => (
+                    <div key={lesson.lessonId} className="rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800/60">
+                      <p className="text-sm font-semibold text-zinc-900 dark:text-white">{lesson.title}</p>
+                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{lesson.startedCount} bắt đầu · {lesson.completedCount} hoàn thành</p>
+                      <p className="mt-2 text-sm font-medium text-rose-600 dark:text-rose-400">Drop-off {lesson.dropOffRate.toFixed(0)}%</p>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Chưa có đủ dữ liệu để xác định bài học có nhiều học viên bỏ dở.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                <h3 className="mb-4 text-lg font-bold text-zinc-900 dark:text-white">Tóm tắt nhanh</h3>
+                <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
+                  <p>Khóa học hiện có <span className="font-semibold text-zinc-900 dark:text-white">{analytics.totalLearners.toLocaleString('vi-VN')}</span> học viên đã phát sinh dữ liệu tiến độ.</p>
+                  <p><span className="font-semibold text-zinc-900 dark:text-white">{analytics.completedLearners.toLocaleString('vi-VN')}</span> học viên đã hoàn thành trọn khóa.</p>
+                  <p>Tỷ lệ hoàn thành tổng thể đang ở mức <span className="font-semibold text-zinc-900 dark:text-white">{analytics.completionRate.toFixed(0)}%</span>.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 /* ─── Tab: Đánh giá (placeholder) ─── */
 const ReviewsTab = ({ stats }: { stats: IInstructorRatingStats | undefined }) => (
@@ -303,10 +426,28 @@ const ReviewsTab = ({ stats }: { stats: IInstructorRatingStats | undefined }) =>
 
 export const InstructorPerformance: React.FC = () => {
   const [activeTab, setActiveTab] = useState<PerfTab>('revenue');
+  const { data: instructorCourses = [] } = useGetMyCourses();
+  const publishedCourses = useMemo(
+    () => instructorCourses.filter((course) => course.status === 'PUBLISHED'),
+    [instructorCourses],
+  );
+  const [selectedCourseId, setSelectedCourseId] = useState('');
   const { user } = useAppSelector((state) => state.auth);
   const { data: revenue, isLoading } = useInstructorRevenueStats();
   const { data: subscriptionFinance } = useInstructorSubscriptionFinance();
   const { data: ratingStats, isLoading: ratingLoading } = useInstructorRatingStats(user?._id || '', Boolean(user?._id));
+
+  React.useEffect(() => {
+    if (publishedCourses.length === 0) {
+      if (selectedCourseId) setSelectedCourseId('');
+      return;
+    }
+
+    const hasSelectedPublishedCourse = publishedCourses.some((course) => course._id === selectedCourseId);
+    if (!hasSelectedPublishedCourse) {
+      setSelectedCourseId(publishedCourses[0]._id);
+    }
+  }, [publishedCourses, selectedCourseId]);
 
   const monthlyTrend = useMemo(() => (revenue?.monthlyData ?? []).map((m) => m.instructorRevenue), [revenue]);
   const latestRevenue = monthlyTrend.length > 0 ? monthlyTrend[monthlyTrend.length - 1] : 0;
@@ -340,7 +481,13 @@ export const InstructorPerformance: React.FC = () => {
       ) : (
         <>
           {activeTab === 'revenue' && <RevenueTab revenue={revenue} subscription={subscriptionFinance} />}
-          {activeTab === 'students' && <StudentsTab />}
+          {activeTab === 'students' && (
+            <StudentsTab
+              courses={publishedCourses}
+              selectedCourseId={selectedCourseId}
+              onSelectCourse={setSelectedCourseId}
+            />
+          )}
           {activeTab === 'reviews' && (ratingLoading ? (
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-sm text-zinc-500">Đang tải dữ liệu đánh giá...</div>
           ) : <ReviewsTab stats={ratingStats} />)}
