@@ -6,6 +6,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   getCourseForLearning,
+  getQuizAttemptHistory,
   getQuizForAttempt,
   startQuizAttempt,
   submitQuizAttempt,
@@ -16,6 +17,7 @@ import { createPlaybackSession } from '@/services/mediaApi';
 export const courseLearningKeys = {
   course: (courseId: string) => ['learning', 'course', courseId] as const,
   quiz: (courseId: string, lessonId: string) => ['learning', 'quiz', courseId, lessonId] as const,
+  quizAttempts: (courseId: string, lessonId: string, quizId: string) => ['learning', 'quiz-attempts', courseId, lessonId, quizId] as const,
 };
 
 export function useCourseLearning(courseId: string) {
@@ -69,6 +71,20 @@ export function useStartQuizAttempt(courseId: string, lessonId: string, quizId: 
       }
       return response.data;
     },
+  });
+}
+
+export function useQuizAttemptHistory(courseId: string, lessonId: string, quizId: string, enabled = true) {
+  return useQuery({
+    queryKey: courseLearningKeys.quizAttempts(courseId, lessonId, quizId),
+    queryFn: async () => {
+      const response = await getQuizAttemptHistory(courseId, lessonId, quizId);
+      if (response.status === 'ERR' || !response.data) {
+        throw new Error(response.message || 'Không thể tải lịch sử làm bài.');
+      }
+      return response.data;
+    },
+    enabled: Boolean(courseId && lessonId && quizId && enabled),
   });
 }
 
