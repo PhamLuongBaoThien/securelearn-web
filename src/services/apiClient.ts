@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
+﻿import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import type { RefreshTokenResponse } from '@/types/auth.types';
 
 type AuthContext = 'user' | 'admin';
@@ -21,6 +21,17 @@ const ACCOUNT_LOCKED_MESSAGE = 'Tài khoản đã bị khóa';
 const REFRESH_TOKEN_PATH = '/refresh-token';
 const LOGIN_PATH = '/login';
 const ADMIN_API_PATH = '/api/admin/';
+// Media data path như HLS segment (.ts) hoặc presigned storage URL không được đi qua auth/refresh.
+// Các URL này đã được bảo vệ bằng chữ ký tạm thời của storage; gắn Authorization có thể kéo refresh-token vào lúc video đang phát.
+const isMediaDataPath = (url?: string) => {
+  if (!url) return false;
+  return (
+    /\.(ts|m4s|mp4)(?:[?#]|$)/i.test(url) ||
+    url.includes('/securelearn-media/') ||
+    url.includes('X-Amz-Signature=') ||
+    url.includes('X-Amz-Credential=')
+  );
+};
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -58,6 +69,7 @@ const getRefreshUrl = (context: AuthContext) =>
 const shouldRetryWithRefresh = (error: AxiosError, request?: RetryableRequestConfig) =>
   error.response?.status === 401 &&
   Boolean(request) &&
+  !isMediaDataPath(request?.url) &&
   !request?._retry &&
   !request?.url?.includes(REFRESH_TOKEN_PATH) &&
   !request?.url?.includes(LOGIN_PATH);
@@ -162,7 +174,7 @@ export const getApiBaseUrl = () => API_BASE_URL;
 // Chạy trước khi request rời frontend.
 // Việc của nó là gắn access token hiện tại vào request.
 const handleRequest = (config: InternalAxiosRequestConfig) => {
-  if (accessToken) {
+  if (accessToken && !isMediaDataPath(config.url)) {
     setAuthorizationHeader(config, accessToken);
   }
 
@@ -235,3 +247,5 @@ apiClient.interceptors.request.use(handleRequest, Promise.reject);
 apiClient.interceptors.response.use(handleResponseSuccess, handleResponseError);
 
 export default apiClient;
+
+

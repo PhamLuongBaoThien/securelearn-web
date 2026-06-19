@@ -3,6 +3,7 @@ import Hls from 'hls.js';
 import { Loader2, Shield, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
+import { renewPlaybackSession } from '@/services/mediaApi';
 import { useCreatePlaybackSession } from '@/hooks/useCourseLearning';
 import { useProgressHeartbeat } from '@/hooks/useLearningProgress';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,23 @@ import {
   WATERMARK_ROTATION_MS,
 } from '@/lib/contentProtection';
 
+
+const isHlsStorageRequest = (url: string) =>
+  /\.(ts|m4s|mp4)(?:[?#]|$)/i.test(url) ||
+  url.includes('/securelearn-media/') ||
+  url.includes('X-Amz-Signature=') ||
+  url.includes('X-Amz-Credential=');
+
+const shouldAttachAuthToHlsRequest = (url: string) => {
+  if (isHlsStorageRequest(url)) return false;
+  if (/\/api\/media\/videos\/[^/]+\/(playback|key)(?:[?#]|$)/.test(url)) return false;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.pathname.startsWith('/api/');
+  } catch {
+    return url.startsWith('/api/');
+  }
+};
 const absoluteApiUrl = (path: string) => {
   if (/^https?:\/\//i.test(path)) return path;
   const base = getApiBaseUrl() || window.location.origin;
@@ -27,6 +45,8 @@ const SEEK_WARNING_THRESHOLD_SECONDS = 10;
 const SEEK_WARNING_SUPPRESS_KEY = 'securelearn.progress.seek-warning.until';
 const SEEK_WARNING_SUPPRESS_MS = 24 * 60 * 60 * 1000;
 const SEEK_WARNING_COOLDOWN_MS = 8_000;
+const FALLBACK_SEGMENT_EXPIRES_IN_SECONDS = 3600;
+const MANIFEST_RENEW_BUFFER_MS = 60_000;
 
 const isSeekWarningSuppressed = () => {
   const raw = window.localStorage.getItem(SEEK_WARNING_SUPPRESS_KEY);
@@ -46,7 +66,6 @@ const isSeekWarningSuppressed = () => {
 interface VideoPlayerProps {
   courseId: string;
   lesson: ILesson;
-  accessSource?: 'PURCHASE' | 'SUBSCRIPTION';
   watermarkIdentity?: WatermarkIdentity;
   onTimeChange?: (seconds: number) => void;
   initialPositionSeconds?: number;
@@ -56,7 +75,6 @@ interface VideoPlayerProps {
 export function VideoPlayer({
   courseId,
   lesson,
-  accessSource: _accessSource,
   watermarkIdentity,
   onTimeChange,
   initialPositionSeconds = 0,
@@ -68,6 +86,13 @@ export function VideoPlayer({
   const seekOriginRef = useRef(0);
   const lastSeekWarningAtRef = useRef(0);
   const hasAppliedInitialPositionRef = useRef(false);
+  const pendingPlaybackResumeRef = useRef<number | null>(null);
+  const resumePlaybackAfterRenewRef = useRef(false);
+  const mediaSessionTokenRef = useRef<string | null>(null);
+  const manifestExpiresAtRef = useRef(0);
+  const proactiveRenewTimerRef = useRef<number | null>(null);
+  const playbackRecoveringRef = useRef(false);
+  const [playbackReloadKey, setPlaybackReloadKey] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
   const playbackSession = useCreatePlaybackSession();
@@ -129,6 +154,49 @@ export function VideoPlayer({
     });
   }, []);
 
+  const recoverPlaybackSession = useCallback((resumeAfterRenew = false) => {
+    const video = videoRef.current;
+    if (!video || playbackRecoveringRef.current) return;
+    playbackRecoveringRef.current = true;
+    if (resumeAfterRenew) resumePlaybackAfterRenewRef.current = true;
+    pendingPlaybackResumeRef.current = Number.isFinite(video.currentTime) ? video.currentTime : lastPositionRef.current;
+    hasAppliedInitialPositionRef.current = false;
+    setPlaybackReloadKey((current) => current + 1);
+    window.setTimeout(() => {
+      playbackRecoveringRef.current = false;
+    }, 1500);
+  }, []);
+
+  const clearProactiveRenewTimer = useCallback(() => {
+    if (proactiveRenewTimerRef.current) {
+      window.clearTimeout(proactiveRenewTimerRef.current);
+      proactiveRenewTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleProactiveRenew = useCallback((expiresInSeconds?: number) => {
+    clearProactiveRenewTimer();
+    const ttlSeconds = Number.isFinite(expiresInSeconds) && expiresInSeconds! > 0
+      ? expiresInSeconds!
+      : FALLBACK_SEGMENT_EXPIRES_IN_SECONDS;
+    const delayMs = Math.max(10_000, ttlSeconds * 1000 - MANIFEST_RENEW_BUFFER_MS);
+    proactiveRenewTimerRef.current = window.setTimeout(() => {
+      const video = videoRef.current;
+      if (!video || video.paused || video.ended || document.visibilityState !== 'visible') return;
+      recoverPlaybackSession();
+    }, delayMs);
+  }, [clearProactiveRenewTimer, recoverPlaybackSession]);
+
+  const renewPlaybackIfExpiringSoon = useCallback((resumeAfterRenew = false) => {
+    if (!lesson.videoAssetId) return false;
+    if (!manifestExpiresAtRef.current) return false;
+    if (Date.now() >= manifestExpiresAtRef.current - MANIFEST_RENEW_BUFFER_MS) {
+      recoverPlaybackSession(resumeAfterRenew);
+      return true;
+    }
+    return false;
+  }, [lesson.videoAssetId, recoverPlaybackSession]);
+
   useEffect(() => {
     const video = videoRef.current;
     const videoAssetId = lesson.videoAssetId;
@@ -140,19 +208,44 @@ export function VideoPlayer({
     const setupPlayback = async () => {
       // Mỗi lần mở video, FE phải xin playback session mới.
       // Backend không trả thẳng manifest hoặc key ngay từ đầu mà chỉ trả one-time playbackUrl.
-      const session = await createPlayback(videoAssetId);
+      const existingMediaSessionToken = mediaSessionTokenRef.current;
+      const session = existingMediaSessionToken
+        ? await renewPlaybackSession(videoAssetId, existingMediaSessionToken).then((response) => {
+            if (response.status === 'ERR' || !response.data) {
+              mediaSessionTokenRef.current = null;
+              return createPlayback(videoAssetId);
+            }
+            return response.data;
+          })
+        : await createPlayback(videoAssetId);
       if (canceled) return;
+      if (session.mediaSessionToken) mediaSessionTokenRef.current = session.mediaSessionToken;
+      const segmentExpiresIn = session.segmentExpiresIn ?? FALLBACK_SEGMENT_EXPIRES_IN_SECONDS;
+      manifestExpiresAtRef.current = Date.now() + segmentExpiresIn * 1000;
+      scheduleProactiveRenew(segmentExpiresIn);
       const manifestUrl = absoluteApiUrl(session.playbackUrl);
 
       if (Hls.isSupported()) {
         hls = new Hls({
           xhrSetup: (xhr, url) => {
-            if (url.includes('/api/')) {
-              const token = getAccessToken();
-              if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-              xhr.withCredentials = true;
-            }
+            if (!shouldAttachAuthToHlsRequest(url)) return;
+            const token = getAccessToken();
+            if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            xhr.withCredentials = true;
           },
+        });
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          // Presigned HLS segment URLs expire while the learner keeps the page open.
+          // hls.js may report this as 403/410, or only as a generic NETWORK_ERROR.
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            recoverPlaybackSession();
+            return;
+          }
+          if (data.fatal && data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            hls?.recoverMediaError();
+            return;
+          }
+          if (data.fatal) recoverPlaybackSession();
         });
         hls.loadSource(manifestUrl);
         hls.attachMedia(video);
@@ -170,15 +263,30 @@ export function VideoPlayer({
 
     return () => {
       canceled = true;
+      clearProactiveRenewTimer();
       hls?.destroy();
       video.removeAttribute('src');
     };
-  }, [createPlayback, lesson.videoAssetId, lesson._id]);
+  }, [clearProactiveRenewTimer, createPlayback, lesson.videoAssetId, lesson._id, playbackReloadKey, recoverPlaybackSession, scheduleProactiveRenew]);
 
   useEffect(() => {
     if (!pauseSignal) return;
     videoRef.current?.pause();
   }, [pauseSignal]);
+
+  useEffect(() => {
+    const handlePlaybackResume = () => {
+      if (document.visibilityState === 'visible') {
+        renewPlaybackIfExpiringSoon();
+      }
+    };
+    document.addEventListener('visibilitychange', handlePlaybackResume);
+    window.addEventListener('focus', handlePlaybackResume);
+    return () => {
+      document.removeEventListener('visibilitychange', handlePlaybackResume);
+      window.removeEventListener('focus', handlePlaybackResume);
+    };
+  }, [renewPlaybackIfExpiringSoon]);
 
   useEffect(() => {
     hasAppliedInitialPositionRef.current = false;
@@ -323,15 +431,29 @@ export function VideoPlayer({
           playsInline
           className="absolute inset-0 h-full w-full"
           onLoadedMetadata={(event) => {
-            if (hasAppliedInitialPositionRef.current || initialPositionSeconds <= 0) return;
             const video = event.currentTarget;
-            if (Number.isFinite(video.duration) && initialPositionSeconds < video.duration - 2) {
-              video.currentTime = initialPositionSeconds;
-              lastPositionRef.current = initialPositionSeconds;
+            const resumePosition = pendingPlaybackResumeRef.current ?? initialPositionSeconds;
+            const shouldResumePlayback = resumePlaybackAfterRenewRef.current;
+            if (!hasAppliedInitialPositionRef.current && resumePosition > 0) {
+              if (Number.isFinite(video.duration) && resumePosition < video.duration - 2) {
+                video.currentTime = resumePosition;
+                lastPositionRef.current = resumePosition;
+              }
+              pendingPlaybackResumeRef.current = null;
+              hasAppliedInitialPositionRef.current = true;
             }
-            hasAppliedInitialPositionRef.current = true;
+            if (shouldResumePlayback) {
+              resumePlaybackAfterRenewRef.current = false;
+              void video.play().catch(() => undefined);
+            }
           }}
-          onPlay={() => setIsPlaying(true)}
+          onPlay={(event) => {
+            if (renewPlaybackIfExpiringSoon(true)) {
+              event.currentTarget.pause();
+              return;
+            }
+            setIsPlaying(true);
+          }}
           onPause={() => setIsPlaying(false)}
           onEnded={() => setIsPlaying(false)}
           onSeeking={(event) => {
@@ -377,3 +499,10 @@ export function VideoPlayer({
     </div>
   );
 }
+
+
+
+
+
+
+
