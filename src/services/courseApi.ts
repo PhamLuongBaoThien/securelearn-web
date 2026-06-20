@@ -265,6 +265,36 @@ export interface IEnrollment {
   createdAt?: string;
   updatedAt?: string;
 }
+export interface IInstructorStudentEnrollment {
+  _id: string;
+  userId: string;
+  learnerName?: string;
+  learnerEmail?: string;
+  learnerAvatarUrl?: string;
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  source: 'PURCHASE' | 'SUBSCRIPTION';
+  enrolledAt: string;
+  accessEndsAt?: string | null;
+  course: {
+    _id: string;
+    title: string;
+    slug: string;
+    thumbnail?: string;
+    status: ICourse['status'];
+    enrollmentCount: number;
+  } | null;
+}
+
+export interface IInstructorStudentsResponse {
+  enrollments: IInstructorStudentEnrollment[];
+  summary: {
+    total: number;
+    purchase: number;
+    subscription: number;
+    active: number;
+  };
+  courses: Array<Pick<ICourse, '_id' | 'title' | 'slug' | 'status' | 'enrollmentCount'>>;
+}
 
 interface ApiResponse<T = undefined> {
   status: string;
@@ -311,6 +341,14 @@ export const createCourse = async (payload: {
  */
 export const getMyCourses = async () => {
   const { data } = await apiClient.get<ApiResponse<ICourse[]>>('/api/courses/my-courses');
+  return data;
+};
+/**
+ * Danh sách học viên đã ghi danh vào các khóa của giảng viên hiện tại.
+ * GET /api/courses/instructor/students
+ */
+export const getInstructorStudents = async () => {
+  const { data } = await apiClient.get<ApiResponse<IInstructorStudentsResponse>>('/api/courses/instructor/students');
   return data;
 };
 
@@ -682,4 +720,5 @@ export const removeAttachmentFromLesson = async (courseId: string, lessonId: str
   );
   return data;
 };
+
 

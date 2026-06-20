@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { toggleTheme } from '@/features/dashboard/uiSlice';
@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Bell,
   GraduationCap,
+  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import sidebarLogo from '@/assets/logoweb.png';
@@ -56,6 +57,7 @@ export const InstructorLayout: React.FC = () => {
         labelName: 'Quản lý nội dung',
         items: [
           { name: 'Khóa học', path: '/instructor/courses', icon: <PlaySquare className="w-5 h-5 shrink-0" /> },
+          { name: 'Học viên', path: '/instructor/students', icon: <Users className="w-5 h-5 shrink-0" /> },
         ],
       }
     },
@@ -129,3 +131,4 @@ export const InstructorLayout: React.FC = () => {
     </div>
   );
 };
+

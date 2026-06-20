@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // File này chứa React Query hooks cấp course cho instructor.
 // Lưu ý:
 // - file này bọc toàn bộ course-level và curriculum-level operations cho instructor
@@ -11,6 +11,7 @@ import {
   createCourseLesson,
   createCourseSection,
   getMyCourses,
+  getInstructorStudents,
   createCourse,
   createLessonQuiz,
   deleteCourseLesson,
@@ -31,6 +32,7 @@ import {
   optInCourseSubscription,
   withdrawCourseSubscription,
   type ICourse,
+  type IInstructorStudentsResponse,
   type ILesson,
   type IQuiz,
   type ISection,
@@ -39,6 +41,7 @@ import {
 // ===== Query Keys =====
 export const instructorKeys = {
   myCourses: ['instructor', 'my-courses'] as const,
+  students: ['instructor', 'students'] as const,
   courseDetail: (id: string) => ['instructor', 'course', id] as const,
   publishedCourseDetail: (id: string) => ['instructor', 'course', id, 'published'] as const,
   lessonQuiz: (courseId: string, lessonId: string) => ['instructor', 'course', courseId, 'lesson', lessonId, 'quiz'] as const,
@@ -66,8 +69,22 @@ export function useGetMyCourses() {
   });
 }
 
+
+export function useInstructorStudents() {
+  return useQuery({
+    queryKey: instructorKeys.students,
+    queryFn: async () => {
+      const response = await getInstructorStudents();
+      if (response.status === 'ERR' || !response.data) {
+        throw new Error(response.message || 'Không thể tải danh sách học viên.');
+      }
+      return response.data as IInstructorStudentsResponse;
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+}
 // ===== useGetCourseForManage: Lấy chi tiết khóa học để chỉnh sửa =====
-export function useGetCourseForManage(courseId: string) {
+export function useGetCourseForManage(courseId: string, enabled = true) {
   return useQuery({
     queryKey: instructorKeys.courseDetail(courseId),
     queryFn: async () => {
@@ -77,7 +94,7 @@ export function useGetCourseForManage(courseId: string) {
       }
       return response.data as ICourse;
     },
-    enabled: !!courseId, // Chỉ fetch khi có courseId
+    enabled: !!courseId && enabled, // Chỉ fetch khi có courseId và thật sự cần lấy chi tiết
     // Luôn fetch lại khi mount để tránh hiển thị trạng thái video cũ (ví dụ: PROCESSING)
     // khi thực tế backend đã xử lý xong (READY). Nếu không, user sẽ thấy cảnh báo
     // "video đang xử lý" giả khi quay lại trang chỉnh sửa.
@@ -429,3 +446,8 @@ export function useSaveLessonQuiz() {
     },
   });
 }
+
+
+
+
+
