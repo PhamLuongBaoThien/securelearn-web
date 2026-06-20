@@ -68,6 +68,12 @@ export interface LearnerActivitySummary {
   totalActiveSeconds: number;
   activeDays: number;
   currentStreakDays: number;
+  dailyGoalSeconds: number;
+  todayActiveSeconds: number;
+  todayGoalCompleted: boolean;
+  todayRemainingSeconds: number;
+  streakAtRisk: boolean;
+  currentDate: string;
   days: LearnerActivityDay[];
 }
 

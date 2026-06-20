@@ -5,8 +5,10 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Menu, X } from 'lucide-r
 import { toast } from 'sonner';
 import { useAppSelector } from '@/app/hooks';
 import { useCourseLearning } from '@/hooks/useCourseLearning';
-import { useCourseAccess, useCourseProgress } from '@/hooks/useLearningProgress';
+import { useCourseAccess, useCourseProgress, useLearnerActivity } from '@/hooks/useLearningProgress';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { StreakGoalWidget } from '@/components/student/StreakGoalWidget';
 import type { ILesson } from '@/services/courseApi';
 import type { LessonProgressSummary } from '@/services/progressApi';
 import logoWeb from '@/assets/logoweb.png';
@@ -14,6 +16,60 @@ import { CurriculumSidebar } from './CurriculumSidebar';
 import { VideoPlayer } from './VideoPlayer';
 import { InteractiveTabs } from './InteractiveTabs';
 import { QuizPlayer } from './QuizPlayer';
+
+const PROGRESS_RING_SIZE = 32;
+const PROGRESS_RING_STROKE = 3;
+const PROGRESS_RING_RADIUS = (PROGRESS_RING_SIZE - PROGRESS_RING_STROKE) / 2;
+const PROGRESS_RING_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RING_RADIUS;
+
+const ProgressRing: React.FC<{ percent: number; completedLessons: number; totalLessons: number }> = ({
+  percent,
+  completedLessons,
+  totalLessons,
+}) => {
+  const offset = PROGRESS_RING_CIRCUMFERENCE - (Math.min(100, Math.max(0, percent)) / 100) * PROGRESS_RING_CIRCUMFERENCE;
+
+  return (
+    <TooltipProvider delayDuration={120}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="relative flex h-8 w-8 shrink-0 cursor-default items-center justify-center">
+            <svg width={PROGRESS_RING_SIZE} height={PROGRESS_RING_SIZE} className="-rotate-90">
+              <circle
+                cx={PROGRESS_RING_SIZE / 2}
+                cy={PROGRESS_RING_SIZE / 2}
+                r={PROGRESS_RING_RADIUS}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={PROGRESS_RING_STROKE}
+                className="text-zinc-200 dark:text-zinc-700"
+              />
+              <circle
+                cx={PROGRESS_RING_SIZE / 2}
+                cy={PROGRESS_RING_SIZE / 2}
+                r={PROGRESS_RING_RADIUS}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={PROGRESS_RING_STROKE}
+                strokeLinecap="round"
+                strokeDasharray={PROGRESS_RING_CIRCUMFERENCE}
+                strokeDashoffset={offset}
+                className="text-emerald-500 transition-all duration-500"
+              />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-zinc-700 dark:text-zinc-200">
+              {Math.round(percent)}%
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="rounded-xl">
+          <p className="text-xs font-semibold">Tiến độ khóa học</p>
+          <p className="mt-1 text-xs">{completedLessons} / {totalLessons} bài học đã hoàn thành</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
 
 const RESUME_GAP_THRESHOLD_SECONDS = 2;
 
@@ -58,6 +114,7 @@ export function LearningInterface() {
   const courseQuery = useCourseLearning(courseId);
   const progressQuery = useCourseProgress(courseId);
   const accessQuery = useCourseAccess(courseId);
+  const activityQuery = useLearnerActivity();
   const [selectedLessonId, setSelectedLessonId] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [playbackTime, setPlaybackTime] = useState(0);
@@ -156,27 +213,36 @@ export function LearningInterface() {
             {currentSection?.title}{activeLesson ? ` · ${activeLesson.title}` : ''}
           </p>
         </div>
-        <div className="flex items-center gap-0.5">
-          <Button
-            onClick={() => previousLesson && selectLesson(previousLesson)}
-            disabled={!previousLesson}
-            title="Bài trước"
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 rounded-lg"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            onClick={() => nextLesson && selectLesson(nextLesson)}
-            disabled={!nextLesson}
-            title="Bài tiếp theo"
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 rounded-lg"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center gap-2">
+          <StreakGoalWidget activity={activityQuery.data} isLoading={activityQuery.isLoading} variant="compact" />
+          <ProgressRing
+            percent={progressQuery.data?.course.progressPercent ?? 0}
+            completedLessons={progressQuery.data?.course.completedLessons ?? 0}
+            totalLessons={progressQuery.data?.course.totalLessons ?? 0}
+          />
+          <div className="h-5 w-px bg-zinc-200 dark:bg-zinc-700" />
+          <div className="flex items-center gap-0.5">
+            <Button
+              onClick={() => previousLesson && selectLesson(previousLesson)}
+              disabled={!previousLesson}
+              title="Bài trước"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-lg"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={() => nextLesson && selectLesson(nextLesson)}
+              disabled={!nextLesson}
+              title="Bài tiếp theo"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-lg"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <Button
           onClick={() => setSidebarOpen((current) => !current)}

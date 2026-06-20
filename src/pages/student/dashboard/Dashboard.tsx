@@ -7,8 +7,6 @@ import {
   BookOpen,
   CalendarClock,
   CheckCircle2,
-  CircleHelp,
-  Flame,
   ChevronDown,
   Clock,
   CreditCard,
@@ -30,6 +28,7 @@ import {
 } from '../../../components/ui/dropdown-menu';
 import { Select } from '../../../components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../components/ui/tooltip';
+import { StreakGoalWidget } from '../../../components/student/StreakGoalWidget';
 import {
   Pagination,
   PaginationContent,
@@ -47,6 +46,7 @@ import type { CartItem } from '../../../features/courses/cartSlice';
 import { useMyPaymentTransactions } from '../../../hooks/useMyPaymentTransactions';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useLearnerActivity } from '../../../hooks/useLearningProgress';
+import type { LearnerActivitySummary } from '../../../services/progressApi';
 import type { PaymentTransaction } from '../../../services/paymentApi';
 
 type TabId = 'my-courses' | 'progress' | 'wishlist' | 'payments' | 'certificates';
@@ -207,7 +207,7 @@ function ActivitySection({
   selectedMonth: string;
   monthOptions: ActivityMonthOption[];
   onMonthChange: (month: string) => void;
-  activity?: { totalActiveSeconds: number; activeDays: number; currentStreakDays: number; days: Array<{ date: string; activeSeconds: number; completedLessons: number; completedCourses: number }> };
+  activity?: LearnerActivitySummary;
   isLoading: boolean;
   isError: boolean;
 }) {
@@ -264,30 +264,22 @@ function ActivitySection({
             ))}
           </div>
         </div>
-      ) : !activity || activity.days.length === 0 || activity.totalActiveSeconds <= 0 ? (
-        <div className="px-5 py-10 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-            <Flame className="h-7 w-7" />
-          </div>
-          <h3 className="mt-4 text-base font-semibold text-zinc-950 dark:text-white">Chưa có dữ liệu học tập</h3>
-          <p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Hãy học một bài mới để bắt đầu thấy lịch học và thời gian học của bạn tại đây.
-          </p>
-        </div>
       ) : (
         <div className="space-y-6 px-5 py-5">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Tổng thời gian học</p>
-              <p className="mt-3 text-3xl font-bold text-zinc-950 dark:text-white">{formatLearningTime(activity.totalActiveSeconds)}</p>
+              <p className="mt-3 text-3xl font-bold text-zinc-950 dark:text-white">{formatLearningTime(activity?.totalActiveSeconds ?? 0)}</p>
             </div>
             <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Số ngày đã học</p>
-              <p className="mt-3 text-3xl font-bold text-zinc-950 dark:text-white">{activity.activeDays}</p>
+              <p className="mt-3 text-3xl font-bold text-zinc-950 dark:text-white">{activity?.activeDays ?? 0}</p>
             </div>
             <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Streak hiện tại</p>
-              <p className="mt-3 flex items-center gap-2 text-3xl font-bold text-zinc-950 dark:text-white"><Flame className="h-7 w-7 text-amber-500" />{activity.currentStreakDays}</p>
+              <div className="mt-3">
+                <StreakGoalWidget activity={activity} variant="plain" showHelp={false} showCelebration={false} />
+              </div>
             </div>
           </div>
 
@@ -746,8 +738,6 @@ export function StudentDashboard() {
     from: selectedActivityMonthOption?.from,
     to: selectedActivityMonthOption?.to,
   });
-  const streak = activityQuery.data?.currentStreakDays ?? 0;
-  const isStreakActive = streak > 0;
   const paymentsQuery = useMyPaymentTransactions({
     search: debouncedPaymentSearch,
     page: paymentPage,
@@ -791,48 +781,7 @@ export function StudentDashboard() {
           </div>
 
           <div className="flex items-start justify-start lg:justify-end">
-            <div className="relative rounded-2xl border border-white/10 bg-white/5 px-5 py-4 backdrop-blur-md">
-              <div className="relative flex items-center gap-4">
-                <div className="relative flex h-12 w-12 items-center justify-center">
-                  {isStreakActive && (
-                    <>
-                      <div className="absolute inset-0 rounded-full bg-amber-400/40 blur-xl" />
-                      <div className="absolute inset-1 rounded-full bg-orange-500/30 blur-lg" />
-                    </>
-                  )}
-                  <Flame
-                    className={`relative h-7 w-7 transition-all duration-300 ${
-                      isStreakActive
-                        ? 'text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.6)]'
-                        : 'text-zinc-500 dark:text-zinc-600'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <p className="text-3xl font-bold leading-none tracking-tight text-white">
-                    {activityQuery.isLoading ? '-' : streak}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-zinc-400">ngày streak</p>
-                </div>
-                <TooltipProvider delayDuration={120}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 transition-colors hover:text-white"
-                      >
-                        <CircleHelp className="h-3.5 w-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-60 rounded-xl">
-                      {isStreakActive
-                        ? 'Học ít nhất một nội dung mới mỗi ngày để giữ chuỗi ngày học liên tiếp của bạn.'
-                        : 'Hãy thắp sáng chuỗi học tập bằng cách học một bài học mới ngay hôm nay!'}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </div>
+            <StreakGoalWidget activity={activityQuery.data} isLoading={activityQuery.isLoading} variant="hero" />
           </div>
         </div>
       </section>
