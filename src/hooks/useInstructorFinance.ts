@@ -10,16 +10,21 @@ import {
   getInstructorSubscriptionFinance,
 } from '@/services/paymentApi';
 
+export type InstructorRevenueParams = {
+  startDate?: string;
+  endDate?: string;
+};
+
 export const instructorFinanceKeys = {
-  revenue: ['instructor', 'finance', 'revenue'] as const,
+  revenue: (params?: InstructorRevenueParams) => ['instructor', 'finance', 'revenue', params?.startDate || '', params?.endDate || ''] as const,
   subscriptions: ['instructor', 'finance', 'subscriptions'] as const,
 };
 
-export function useInstructorRevenueStats() {
+export function useInstructorRevenueStats(params?: InstructorRevenueParams) {
   return useQuery({
-    queryKey: instructorFinanceKeys.revenue,
+    queryKey: instructorFinanceKeys.revenue(params),
     queryFn: async () => {
-      const response = await getInstructorRevenueStats();
+      const response = await getInstructorRevenueStats(params);
       if (response.status === 'ERR' || !response.data) {
         throw new Error(response.message || 'Không thể tải dữ liệu doanh thu.');
       }
@@ -38,3 +43,5 @@ export function useInstructorSubscriptionFinance() {
     },
   });
 }
+
+

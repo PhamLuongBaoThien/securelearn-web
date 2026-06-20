@@ -19,6 +19,7 @@ import {
   PlayCircle,
   Search,
 } from 'lucide-react';
+import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import {
@@ -494,13 +495,14 @@ function EnrolledCourseCard({ course }: { course: EnrolledCourseItem }) {
         )}
 
         {course.level && (
-          <span
-            className={`absolute left-3 top-3 rounded-md border px-2 py-1 text-xs font-semibold ${
+          <Badge
+            variant="outline"
+            className={`absolute left-3 top-3 border px-2 py-1 text-xs font-semibold ${
               LEVEL_COLOR[course.level] ?? 'border-zinc-200 bg-white text-zinc-600'
             }`}
           >
             {LEVEL_LABEL[course.level] ?? course.level}
-          </span>
+          </Badge>
         )}
       </div>
 
@@ -638,15 +640,15 @@ function PaymentTransactionCard({ transaction }: { transaction: PaymentTransacti
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-md border px-2 py-1 text-xs font-semibold ${statusMeta.cls}`}>
+            <Badge variant="outline" className={`border px-2 py-1 text-xs font-semibold ${statusMeta.cls}`}>
               {statusMeta.label}
-            </span>
-            <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-semibold text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+            </Badge>
+            <Badge variant="secondary" className="px-2 py-1 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
               {PRODUCT_TYPE_LABEL[transaction.productType]}
-            </span>
-            <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-semibold text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+            </Badge>
+            <Badge variant="secondary" className="px-2 py-1 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
               {transaction.provider}
-            </span>
+            </Badge>
           </div>
 
           <h3 className="mt-3 truncate text-sm font-semibold text-zinc-950 dark:text-white">
@@ -765,9 +767,8 @@ export function StudentDashboard() {
     (course) => course.progressPercent > 0 && course.progressPercent < 100
   ).length;
   const completedCount = enrolledCourses.filter((course) => course.progressPercent >= 100).length;
-  const tabCounts: Record<TabId, number> = {
+  const tabCounts: Partial<Record<TabId, number>> = {
     'my-courses': enrolledCourses.length,
-    progress: activityQuery.data?.activeDays ?? 0,
     wishlist: wishlist.length,
     payments: paymentsQuery.data?.total ?? 0,
     certificates: 0,
@@ -867,15 +868,18 @@ export function StudentDashboard() {
                   }`}
                 >
                   {tab.label}
-                  <span
-                    className={`rounded-md px-1.5 py-0.5 text-xs ${
-                      activeTab === tab.id
-                        ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950'
-                        : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400'
-                    }`}
-                  >
-                    {tabCounts[tab.id]}
-                  </span>
+                  {tabCounts[tab.id] !== undefined && (
+                    <Badge
+                      variant={activeTab === tab.id ? 'default' : 'secondary'}
+                      className={`rounded-md px-1.5 py-0.5 text-xs font-medium ${
+                        activeTab === tab.id
+                          ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950 hover:bg-zinc-950 dark:hover:bg-white'
+                          : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                      }`}
+                    >
+                      {tabCounts[tab.id]}
+                    </Badge>
+                  )}
                   {activeTab === tab.id && (
                     <motion.div
                       layoutId="student-dashboard-tab"

@@ -79,6 +79,13 @@ export interface InstructorRevenueBreakdown {
     instructorRevenue: number;
     transactions: number;
   }[];
+  dailyData?: {
+    date: string;
+    revenue: number;
+    adminRevenue: number;
+    instructorRevenue: number;
+    transactions: number;
+  }[];
   providerBreakdown: {
     provider: PaymentProvider;
     revenue: number;
@@ -274,7 +281,13 @@ export const confirmMomoPayment = async (payload: Record<string, string>) => {
   return data;
 };
 
-export const getInstructorRevenueStats = async (): Promise<ApiResponse<InstructorRevenueBreakdown>> => {
-  const { data } = await apiClient.get<ApiResponse<InstructorRevenueBreakdown>>('/api/payments/instructor/finance/revenue');
+export const getInstructorRevenueStats = async (params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<ApiResponse<InstructorRevenueBreakdown>> => {
+  const { data } = await apiClient.get<ApiResponse<InstructorRevenueBreakdown>>('/api/payments/instructor/finance/revenue', { params });
   return data;
 };
+
+
+

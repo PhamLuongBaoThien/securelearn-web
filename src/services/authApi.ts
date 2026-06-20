@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // Auth API Service: Tập trung toàn bộ API calls liên quan Authentication
 // Sử dụng apiClient (Axios) đã có interceptor tự động refresh token.
 // ========================
@@ -165,3 +165,8 @@ export const switchToInstructor = async () => {
   const { data } = await apiClient.put<ApiResponse<IUser>>('/api/auth/profile/role');
   return data;
 };
+
+
+
+
+
