@@ -3,6 +3,7 @@ import authReducer from '@/features/auth/authSlice';
 import uiReducer from '@/features/dashboard/uiSlice';
 import cartReducer from '@/features/courses/cartSlice';
 import adminAuthReducer from '@/features/auth/adminAuthSlice';
+import streakReducer from '@/features/dashboard/streakSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     adminAuth: adminAuthReducer,
     ui: uiReducer,
     cart: cartReducer,
+    streak: streakReducer,
   },
 });
 

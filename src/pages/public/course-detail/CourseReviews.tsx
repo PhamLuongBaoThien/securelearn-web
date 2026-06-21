@@ -7,6 +7,7 @@ import { useCourseReviews, useMyCourseReview, useUpsertCourseReview } from '@/ho
 import type { ICourse } from '@/services/courseApi';
 import { useAppSelector } from '@/app/hooks';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { RatingSummary } from '@/components/ui/RatingSummary';
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('vi-VN', {
@@ -58,23 +59,19 @@ export function CourseReviews({ course, canReview }: { course: ICourse; canRevie
 
   return (
     <section className="rounded-lg border border-border bg-card p-6 lg:p-7 shadow-sm">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Đánh giá khóa học</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Cảm nhận thật từ những học viên đã ghi danh khóa học này.
-          </p>
-        </div>
-        <div className="min-w-40 rounded-lg border border-border p-4">
-          <div className="flex items-end gap-2">
-            <span className="text-3xl font-bold">{reviewCount > 0 ? averageRating.toFixed(1) : '--'}</span>
-            <span className="pb-1 text-sm text-muted-foreground">/ 5</span>
-          </div>
-          <Rating value={Math.round(averageRating)} readOnly className="mt-2" />
-          <p className="mt-2 text-sm text-muted-foreground">
-            {reviewCount.toLocaleString('vi-VN')} lượt đánh giá
-          </p>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold">Đánh giá khóa học</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Cảm nhận thật từ những học viên đã ghi danh khóa học này.
+        </p>
+      </div>
+
+      <div className="mt-5">
+        <RatingSummary
+          averageRating={averageRating}
+          reviewCount={reviewCount}
+          reviews={reviews}
+        />
       </div>
 
       {canReview && (

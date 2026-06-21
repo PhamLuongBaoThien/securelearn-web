@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type SyntheticEvent } from 'react';
 import Hls from 'hls.js';
-import { Loader2, Shield, VideoOff } from 'lucide-react';
+import { Info, Loader2, Shield, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
 import { renewPlaybackSession } from '@/services/mediaApi';
 import { useCreatePlaybackSession } from '@/hooks/useCourseLearning';
 import { useProgressHeartbeat } from '@/hooks/useLearningProgress';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { ILesson } from '@/services/courseApi';
 import {
   formatWatermarkText,
@@ -483,10 +489,25 @@ export function VideoPlayer({
             <Loader2 className="h-7 w-7 animate-spin" />
           </div>
         )}
-
-        <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 backdrop-blur-sm">
-          <Shield className="h-3 w-3 text-emerald-400" />
-          <span className="text-xs font-medium text-white">Nội dung được bảo vệ</span>
+        <div className="absolute left-3 top-3 z-10">
+          <TooltipProvider delayDuration={120}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:bg-black/80 hover:text-white">
+                  <Info className="h-4 w-4" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs rounded-xl bg-black/90 border-zinc-800 text-xs text-white">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  <p className="font-semibold text-white">Nội dung được bảo vệ</p>
+                </div>
+                <p className="mt-1 text-zinc-400 leading-normal">
+                  Video bài học này được bảo vệ bản quyền bởi SecureLearn. Vui lòng không sao chép, ghi hình hoặc chia sẻ trái phép.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 

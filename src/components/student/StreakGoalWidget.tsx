@@ -15,7 +15,7 @@ type StreakGoalWidgetProps = {
   className?: string;
 };
 
-const DEFAULT_DAILY_GOAL_SECONDS = 300;
+const DEFAULT_DAILY_GOAL_SECONDS = 30;
 
 const DAILY_GOAL_RING_SIZE = 44;
 const DAILY_GOAL_RING_STROKE = 3.5;
@@ -53,14 +53,23 @@ function DailyGoalRing({
   const { size, stroke, radius, circumference, iconSize } = getRingMetrics(variant);
   const percent = Math.min(100, (todayActiveSeconds / Math.max(1, dailyGoalSeconds)) * 100);
   const offset = circumference - (percent / 100) * circumference;
-  const minutesDone = Math.floor(todayActiveSeconds / 60);
-  const totalMinutes = Math.floor(dailyGoalSeconds / 60);
+  const isGoalInSeconds = dailyGoalSeconds < 60;
+  const displayedActiveSeconds = Math.min(todayActiveSeconds, dailyGoalSeconds);
+  const timeDoneLabel = isGoalInSeconds ? `${displayedActiveSeconds} giây` : `${Math.floor(displayedActiveSeconds / 60)} phút`;
+  const timeGoalLabel = isGoalInSeconds ? `${dailyGoalSeconds} giây` : `${Math.floor(dailyGoalSeconds / 60)} phút`;
 
-  const colorClass = completed
+  // Vòng tiến độ: Màu xanh lá khi hoàn thành, màu cam khi đang tích lũy, màu xám khi chưa có gì
+  const ringColorClass = completed
     ? 'text-emerald-500 dark:text-emerald-400'
     : streak > 0
-      ? 'text-amber-500 dark:text-amber-400'
-      : 'text-zinc-400 dark:text-zinc-500';
+      ? 'text-orange-500 dark:text-orange-400'
+      : 'text-zinc-300 dark:text-zinc-700';
+
+  // Biểu tượng ngọn lửa: Màu cam rực rỡ fill đầy và nhấp nháy phát sáng khi có streak hoặc hoàn thành
+  const isFlameActive = streak > 0 || completed;
+  const flameColorClass = isFlameActive
+    ? 'text-orange-500 fill-red-500/85 dark:text-orange-400 dark:fill-red-500/75 animate-pulse filter drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]'
+    : 'text-zinc-400 fill-none dark:text-zinc-600';
 
   const trackColorClass = variant === 'hero'
     ? 'text-white/10'
@@ -93,18 +102,18 @@ function DailyGoalRing({
                 strokeLinecap="round"
                 strokeDasharray={circumference}
                 strokeDashoffset={offset}
-                className={`transition-all duration-700 ${colorClass}`}
+                className={`transition-all duration-700 ${ringColorClass}`}
               />
             </svg>
-            <Flame className={`absolute ${iconSize} ${colorClass}`} />
+            <Flame className={`absolute ${iconSize} ${flameColorClass}`} />
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-52 rounded-xl">
           <p className="text-xs font-semibold">Nhiệm vụ hằng ngày</p>
           <p className="mt-1 text-xs">
             {completed
-              ? `Hoàn thành! Đã học ${minutesDone} / ${totalMinutes} phút hôm nay.`
-              : `Đã học ${minutesDone} / ${totalMinutes} phút hôm nay.`}
+              ? `Hoàn thành! Đã học ${timeDoneLabel} / ${timeGoalLabel} hôm nay.`
+              : `Đã học ${timeDoneLabel} / ${timeGoalLabel} hôm nay.`}
           </p>
         </TooltipContent>
       </Tooltip>
@@ -155,6 +164,8 @@ export function StreakGoalWidget({
   const dailyGoalSeconds = activity?.dailyGoalSeconds ?? DEFAULT_DAILY_GOAL_SECONDS;
   const todayRemainingSeconds = activity?.todayRemainingSeconds ?? 0;
   const isStreakActive = streak > 0;
+  const isGoalInSeconds = dailyGoalSeconds < 60;
+  const isFirstRender = useRef(true);
   const prevGoalCompletedRef = useRef(todayGoalCompleted);
   const [celebrating, setCelebrating] = useState(false);
 
@@ -164,13 +175,16 @@ export function StreakGoalWidget({
       return;
     }
 
-    if (todayGoalCompleted && !prevGoalCompletedRef.current) {
+    // Bắn pháo hoa nếu hôm nay hoàn thành (kể cả lần đầu mount trang/tab hoặc khi chuyển từ chưa hoàn thành sang hoàn thành)
+    if (todayGoalCompleted && (isFirstRender.current || !prevGoalCompletedRef.current)) {
       setCelebrating(true);
       const timer = setTimeout(() => setCelebrating(false), 1500);
+      isFirstRender.current = false;
       prevGoalCompletedRef.current = todayGoalCompleted;
       return () => clearTimeout(timer);
     }
 
+    isFirstRender.current = false;
     prevGoalCompletedRef.current = todayGoalCompleted;
   }, [showCelebration, todayGoalCompleted]);
 
@@ -181,10 +195,12 @@ export function StreakGoalWidget({
       : `relative rounded-2xl border px-5 py-4 backdrop-blur-md transition-all duration-500 ${
           streakAtRisk
             ? 'border-red-500/40 bg-red-500/5 shadow-[0_0_20px_rgba(239,68,68,0.15)] animate-[streak-risk-pulse_2s_ease-in-out_infinite]'
-            : todayGoalCompleted
-              ? 'border-emerald-400/30 bg-emerald-500/5 shadow-[0_0_20px_rgba(52,211,153,0.15)]'
-              : variant === 'hero'
-                ? 'border-white/10 bg-white/5'
+            : variant === 'hero'
+              ? isStreakActive
+                ? 'border-orange-500/30 bg-orange-500/5 shadow-[0_0_20px_rgba(249,115,22,0.2)] dark:border-orange-500/40'
+                : 'border-white/10 bg-white/5'
+              : isStreakActive
+                ? 'border-orange-500/20 bg-orange-50/50 dark:bg-orange-950/10 shadow-[0_0_15px_rgba(249,115,22,0.1)]'
                 : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950'
         } ${className}`;
 
@@ -220,13 +236,11 @@ export function StreakGoalWidget({
           {showStatusText && streakAtRisk && (
             <p className={variant === 'hero' ? 'mt-1 text-xs font-medium text-red-400' : 'mt-0.5 text-xs font-medium text-amber-600 dark:text-amber-400'}>
               {variant === 'hero'
-                ? `Học thêm ${Math.ceil(todayRemainingSeconds / 60)} phút để giữ lửa`
-                : `Còn ${Math.ceil(todayRemainingSeconds / 60)} phút nữa`}
+                ? `Học thêm ${isGoalInSeconds ? `${todayRemainingSeconds} giây` : `${Math.ceil(todayRemainingSeconds / 60)} phút`} để giữ lửa`
+                : `Còn ${isGoalInSeconds ? `${todayRemainingSeconds} giây` : `${Math.ceil(todayRemainingSeconds / 60)} phút`} nữa`}
             </p>
           )}
-          {showStatusText && todayGoalCompleted && isStreakActive && variant === 'hero' && (
-            <p className="mt-1 text-xs font-medium text-emerald-400">Nhiệm vụ hôm nay hoàn thành!</p>
-          )}
+
         </div>
         {showHelp && (
           <TooltipProvider delayDuration={120}>
@@ -242,7 +256,7 @@ export function StreakGoalWidget({
               <TooltipContent side="bottom" className="max-w-60 rounded-xl">
                 <p className="text-xs font-semibold">Chuỗi ngày học liên tục</p>
                 <p className="mt-1 text-xs">
-                  Học tối thiểu {Math.floor(dailyGoalSeconds / 60)} phút mỗi ngày để duy trì streak.
+                  Học tối thiểu {isGoalInSeconds ? `${dailyGoalSeconds} giây` : `${Math.floor(dailyGoalSeconds / 60)} phút`} mỗi ngày để duy trì streak.
                   {streakAtRisk ? ' Chuỗi streak đang có nguy cơ mất!' : ''}
                 </p>
               </TooltipContent>

@@ -1,17 +1,13 @@
-import { useMemo, useState, type ElementType } from 'react';
+import { useEffect, useMemo, useState, type ElementType } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  AlertCircle,
   ArrowRight,
   BookOpen,
   CalendarClock,
   CheckCircle2,
   ChevronDown,
   Clock,
-  CreditCard,
-  Download,
-  GraduationCap,
   Heart,
   Library,
   PlayCircle,
@@ -39,7 +35,8 @@ import {
   PaginationPrevious,
 } from '../../../components/ui/pagination';
 import { useEnrolledCourses, type EnrolledCourseItem } from '../../../hooks/useEnrolledCourses';
-import { useAppSelector } from '../../../app/hooks';
+import { useAppDispatch, useAppSelector } from '../../../app/hooks';
+import { setStreak } from '../../../features/dashboard/streakSlice';
 import { CourseCard as CatalogCourseCard } from '../../../components/ui/CourseCard';
 import type { ICourse } from '../../../services/courseApi';
 import type { CartItem } from '../../../features/courses/cartSlice';
@@ -201,6 +198,7 @@ function ActivitySection({
   monthOptions,
   onMonthChange,
   activity,
+  streakActivity,
   isLoading,
   isError,
 }: {
@@ -208,6 +206,7 @@ function ActivitySection({
   monthOptions: ActivityMonthOption[];
   onMonthChange: (month: string) => void;
   activity?: LearnerActivitySummary;
+  streakActivity?: LearnerActivitySummary;
   isLoading: boolean;
   isError: boolean;
 }) {
@@ -278,7 +277,7 @@ function ActivitySection({
             <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Streak hiện tại</p>
               <div className="mt-3">
-                <StreakGoalWidget activity={activity} variant="plain" showHelp={false} showCelebration={false} />
+                <StreakGoalWidget activity={streakActivity} variant="plain" showHelp={false} showCelebration={false} />
               </div>
             </div>
           </div>
@@ -567,22 +566,66 @@ function toCatalogCourse(course: CartItem): ICourse {
     updatedAt: '',
   };
 }
+const CoursesIllustration = () => (
+  <svg className="w-24 h-24 text-zinc-400 dark:text-zinc-600" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="25" y="20" width="50" height="60" rx="4" stroke="currentColor" strokeWidth="2" />
+    <path d="M35 35H65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M35 47H65" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M35 59H55" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="65" cy="65" r="8" stroke="currentColor" strokeWidth="2" strokeDasharray="3 3" />
+    <path d="M25 70H75" stroke="currentColor" strokeWidth="2" />
+  </svg>
+);
+
+const WishlistIllustration = () => (
+  <svg className="w-24 h-24 text-zinc-400 dark:text-zinc-600" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 80C50 80 20 60 20 40C20 25 32.5 15 45 25C47.5 27 50 30 50 30C50 30 52.5 27 55 25C67.5 15 80 25 80 40C80 60 50 80 50 80Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+  </svg>
+);
+
+const PaymentsIllustration = () => (
+  <svg className="w-24 h-24 text-zinc-400 dark:text-zinc-600" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="15" y="25" width="70" height="46" rx="6" stroke="currentColor" strokeWidth="2" />
+    <path d="M15 37H85" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <rect x="25" y="50" width="16" height="10" rx="2" stroke="currentColor" strokeWidth="2" className="text-zinc-300 dark:text-zinc-700" />
+    <circle cx="70" cy="55" r="4" fill="currentColor" />
+  </svg>
+);
+
+const CertificatesIllustration = () => (
+  <svg className="w-24 h-24 text-zinc-400 dark:text-zinc-600" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="20" y="20" width="60" height="50" rx="3" stroke="currentColor" strokeWidth="2" />
+    <path d="M30 32H70" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M30 42H70" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M30 52H55" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M68 62L62 76L68 72L74 76L68 62Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" className="text-zinc-300 dark:text-zinc-700" />
+    <circle cx="68" cy="52" r="7" stroke="currentColor" strokeWidth="2" fill="none" />
+  </svg>
+);
+
+const ErrorIllustration = () => (
+  <svg className="w-24 h-24 text-red-300 dark:text-red-950/60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="35" stroke="currentColor" strokeWidth="2" />
+    <path d="M50 35V55" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    <circle cx="50" cy="65" r="2.5" fill="currentColor" />
+  </svg>
+);
 
 function EmptyState({
-  icon: Icon,
+  illustration: Illustration,
   title,
   description,
   action,
 }: {
-  icon: ElementType;
+  illustration: ElementType;
   title: string;
   description: string;
   action?: { label: string; to: string };
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-white px-6 py-16 text-center dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-        <Icon className="h-7 w-7" />
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="mb-6 text-zinc-400 dark:text-zinc-600">
+        <Illustration />
       </div>
       <p className="text-base font-semibold text-zinc-950 dark:text-white">{title}</p>
       <p className="mt-2 max-w-md text-sm leading-6 text-zinc-500 dark:text-zinc-400">{description}</p>
@@ -598,7 +641,6 @@ function EmptyState({
     </div>
   );
 }
-
 function PaymentHistorySkeleton() {
   return (
     <div className="space-y-4">
@@ -729,15 +771,25 @@ export function StudentDashboard() {
   const wishlist = useAppSelector((state) => state.cart.wishlist);
   const firstName = user?.fullName?.split(' ').pop() ?? 'bạn';
 
+  const dispatch = useAppDispatch();
+  const streakDataRedux = useAppSelector((state) => state.streak.streakData);
+
   const { data: enrolledCourses = [], isLoading, isError } = useEnrolledCourses();
   const selectedActivityMonthOption = useMemo(
     () => activityMonthOptions.find((option) => option.value === selectedActivityMonth) || activityMonthOptions[0],
     [activityMonthOptions, selectedActivityMonth]
   );
-  const activityQuery = useLearnerActivity({
+  const streakQuery = useLearnerActivity();
+  const monthlyActivityQuery = useLearnerActivity({
     from: selectedActivityMonthOption?.from,
     to: selectedActivityMonthOption?.to,
   });
+
+  useEffect(() => {
+    if (streakQuery.data) {
+      dispatch(setStreak(streakQuery.data));
+    }
+  }, [streakQuery.data, dispatch]);
   const paymentsQuery = useMyPaymentTransactions({
     search: debouncedPaymentSearch,
     page: paymentPage,
@@ -781,7 +833,11 @@ export function StudentDashboard() {
           </div>
 
           <div className="flex items-start justify-start lg:justify-end">
-            <StreakGoalWidget activity={activityQuery.data} isLoading={activityQuery.isLoading} variant="hero" />
+            <StreakGoalWidget 
+              activity={streakQuery.isLoading && streakDataRedux ? streakDataRedux : (streakQuery.data || streakDataRedux || undefined)} 
+              isLoading={streakQuery.isLoading && !streakDataRedux} 
+              variant="hero" 
+            />
           </div>
         </div>
       </section>
@@ -858,7 +914,7 @@ export function StudentDashboard() {
                 )}
                 {isError && (
                   <EmptyState
-                    icon={AlertCircle}
+                    illustration={ErrorIllustration}
                     title="Không thể tải danh sách khóa học"
                     description="Vui lòng thử lại sau hoặc kiểm tra kết nối của bạn."
                   />
@@ -874,7 +930,7 @@ export function StudentDashboard() {
 
                 {!isLoading && !isError && enrolledCourses.length === 0 && (
                   <EmptyState
-                    icon={GraduationCap}
+                    illustration={CoursesIllustration}
                     title="Bạn chưa ghi danh khóa học nào"
                     description="Khám phá các khóa học phù hợp để bắt đầu học theo lộ trình của riêng bạn."
                     action={{ label: 'Khám phá khóa học', to: '/courses' }}
@@ -903,9 +959,10 @@ export function StudentDashboard() {
                   selectedMonth={selectedActivityMonth}
                   monthOptions={activityMonthOptions}
                   onMonthChange={setSelectedActivityMonth}
-                  activity={activityQuery.data}
-                  isLoading={activityQuery.isLoading}
-                  isError={activityQuery.isError}
+                  activity={monthlyActivityQuery.data}
+                  streakActivity={streakQuery.isLoading && streakDataRedux ? streakDataRedux : (streakQuery.data || streakDataRedux || undefined)}
+                  isLoading={monthlyActivityQuery.isLoading}
+                  isError={monthlyActivityQuery.isError}
                 />
               </motion.div>
             )}
@@ -920,7 +977,7 @@ export function StudentDashboard() {
               >
                 {wishlist.length === 0 ? (
                   <EmptyState
-                    icon={Heart}
+                    illustration={WishlistIllustration}
                     title="Chưa có khóa học mong muốn"
                     description="Thả tim các khóa học bạn quan tâm để quay lại mua hoặc xem chi tiết sau."
                     action={{ label: 'Tìm khóa học để lưu', to: '/courses' }}
@@ -981,7 +1038,7 @@ export function StudentDashboard() {
                 </div>
                 {paymentsQuery.isError && (
                   <EmptyState
-                    icon={AlertCircle}
+                    illustration={ErrorIllustration}
                     title="Không thể tải lịch sử thanh toán"
                     description="Vui lòng thử lại sau hoặc kiểm tra kết nối của bạn."
                   />
@@ -991,7 +1048,7 @@ export function StudentDashboard() {
 
                 {!paymentsQuery.isLoading && !paymentsQuery.isError && (paymentsQuery.data?.transactions.length ?? 0) === 0 && (
                   <EmptyState
-                    icon={CreditCard}
+                    illustration={PaymentsIllustration}
                     title="Chưa có giao dịch thanh toán"
                     description="Các giao dịch đã thành công, thất bại hoặc hoàn tiền sẽ được lưu lại tại đây."
                     action={{ label: 'Khám phá khóa học', to: '/courses' }}
@@ -1087,7 +1144,7 @@ export function StudentDashboard() {
                 transition={{ duration: 0.15 }}
               >
                 <EmptyState
-                  icon={Download}
+                  illustration={CertificatesIllustration}
                   title="Chưa có chứng chỉ nào"
                   description="Chứng chỉ sẽ hiển thị ở đây sau khi bạn hoàn thành toàn bộ nội dung của một khóa học."
                 />
@@ -1102,7 +1159,7 @@ export function StudentDashboard() {
             <div>
               <p className="text-sm font-semibold text-zinc-950 dark:text-white">Gợi ý học hôm nay</p>
               <p className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                Chọn một khóa đang học và hoàn thành thêm một bài ngắn.
+                Lựa chọn một khóa học bạn đang tham gia và hoàn thành thêm một bài học ngắn để duy trì thói quen học tập.
               </p>
             </div>
           </div>
@@ -1111,7 +1168,7 @@ export function StudentDashboard() {
             <div>
               <p className="text-sm font-semibold text-zinc-950 dark:text-white">Tiến độ học tập</p>
               <p className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                Dashboard dùng dữ liệu từ Progress Service để cập nhật phần trăm và trạng thái hoàn thành.
+                Hệ thống tự động ghi nhận thời gian học và cập nhật chi tiết phần trăm hoàn thành lộ trình của bạn.
               </p>
             </div>
           </div>
@@ -1120,7 +1177,7 @@ export function StudentDashboard() {
             <div>
               <p className="text-sm font-semibold text-zinc-950 dark:text-white">Danh sách mong muốn</p>
               <p className="mt-1 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-                Đây là nơi gom các khóa học người dùng đã tim để quay lại sau.
+                Nơi lưu trữ những khóa học bạn yêu thích hoặc quan tâm để dễ dàng tìm lại và đăng ký học sau.
               </p>
             </div>
           </div>

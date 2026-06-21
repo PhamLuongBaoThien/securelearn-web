@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Clock3, Download, Eye, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Send, Star, Trash2 } from 'lucide-react';
+import { RatingSummary } from '@/components/ui/RatingSummary';
 import {
   useCreateLearningNote,
   useDeleteLearningNote,
@@ -617,23 +618,11 @@ function ReviewsPanel({ course }: { course: ICourse }) {
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-3xl font-bold text-zinc-950 dark:text-white">
-              {reviewCount > 0 ? averageRating.toFixed(1) : '--'}
-            </p>
-            <Rating value={Math.round(averageRating)} readOnly className="mt-2" />
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Điểm trung bình</p>
-          </div>
-          <div className="border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-3xl font-bold text-zinc-950 dark:text-white">{reviewCount}</p>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Lượt đánh giá</p>
-          </div>
-          <div className="border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-3xl font-bold text-zinc-950 dark:text-white">{reviews.filter((review) => review.rating >= 4).length}</p>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Đánh giá tích cực</p>
-          </div>
-        </div>
+        <RatingSummary
+          averageRating={averageRating}
+          reviewCount={reviewCount}
+          reviews={reviews}
+        />
 
         {reviewsQuery.isLoading ? (
           <EmptyState icon={Loader2} message="Đang tải đánh giá khóa học..." />
