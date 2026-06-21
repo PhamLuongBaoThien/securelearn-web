@@ -40,7 +40,7 @@ export function RatingSummary({
           {reviewCount > 0 ? averageRating.toFixed(1) : '--'}
         </p>
         <Rating
-          value={Math.round(averageRating)}
+          value={averageRating}
           readOnly
           className="mt-2.5"
           iconClassName="h-4 w-4"

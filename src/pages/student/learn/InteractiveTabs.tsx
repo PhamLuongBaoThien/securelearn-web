@@ -145,14 +145,18 @@ export function InteractiveTabs({
 
 function OverviewPanel({ lesson }: { lesson: ILesson }) {
   return (
-    <div className="max-w-4xl">
-      <div>
-        <p className="text-xs font-semibold uppercase text-zinc-400">Bài học hiện tại</p>
-        <h2 className="mt-1 text-xl font-bold">{lesson.title}</h2>
+    <div className="max-w-4xl space-y-5">
+      <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Bài học hiện tại</p>
+        <h3 className="mt-1 text-xl font-bold text-zinc-900 dark:text-white">{lesson.title}</h3>
+      </div>
+      
+      <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-zinc-400 mb-3">Nội dung tóm tắt</p>
         {lesson.content ? (
-          <div className="prose prose-sm mt-3 max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: lesson.content }} />
+          <div className="prose prose-sm max-w-none text-zinc-700 dark:prose-invert dark:text-zinc-300" dangerouslySetInnerHTML={{ __html: lesson.content }} />
         ) : (
-          <p className="mt-2 text-sm text-zinc-500">Bài học chưa có mô tả.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Bài học này chưa có nội dung mô tả chi tiết.</p>
         )}
       </div>
     </div>
@@ -209,14 +213,22 @@ function ResourcesPanel({
   };
 
   return (
-    <>
-      <div className="grid max-w-4xl gap-3 md:grid-cols-2">
+    <div className="max-w-4xl space-y-5">
+      <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Tài liệu học tập</p>
+        <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Tài liệu đính kèm bài giảng</h3>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          Xem trực tiếp hoặc tải các tài liệu học tập, bài tập thực hành do giảng viên cung cấp để củng cố kiến thức.
+        </p>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
         {resources.map((resource, index) => {
           if (resource.isLoading) {
-            return <div key={attachmentIds[index]} className="flex h-20 items-center justify-center border"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+            return <div key={attachmentIds[index]} className="flex h-20 items-center justify-center rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800"><Loader2 className="h-5 w-5 animate-spin" /></div>;
           }
           if (!resource.data) {
-            return <div key={attachmentIds[index]} className="border border-red-200 p-4 text-sm text-red-600">Không thể tải tài liệu.</div>;
+            return <div key={attachmentIds[index]} className="rounded-2xl border border-red-200 bg-red-50/50 p-4 text-sm text-red-600 dark:border-red-950/40">Không thể tải tài liệu.</div>;
           }
           const resourceIsPdf = isPdf(resource.data.mimeType);
           const inlinePreview = canPreviewInline(resource.data.mimeType);
@@ -224,7 +236,7 @@ function ResourcesPanel({
           return (
             <div
               key={resource.data._id}
-              className="flex min-h-20 items-center gap-3 border border-zinc-200 p-4 transition hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+              className="flex min-h-20 items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900"
             >
               <FileText className="h-5 w-5 shrink-0 text-primary" />
               <div className="min-w-0 flex-1">
@@ -308,7 +320,7 @@ function ResourcesPanel({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+      </div>
   );
 }
 
@@ -525,23 +537,34 @@ function DiscussionsPanel({ courseId, lessonId, playbackTime }: { courseId: stri
 
   return (
     <div className="max-w-4xl space-y-5">
-      <div className="border border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Trao đổi & Hỏi đáp</p>
+        <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Thảo luận cùng giảng viên và học viên</h3>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          Bạn có thắc mắc về bài học? Hãy để lại câu hỏi tại đây để giảng viên hoặc các bạn khác hỗ trợ giải đáp nhé.
+        </p>
+      </div>
+
+      <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <textarea
           value={content}
           onChange={(event) => setContent(event.target.value)}
           rows={3}
           maxLength={2_000}
           placeholder="Trao đổi với học viên và giảng viên về bài học..."
-          className="w-full resize-none bg-transparent text-sm outline-none"
+          className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
         />
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <span className="text-xs text-zinc-500">Mốc {formatTime(playbackTime)}</span>
+        <div className="mt-3 flex items-center justify-between border-t border-zinc-100 pt-3 dark:border-zinc-800 gap-3">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            <Clock3 className="h-3.5 w-3.5" />
+            Mốc {formatTime(playbackTime)}
+          </span>
           <Button
             type="button"
             onClick={submit}
             disabled={!content.trim() || createDiscussion.isPending}
             variant="udemy_dark"
-            className="h-9 gap-2 px-4 text-sm"
+            className="h-10 gap-2 rounded-2xl px-4 text-sm"
           >
             {createDiscussion.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Đăng thảo luận
@@ -550,18 +573,39 @@ function DiscussionsPanel({ courseId, lessonId, playbackTime }: { courseId: stri
       </div>
 
       {discussions.isLoading ? (
-        <Loader2 className="h-5 w-5 animate-spin" />
+        <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700">
+          <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+        </div>
       ) : discussions.data?.length ? (
-        <div className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+        <div className="space-y-4">
           {discussions.data.map((item) => (
-            <article key={item._id} className="py-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-bold">{item.authorName || 'Người học'}</span>
-                {item.authorRole === 'INSTRUCTOR' && <span className="bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Giảng viên</span>}
-                <span className="font-mono text-xs text-primary">{formatTime(item.timestampSec)}</span>
-                <span className="text-xs text-zinc-400">{new Date(item.createdAt).toLocaleString('vi-VN')}</span>
+            <article key={item._id} className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="flex gap-3">
+                <UserAvatar
+                  user={{ fullName: item.authorName }}
+                  className="h-9 w-9 text-xs"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-zinc-900 dark:text-white">{item.authorName || 'Người học'}</span>
+                      {item.authorRole === 'INSTRUCTOR' && (
+                        <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                          Giảng viên
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                        <Clock3 className="h-3 w-3" />
+                        {formatTime(item.timestampSec)}
+                      </span>
+                      <span className="text-xs text-zinc-400">{new Date(item.createdAt).toLocaleString('vi-VN')}</span>
+                    </div>
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">{item.content}</p>
+                </div>
               </div>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">{item.content}</p>
             </article>
           ))}
         </div>
@@ -609,12 +653,12 @@ function ReviewsPanel({ course }: { course: ICourse }) {
 
   return (
     <div className="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="space-y-4">
-        <div>
-          <p className="text-xs font-semibold uppercase text-zinc-400">Đánh giá khóa học</p>
-          <h2 className="mt-1 text-xl font-bold text-zinc-950 dark:text-white">Cảm nhận từ học viên</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Chia sẻ đánh giá của bạn và xem phản hồi từ những học viên khác.
+      <div className="space-y-5">
+        <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Đánh giá & Cảm nhận</p>
+          <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Cảm nhận từ học viên</h3>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Xem những nhận xét thực tế về bài giảng và giảng viên từ những học viên khác để hiểu sâu hơn về khóa học.
           </p>
         </div>
 
@@ -625,15 +669,17 @@ function ReviewsPanel({ course }: { course: ICourse }) {
         />
 
         {reviewsQuery.isLoading ? (
-          <EmptyState icon={Loader2} message="Đang tải đánh giá khóa học..." />
+          <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700">
+            <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+          </div>
         ) : reviews.length > 0 ? (
-          <div className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+          <div className="space-y-4">
             {reviews.map((review) => (
-              <article key={review._id} className="py-4">
+              <article key={review._id} className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                 <div className="flex gap-3">
                   <UserAvatar
                     user={{ fullName: review.userName, avatarUrl: review.userAvatarUrl }}
-                    className="h-10 w-10 text-sm"
+                    className="h-9 w-9 text-xs"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -656,10 +702,10 @@ function ReviewsPanel({ course }: { course: ICourse }) {
         )}
       </div>
 
-      <aside className="border border-zinc-200 p-5 dark:border-zinc-800">
+      <aside className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 h-fit">
         <h3 className="text-base font-bold text-zinc-950 dark:text-white">Viết đánh giá</h3>
-        <p className="mt-2 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-          Chia sẻ cảm nhận của bạn về chất lượng bài giảng, tài liệu và trải nghiệm học.
+        <p className="mt-1.5 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+          Chia sẻ cảm nhận của bạn về chất lượng bài giảng, tài liệu và trải nghiệm học tập của bạn.
         </p>
 
         <div className="mt-5">
@@ -675,17 +721,18 @@ function ReviewsPanel({ course }: { course: ICourse }) {
             value={comment}
             onChange={(event) => setComment(event.target.value)}
             placeholder="Viết đánh giá của bạn..."
-            className="mt-2 w-full resize-none border border-zinc-200 bg-transparent p-3 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-800 dark:focus:border-zinc-500"
+            className="mt-2 w-full resize-none rounded-xl border border-zinc-200 bg-transparent p-3 text-sm outline-none transition focus:border-zinc-500 dark:border-zinc-800 dark:focus:border-zinc-500"
           />
         </label>
 
         <Button
           type="button"
           variant="udemy_dark"
-          className="mt-4 h-10 w-full rounded-lg px-4 text-sm"
+          className="mt-5 h-10 w-full rounded-2xl px-4 text-sm"
           disabled={upsertReview.isPending || myReviewQuery.isLoading || !hasReviewChanged}
           onClick={handleSubmit}
         >
+          {upsertReview.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />}
           {existingReview ? 'Cập nhật đánh giá' : 'Gửi đánh giá'}
         </Button>
       </aside>
@@ -695,7 +742,7 @@ function ReviewsPanel({ course }: { course: ICourse }) {
 
 function EmptyState({ icon: Icon, message }: { icon: typeof FileText; message: string }) {
   return (
-    <div className="flex min-h-44 flex-col items-center justify-center border border-dashed border-zinc-300 px-6 text-center dark:border-zinc-700">
+    <div className="flex min-h-44 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 px-6 text-center dark:border-zinc-700">
       <Icon className="h-7 w-7 text-zinc-400" />
       <p className="mt-3 text-sm text-zinc-500">{message}</p>
     </div>

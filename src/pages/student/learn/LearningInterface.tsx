@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Menu, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Menu, X, Sun, Moon, Monitor } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAppSelector } from '@/app/hooks';
+import { useAppSelector, useAppDispatch } from '@/app/hooks';
+import { toggleTheme } from '@/features/dashboard/uiSlice';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useCourseLearning } from '@/hooks/useCourseLearning';
 import { useCourseAccess, useCourseProgress, useLearnerActivity } from '@/hooks/useLearningProgress';
 import { Button } from '@/components/ui/button';
@@ -111,6 +118,8 @@ export function LearningInterface() {
   const { courseId = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAppSelector((state) => state.auth.user);
+  const dispatch = useAppDispatch();
+  const theme = useAppSelector((state) => state.ui.theme);
   const courseQuery = useCourseLearning(courseId);
   const progressQuery = useCourseProgress(courseId);
   const accessQuery = useCourseAccess(courseId);
@@ -220,6 +229,49 @@ export function LearningInterface() {
             completedLessons={progressQuery.data?.course.completedLessons ?? 0}
             totalLessons={progressQuery.data?.course.totalLessons ?? 0}
           />
+
+          <DropdownMenu>
+            <TooltipProvider delayDuration={120}>
+              <Tooltip>
+                <DropdownMenuTrigger asChild>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
+                      {theme === 'light' && <Sun className="h-4 w-4 text-amber-500" />}
+                      {theme === 'dark' && <Moon className="h-4 w-4 text-blue-400" />}
+                      {theme === 'system' && <Monitor className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />}
+                    </Button>
+                  </TooltipTrigger>
+                </DropdownMenuTrigger>
+                <TooltipContent side="bottom" className="rounded-xl">
+                  <p className="text-xs font-semibold">Giao diện: {theme === 'light' ? 'Sáng' : theme === 'dark' ? 'Tối' : 'Hệ thống'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <DropdownMenuContent align="end" className="rounded-xl border-zinc-200 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90">
+              <DropdownMenuItem
+                onClick={() => dispatch(toggleTheme('light'))}
+                className={`rounded-lg cursor-pointer flex items-center gap-2 ${theme === 'light' ? 'bg-zinc-100 font-medium text-zinc-900 dark:bg-zinc-800 dark:text-white' : ''}`}
+              >
+                <Sun className="h-4 w-4 text-amber-500" />
+                <span>Giao diện sáng</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => dispatch(toggleTheme('dark'))}
+                className={`rounded-lg cursor-pointer flex items-center gap-2 ${theme === 'dark' ? 'bg-zinc-100 font-medium text-zinc-900 dark:bg-zinc-800 dark:text-white' : ''}`}
+              >
+                <Moon className="h-4 w-4 text-blue-400" />
+                <span>Giao diện tối</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => dispatch(toggleTheme('system'))}
+                className={`rounded-lg cursor-pointer flex items-center gap-2 ${theme === 'system' ? 'bg-zinc-100 font-medium text-zinc-900 dark:bg-zinc-800 dark:text-white' : ''}`}
+              >
+                <Monitor className="h-4 w-4 text-zinc-500" />
+                <span>Mặc định hệ thống</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <div className="h-5 w-px bg-zinc-200 dark:bg-zinc-700" />
           <div className="flex items-center gap-0.5">
             <Button

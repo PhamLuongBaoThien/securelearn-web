@@ -9,6 +9,7 @@ import {
 } from '@/services/courseApi';
 import { catalogKeys } from '@/hooks/useCatalog';
 import { courseDetailKeys } from '@/hooks/useCourseDetail';
+import { courseLearningKeys } from '@/hooks/useCourseLearning';
 
 export const courseReviewKeys = {
   list: (courseId: string) => ['courses', 'reviews', courseId] as const,
@@ -53,6 +54,7 @@ export function useUpsertCourseReview(courseId: string, slug?: string) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: courseReviewKeys.list(courseId) }),
         queryClient.invalidateQueries({ queryKey: courseReviewKeys.mine(courseId) }),
+        queryClient.invalidateQueries({ queryKey: courseLearningKeys.course(courseId) }),
         slug ? queryClient.invalidateQueries({ queryKey: courseDetailKeys.bySlug(slug) }) : Promise.resolve(),
         queryClient.invalidateQueries({ queryKey: catalogKeys.all }),
       ]);
