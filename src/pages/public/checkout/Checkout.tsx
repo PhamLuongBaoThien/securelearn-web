@@ -1,14 +1,22 @@
+// ========================
+// Checkout Page
+// Mục đích:
+// - cho learner chọn cổng thanh toán và tạo checkout session
+// - đọc coupon đã áp ở Cart để hiển thị discount và gửi couponCode lên payment-service
+// ========================
 import { useMemo, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, ShieldCheck, ShoppingCart, CreditCard, CheckCircle2, ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppSelector } from '@/app/hooks';
 import { useMutation } from '@tanstack/react-query';
-import { createCourseCheckout, type PaymentMethod, type PaymentProvider } from '@/services/paymentApi';
+import { createCourseCheckout, type CouponValidation, type PaymentMethod, type PaymentProvider } from '@/services/paymentApi';
 import { toast } from 'sonner';
 
 import momoLogo from '@/assets/Logo-MoMo.webp';
 import vnpayLogo from '@/assets/vnpay-logo.jpg';
+
+const COUPON_STORAGE_KEY = 'sl_course_coupon';
 
 const providerForMethod = (method: PaymentMethod): PaymentProvider =>
   method === 'MOMO' ? 'MOMO' : 'VNPAY';
@@ -27,6 +35,16 @@ export const Checkout = () => {
   const cartItems = useAppSelector((state) => state.cart.cartItems);
 
   const totalPrice = useMemo(() => cartItems.reduce((sum, item) => sum + item.price, 0), [cartItems]);
+  const appliedCoupon = useMemo<CouponValidation | null>(() => {
+    try {
+      const saved = sessionStorage.getItem(COUPON_STORAGE_KEY);
+      return saved ? (JSON.parse(saved) as CouponValidation) : null;
+    } catch {
+      return null;
+    }
+  }, [totalPrice]);
+  const discountAmount = appliedCoupon?.subtotal === totalPrice ? appliedCoupon.discountAmount : 0;
+  const finalPrice = Math.max(totalPrice - discountAmount, 0);
 
   const checkoutMutation = useMutation({
     // Tạo giao dịch mua đứt từ FE.
@@ -35,6 +53,7 @@ export const Checkout = () => {
       const response = await createCourseCheckout({
         paymentMethod,
         provider: providerForMethod(paymentMethod),
+        couponCode: discountAmount > 0 ? appliedCoupon?.coupon.code : undefined,
       });
 
       if (response.status === 'ERR') {
@@ -226,13 +245,24 @@ export const Checkout = () => {
                   ))}
                 </div>
 
-                {/* Divider + Total */}
-                <div className="border-t border-border pt-4 flex justify-between items-baseline">
-                  <span className="font-semibold text-sm text-muted-foreground">Tổng thanh toán</span>
-                  <span className="font-extrabold text-2xl tracking-tight">
-                    {totalPrice.toLocaleString('vi-VN')}
-                    <span className="text-lg ml-0.5">₫</span>
-                  </span>
+                <div className="border-t border-border pt-4 space-y-2">
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Tạm tính</span>
+                    <span>{totalPrice.toLocaleString('vi-VN')} ₫</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-sm text-emerald-600">
+                      <span>Coupon {appliedCoupon?.coupon.code}</span>
+                      <span>-{discountAmount.toLocaleString('vi-VN')} ₫</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-baseline pt-2">
+                    <span className="font-semibold text-sm text-muted-foreground">Tổng thanh toán</span>
+                    <span className="font-extrabold text-2xl tracking-tight">
+                      {finalPrice.toLocaleString('vi-VN')}
+                      <span className="text-lg ml-0.5">₫</span>
+                    </span>
+                  </div>
                 </div>
               </div>
 

@@ -15,12 +15,18 @@ import {
 import type { IRevenueSplitConfig, IRevenueStats } from '@/types/admin.types';
 import {
   calculateSubscriptionSettlement,
+  createAdminCoupon,
+  deleteAdminCoupon,
+  getAdminCoupons,
   getAdminSubscriptionPlans,
   getAdminSubscriptionTerms,
   getSubscriptionSettlements,
   refundAdminSubscriptionTerm,
+  updateAdminCoupon,
+  updateAdminCouponStatus,
   saveAdminSubscriptionPlan,
   updateSubscriptionSettlementStatus,
+  type CouponPayload,
   type SubscriptionPlan,
   type SubscriptionSettlement,
 } from '@/services/paymentApi';
@@ -38,6 +44,7 @@ export const adminFinanceKeys = {
   subscriptionPlans: ['admin', 'subscription-plans'] as const,
   subscriptionTerms: ['admin', 'subscription-terms'] as const,
   subscriptionSettlements: ['admin', 'subscription-settlements'] as const,
+  coupons: (params: { search?: string; status?: string; page: number; limit: number }) => ['admin', 'coupons', params] as const,
 };
 
 export function useAdminRevenueSplitConfig() {
@@ -215,5 +222,68 @@ export function useRefundAdminSubscriptionTerm() {
       if (error instanceof Error && error.message === 'Đã hủy thao tác hoàn tiền.') return;
       toast.error(error instanceof Error ? error.message : 'Không thể hoàn tiền.');
     },
+  });
+}
+
+export function useAdminCoupons(params: { search?: string; status?: string; page: number; limit: number }) {
+  return useQuery({
+    queryKey: adminFinanceKeys.coupons(params),
+    queryFn: async () => {
+      const response = await getAdminCoupons(params);
+      if (!response.data) throw new Error(response.message || 'Không thể tải danh sách coupon.');
+      return response.data;
+    },
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+export function useSaveAdminCoupon() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id?: string; payload: CouponPayload }) => {
+      const response = id ? await updateAdminCoupon(id, payload) : await createAdminCoupon(payload);
+      if (!response.data) throw new Error(response.message || 'Không thể lưu coupon.');
+      return response.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'coupons'] });
+      toast.success('Đã lưu coupon.');
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể lưu coupon.'),
+  });
+}
+
+export function useUpdateAdminCouponStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const response = await updateAdminCouponStatus(id, isActive);
+      if (!response.data) throw new Error(response.message || 'Không thể cập nhật trạng thái coupon.');
+      return response.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'coupons'] });
+      toast.success('Đã cập nhật trạng thái coupon.');
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể cập nhật coupon.'),
+  });
+}
+
+export function useDeleteAdminCoupon() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await deleteAdminCoupon(id);
+      if (response.status === 'ERR') throw new Error(response.message || 'Không thể xóa coupon.');
+      return response;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'coupons'] });
+      toast.success('Đã xóa coupon.');
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể xóa coupon.'),
   });
 }

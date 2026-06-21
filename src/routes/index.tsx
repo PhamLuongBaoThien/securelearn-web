@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Frontend Routes
 // Mục đích:
 // - khai báo router chính cho public, student, instructor và admin
@@ -59,6 +59,7 @@ import { ResourceManager } from '../pages/admin/courses/resource-manager';
 // Admin — Finance
 import { Transactions } from '../pages/admin/finance/transactions';
 import { PlanManager } from '../pages/admin/finance/plan-manager';
+import { CouponManager } from '../pages/admin/finance/coupon-manager';
 
 // Admin — Notifications & Progress
 import { NotificationConfig } from '../pages/admin/notifications/notification-config';
@@ -215,6 +216,7 @@ const router = createBrowserRouter([
           // ===== Finance =====
           { path: 'finance/transactions', element: <Transactions /> },
           { path: 'finance/plans', element: <PlanManager /> },
+          { path: 'finance/coupons', element: <CouponManager /> },
           // ===== Notifications & Progress =====
           { path: 'notifications/send', element: <SendNotification /> },
           { path: 'notifications/inbox', element: <Inbox /> },

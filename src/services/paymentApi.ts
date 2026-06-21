@@ -8,6 +8,43 @@ import apiClient from './apiClient';
 
 export type PaymentProvider = 'VNPAY' | 'MOMO';
 export type PaymentMethod = 'VNPAY' | 'MOMO';
+export type CouponType = 'PERCENT' | 'FIXED';
+
+export interface Coupon {
+  _id: string;
+  code: string;
+  name: string;
+  type: CouponType;
+  value: number;
+  maxDiscountAmount: number | null;
+  minOrderAmount: number;
+  usageLimit: number | null;
+  usedCount: number;
+  perUserLimit: number;
+  startsAt: string | null;
+  endsAt: string | null;
+  isActive: boolean;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CouponValidation {
+  coupon: Coupon;
+  subtotal: number;
+  discountAmount: number;
+  finalAmount: number;
+}
+
+export interface AdminCouponsResponse {
+  coupons: Coupon[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export type CouponPayload = Omit<Coupon, '_id' | 'usedCount' | 'createdBy' | 'updatedBy' | 'createdAt' | 'updatedAt'>;
 
 export interface PaymentCourseItem {
   courseId: string;
@@ -32,6 +69,14 @@ export interface PaymentTransaction {
   email: string;
   items: PaymentCourseItem[];
   amount: number;
+  discountAmount?: number;
+  couponSnapshot?: {
+    couponId: string;
+    code: string;
+    type: CouponType;
+    value: number;
+    discountAmount: number;
+  } | null;
   // productType giúp return page và finance UI biết đây là mua khóa học hay mua thuê bao.
   productType: 'COURSE' | 'SUBSCRIPTION';
   subscriptionSnapshot?: {
@@ -142,6 +187,7 @@ export interface SubscriptionTerm {
 export const createCourseCheckout = async (payload: {
   paymentMethod: PaymentMethod;
   provider?: PaymentProvider;
+  couponCode?: string;
 }) => {
   const { data } = await apiClient.post<ApiResponse<CourseCheckoutResponse>>('/api/payments/course-checkout', payload);
   return data;
@@ -291,3 +337,33 @@ export const getInstructorRevenueStats = async (params?: {
 
 
 
+
+export const validateCourseCoupon = async (code: string) => {
+  const { data } = await apiClient.post<ApiResponse<CouponValidation>>('/api/payments/coupons/validate', { code });
+  return data;
+};
+
+export const getAdminCoupons = async (params?: { search?: string; status?: string; page?: number; limit?: number }) => {
+  const { data } = await apiClient.get<ApiResponse<AdminCouponsResponse>>('/api/payments/admin/coupons', { params });
+  return data;
+};
+
+export const createAdminCoupon = async (payload: CouponPayload) => {
+  const { data } = await apiClient.post<ApiResponse<Coupon>>('/api/payments/admin/coupons', payload);
+  return data;
+};
+
+export const updateAdminCoupon = async (id: string, payload: CouponPayload) => {
+  const { data } = await apiClient.patch<ApiResponse<Coupon>>(`/api/payments/admin/coupons/${id}`, payload);
+  return data;
+};
+
+export const updateAdminCouponStatus = async (id: string, isActive: boolean) => {
+  const { data } = await apiClient.patch<ApiResponse<Coupon>>(`/api/payments/admin/coupons/${id}/status`, { isActive });
+  return data;
+};
+
+export const deleteAdminCoupon = async (id: string) => {
+  const { data } = await apiClient.delete<ApiResponse>(`/api/payments/admin/coupons/${id}`);
+  return data;
+};

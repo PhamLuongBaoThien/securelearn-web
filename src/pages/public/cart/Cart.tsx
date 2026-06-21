@@ -1,9 +1,19 @@
+// ========================
+// Cart Page
+// Mục đích:
+// - hiển thị giỏ hàng mua khóa học và tổng tiền hiện tại
+// - cho learner áp coupon trước khi sang checkout, đồng thời lưu snapshot coupon tạm vào sessionStorage
+// ========================
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Trash2, ShoppingCart, ArrowRight, ShieldCheck, BookOpen, CreditCard, CheckCircle2, ChevronRight, Star, Clock } from 'lucide-react';
 import { useCartActions } from '@/hooks/useCart';
 import { toast } from 'sonner';
+import { useMutation } from '@tanstack/react-query';
+import { validateCourseCoupon, type CouponValidation } from '@/services/paymentApi';
 
 const LEVEL_LABEL: Record<string, string> = {
   BEGINNER: 'Cơ bản',
@@ -18,6 +28,8 @@ function formatDuration(seconds: number): string {
   return `${m}m`;
 }
 
+const COUPON_STORAGE_KEY = 'sl_course_coupon';
+
 const STEPS = [
   { label: 'Giỏ hàng', icon: ShoppingCart },
   { label: 'Thanh toán', icon: CreditCard },
@@ -30,6 +42,40 @@ export const Cart = () => {
   const cartItems = useAppSelector((state) => state.cart.cartItems);
   const { removeItem, isRemoving } = useCartActions();
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price, 0);
+  const [couponCode, setCouponCode] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(COUPON_STORAGE_KEY);
+      return saved ? (JSON.parse(saved) as CouponValidation).coupon.code : '';
+    } catch {
+      return '';
+    }
+  });
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidation | null>(() => {
+    try {
+      const saved = sessionStorage.getItem(COUPON_STORAGE_KEY);
+      return saved ? (JSON.parse(saved) as CouponValidation) : null;
+    } catch {
+      return null;
+    }
+  });
+  const discountAmount = appliedCoupon?.subtotal === totalPrice ? appliedCoupon.discountAmount : 0;
+  const finalPrice = Math.max(totalPrice - discountAmount, 0);
+
+  const couponMutation = useMutation({
+    mutationFn: validateCourseCoupon,
+    onSuccess: (response) => {
+      if (!response.data) throw new Error(response.message || 'Không thể áp dụng coupon.');
+      setAppliedCoupon(response.data);
+      setCouponCode(response.data.coupon.code);
+      sessionStorage.setItem(COUPON_STORAGE_KEY, JSON.stringify(response.data));
+      toast.success('Đã áp dụng coupon.');
+    },
+    onError: (error) => {
+      setAppliedCoupon(null);
+      sessionStorage.removeItem(COUPON_STORAGE_KEY);
+      toast.error(error instanceof Error ? error.message : 'Mã coupon không hợp lệ.');
+    },
+  });
 
   const handleCheckoutClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -42,6 +88,9 @@ export const Cart = () => {
         navigate('/auth/login', { state: { from: '/checkout' } });
       }, 1500);
       return;
+    }
+    if (appliedCoupon && appliedCoupon.subtotal !== totalPrice) {
+      sessionStorage.removeItem(COUPON_STORAGE_KEY);
     }
     navigate('/checkout');
   };
@@ -219,9 +268,38 @@ export const Cart = () => {
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
                   Tổng cộng
                 </h3>
-                <div className="text-4xl font-extrabold mb-6 tracking-tight">
-                  {totalPrice.toLocaleString('vi-VN')}
-                  <span className="text-2xl ml-1">₫</span>
+                <div className="mb-5 space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      value={couponCode}
+                      onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
+                      placeholder="Mã coupon"
+                      className="h-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={couponMutation.isPending || !couponCode.trim() || !isAuthenticated}
+                      onClick={() => couponMutation.mutate(couponCode.trim())}
+                    >
+                      Áp dụng
+                    </Button>
+                  </div>
+                  {appliedCoupon && discountAmount > 0 && (
+                    <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
+                      <span>{appliedCoupon.coupon.code}</span>
+                      <button type="button" className="font-semibold" onClick={() => { setAppliedCoupon(null); setCouponCode(''); sessionStorage.removeItem(COUPON_STORAGE_KEY); }}>Bỏ</button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mb-6 space-y-2">
+                  <div className="flex justify-between text-sm text-muted-foreground"><span>Tạm tính</span><span>{totalPrice.toLocaleString('vi-VN')} ₫</span></div>
+                  {discountAmount > 0 && <div className="flex justify-between text-sm text-emerald-600"><span>Giảm giá</span><span>-{discountAmount.toLocaleString('vi-VN')} ₫</span></div>}
+                  <div className="text-4xl font-extrabold tracking-tight">
+                    {finalPrice.toLocaleString('vi-VN')}
+                    <span className="text-2xl ml-1">₫</span>
+                  </div>
                 </div>
 
                 <Button

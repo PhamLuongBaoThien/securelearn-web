@@ -23,6 +23,7 @@ import {
   Bell,
   Send,
   Inbox,
+  TicketPercent,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import sidebarLogo from '@/assets/logoweb.png';
@@ -68,6 +69,7 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[]): Side
       items: [
         { name: 'Giao dịch', path: '/admin/finance/transactions', icon: <DollarSign className="w-4 h-4 shrink-0" />, req: 'finance:read' },
         { name: 'Gói cước', path: '/admin/finance/plans', icon: <Package className="w-4 h-4 shrink-0" />, req: 'finance:manage' },
+        { name: 'Coupon', path: '/admin/finance/coupons', icon: <TicketPercent className="w-4 h-4 shrink-0" />, req: 'finance:manage' },
       ],
     },
     {
