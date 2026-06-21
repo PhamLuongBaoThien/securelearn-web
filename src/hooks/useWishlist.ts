@@ -3,17 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import {
-  addToWishlist,
-  removeFromWishlist,
   setWishlistItems,
   type CartItem,
 } from '@/features/courses/cartSlice';
 import {
-  addGuestWishlistItem,
   clearGuestWishlist,
   getGuestWishlistCourseIds,
-  readGuestWishlist,
-  removeGuestWishlistItem,
   saveUserWishlist,
 } from '@/features/courses/wishlistStorage';
 import {
@@ -21,6 +16,7 @@ import {
   getWishlist,
   mergeGuestWishlist,
   removeWishlistItem,
+  type WishlistData,
 } from '@/services/wishlistApi';
 
 export const wishlistKeys = {
@@ -43,27 +39,28 @@ export const toWishlistItem = (course: CartItem): CartItem => ({
 
 export function useWishlistSync(options?: { enabled?: boolean }) {
   const dispatch = useAppDispatch();
-  const { isAuthenticated, authResolved } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, authResolved, user } = useAppSelector((state) => state.auth);
   const enabled = options?.enabled ?? true;
+  const isAllowed = isAuthenticated && !!user && (user.role === 'STUDENT' || user.role === 'INSTRUCTOR');
 
   const wishlistQuery = useQuery({
     queryKey: wishlistKeys.items,
-    queryFn: async () => {
+    queryFn: async (): Promise<WishlistData> => {
       const response = await getWishlist();
       if (response.status === 'ERR') {
         throw new Error(response.message);
       }
       return response.data ?? { items: [] };
     },
-    enabled: enabled && authResolved && isAuthenticated,
+    enabled: enabled && authResolved && isAllowed,
   });
 
   useEffect(() => {
     if (!enabled) return;
     if (!authResolved) return;
 
-    if (!isAuthenticated) {
-      dispatch(setWishlistItems(readGuestWishlist()));
+    if (!isAllowed) {
+      dispatch(setWishlistItems([]));
       return;
     }
 
@@ -71,7 +68,7 @@ export function useWishlistSync(options?: { enabled?: boolean }) {
       dispatch(setWishlistItems(wishlistQuery.data.items));
       saveUserWishlist(wishlistQuery.data.items);
     }
-  }, [enabled, authResolved, isAuthenticated, wishlistQuery.data, dispatch]);
+  }, [enabled, authResolved, isAllowed, wishlistQuery.data, dispatch]);
 
   return wishlistQuery;
 }
@@ -79,7 +76,8 @@ export function useWishlistSync(options?: { enabled?: boolean }) {
 export function useWishlistActions() {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const isAllowedToWishlist = isAuthenticated && !!user && (user.role === 'STUDENT' || user.role === 'INSTRUCTOR');
 
   const syncServerWishlist = useCallback((items: CartItem[]) => {
     dispatch(setWishlistItems(items));
@@ -110,29 +108,21 @@ export function useWishlistActions() {
   });
 
   const addItem = useCallback((item: CartItem) => {
-    const normalizedItem = toWishlistItem(item);
-    if (isAuthenticated) {
-      addMutation.mutate(normalizedItem._id);
+    if (!isAllowedToWishlist) {
+      toast.error('Vui lòng đăng nhập để thêm khóa học vào danh sách mong muốn.');
       return;
     }
-
-    const nextItems = addGuestWishlistItem(normalizedItem);
-    dispatch(addToWishlist(normalizedItem));
-    dispatch(setWishlistItems(nextItems));
-    toast.success('Đã lưu khóa học vào danh sách mong muốn.');
-  }, [addMutation, dispatch, isAuthenticated]);
+    const normalizedItem = toWishlistItem(item);
+    addMutation.mutate(normalizedItem._id);
+  }, [addMutation, isAllowedToWishlist]);
 
   const removeItem = useCallback((courseId: string) => {
-    if (isAuthenticated) {
-      removeMutation.mutate(courseId);
+    if (!isAllowedToWishlist) {
+      toast.error('Vui lòng đăng nhập để bỏ khóa học khỏi danh sách mong muốn.');
       return;
     }
-
-    const nextItems = removeGuestWishlistItem(courseId);
-    dispatch(removeFromWishlist(courseId));
-    dispatch(setWishlistItems(nextItems));
-    toast.success('Đã bỏ khóa học khỏi danh sách mong muốn.');
-  }, [dispatch, isAuthenticated, removeMutation]);
+    removeMutation.mutate(courseId);
+  }, [removeMutation, isAllowedToWishlist]);
 
   const toggleItem = useCallback((item: CartItem, isSaved: boolean) => {
     if (isSaved) {
