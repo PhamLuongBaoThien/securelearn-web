@@ -1,51 +1,97 @@
 // ========================
 // Admin Dashboard: Bảng điều khiển
 // Hiển thị dữ liệu thật từ API: users, courses, revenue
+// Đồng bộ giao diện cao cấp và sử dụng biểu đồ shadcn UI
 // ========================
 import React from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Users, BookOpen, DollarSign, Loader2,
-  CheckCircle2, Clock, AlertCircle, ArrowRight,
+  Users,
+  BookOpen,
+  DollarSign,
+  Loader2,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  ArrowRight,
   CreditCard,
-  type LucideIcon,
 } from 'lucide-react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, BarChart, Bar,
+  Area,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
-import { useAppSelector } from '@/app/hooks';
+import { useAppSelector, useAppDispatch } from '@/app/hooks';
 import { getUsers, getCoursesForReview, getRevenueStats, getRevenueSplitConfig } from '@/services/adminApi';
+import { setSidebarOpen } from '@/features/dashboard/uiSlice';
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value);
 
-type StatCardProps = {
-  title: string;
+const cardClass = 'rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900';
+
+const monthlyChartConfig = {
+  revenue: {
+    label: 'Tổng thu',
+    color: 'var(--chart-1)',
+  },
+  adminRevenue: {
+    label: 'Quản trị viên',
+    color: 'var(--chart-2)',
+  },
+  instructorRevenue: {
+    label: 'Giảng viên',
+    color: 'var(--chart-3)',
+  },
+  subscriptionRevenue: {
+    label: 'Thuê bao',
+    color: 'var(--chart-4)',
+  },
+} satisfies ChartConfig;
+
+const providerChartConfig = {
+  revenue: {
+    label: 'Doanh thu',
+    color: 'var(--chart-4)',
+  },
+} satisfies ChartConfig;
+
+const KpiCard: React.FC<{
+  label: string;
   value: string;
   sub?: string;
-  icon: LucideIcon;
-  iconColor: string;
-  iconBg: string;
-};
-
-const StatCard = ({ title, value, sub, icon: Icon, iconColor, iconBg }: StatCardProps) => (
-  <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-    <div className="flex items-center justify-between">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
-        <h3 className="text-2xl font-bold mt-1 text-zinc-900 dark:text-white tracking-tight">{value}</h3>
-        {sub && <p className="text-xs text-zinc-400 mt-1">{sub}</p>}
+  icon: React.ReactNode;
+}> = ({ label, value, sub, icon }) => (
+  <div className={`${cardClass} p-5`}>
+    <div className="flex items-end justify-between gap-4">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{label}</p>
+        <p className="mt-1 truncate text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">{value}</p>
+        {sub && <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{sub}</p>}
       </div>
-      <div className={`h-12 w-12 ${iconBg} ${iconColor} rounded-xl flex items-center justify-center shrink-0`}>
-        <Icon className="w-6 h-6" />
+      <div className="shrink-0 self-center text-zinc-300 dark:text-zinc-700 [&_svg]:h-5 [&_svg]:w-5">
+        {icon}
       </div>
     </div>
   </div>
 );
 
 export const Dashboard: React.FC = () => {
+  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.adminAuth);
 
   // Fetch users stats
@@ -94,8 +140,12 @@ export const Dashboard: React.FC = () => {
   const totalRevenue = revenue?.totalRevenue ?? 0;
   const totalAdminRevenue = revenue?.totalAdminRevenue ?? 0;
   const totalInstructorRevenue = revenue?.totalInstructorRevenue ?? 0;
+  const courseRevenue = revenue?.courseRevenue ?? 0;
+  const subscriptionRevenue = revenue?.subscriptionRevenue ?? 0;
+  const subscriptionTransactions = revenue?.subscriptionTransactions ?? 0;
   const thisMonthRevenue = revenue?.thisMonthRevenue ?? 0;
   const thisMonthAdminRevenue = revenue?.thisMonthAdminRevenue ?? 0;
+  const thisMonthSubscriptionRevenue = revenue?.thisMonthSubscriptionRevenue ?? 0;
   const activeSubscriptions = revenue?.activeSubscriptions ?? 0;
   const successfulTransactions = revenue?.successfulTransactions ?? 0;
   const monthlyData = revenue?.monthlyData ?? [];
@@ -109,6 +159,7 @@ export const Dashboard: React.FC = () => {
     revenue: m.revenue,
     adminRevenue: m.adminRevenue,
     instructorRevenue: m.instructorRevenue,
+    subscriptionRevenue: m.subscriptionRevenue ?? 0,
     transactions: m.transactions,
   }));
 
@@ -128,109 +179,158 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6">
       {/* Welcome */}
       <div>
-        <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">Tổng quan hệ thống</h1>
-        <p className="text-zinc-500 dark:text-zinc-400">
+        <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white mb-1">Tổng quan hệ thống</h1>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
           Chào mừng {user?.fullName || 'Quản trị viên'}! Đây là thống kê mới nhất về nền tảng SecureLearn.
         </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard
-          title="Tổng doanh thu"
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          label="Tổng doanh thu"
           value={formatCurrency(totalRevenue)}
-          sub={`Quản trị viên: ${formatCurrency(totalAdminRevenue)}`}
-          icon={DollarSign}
-          iconColor="text-green-600 dark:text-green-400"
-          iconBg="bg-green-500/10"
+          sub={`Khóa học ${formatCurrency(courseRevenue)} · Thuê bao ${formatCurrency(subscriptionRevenue)}`}
+          icon={<DollarSign className="h-5 w-5" />}
         />
-        <StatCard
-          title="Giao dịch thành công"
+        <KpiCard
+          label="Giao dịch thành công"
           value={successfulTransactions.toLocaleString('vi-VN')}
           sub={`Tỷ lệ: QTV ${adminPercent}% / GV ${instructorPercent}%`}
-          icon={CreditCard}
-          iconColor="text-indigo-600 dark:text-indigo-400"
-          iconBg="bg-indigo-500/10"
+          icon={<CreditCard className="h-5 w-5" />}
         />
-        <StatCard
-          title="Tổng người dùng"
+        <KpiCard
+          label="Tổng người dùng"
           value={totalUsers.toLocaleString('vi-VN')}
-          icon={Users}
-          iconColor="text-blue-600 dark:text-blue-400"
-          iconBg="bg-blue-500/10"
+          sub="Tài khoản học viên & giảng viên đăng ký"
+          icon={<Users className="h-5 w-5" />}
         />
-        <StatCard
-          title="Chờ duyệt"
+        <KpiCard
+          label="Chờ duyệt"
           value={`${pendingCount} khóa học`}
-          sub={pendingCount > 0 ? 'Cần kiểm duyệt' : 'Không có khóa nào'}
-          icon={AlertCircle}
-          iconColor="text-amber-600 dark:text-amber-400"
-          iconBg="bg-amber-500/10"
+          sub={pendingCount > 0 ? 'Cần kiểm duyệt ngay' : 'Không có khóa nào chờ'}
+          icon={<AlertCircle className="h-5 w-5" />}
         />
       </div>
 
       {/* Row 2: Revenue split summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm flex items-center gap-3">
-          <div className="text-emerald-600 dark:text-emerald-400 shrink-0"><DollarSign className="w-5 h-5" /></div>
-          <div>
-            <p className="text-xs text-zinc-500">Doanh thu QTV</p>
-            <p className="text-lg font-bold text-zinc-900 dark:text-white">{formatCurrency(totalAdminRevenue)}</p>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {[
+          { label: 'Doanh thu khóa học', val: courseRevenue, icon: <BookOpen className="w-4 h-4 text-emerald-500" /> },
+          {
+            label: 'Doanh thu thuê bao',
+            val: subscriptionRevenue,
+            sub: `${subscriptionTransactions.toLocaleString('vi-VN')} giao dịch · ${activeSubscriptions.toLocaleString('vi-VN')} đang hoạt động · Tháng này ${formatCurrency(thisMonthSubscriptionRevenue)}`,
+            icon: <CreditCard className="w-4 h-4 text-violet-500" />,
+          },
+          { label: 'Doanh thu QTV', val: totalAdminRevenue, icon: <DollarSign className="w-4 h-4 text-emerald-500" /> },
+          { label: 'Doanh thu Giảng viên', val: totalInstructorRevenue, icon: <DollarSign className="w-4 h-4 text-blue-500" /> },
+          {
+            label: 'Doanh thu tháng này',
+            val: thisMonthRevenue,
+            sub: `QTV: ${formatCurrency(thisMonthAdminRevenue)}`,
+            icon: <DollarSign className="w-4 h-4 text-amber-500" />,
+          },
+        ].map((item, idx) => (
+          <div key={idx} className={`${cardClass} p-4 flex items-start justify-between gap-3`}>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{item.label}</p>
+              <p className="text-lg font-bold text-zinc-900 dark:text-white mt-1">
+                {formatCurrency(item.val)}
+              </p>
+              {item.sub && <p className="text-[10px] text-zinc-400 mt-1 truncate">{item.sub}</p>}
+            </div>
+            <div className="shrink-0 p-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 mt-0.5">
+              {item.icon}
+            </div>
           </div>
-        </div>
-        <div className="p-4 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm flex items-center gap-3">
-          <div className="text-blue-600 dark:text-blue-400 shrink-0"><DollarSign className="w-5 h-5" /></div>
-          <div>
-            <p className="text-xs text-zinc-500">Doanh thu Giảng viên</p>
-            <p className="text-lg font-bold text-zinc-900 dark:text-white">{formatCurrency(totalInstructorRevenue)}</p>
-          </div>
-        </div>
-        <div className="p-4 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm flex items-center gap-3">
-          <div className="text-violet-600 dark:text-violet-400 shrink-0"><DollarSign className="w-5 h-5" /></div>
-          <div>
-            <p className="text-xs text-zinc-500">Doanh thu tháng này</p>
-            <p className="text-lg font-bold text-zinc-900 dark:text-white">{formatCurrency(thisMonthRevenue)}</p>
-            <p className="text-xs text-zinc-400 mt-0.5">QTV: {formatCurrency(thisMonthAdminRevenue)}</p>
-          </div>
-        </div>
-        <div className="p-4 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm flex items-center gap-3">
-          <div className="text-amber-600 dark:text-amber-400 shrink-0"><CreditCard className="w-5 h-5" /></div>
-          <div>
-            <p className="text-xs text-zinc-500">Thuê bao hoạt động</p>
-            <p className="text-lg font-bold text-zinc-900 dark:text-white">{activeSubscriptions.toLocaleString('vi-VN')}</p>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Chart + Pending courses */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Revenue chart */}
-        <div className="lg:col-span-2 p-6 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
-          <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Doanh thu theo tháng</h3>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Tổng doanh thu nền tảng</p>
-          {chartData.length > 0 ? (
-            <div className="h-[280px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                  <XAxis dataKey="name" stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} />
-                  <YAxis stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
-                    itemStyle={{ color: '#fff' }}
-                    formatter={(value, name) => [formatCurrency(Number(value ?? 0)), String(name)]}
-                  />
-                  <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="Tổng thu" />
-                  <Line type="monotone" dataKey="adminRevenue" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} name="Quản trị viên" />
-                  <Line type="monotone" dataKey="instructorRevenue" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="Giảng viên" />
-                </LineChart>
-              </ResponsiveContainer>
+        <div className={`${cardClass} p-5 lg:col-span-2`}>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Doanh thu theo tháng</h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">Tổng doanh thu toàn nền tảng và phân chia thực nhận</p>
             </div>
+            <Link to="/admin/finance/transactions" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80">
+              Chi tiết <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          {chartData.length > 0 ? (
+            <ChartContainer config={monthlyChartConfig} className="h-64 w-full">
+              <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="totalRevenueGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tickMargin={8} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tickMargin={8}
+                  tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      indicator="line"
+                      formatter={(value) => formatCurrency(Number(value ?? 0))}
+                    />
+                  }
+                />
+                <ChartLegend content={<ChartLegendContent />} />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="var(--color-revenue)"
+                  strokeWidth={3}
+                  fill="url(#totalRevenueGrad)"
+                  name="Tổng thu"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="adminRevenue"
+                  stroke="var(--color-adminRevenue)"
+                  strokeWidth={1.75}
+                  strokeOpacity={0.95}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  name="Quản trị viên"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="instructorRevenue"
+                  stroke="var(--color-instructorRevenue)"
+                  strokeWidth={1.75}
+                  strokeOpacity={0.95}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  name="Giảng viên"
+                />                <Line
+                  type="monotone"
+                  dataKey="subscriptionRevenue"
+                  stroke="var(--color-subscriptionRevenue)"
+                  strokeWidth={1.75}
+                  strokeOpacity={0.95}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  name="Thuê bao"
+                />
+              </ComposedChart>
+            </ChartContainer>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-zinc-400 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+            <div className="flex flex-col items-center justify-center py-16 text-zinc-500 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-lg">
               <DollarSign className="w-10 h-10 mb-3 opacity-30" />
               <p className="text-sm">Chưa có dữ liệu doanh thu.</p>
             </div>
@@ -238,7 +338,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Pending courses */}
-        <div className="p-6 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col">
+        <div className={`${cardClass} p-5 flex flex-col`}>
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Khóa chờ duyệt</h3>
             {pendingCount > 0 && (
@@ -250,18 +350,18 @@ export const Dashboard: React.FC = () => {
           {pendingCourses.length > 0 ? (
             <div className="flex-1 space-y-3">
               {pendingCourses.slice(0, 5).map((course) => (
-                <div key={course._id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                <div key={course._id} className="flex items-start gap-3 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/60 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors">
                   <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
                     <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-200 truncate">{course.title}</p>
-                    <p className="text-xs text-zinc-400 mt-0.5">
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-200 truncate">{course.title}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">
                       {course.instructor?.fullName} · {course.totalLessons} bài
                     </p>
                     {course.submittedAt && (
-                      <div className="flex items-center gap-1 mt-1 text-xs text-zinc-400">
-                        <Clock className="w-3 h-3" />
+                      <div className="flex items-center gap-1 mt-1.5 text-xs text-zinc-400">
+                        <Clock className="w-3.5 h-3.5" />
                         {new Date(course.submittedAt).toLocaleDateString('vi-VN')}
                       </div>
                     )}
@@ -277,7 +377,7 @@ export const Dashboard: React.FC = () => {
           )}
           <Link
             to="/admin/courses/review"
-            className="flex items-center justify-center gap-2 w-full mt-4 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            className="flex items-center justify-center gap-2 w-full mt-4 py-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800/40 dark:hover:bg-zinc-800"
           >
             Xem tất cả <ArrowRight className="w-4 h-4" />
           </Link>
@@ -287,31 +387,34 @@ export const Dashboard: React.FC = () => {
       {/* Provider breakdown */}
       {providerChartData.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="p-6 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
+          <div className={`${cardClass} p-5`}>
             <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4">Doanh thu theo cổng thanh toán</h3>
-            <div className="h-[200px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={providerChartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                  <XAxis dataKey="name" stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} />
-                  <YAxis stroke="#9ca3af" axisLine={false} tickLine={false} fontSize={12} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
-                    formatter={(value) => [formatCurrency(Number(value ?? 0)), 'Doanh thu']}
-                  />
-                  <Bar dataKey="revenue" fill="#6366f1" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartContainer config={providerChartConfig} className="h-56 w-full">
+              <BarChart data={providerChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tickMargin={8} />
+                <YAxis axisLine={false} tickLine={false} tickMargin={8} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      hideLabel={false}
+                      formatter={(value) => formatCurrency(Number(value ?? 0))}
+                    />
+                  }
+                />
+                <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[6, 6, 0, 0]} barSize={36} />
+              </BarChart>
+            </ChartContainer>
           </div>
 
-          <div className="p-6 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
+          <div className={`${cardClass} p-5`}>
             <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4">Chi tiết cổng thanh toán</h3>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {providerBreakdown.map((p) => (
-                <div key={p.provider} className="flex items-center justify-between p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+                <div key={p.provider} className="flex items-center justify-between p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                   <div>
-                    <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{p.provider}</p>
+                    <p className="text-sm font-semibold text-zinc-850 dark:text-zinc-200">{p.provider}</p>
                     <p className="text-xs text-zinc-500 mt-0.5">{p.transactions} giao dịch</p>
                   </div>
                   <div className="text-right">
@@ -329,43 +432,46 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Link
           to="/admin/finance/transactions"
-          className="p-5 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm hover:shadow-md transition-all hover:border-primary/30 group"
+          onClick={() => dispatch(setSidebarOpen(true))}
+          className={`${cardClass} p-5 hover:shadow-md hover:border-primary/30 transition-all group`}
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform shrink-0">
               <DollarSign className="w-5 h-5" />
             </div>
             <div>
               <p className="text-sm font-semibold text-zinc-900 dark:text-white">Quản lý giao dịch</p>
-              <p className="text-xs text-zinc-400">Xem chi tiết & cấu hình chia doanh thu</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Xem chi tiết & cấu hình chia doanh thu</p>
             </div>
           </div>
         </Link>
         <Link
           to="/admin/users/list"
-          className="p-5 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm hover:shadow-md transition-all hover:border-primary/30 group"
+          onClick={() => dispatch(setSidebarOpen(true))}
+          className={`${cardClass} p-5 hover:shadow-md hover:border-primary/30 transition-all group`}
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform shrink-0">
               <Users className="w-5 h-5" />
             </div>
             <div>
               <p className="text-sm font-semibold text-zinc-900 dark:text-white">Quản lý người dùng</p>
-              <p className="text-xs text-zinc-400">{totalUsers} người dùng đăng ký</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{totalUsers.toLocaleString('vi-VN')} người dùng đăng ký</p>
             </div>
           </div>
         </Link>
         <Link
           to="/admin/courses/review"
-          className="p-5 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm hover:shadow-md transition-all hover:border-primary/30 group"
+          onClick={() => dispatch(setSidebarOpen(true))}
+          className={`${cardClass} p-5 hover:shadow-md hover:border-primary/30 transition-all group`}
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
+            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform shrink-0">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
               <p className="text-sm font-semibold text-zinc-900 dark:text-white">Kiểm duyệt khóa học</p>
-              <p className="text-xs text-zinc-400">{pendingCount} khóa chờ duyệt</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{pendingCount} khóa chờ duyệt</p>
             </div>
           </div>
         </Link>
@@ -373,3 +479,7 @@ export const Dashboard: React.FC = () => {
     </div>
   );
 };
+
+
+
+

@@ -57,6 +57,14 @@ const statusFilters: Array<{ value: string; label: string }> = [
   { value: 'REFUNDED', label: 'Đã hoàn tiền' },
 ];
 
+
+function getTransactionKind(t: ITransaction): 'COURSE' | 'SUBSCRIPTION' | 'UNKNOWN' {
+  if (t.productType === 'SUBSCRIPTION') return 'SUBSCRIPTION';
+  if (t.productType === 'COURSE') return 'COURSE';
+  if (t.items?.length || t.course) return 'COURSE';
+  if (t.subscriptionSnapshot || t.plan === 'MONTHLY' || t.plan === 'YEARLY') return 'SUBSCRIPTION';
+  return 'UNKNOWN';
+}
 function getVisiblePages(currentPage: number, totalPages: number): Array<number | 'ellipsis-start' | 'ellipsis-end'> {
   if (totalPages <= 5) {
     return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -152,7 +160,7 @@ export const Transactions: React.FC = () => {
   const visiblePages = getVisiblePages(page, totalPages);
 
   const summary = revenueQuery.data as IRevenueStats | undefined;
-  const totalAmount = transactions.filter((t) => t.status === 'SUCCEEDED').reduce((s, t) => s + (t.grossAmount ?? t.amount), 0);
+  const totalAmount = transactions.filter((t) => t.status === 'SUCCEEDED').reduce((s, t) => s + t.amount, 0);
 
   return (
     <div className="w-full space-y-6">
@@ -311,9 +319,11 @@ export const Transactions: React.FC = () => {
               {transactions.map((t: ITransaction) => {
                 const sc = statusConfig[t.status];
                 const pb = providerBadge[t.provider];
+                const actualAmount = t.amount;
                 const gross = t.grossAmount ?? t.amount;
-                const adminShare = t.adminAmount ?? Math.round(gross * ((currentSplitConfig.adminPercent || 0) / 100));
-                const instructorShare = t.instructorAmount ?? (gross - adminShare);
+                const discount = t.discountAmount ?? 0;
+                const adminShare = t.adminAmount ?? Math.round(actualAmount * ((currentSplitConfig.adminPercent || 0) / 100));
+                const instructorShare = t.instructorAmount ?? (actualAmount - adminShare);
                 const transactionCode = t.transactionCode || t.transactionId;
                 return (
                   <tr key={t._id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
@@ -324,34 +334,57 @@ export const Transactions: React.FC = () => {
                       <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{t.fullName}</p>
                       <p className="text-xs text-zinc-400">{t.email}</p>
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-400 max-w-44">
-                      {t.productType === 'SUBSCRIPTION' || t.subscriptionSnapshot ? (
+                    <td className="px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-400 max-w-64">
+                      {getTransactionKind(t) === 'COURSE' ? (
                         <div className="min-w-0">
-                          <span className="truncate block font-medium text-violet-600 dark:text-violet-400">
-                            {t.subscriptionSnapshot?.name || (t.subscriptionSnapshot?.planType === 'YEARLY' ? 'Thuê bao 1 năm' : 'Thuê bao 1 tháng')}
-                          </span>
+                          <div className="mb-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
+                            Khóa học
+                          </div>
+                          {t.items?.length ? (
+                            <>
+                              <span className="line-clamp-2 font-medium text-zinc-800 dark:text-zinc-100" title={t.items[0].title}>{t.items[0].title}</span>
+                              {t.items.length > 1 && <span className="text-xs text-zinc-400">+{t.items.length - 1} khóa học khác</span>}
+                            </>
+                          ) : t.course ? (
+                            <span className="line-clamp-2 font-medium text-zinc-800 dark:text-zinc-100" title={t.course.title}>{t.course.title}</span>
+                          ) : (
+                            <span className="text-xs text-zinc-400">Mua khóa học</span>
+                          )}
+                        </div>
+                      ) : getTransactionKind(t) === 'SUBSCRIPTION' ? (
+                        <div className="min-w-0">
+                          <div className="mb-1 inline-flex rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-400/10 dark:text-violet-300">
+                            Thuê bao
+                          </div>
+                          {(() => {
+                            const subName = t.subscriptionSnapshot?.name || (t.subscriptionSnapshot?.planType === 'YEARLY' || t.plan === 'YEARLY' ? 'Thuê bao 1 năm' : 'Thuê bao 1 tháng');
+                            return (
+                              <span className="line-clamp-2 font-medium text-violet-600 dark:text-violet-400" title={subName}>
+                                {subName}
+                              </span>
+                            );
+                          })()}
                           <span className="text-xs text-zinc-400">
-                            {t.subscriptionSnapshot?.planType === 'YEARLY' ? 'Gói năm' : 'Gói tháng'}
+                            {t.subscriptionSnapshot?.planType === 'YEARLY' || t.plan === 'YEARLY' ? 'Gói năm' : 'Gói tháng'}
                             {t.subscriptionSnapshot?.durationDays ? ` · ${t.subscriptionSnapshot.durationDays} ngày` : ''}
                           </span>
                         </div>
-                      ) : t.items?.length ? (
-                        <div className="min-w-0">
-                          <span className="truncate block">{t.items[0].title}</span>
-                          {t.items.length > 1 && (
-                            <span className="text-xs text-zinc-400">+{t.items.length - 1} khóa học khác</span>
-                          )}
-                        </div>
-                      ) : t.course ? (
-                        <span className="truncate block">{t.course.title}</span>
                       ) : (
-                        <span className="text-violet-500 font-medium">{t.plan === 'MONTHLY' ? 'Thuê bao 1 tháng' : t.plan === 'YEARLY' ? 'Thuê bao 1 năm' : t.plan}</span>
+                        <span className="text-xs text-zinc-400">Không xác định</span>
                       )}
                     </td>
                     <td className="px-4 py-3.5"><span className={`px-2.5 py-1 rounded-full text-xs font-medium ${pb.cls}`}>{pb.label}</span></td>
                     <td className="px-4 py-3.5 text-sm">
-                      <div className="font-bold text-zinc-900 dark:text-white">{fmt(gross)}</div>
-                      <div className="text-xs text-zinc-500">QTV {fmt(adminShare)} · GV {fmt(instructorShare)}</div>
+                      <div className="font-bold text-zinc-900 dark:text-white">{fmt(actualAmount)}</div>
+                      {discount > 0 && (
+                        <div className="text-[10px] text-zinc-400 dark:text-zinc-500 flex flex-wrap items-center gap-1 mt-0.5">
+                          <span className="line-through">{fmt(gross)}</span>
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            (Giảm {fmt(discount)}{t.couponSnapshot?.code ? ` mã ${t.couponSnapshot.code}` : ''})
+                          </span>
+                        </div>
+                      )}
+                      <div className="text-xs text-zinc-500 mt-1">QTV {fmt(adminShare)} · GV {fmt(instructorShare)}</div>
                     </td>
                     <td className="px-4 py-3.5">
                       <span className={`flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full text-xs font-medium ${sc.cls}`}>{sc.icon}{sc.label}</span>
@@ -441,3 +474,4 @@ export const Transactions: React.FC = () => {
     </div>
   );
 };
+

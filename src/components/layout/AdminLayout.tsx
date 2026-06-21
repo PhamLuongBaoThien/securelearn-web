@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { useAdminLogout } from '@/hooks/useAdminAuth';
-import { toggleTheme } from '@/features/dashboard/uiSlice';
+import { toggleTheme, setSidebarOpen } from '@/features/dashboard/uiSlice';
 import {
   LayoutDashboard,
   Users,
@@ -118,8 +118,7 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[]): Side
 export const AdminLayout: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.adminAuth);
-  const { theme } = useAppSelector((state) => state.ui);
-  const [collapsed, setCollapsed] = useState(false);
+  const { theme, sidebarOpen } = useAppSelector((state) => state.ui);
 
   const adminLogoutMutation = useAdminLogout();
 
@@ -133,7 +132,7 @@ export const AdminLayout: React.FC = () => {
     });
   };
 
-  const handleToggleSidebar = () => setCollapsed(!collapsed);
+  const handleToggleSidebar = () => dispatch(setSidebarOpen(!sidebarOpen));
 
   const handleThemeChange = () => {
     if (theme === 'light') dispatch(toggleTheme('dark'));
@@ -149,7 +148,7 @@ export const AdminLayout: React.FC = () => {
       <Sidebar
         entries={sidebarEntries}
         roleTitle="Trang quản trị"
-        collapsed={collapsed}
+        collapsed={!sidebarOpen}
         onToggleCollapsed={handleToggleSidebar}
         userFullName={user?.fullName}
         userEmail={user?.email}
@@ -167,7 +166,7 @@ export const AdminLayout: React.FC = () => {
       />
 
       {/* Main Content */}
-      <main className={`flex-1 transition-[margin-left] duration-200 ease-out relative min-h-screen will-change-[margin-left] ${collapsed ? 'ml-20' : 'ml-72'}`}>
+      <main className={`flex-1 transition-[margin-left] duration-200 ease-out relative min-h-screen will-change-[margin-left] ${!sidebarOpen ? 'ml-20' : 'ml-72'}`}>
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none -z-10" />
         <div className="p-8 pb-12 w-full max-w-7xl mx-auto h-full">
           <Outlet />

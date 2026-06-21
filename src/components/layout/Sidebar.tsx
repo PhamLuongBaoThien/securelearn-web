@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Menu,
@@ -74,6 +74,12 @@ const RecursiveMenuItem: React.FC<{
   
   const isActive = isDescendantActive(item);
   const [open, setOpen] = useState(false); // Default closed for cleaner look, or isActive if preferred
+
+  useEffect(() => {
+    if (isActive) {
+      setOpen(true);
+    }
+  }, [isActive]);
 
   const toggleOpen = (e: React.MouseEvent) => {
     if (hasChildren && !collapsed) {
@@ -175,6 +181,12 @@ const GroupMenu: React.FC<{
   const isGroupActive = group.items.some((item) => currentPath.startsWith(item.path));
   const [open, setOpen] = useState(isGroupActive);
 
+  useEffect(() => {
+    if (isGroupActive) {
+      setOpen(true);
+    }
+  }, [isGroupActive]);
+
   const toggleOpen = () => {
     if (!collapsed) setOpen((prev) => !prev);
   };
@@ -237,6 +249,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   logoSrc
 }) => {
   const location = useLocation();
+  const navRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (navRef.current) {
+        const activeLink = navRef.current.querySelector('.bg-primary\\/10');
+        if (activeLink) {
+          activeLink.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [location.pathname, collapsed]);
 
   const getThemeIcon = () => {
     if (theme === 'light') return <Sun className="w-5 h-5 shrink-0" />;
@@ -324,7 +349,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* Navigation */}
-      <nav className={`flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar ${collapsed ? 'mt-4 space-y-2' : 'mt-2 space-y-1'}`}>
+      <nav ref={navRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar ${collapsed ? 'mt-4 space-y-2' : 'mt-2 space-y-1'}`}>
         {entries.map((entry, idx) => {
           if (entry.type === 'single') {
             return (

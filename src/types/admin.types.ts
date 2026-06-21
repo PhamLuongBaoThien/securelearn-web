@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // TypeScript Types: Định nghĩa kiểu dữ liệu cho Admin Management
 // Phủ toàn bộ 6 nhóm chức năng quản trị.
 // ========================
@@ -339,6 +339,14 @@ export interface ITransaction {
     instructorPoolAmount: number;
   } | null;
   grossAmount?: number;
+  discountAmount?: number;
+  couponSnapshot?: {
+    couponId: string;
+    code: string;
+    type: 'PERCENT' | 'FIXED';
+    value: number;
+    discountAmount: number;
+  } | null;
   adminAmount?: number;
   instructorAmount?: number;
   provider: PaymentProvider;
@@ -387,9 +395,19 @@ export interface IRevenueStats {
   totalRevenue: number;
   totalAdminRevenue: number;
   totalInstructorRevenue: number;
+  courseRevenue?: number;
+  courseAdminRevenue?: number;
+  courseInstructorRevenue?: number;
+  courseTransactions?: number;
+  subscriptionRevenue?: number;
+  subscriptionAdminRevenue?: number;
+  subscriptionInstructorRevenue?: number;
+  subscriptionTransactions?: number;
   thisMonthRevenue: number;
   thisMonthAdminRevenue?: number;
   thisMonthInstructorRevenue?: number;
+  thisMonthCourseRevenue?: number;
+  thisMonthSubscriptionRevenue?: number;
   successfulTransactions: number;
   activeSubscriptions: number;
   adminPercent?: number;
@@ -400,6 +418,8 @@ export interface IRevenueStats {
     adminRevenue: number;
     instructorRevenue: number;
     transactions: number;
+    courseRevenue?: number;
+    subscriptionRevenue?: number;
   }[];
   providerBreakdown?: {
     provider: PaymentProvider;
@@ -502,3 +522,7 @@ export interface ILearningProgress {
   enrolledAt: string;
   completedAt?: string;
 }
+
+
+
+
