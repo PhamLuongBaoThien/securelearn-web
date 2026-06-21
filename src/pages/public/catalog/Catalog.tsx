@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+﻿import { useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CourseCard } from "@/components/ui/CourseCard";
 import { StaggerContainer, StaggerItem } from "@/components/animations/Stagger";
@@ -27,6 +27,9 @@ import {
 } from "./constants";
 import { CourseCardSkeleton } from "./CourseCardSkeleton";
 import { SortDropdown } from "./SortDropdown";
+import { useCourseCouponPreviews } from "@/hooks/useCourseCouponPreviews";
+import { useEnrolledCourses } from "@/hooks/useEnrolledCourses";
+import { useAppSelector } from "@/app/hooks";
 
 
 // ── Empty State Illustration SVG ──────────────────────────────────────────────
@@ -150,6 +153,7 @@ function EmptyStateIllustration() {
 // ── Main ─────────────────────────────────────────────────────────────────────
 export function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
 
   // URL -> State initialization
   const categoryParam = searchParams.get("category") || "";
@@ -281,6 +285,14 @@ export function Catalog() {
   const total      = data?.total      ?? 0;
   const totalPages = data?.totalPages ?? 0;
   const hasMore    = page < totalPages;
+  const couponPreviewsQuery = useCourseCouponPreviews(courses, !isLoading && !isFetching && !isError);
+  const couponPreviews = couponPreviewsQuery.data ?? {};
+  const enrolledCoursesQuery = useEnrolledCourses();
+  const enrolledCourseIds = new Set((enrolledCoursesQuery.data ?? []).map((course) => course.courseId));
+  const isCouponPreviewLoading = courses.length > 0 && couponPreviewsQuery.isLoading;
+  const isEnrollmentLoading = isAuthenticated && courses.length > 0 && enrolledCoursesQuery.isLoading;
+  const isCatalogCardsLoading = isLoading || isFetching || isCouponPreviewLoading || isEnrollmentLoading;
+
   const hasActiveFilter =
     selectedCategories.length > 0 ||
     selectedLevels.length > 0 ||
@@ -308,7 +320,7 @@ export function Catalog() {
           Khám phá Khóa học
         </h1>
         <p className="text-muted-foreground text-base">
-          {isLoading || isFetching ? "Đang tải..." : `${total.toLocaleString()} khóa học`}
+          {isCatalogCardsLoading ? "Đang tải..." : `${total.toLocaleString()} khóa học`}
         </p>
       </div>
 
@@ -361,7 +373,7 @@ export function Catalog() {
       )}
 
       {/* ── Loading Skeleton ── */}
-      {(isLoading || isFetching) && (
+      {isCatalogCardsLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-8">
           {Array.from({ length: 12 }).map((_, i) => (
             <CourseCardSkeleton key={i} />
@@ -370,7 +382,7 @@ export function Catalog() {
       )}
 
       {/* ── Empty ── */}
-      {!isLoading && !isFetching && !isError && courses.length === 0 && (
+      {!isCatalogCardsLoading && !isError && courses.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
           <EmptyStateIllustration />
           <p className="text-lg font-semibold">Không tìm thấy khóa học</p>
@@ -384,11 +396,11 @@ export function Catalog() {
       )}
 
       {/* ── Course Grid ── */}
-      {!isLoading && !isFetching && !isError && courses.length > 0 && (
+      {!isCatalogCardsLoading && !isError && courses.length > 0 && (
         <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-8">
           {courses.map((course) => (
             <StaggerItem key={course._id}>
-              <CourseCard course={course} />
+              <CourseCard course={course} couponPreview={couponPreviews[course._id] ?? null} disableCouponPreviewFetch isEnrolledOverride={enrolledCourseIds.has(course._id)} />
             </StaggerItem>
           ))}
         </StaggerContainer>
@@ -432,3 +444,8 @@ export function Catalog() {
     </div>
   );
 }
+
+
+
+
+

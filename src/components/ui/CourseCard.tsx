@@ -1,6 +1,6 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Star, Clock, BookOpen, Check, GraduationCap, Heart } from 'lucide-react';
+import { Star, Clock, BookOpen, Check, GraduationCap, Heart, BadgePercent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HoverCard } from '@/components/animations/HoverCard';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -10,9 +10,10 @@ import { useCartActions } from '@/hooks/useCart';
 import { useWishlistActions } from '@/hooks/useWishlist';
 import { enrolledKeys, useEnrolledCourses } from '@/hooks/useEnrolledCourses';
 import { useMySubscription } from '@/hooks/useMySubscription';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { getBestCourseCouponPreview, type BestCouponResponse } from '@/services/paymentApi';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const LEVEL_LABEL: Record<string, string> = {
@@ -29,7 +30,15 @@ function formatDuration(seconds: number): string {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode?: 'default' | 'subscription' }) => {
+type CourseCardProps = {
+  course: ICourse;
+  mode?: 'default' | 'subscription';
+  couponPreview?: BestCouponResponse | null;
+  disableCouponPreviewFetch?: boolean;
+  isEnrolledOverride?: boolean;
+};
+
+export const CourseCard = ({ course, mode = 'default', couponPreview, disableCouponPreviewFetch = false, isEnrolledOverride }: CourseCardProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -58,10 +67,27 @@ export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode
   // Kiểm tra đã ghi danh chưa — dùng lại cache từ useEnrolledCourses (không gây thêm request)
   const isAuthenticated = Boolean(user);
   const { data: enrolledCourses = [] } = useEnrolledCourses();
-  const isEnrolled = isAuthenticated && enrolledCourses.some((e) => e.courseId === course._id);
+  const resolvedIsEnrolled = isAuthenticated && enrolledCourses.some((e) => e.courseId === course._id);
+  const isEnrolled = isEnrolledOverride ?? resolvedIsEnrolled;
+  const isOwnCourse = isAuthenticated && user && user.role === 'INSTRUCTOR' && course.instructorId === user._id;
   const { data: subscription } = useMySubscription();
   const hasActiveSubscription = Boolean(subscription?.current);
   const canUseSubscription = mode === 'subscription' && course.subscriptionStatus === 'APPROVED';
+  const couponPreviewQuery = useQuery({
+    queryKey: ['course-coupon-preview', user?._id ?? 'guest', course._id, course.price],
+    enabled: !disableCouponPreviewFetch && couponPreview === undefined && mode === 'default' && !isEnrolled && !isOwnCourse && course.price > 0,
+    queryFn: async () => {
+      const response = await getBestCourseCouponPreview(course.price);
+      if (!response.data) throw new Error(response.message || 'Không thể tải coupon cho khóa học.');
+      return response.data;
+    },
+    staleTime: 60_000,
+  });
+  const resolvedCouponPreview = couponPreview !== undefined ? couponPreview : couponPreviewQuery.data;
+  const bestCoupon = resolvedCouponPreview?.coupon ?? null;
+  const couponDiscount = bestCoupon?.discountAmount ?? bestCoupon?.discountPreview ?? 0;
+  const couponFinalPrice = bestCoupon?.finalAmount ?? Math.max(course.price - couponDiscount, 0);
+  const hasCouponPreview = couponDiscount > 0 && couponFinalPrice < course.price;
   const subscriptionEnrollMutation = useMutation({
     mutationFn: async () => {
       const response = await enrollWithSubscription(course._id);
@@ -97,6 +123,14 @@ export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode
             <div className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600/90 to-emerald-500/80 backdrop-blur-sm z-20">
               <GraduationCap className="w-3.5 h-3.5 text-white shrink-0" />
               <span className="text-white text-xs font-semibold tracking-wide">Đã sở hữu</span>
+            </div>
+          )}
+
+          {/* Badge "Khóa học của bạn" — overlay thumbnail */}
+          {isOwnCourse && (
+            <div className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600/90 to-blue-500/80 backdrop-blur-sm z-20">
+              <GraduationCap className="w-3.5 h-3.5 text-white shrink-0" />
+              <span className="text-white text-xs font-semibold tracking-wide">Khóa học của bạn</span>
             </div>
           )}
 
@@ -195,8 +229,12 @@ export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode
         )}
 
         {/* Price row — ẩn khi đã enrolled để không hiển thị giá gây nhầm lẫn */}
-        <div className="flex items-center gap-2 mb-3 mt-auto">
-          {isEnrolled ? (
+        <div className="flex flex-col justify-start min-h-[3.5rem] mb-3 mt-auto">
+          {isOwnCourse ? (
+            <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+              Bạn là giảng viên khóa học này
+            </span>
+          ) : isEnrolled ? (
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
               Tiếp tục học khoá học
             </span>
@@ -204,73 +242,98 @@ export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode
             <span className="text-xs text-primary font-medium">
               {hasActiveSubscription ? 'Dùng gói hiện tại để mở khóa học này' : 'Khóa học này nằm trong catalog thuê bao'}
             </span>
+          ) : hasCouponPreview ? (
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className="font-bold text-base text-foreground">{couponFinalPrice.toLocaleString('vi-VN')} ₫</span>
+                <span className="text-xs text-muted-foreground line-through">{course.price.toLocaleString('vi-VN')} ₫</span>
+              </div>
+              <div className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+                <BadgePercent className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate text-[10px]">{bestCoupon?.code} giảm {couponDiscount.toLocaleString('vi-VN')} ₫</span>
+              </div>
+            </div>
           ) : (
-            <>
+            <div className="flex items-baseline gap-2">
               <span className="font-bold text-base text-foreground">
                 {course.price === 0 ? 'Miễn phí' : `${course.price.toLocaleString('vi-VN')} ₫`}
               </span>
               {course.originalPrice != null && (
-                <span className="text-sm text-muted-foreground line-through">
+                <span className="text-xs text-muted-foreground line-through">
                   {course.originalPrice.toLocaleString('vi-VN')} ₫
                 </span>
               )}
-            </>
+            </div>
           )}
         </div>
 
         {/* CTA Button — luôn 1 nút duy nhất, cùng height cho mọi card */}
-        {isEnrolled ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full rounded-sm font-bold border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-500/60 dark:text-emerald-400 dark:hover:bg-emerald-950/50 transition-colors"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('/student/dashboard');
-            }}
-          >
-            Vào học ngay
-          </Button>
-        ) : canUseSubscription ? (
-          <Button
-            variant={hasActiveSubscription ? 'default' : 'outline'}
-            size="sm"
-            className="w-full rounded-sm font-bold"
-            onClick={(e) => {
-              e.preventDefault();
-              if (!isAuthenticated) {
-                navigate('/auth/login', { state: { from: location.pathname } });
-                return;
-              }
-              if (!hasActiveSubscription) {
-                navigate('/pricing');
-                return;
-              }
-              subscriptionEnrollMutation.mutate();
-            }}
-            disabled={subscriptionEnrollMutation.isPending}
-          >
-            {hasActiveSubscription
-              ? (subscriptionEnrollMutation.isPending ? 'Đang mở khóa...' : 'Học bằng thuê bao')
-              : 'Mua gói'}
-          </Button>
-        ) : (
-          <Button
-            variant="udemy_outline"
-            size="sm"
-            className="w-full rounded-sm font-bold"
-            onClick={(e) => {
-              e.preventDefault();
-              if (isInCart) return;
-              addItem({
+        <div className="opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 ease-out">
+          {isOwnCourse ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full rounded-sm font-bold border-blue-500 text-blue-600 hover:bg-blue-50 dark:border-blue-500/60 dark:text-blue-400 dark:hover:bg-blue-950/50 transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate(`/student/courses/${course._id}/learn`);
+              }}
+            >
+              Xem nội dung khóa học
+            </Button>
+          ) : isEnrolled ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full rounded-sm font-bold border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-500/60 dark:text-emerald-400 dark:hover:bg-emerald-950/50 transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/student/dashboard');
+              }}
+            >
+              Vào học ngay
+            </Button>
+          ) : canUseSubscription ? (
+            <Button
+              variant={hasActiveSubscription ? 'default' : 'outline'}
+              size="sm"
+              className="w-full rounded-sm font-bold"
+              onClick={(e) => {
+                e.preventDefault();
+                if (!isAuthenticated) {
+                  navigate('/auth/login', { state: { from: location.pathname } });
+                  return;
+                }
+                if (!hasActiveSubscription) {
+                  navigate('/pricing');
+                  return;
+                }
+                subscriptionEnrollMutation.mutate();
+              }}
+              disabled={subscriptionEnrollMutation.isPending}
+            >
+              {hasActiveSubscription
+                ? (subscriptionEnrollMutation.isPending ? 'Đang mở khóa...' : 'Học bằng thuê bao')
+                : 'Mua gói'}
+            </Button>
+          ) : (
+            <Button
+              variant="udemy_outline"
+              size="sm"
+              className="w-full rounded-sm font-bold"
+              onClick={(e) => {
+                e.preventDefault();
+                if (isInCart) return;
+                addItem({
                 ...wishlistItem,
               });
-            }}
-            disabled={isInCart || isAdding}
-          >
-            {isInCart ? 'Đã có trong giỏ' : isAdding ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
-          </Button>
-        )}
+              }}
+              disabled={isInCart || isAdding}
+            >
+              {isInCart ? 'Đã có trong giỏ' : isAdding ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
+            </Button>
+          )}
+        </div>
       </div>
     </HoverCard>
   );
@@ -310,3 +373,10 @@ export const CourseCard = ({ course, mode = 'default' }: { course: ICourse; mode
     </Popover>
   );
 };
+
+
+
+
+
+
+

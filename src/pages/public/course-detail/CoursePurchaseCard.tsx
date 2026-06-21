@@ -1,4 +1,4 @@
-// File: CoursePurchaseCard.tsx
+﻿// File: CoursePurchaseCard.tsx
 // Sidebar mua hàng nằm bên phải trang Course Detail.
 // Tính năng:
 //   - Sticky: bám theo viewport khi cuộn xuống, ẩn thumbnail khi đang sticky
@@ -9,16 +9,17 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAppSelector } from '@/app/hooks';
 import { useCartActions } from '@/hooks/useCart';
 import { useWishlistActions } from '@/hooks/useWishlist';
 import { enrollWithSubscription, type ICourse } from '@/services/courseApi';
+import { getBestCourseCouponPreview } from '@/services/paymentApi';
 import { enrolledKeys } from '@/hooks/useEnrolledCourses';
 import { useMySubscription } from '@/hooks/useMySubscription';
-import { CheckCircle2, CreditCard, Heart } from 'lucide-react';
+import { BadgePercent, CheckCircle2, CreditCard, Heart, GraduationCap } from 'lucide-react';
 
 interface Props {
   course: ICourse;     // Dữ liệu khóa học cần hiển thị
@@ -31,9 +32,24 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
   const { addItem, isAdding } = useCartActions();
   const { toggleItem: toggleWishlistItem, isAdding: isSavingWishlist, isRemoving: isRemovingWishlist } = useWishlistActions();
   const user = useAppSelector((state) => state.auth.user);
+  const isOwnCourse = !!user && user.role === 'INSTRUCTOR' && course.instructorId === user._id;
   const { data: subscription } = useMySubscription();
   const hasActiveSubscription = Boolean(subscription?.current);
   const isSubscriptionCourse = course.subscriptionStatus === 'APPROVED';
+  const couponPreviewQuery = useQuery({
+    queryKey: ['course-coupon-preview', user?._id ?? 'guest', course._id, course.price],
+    enabled: !isEnrolled && !isOwnCourse && course.price > 0,
+    queryFn: async () => {
+      const response = await getBestCourseCouponPreview(course.price);
+      if (!response.data) throw new Error(response.message || 'Không thể tải coupon cho khóa học.');
+      return response.data;
+    },
+    staleTime: 60_000,
+  });
+  const bestCoupon = couponPreviewQuery.data?.coupon ?? null;
+  const couponDiscount = bestCoupon?.discountAmount ?? bestCoupon?.discountPreview ?? 0;
+  const couponFinalPrice = bestCoupon?.finalAmount ?? Math.max(course.price - couponDiscount, 0);
+  const hasCouponPreview = couponDiscount > 0 && couponFinalPrice < course.price;
 
   // Kiểm tra khóa học này đã có trong giỏ hàng Redux chưa
   const cartItems = useAppSelector((state) => state.cart.cartItems);
@@ -136,7 +152,28 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
           </div>
 
           <div className="p-5 lg:p-6">
-            {isEnrolled ? (
+            {isOwnCourse ? (
+              // Trường hợp là giảng viên sở hữu khóa học
+              <div>
+                <div className="mb-6 flex flex-col items-center text-center p-6 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50">
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-full text-blue-600 dark:text-blue-400 mb-3">
+                    <GraduationCap className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-lg font-bold text-blue-950 dark:text-blue-200 mb-1">
+                    Khóa học của bạn
+                  </h3>
+                  <p className="text-xs text-blue-800/80 dark:text-blue-400/80 max-w-[240px]">
+                    Bạn là giảng viên giảng dạy khóa học này. Bạn có quyền xem toàn bộ nội dung học liệu và bài học.
+                  </p>
+                </div>
+                <Button
+                  className="w-full py-6 font-bold text-base rounded-lg bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 shadow-md hover:shadow-lg transition-all"
+                  onClick={() => navigate(`/student/courses/${course._id}/learn`)}
+                >
+                  Xem nội dung khóa học
+                </Button>
+              </div>
+            ) : isEnrolled ? (
               // Trường hợp đã ghi danh: hiện thông báo và nút vào học
               <div>
                 <div className="mb-4 flex items-start gap-3 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
@@ -158,13 +195,26 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Mua riêng khóa học
                   </p>
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <span className="text-3xl font-extrabold tracking-tight">
-                      {course.price === 0
-                        ? 'Miễn phí'
-                        : `${course.price.toLocaleString('vi-VN')} ₫`}
-                    </span>
-                  </div>
+                  {hasCouponPreview ? (
+                    <div>
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <span className="text-3xl font-extrabold tracking-tight">{couponFinalPrice.toLocaleString('vi-VN')} ₫</span>
+                        <span className="text-base font-semibold text-muted-foreground line-through">{course.price.toLocaleString('vi-VN')} ₫</span>
+                      </div>
+                      <div className="mt-2 inline-flex max-w-full items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300">
+                        <BadgePercent className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Tự áp mã {bestCoupon?.code}, giảm {couponDiscount.toLocaleString('vi-VN')} ₫</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="text-3xl font-extrabold tracking-tight">
+                        {course.price === 0
+                          ? 'Miễn phí'
+                          : `${course.price.toLocaleString('vi-VN')} ₫`}
+                      </span>
+                    </div>
+                  )}
                   <p className="mt-2 text-sm text-muted-foreground">
                     Sở hữu khóa học này với quyền truy cập trọn đời.
                   </p>
@@ -250,15 +300,15 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
               </div>
             )}
 
-            {/* Liên kết phụ: chia sẻ, tặng, coupon */}
-            <div className="flex flex-wrap justify-between gap-3 mt-6 pt-5 border-t text-sm font-semibold text-muted-foreground">
-              <span className="hover:text-primary cursor-pointer">Chia sẻ</span>
-              <span className="hover:text-primary cursor-pointer">Tặng bạn bè</span>
-              <span className="hover:text-primary cursor-pointer">Dùng Coupon</span>
-            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+
+
+
+
+

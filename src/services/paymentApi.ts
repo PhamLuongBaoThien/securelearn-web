@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // Payment API Client
 // Mục đích:
 // - gọi payment-service cho checkout, transaction, finance và subscription
@@ -9,6 +9,7 @@ import apiClient from './apiClient';
 export type PaymentProvider = 'VNPAY' | 'MOMO';
 export type PaymentMethod = 'VNPAY' | 'MOMO';
 export type CouponType = 'PERCENT' | 'FIXED';
+export type CouponComputedStatus = 'ACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'INACTIVE' | 'USED_UP';
 
 export interface Coupon {
   _id: string;
@@ -24,6 +25,12 @@ export interface Coupon {
   startsAt: string | null;
   endsAt: string | null;
   isActive: boolean;
+  combinable?: boolean;
+  computedStatus?: CouponComputedStatus;
+  discountPreview?: number;
+  discountAmount?: number;
+  finalAmount?: number;
+  reasonIfUnavailable?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -42,6 +49,48 @@ export interface AdminCouponsResponse {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface AvailableCouponsResponse {
+  subtotal: number;
+  coupons: Coupon[];
+}
+
+export interface BestCouponResponse {
+  subtotal: number;
+  coupon: Coupon | null;
+}
+
+export interface BestCouponPreviewsResponse {
+  previews: Record<string, BestCouponResponse>;
+}
+
+export interface CouponRedemption {
+  _id: string;
+  couponId: string;
+  couponCode: string;
+  userId: string;
+  transactionId: string;
+  transactionCode: string;
+  discountAmount: number;
+  createdAt: string;
+}
+
+export interface CouponRedemptionsResponse {
+  redemptions: CouponRedemption[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface CouponStats {
+  totalCoupons: number;
+  statusCounts: Record<CouponComputedStatus, number>;
+  totalRedemptions: number;
+  totalDiscountAmount: number;
+  uniqueUsers: number;
+  topByUsage: Array<{ couponId: string; code: string; usedCount: number; computedStatus: CouponComputedStatus }>;
+  topByDiscount: Array<{ couponId: string; code: string; totalDiscountAmount: number; redemptions: number }>;
 }
 
 export type CouponPayload = Omit<Coupon, '_id' | 'usedCount' | 'createdBy' | 'updatedBy' | 'createdAt' | 'updatedAt'>;
@@ -343,6 +392,24 @@ export const validateCourseCoupon = async (code: string) => {
   return data;
 };
 
+
+export const getAvailableCourseCoupons = async () => {
+  const { data } = await apiClient.get<ApiResponse<AvailableCouponsResponse>>('/api/payments/coupons/available');
+  return data;
+};
+
+export const getBestCourseCoupon = async () => {
+  const { data } = await apiClient.get<ApiResponse<BestCouponResponse>>('/api/payments/coupons/best');
+  return data;
+};
+export const getBestCourseCouponPreview = async (amount: number) => {
+  const { data } = await apiClient.get<ApiResponse<BestCouponResponse>>('/api/payments/coupons/best-preview', { params: { amount } });
+  return data;
+};
+export const getBestCourseCouponPreviews = async (items: Array<{ courseId: string; price: number }>) => {
+  const { data } = await apiClient.post<ApiResponse<BestCouponPreviewsResponse>>('/api/payments/coupons/best-previews', { items });
+  return data;
+};
 export const getAdminCoupons = async (params?: { search?: string; status?: string; page?: number; limit?: number }) => {
   const { data } = await apiClient.get<ApiResponse<AdminCouponsResponse>>('/api/payments/admin/coupons', { params });
   return data;
@@ -367,3 +434,24 @@ export const deleteAdminCoupon = async (id: string) => {
   const { data } = await apiClient.delete<ApiResponse>(`/api/payments/admin/coupons/${id}`);
   return data;
 };
+export const getAdminCouponStats = async () => {
+  const { data } = await apiClient.get<ApiResponse<CouponStats>>('/api/payments/admin/coupons/stats');
+  return data;
+};
+
+export const getAdminCouponDetailStats = async (id: string) => {
+  const { data } = await apiClient.get<ApiResponse<CouponStats>>(`/api/payments/admin/coupons/${id}/stats`);
+  return data;
+};
+
+export const getAdminCouponRedemptions = async (params?: { code?: string; user?: string; page?: number; limit?: number }) => {
+  const { data } = await apiClient.get<ApiResponse<CouponRedemptionsResponse>>('/api/payments/admin/coupon-redemptions', { params });
+  return data;
+};
+
+export const getAdminCouponDetailRedemptions = async (id: string, params?: { page?: number; limit?: number }) => {
+  const { data } = await apiClient.get<ApiResponse<CouponRedemptionsResponse>>(`/api/payments/admin/coupons/${id}/redemptions`, { params });
+  return data;
+};
+
+

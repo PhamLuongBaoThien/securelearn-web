@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // Hook: useAdminFinance
 // Mục đích:
 // - gom React Query hooks cho báo cáo tài chính và vận hành thuê bao của Admin
@@ -18,6 +18,9 @@ import {
   createAdminCoupon,
   deleteAdminCoupon,
   getAdminCoupons,
+  getAdminCouponStats,
+  getAdminCouponRedemptions,
+  getAdminCouponDetailRedemptions,
   getAdminSubscriptionPlans,
   getAdminSubscriptionTerms,
   getSubscriptionSettlements,
@@ -45,6 +48,9 @@ export const adminFinanceKeys = {
   subscriptionTerms: ['admin', 'subscription-terms'] as const,
   subscriptionSettlements: ['admin', 'subscription-settlements'] as const,
   coupons: (params: { search?: string; status?: string; page: number; limit: number }) => ['admin', 'coupons', params] as const,
+  couponStats: ['admin', 'coupons', 'stats'] as const,
+  couponRedemptions: (params: { code?: string; user?: string; page: number; limit: number }) => ['admin', 'coupon-redemptions', params] as const,
+  couponDetailRedemptions: (id: string, page: number, limit: number) => ['admin', 'coupons', id, 'redemptions', page, limit] as const,
 };
 
 export function useAdminRevenueSplitConfig() {
@@ -237,6 +243,43 @@ export function useAdminCoupons(params: { search?: string; status?: string; page
   });
 }
 
+
+export function useAdminCouponStats() {
+  return useQuery({
+    queryKey: adminFinanceKeys.couponStats,
+    queryFn: async () => {
+      const response = await getAdminCouponStats();
+      if (!response.data) throw new Error(response.message || 'Không thể tải thống kê coupon.');
+      return response.data;
+    },
+  });
+}
+
+export function useAdminCouponRedemptions(params: { code?: string; user?: string; page: number; limit: number }) {
+  return useQuery({
+    queryKey: adminFinanceKeys.couponRedemptions(params),
+    queryFn: async () => {
+      const response = await getAdminCouponRedemptions(params);
+      if (!response.data) throw new Error(response.message || 'Không thể tải lịch sử coupon.');
+      return response.data;
+    },
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+export function useAdminCouponDetailRedemptions(id: string | null, page = 1, limit = 10) {
+  return useQuery({
+    queryKey: adminFinanceKeys.couponDetailRedemptions(id || 'none', page, limit),
+    enabled: Boolean(id),
+    queryFn: async () => {
+      if (!id) throw new Error('Coupon không hợp lệ.');
+      const response = await getAdminCouponDetailRedemptions(id, { page, limit });
+      if (!response.data) throw new Error(response.message || 'Không thể tải lịch sử coupon.');
+      return response.data;
+    },
+    placeholderData: (previousData) => previousData,
+  });
+}
 export function useSaveAdminCoupon() {
   const queryClient = useQueryClient();
 
@@ -248,6 +291,7 @@ export function useSaveAdminCoupon() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'coupons'] });
+      await queryClient.invalidateQueries({ queryKey: adminFinanceKeys.couponStats });
       toast.success('Đã lưu coupon.');
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể lưu coupon.'),
@@ -265,6 +309,7 @@ export function useUpdateAdminCouponStatus() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'coupons'] });
+      await queryClient.invalidateQueries({ queryKey: adminFinanceKeys.couponStats });
       toast.success('Đã cập nhật trạng thái coupon.');
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể cập nhật coupon.'),
@@ -282,6 +327,7 @@ export function useDeleteAdminCoupon() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'coupons'] });
+      await queryClient.invalidateQueries({ queryKey: adminFinanceKeys.couponStats });
       toast.success('Đã xóa coupon.');
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể xóa coupon.'),
