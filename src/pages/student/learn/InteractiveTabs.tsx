@@ -1,9 +1,10 @@
-﻿// ========================
-// Learning Interactive Tabs
-// Mục đích:
-// - hiển thị tổng quan, tài liệu, ghi chú và thảo luận dưới bài học
-// - dùng dữ liệu thật theo course/lesson và quyền học hiện tại
-// ========================
+// [TAB TƯƠNG TÁC BÀI HỌC - BƯỚC 1 & 4 & 5]
+// Component InteractiveTabs quản lý các tab tương tác bổ trợ bên dưới bài học bao gồm:
+// 1. Tổng quan (Overview): Nội dung mô tả chi tiết bài học.
+// 2. Tài liệu (Resources): Tải signed URL và render tài liệu đính kèm (ProtectedPdfViewer/ImageDocumentViewer).
+// 3. Ghi chú (Notes): Ghi chú cá nhân kèm mốc thời gian video (?timestampSec) để học viên dễ xem lại.
+// 4. Thảo luận (Discussions): Hỏi đáp Q&A giữa học viên và giảng viên tại các thời điểm video.
+// 5. Đánh giá (Reviews): Đánh giá, xếp hạng sao và cảm nhận của học viên về khóa học.
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Clock3, Download, Eye, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Send, Star, Trash2 } from 'lucide-react';

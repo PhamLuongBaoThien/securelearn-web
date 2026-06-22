@@ -1,3 +1,10 @@
+// [GIAO DIỆN HỌC TẬP CHÍNH - BƯỚC 1]
+// Component cha điều phối màn hình học tập của học viên.
+// Vai trò chính:
+// 1. Quản lý trạng thái giao diện học tập: chọn bài học (selectedLessonId), ẩn/hiện sidebar giáo trình, đồng bộ theme sáng/tối.
+// 2. Đồng bộ các hooks dữ liệu (Curriculum từ course-service, Tiến độ học tập & Mở khóa tuần tự từ progress-service).
+// 3. Tự động kiểm tra quyền truy cập bài học và chuyển hướng bảo mật nếu học viên cố tình vào các bài học bị khóa.
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';

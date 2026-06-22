@@ -1,3 +1,10 @@
+// [XEM TÀI LIỆU ẢNH BẢO MẬT - BƯỚC 5]
+// Component hiển thị các tài liệu dạng hình ảnh đính kèm bài học.
+// Vai trò chính:
+// 1. Nhận signed URL tạm thời, tải file ảnh dạng Blob bằng JS (downloadDocumentFromSession).
+// 2. Chuyển đổi Blob thành URL cục bộ (URL.createObjectURL) để hiển thị trong thẻ <img> nhằm ẩn URL thật của S3/MinIO.
+// 3. Tự động thu hồi (revokeObjectURL) khi đóng màn hình xem để giải phóng bộ nhớ RAM trình duyệt.
+
 import { useEffect, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';

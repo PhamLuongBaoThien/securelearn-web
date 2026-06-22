@@ -1,4 +1,11 @@
+// [THƯ VIỆN BẢO VỆ NỘI DUNG - BƯỚC 2 & 5]
+// File này cung cấp các tiện ích bảo vệ bản quyền nội dung trên Frontend của SecureLearn:
+// 1. Quản lý cấu hình Watermark động (xoay vòng vị trí, format chuỗi email/userId của học viên).
+// 2. Chặn các phím tắt nhạy cảm trên trình duyệt (F12 Inspect, Ctrl+C sao chép, Ctrl+S lưu file, Ctrl+P in tài liệu).
+// 3. Tự động loại bỏ chặn phím khi học viên đang nhập liệu trong các thẻ input/textarea/contenteditable.
+
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
+
 
 export type WatermarkIdentity = {
   email?: string;

@@ -1,3 +1,12 @@
+// [TRÌNH PHÁT VIDEO BẢO MẬT & HEARTBEAT - BƯỚC 2 & 2.1 & 3]
+// Component phát video bài học bảo mật tích hợp HLS (HTTP Live Streaming) và chống gian lận/quay lén màn hình.
+// Vai trò chính:
+// 1. Tự động lấy playback session và HLS manifest bảo mật từ media-service.
+// 2. Chặn các hành động sao chép, chuột phải và tổ hợp phím tắt F12 Inspect / in tài liệu để bảo vệ bản quyền.
+// 3. Hiển thị watermark động xoay vòng chứa Email & User ID của học viên đang học để chống quay trộm.
+// 4. Kiểm soát hành vi gian lận tua nhanh video bằng cách so sánh mốc seek và hiển thị warning.
+// 5. Định kỳ gửi heartbeat (mỗi 15s) cập nhật watchedSecondsDelta (giới hạn thực xem) lên progress-service.
+
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type SyntheticEvent } from 'react';
 import Hls from 'hls.js';
 import { Info, Loader2, Shield, VideoOff } from 'lucide-react';

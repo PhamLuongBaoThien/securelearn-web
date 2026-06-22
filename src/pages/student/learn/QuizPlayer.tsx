@@ -1,4 +1,13 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+// [BÀI TẬP TRẮC NGHIỆM - BƯỚC 4]
+// Component quản lý toàn bộ luồng làm bài và nộp bài trắc nghiệm của học viên.
+// Vai trò chính:
+// 1. Tải đề thi bảo mật từ course-service (đáp án đúng correctOptionIndexes được lọc bỏ ở Backend để chống hack F12).
+// 2. Quản lý trạng thái chọn đáp án (Single-choice, Multiple-choice, True/False).
+// 3. Khởi tạo lượt làm bài (useStartQuizAttempt) và nộp bài chấm điểm (useSubmitQuizAttempt).
+// 4. Khi làm xong, gọi progress-service qua quiz-complete để cập nhật trạng thái bài học thành COMPLETED.
+// 5. Hiển thị lịch sử làm bài, kết quả chấm điểm cùng lời giải chi tiết của từng câu hỏi.
+
+import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CheckCircle2, HelpCircle, History, Loader2, RotateCcw, XCircle } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';

@@ -1,3 +1,11 @@
+// [XEM TÀI LIỆU PDF BẢO MẬT - BƯỚC 5]
+// Component hiển thị tài liệu PDF bảo mật đi kèm bài học.
+// Vai trò chính:
+// 1. Nhận signed URL tạm thời có thời hạn ngắn để stream tài liệu PDF từ MinIO.
+// 2. Sử dụng thư viện react-pdf/PDF.js để tải file và tự động render nội dung lên các thẻ HTML <canvas>.
+// 3. Giúp ngăn chặn việc học viên click chuột phải lưu file, copy text hoặc lộ URL tải trực tiếp của S3/MinIO khi đang xem trước.
+// 4. Hỗ trợ zoom (scale), chuyển trang (Next/Prev) và dọn dẹp URL blob sau khi đóng trình xem.
+
 import { useMemo, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ChevronLeft, ChevronRight, Loader2, Minus, Plus, X } from 'lucide-react';

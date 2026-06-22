@@ -1,3 +1,11 @@
+// [SIDEBAR GIÁO TRÌNH & TIẾN ĐỘ - BƯỚC 1]
+// Component hiển thị danh sách chương học (Sections) và bài học (Lessons).
+// Vai trò chính:
+// 1. Hiển thị trực quan cấu trúc giáo trình dạng cây (thu gọn/mở rộng từng chương).
+// 2. Map dữ liệu tiến độ (progressByLessonId) và quyền truy cập (accessByLessonId) của từng bài học.
+// 3. Biểu diễn trạng thái của từng bài học bằng icon trực quan: khóa (Lock 🔒), hoàn thành (Check ✅), đang học (Highlight), chưa học (Play/Help).
+// 4. Vô hiệu hóa (disable) sự kiện click đối với các bài học chưa được mở khóa.
+
 import { useState } from 'react';
 import { CheckCircle2, ChevronDown, ChevronRight, Clock, HelpCircle, Lock, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
