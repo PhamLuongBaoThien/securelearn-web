@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Star, Clock, BookOpen, Check, GraduationCap, Heart, BadgePercent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -222,7 +222,7 @@ export const CourseCard = ({ course, mode = 'default', couponPreview, disableCou
             {course.totalLessons != null && course.totalLessons > 0 && (
               <span className="flex items-center gap-0.5">
                 <BookOpen className="w-3 h-3" />
-                {course.totalLessons} bài giảng
+                {course.totalLessons} bài học
               </span>
             )}
           </div>
@@ -373,6 +373,7 @@ export const CourseCard = ({ course, mode = 'default', couponPreview, disableCou
     </Popover>
   );
 };
+
 
 
 

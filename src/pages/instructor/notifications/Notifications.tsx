@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // Instructor Notifications: Thông báo từ Admin
 // ========================
 import React, { useState } from 'react';
@@ -45,7 +45,7 @@ const MOCK_NOTIFICATIONS = [
   {
     id: 6, type: 'alert' as const,
     title: 'Video đang bị báo cáo vi phạm bản quyền',
-    body: 'Bài giảng "Bài 4: Advanced Patterns" trong khóa "React Nâng cao" đã nhận được 2 báo cáo về bản quyền âm nhạc. Admin đang xem xét. Video sẽ bị ẩn trong 24h.',
+    body: 'Video bài học "Bài 4: Advanced Patterns" trong khóa "React Nâng cao" đã nhận được 2 báo cáo về bản quyền âm nhạc. Admin đang xem xét. Video sẽ bị ẩn trong 24h.',
     time: '4 ngày trước',
     read: true,
   },
@@ -160,3 +160,4 @@ export const InstructorNotifications: React.FC = () => {
     </div>
   );
 };
+

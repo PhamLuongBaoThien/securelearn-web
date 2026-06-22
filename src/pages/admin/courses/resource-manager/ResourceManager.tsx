@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -31,7 +31,6 @@ import type {
   IAdminCourseListItem,
   ICategory,
   SubscriptionCatalogStatus,
-  ILearningProgress,
 } from '@/types/admin.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -369,7 +368,7 @@ const CourseDetailDialog: React.FC<{
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-zinc-500">Số bài học:</span>
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">{course.totalLessons} bài / {course.totalSections} chương</span>
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">{course.totalLessons} bài học / {course.totalSections} chương</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-zinc-500">Thời lượng:</span>
@@ -537,7 +536,7 @@ const CourseStudentsDialog: React.FC<{
                       </div>
                     </td>
                     <td className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">
-                      {item.completedLessons} / {item.totalLessons} bài
+                      {item.completedLessons} / {item.totalLessons} bài học
                     </td>
                     <td className="px-4 py-3 text-zinc-500">
                       {item.totalWatchTime ? `${item.totalWatchTime.toFixed(1)} phút` : '0 phút'}
@@ -643,7 +642,6 @@ export const ResourceManager: React.FC = () => {
       return response.data;
     },
   });
-  const categories = useMemo(() => flattenCategories(categoriesQuery.data || []), [categoriesQuery.data]);
   const data = coursesQuery.data;
   const courses = data?.courses || [];
   const summary = data?.summary || { total: 0, subscriptionApproved: 0, subscriptionPending: 0, withDraft: 0 };
@@ -651,15 +649,6 @@ export const ResourceManager: React.FC = () => {
 
   const visiblePages = useMemo(() => getVisiblePages(page, totalPages), [page, totalPages]);
 
-  const categoryOptions = useMemo(() => {
-    return [
-      { value: '', label: 'Tất cả danh mục' },
-      ...categories.map((c) => ({
-        value: c._id,
-        label: `${'• '.repeat(c.depth)}${c.name}`,
-      })),
-    ];
-  }, [categories]);
 
   const updateFilter = (key: string) => (value: string) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -1027,3 +1016,5 @@ export const ResourceManager: React.FC = () => {
   </TooltipProvider>
 );
 };
+
+

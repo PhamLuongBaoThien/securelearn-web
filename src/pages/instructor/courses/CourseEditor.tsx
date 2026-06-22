@@ -1,4 +1,4 @@
-// File này là màn hình editor chính cho instructor.
+﻿// File này là màn hình editor chính cho instructor.
 // Nó đang ghép 3 lớp logic:
 // - metadata khóa học
 // - curriculum dạng section/lesson
@@ -1446,7 +1446,7 @@ export const CourseEditor: React.FC = () => {
                       disabled={effectiveReadOnly}
                       className="h-8 text-sm font-medium border-none bg-transparent p-0 focus-visible:ring-0"
                     />
-                    <Badge variant="secondary" className="shrink-0 text-xs">{section.lessons.length} bài</Badge>
+                    <Badge variant="secondary" className="shrink-0 text-xs">{section.lessons.length} bài học</Badge>
                     {section.lessons.some((lesson) => Boolean(lesson._id && attachmentOperations[lesson._id])) && (
                       <Badge className="shrink-0 gap-1 bg-blue-500/10 text-blue-600 hover:bg-blue-500/15 border-blue-500/20 text-xs">
                         <Loader2 className="w-3 h-3 animate-spin" />
@@ -1474,7 +1474,7 @@ export const CourseEditor: React.FC = () => {
                         <span>
                           <ConfirmDialog
                             title="Xóa chương này?"
-                            description={`Toàn bộ ${section.lessons.length} bài giảng (bao gồm video, quiz và tài liệu đính kèm) bên trong sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.`}
+                            description={`Toàn bộ ${section.lessons.length} bài học (bao gồm video, quiz và tài liệu đính kèm) bên trong sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.`}
                             confirmText="Xóa chương"
                             cancelText="Giữ lại"
                             isDestructive
@@ -1523,7 +1523,7 @@ export const CourseEditor: React.FC = () => {
                         />
                       ))}
                       <Button variant="ghost" size="sm" onClick={() => void handleAddLesson(sectionIndex)} className="gap-2 text-xs text-muted-foreground" disabled={isMutatingCurriculum || effectiveReadOnly}>
-                        <Plus className="w-3.5 h-3.5" /> Thêm bài giảng
+                        <Plus className="w-3.5 h-3.5" /> Thêm bài học
                       </Button>
                     </div>
                   )}
@@ -1591,7 +1591,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
           onClick={(e) => e.stopPropagation()}
           disabled={isReadOnly}
           className="h-8 text-sm border-none bg-transparent p-0 focus-visible:ring-0 flex-1" 
-          placeholder="Tên bài giảng..." 
+          placeholder="Tên bài học..." 
         />
         {isVideo && status && status !== "NONE" && (
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 hidden sm:inline-block ${status === "DONE" ? "bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400" : status === "FAILED" ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400" : "bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400"}`}>
@@ -1630,9 +1630,9 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
           <TooltipTrigger asChild>
             <span>
               <ConfirmDialog
-                title="Xóa bài giảng này?"
-                description="Video, quiz và tài liệu đính kèm của bài giảng sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác."
-                confirmText="Xóa bài giảng"
+                title="Xóa bài học này?"
+                description="Video, quiz và tài liệu đính kèm của bài học sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác."
+                confirmText="Xóa bài học"
                 cancelText="Giữ lại"
                 isDestructive
                 onConfirm={onRemove}
@@ -1644,11 +1644,11 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
               />
             </span>
           </TooltipTrigger>
-          <TooltipContent>Xóa bài giảng</TooltipContent>
+          <TooltipContent>Xóa bài học</TooltipContent>
         </Tooltip>
         {/* ConfirmDialog đổi loại bài học (controlled) */}
         <ConfirmDialog
-          title="Đổi loại bài giảng?"
+          title="Đổi loại bài học?"
           description="Video hoặc quiz hiện tại sẽ bị xóa khi chuyển sang loại khác. Tài liệu đính kèm vẫn được giữ lại."
           confirmText="Đổi loại"
           cancelText="Hủy"
@@ -1713,4 +1713,6 @@ const getStatusBadge = (status: string) => {
   if (status === "DRAFT") return <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 text-xs">Bản nháp</Badge>;
   return null;
 };
+
+
 

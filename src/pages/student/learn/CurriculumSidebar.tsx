@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { CheckCircle2, ChevronDown, ChevronRight, Clock, HelpCircle, Lock, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ILesson, ISection } from '@/services/courseApi';
@@ -55,7 +55,7 @@ export function CurriculumSidebar({
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-zinc-800 dark:text-zinc-100">{section.title}</p>
-                  <p className="mt-0.5 text-xs text-zinc-400">{section.lessons.length} bài</p>
+                  <p className="mt-0.5 text-xs text-zinc-400">{section.lessons.length} bài học</p>
                 </div>
                 {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
@@ -127,3 +127,4 @@ export function CurriculumSidebar({
     </div>
   );
 }
+

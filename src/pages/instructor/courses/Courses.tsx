@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // Instructor Courses Page
 // Mục đích:
 // - hiển thị danh sách khóa học của giảng viên và các action editor/review
@@ -410,7 +410,7 @@ export const InstructorCourses: React.FC = () => {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-zinc-500 dark:text-zinc-400">Nội dung</span>
                     <span className="font-medium text-zinc-900 dark:text-white">
-                      {course.totalLessons || 0} bài • {formatDuration(course.totalDuration || 0)}
+                      {course.totalLessons || 0} bài học • {formatDuration(course.totalDuration || 0)}
                     </span>
                   </div>
 
@@ -448,3 +448,4 @@ export const InstructorCourses: React.FC = () => {
     </div>
   );
 };
+

@@ -299,7 +299,7 @@ export const Cart = () => {
                         </div>
                       )}
                       {item.level && <span>{LEVEL_LABEL[item.level] ?? item.level}</span>}
-                      {item.totalLessons != null && item.totalLessons > 0 && <span className="flex items-center gap-0.5"><BookOpen className="w-3 h-3" />{item.totalLessons} bài giảng</span>}
+                      {item.totalLessons != null && item.totalLessons > 0 && <span className="flex items-center gap-0.5"><BookOpen className="w-3 h-3" />{item.totalLessons} bài học</span>}
                       {item.totalDuration != null && item.totalDuration > 0 && <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" />{formatDuration(item.totalDuration)}</span>}
                     </div>
                     <div className="mt-auto pt-3">
@@ -392,5 +392,6 @@ export const Cart = () => {
     </div>
   );
 };
+
 
 

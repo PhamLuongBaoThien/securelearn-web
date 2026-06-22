@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // Learning Interactive Tabs
 // Mục đích:
 // - hiển thị tổng quan, tài liệu, ghi chú và thảo luận dưới bài học
@@ -216,7 +216,7 @@ function ResourcesPanel({
     <div className="max-w-4xl space-y-5">
       <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Tài liệu học tập</p>
-        <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Tài liệu đính kèm bài giảng</h3>
+        <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Tài liệu đính kèm bài học</h3>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           Xem trực tiếp hoặc tải các tài liệu học tập, bài tập thực hành do giảng viên cung cấp để củng cố kiến thức.
         </p>
@@ -658,7 +658,7 @@ function ReviewsPanel({ course }: { course: ICourse }) {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Đánh giá & Cảm nhận</p>
           <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Cảm nhận từ học viên</h3>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Xem những nhận xét thực tế về bài giảng và giảng viên từ những học viên khác để hiểu sâu hơn về khóa học.
+            Xem những nhận xét thực tế về nội dung học và giảng viên từ những học viên khác để hiểu sâu hơn về khóa học.
           </p>
         </div>
 
@@ -705,7 +705,7 @@ function ReviewsPanel({ course }: { course: ICourse }) {
       <aside className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 h-fit">
         <h3 className="text-base font-bold text-zinc-950 dark:text-white">Viết đánh giá</h3>
         <p className="mt-1.5 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-          Chia sẻ cảm nhận của bạn về chất lượng bài giảng, tài liệu và trải nghiệm học tập của bạn.
+          Chia sẻ cảm nhận của bạn về chất lượng nội dung học, tài liệu và trải nghiệm học tập của bạn.
         </p>
 
         <div className="mt-5">
@@ -748,3 +748,4 @@ function EmptyState({ icon: Icon, message }: { icon: typeof FileText; message: s
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // Admin Dashboard: Bảng điều khiển
 // Hiển thị dữ liệu thật từ API: users, courses, revenue
 // Đồng bộ giao diện cao cấp và sử dụng biểu đồ shadcn UI
@@ -357,7 +357,7 @@ export const Dashboard: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-200 truncate">{course.title}</p>
                     <p className="text-xs text-zinc-500 mt-0.5">
-                      {course.instructor?.fullName} · {course.totalLessons} bài
+                      {course.instructor?.fullName} · {course.totalLessons} bài học
                     </p>
                     {course.submittedAt && (
                       <div className="flex items-center gap-1 mt-1.5 text-xs text-zinc-400">
@@ -479,6 +479,7 @@ export const Dashboard: React.FC = () => {
     </div>
   );
 };
+
 
 
 

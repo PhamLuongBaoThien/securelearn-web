@@ -1,7 +1,7 @@
-// File: CourseCurriculum.tsx
+﻿// File: CourseCurriculum.tsx
 // Hiển thị toàn bộ nội dung chương trình học của khóa học dưới dạng accordion.
 // Mỗi section (chương) là một hàng có thể bấm để mở/đóng,
-// bên trong hiển thị danh sách các bài giảng.
+// bên trong hiển thị danh sách các bài học.
 // Mặc định: chỉ mở section đầu tiên, các section còn lại đóng.
 // Nếu có nhiều hơn 5 section thì ẩn bớt, có nút "Hiển thị thêm" để xem tất cả.
 
@@ -13,7 +13,7 @@ import type { ISection, ILesson } from '@/services/courseApi';
 // Số section hiển thị ban đầu trước khi người dùng bấm "Hiển thị thêm"
 const INITIAL_VISIBLE_SECTIONS = 5;
 
-// Chuyển giây thành chuỗi mm:ss để hiển thị thời lượng từng bài giảng.
+// Chuyển giây thành chuỗi mm:ss để hiển thị thời lượng từng bài học.
 // Ví dụ: 185 giây → "3:05"
 // Trả về chuỗi rỗng nếu không có dữ liệu.
 function formatLessonDuration(seconds?: number): string {
@@ -35,10 +35,10 @@ function formatSectionDuration(lessons: ILesson[]): string {
 }
 
 interface LessonRowProps {
-  lesson: ILesson; // Dữ liệu một bài giảng
+  lesson: ILesson; // Dữ liệu một bài học
 }
 
-// Hiển thị một hàng bài giảng trong danh sách của section.
+// Hiển thị một hàng bài học trong danh sách của section.
 // Icon khác nhau tùy loại bài (VIDEO dùng PlayCircle, QUIZ dùng ClipboardList).
 // Bài có isFreePreview = true hiển thị badge "Xem trước".
 // Bài chưa mở khóa hiển thị icon ổ khóa.
@@ -49,14 +49,14 @@ function LessonRow({ lesson }: LessonRowProps) {
   return (
     <div className="flex items-center justify-between py-2.5 px-4 text-sm">
       <span className="flex items-center gap-3 flex-1 min-w-0">
-        {/* Icon loại bài giảng */}
+        {/* Icon loại bài học */}
         {isVideo ? (
           <PlayCircle className="w-4 h-4 shrink-0 text-muted-foreground" />
         ) : (
           <ClipboardList className="w-4 h-4 shrink-0 text-muted-foreground" />
         )}
 
-        {/* Tên bài giảng */}
+        {/* Tên bài học */}
         <span className="truncate text-foreground">{lesson.title}</span>
 
         {/* Badge xem trước nếu bài có isFreePreview = true */}
@@ -72,7 +72,7 @@ function LessonRow({ lesson }: LessonRowProps) {
         )}
       </span>
 
-      {/* Thời lượng bài giảng — chỉ hiện nếu có */}
+      {/* Thời lượng bài học — chỉ hiện nếu có */}
       {duration && (
         <span className="text-muted-foreground ml-3 shrink-0 text-xs">{duration}</span>
       )}
@@ -85,8 +85,8 @@ interface SectionAccordionProps {
   defaultOpen: boolean; // Trạng thái mở/đóng ban đầu
 }
 
-// Accordion của một chương học. Click vào header để mở/đóng danh sách bài giảng.
-// Hiển thị tiêu đề section, số bài giảng và tổng thời lượng.
+// Accordion của một chương học. Click vào header để mở/đóng danh sách bài học.
+// Hiển thị tiêu đề section, số bài học và tổng thời lượng.
 function SectionAccordion({ section, defaultOpen }: SectionAccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const sectionDuration = formatSectionDuration(section.lessons);
@@ -112,12 +112,12 @@ function SectionAccordion({ section, defaultOpen }: SectionAccordionProps) {
 
         {/* Số bài + thời lượng — ẩn trên mobile nhỏ */}
         <span className="text-xs font-normal text-muted-foreground ml-4 shrink-0 hidden sm:block">
-          {section.lessons.length} bài giảng
+          {section.lessons.length} bài học
           {sectionDuration && ` • ${sectionDuration}`}
         </span>
       </button>
 
-      {/* Danh sách bài giảng — chỉ render khi isOpen = true */}
+      {/* Danh sách bài học — chỉ render khi isOpen = true */}
       {isOpen && (
         <div className="bg-background">
           {section.lessons.map((lesson, i) => (
@@ -132,7 +132,7 @@ function SectionAccordion({ section, defaultOpen }: SectionAccordionProps) {
 interface Props {
   sections: ISection[];  // Danh sách các chương học
   totalDuration: number; // Tổng thời lượng toàn khóa học (giây)
-  totalLessons: number;  // Tổng số bài giảng toàn khóa học
+  totalLessons: number;  // Tổng số bài học toàn khóa học
 }
 
 // Component chính — hiển thị tiêu đề, tổng quan, danh sách section và nút "Hiển thị thêm".
@@ -161,7 +161,7 @@ export function CourseCurriculum({ sections, totalDuration, totalLessons }: Prop
 
       {/* Dòng tóm tắt tổng quan */}
       <p className="text-sm text-muted-foreground mb-5">
-        {sections.length} phần • {totalLessons} bài giảng • Tổng thời lượng {durationLabel}
+        {sections.length} phần • {totalLessons} bài học • Tổng thời lượng {durationLabel}
       </p>
 
       {/* Danh sách accordion */}
@@ -192,3 +192,4 @@ export function CourseCurriculum({ sections, totalDuration, totalLessons }: Prop
     </div>
   );
 }
+

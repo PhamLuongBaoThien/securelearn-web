@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ElementType } from 'react';
+﻿import { useEffect, useMemo, useState, type ElementType } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -320,7 +320,7 @@ function ActivitySection({
                       <span className="text-xs text-zinc-500 dark:text-zinc-400">{formatLearningTime(day.activeSeconds)}</span>
                     </div>
                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      {day.completedLessons} bài hoàn thành · {day.completedCourses} khóa hoàn thành
+                      {day.completedLessons} bài học hoàn thành · {day.completedCourses} khóa hoàn thành
                     </p>
                   </div>
                 )) : (
@@ -507,7 +507,7 @@ function EnrolledCourseCard({ course }: { course: EnrolledCourseItem }) {
           {course.totalLessons > 0 && (
             <span className="flex items-center gap-1.5">
               <BookOpen className="h-3.5 w-3.5" />
-              {course.totalLessons} bài
+              {course.totalLessons} bài học
             </span>
           )}
           {course.totalDuration > 0 && (
@@ -526,7 +526,7 @@ function EnrolledCourseCard({ course }: { course: EnrolledCourseItem }) {
             <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progress}%` }} />
           </div>
           <p className="text-xs text-zinc-400">
-            {course.completedLessons}/{course.progressTotalLessons || course.totalLessons || 0} bài hoàn thành
+            {course.completedLessons}/{course.progressTotalLessons || course.totalLessons || 0} bài học hoàn thành
           </p>
         </div>
         <Button
@@ -1186,6 +1186,8 @@ export function StudentDashboard() {
     </div>
   );
 }
+
+
 
 
 

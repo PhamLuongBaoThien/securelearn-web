@@ -1,4 +1,4 @@
-// File: CourseIncludes.tsx
+﻿// File: CourseIncludes.tsx
 // Hiển thị danh sách những gì được bao gồm trong khóa học ở main content.
 
 import {
@@ -24,7 +24,7 @@ function formatDuration(totalSeconds: number): string {
 
 interface Props {
   totalDuration: number;  // Tổng thời lượng video tính bằng giây
-  totalLessons: number;   // Tổng số bài giảng trong khóa học
+  totalLessons: number;   // Tổng số bài học trong khóa học, gồm cả video và quiz
   totalQuizzes?: number;  // Tổng số bài kiểm tra
   totalDocuments?: number; // Tổng số tài liệu tải xuống
 }
@@ -35,13 +35,14 @@ interface IncludeItem {
 }
 
 export function CourseIncludes({ totalDuration, totalLessons, totalQuizzes = 0, totalDocuments = 0 }: Props) {
+  const videoLessonCount = Math.max(totalLessons - totalQuizzes, 0);
   const items: IncludeItem[] = ([
     {
       text: `${formatDuration(totalDuration)} video theo yêu cầu`,
       icon: PlayCircle,
     },
     {
-      text: `${totalLessons} bài giảng`,
+      text: totalQuizzes > 0 ? `${videoLessonCount} bài giảng video` : `${totalLessons} bài học`,
       icon: BookOpen,
     },
     totalQuizzes > 0 ? {
@@ -89,4 +90,5 @@ export function CourseIncludes({ totalDuration, totalLessons, totalQuizzes = 0, 
     </section>
   );
 }
+
 
