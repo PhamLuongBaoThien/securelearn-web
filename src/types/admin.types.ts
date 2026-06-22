@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // TypeScript Types: Định nghĩa kiểu dữ liệu cho Admin Management
 // Phủ toàn bộ 6 nhóm chức năng quản trị.
 // ========================
@@ -168,6 +168,41 @@ export type CourseStatus = 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED' | 'ARC
 export type CourseLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 export type CategoryResolutionStatus = 'NONE' | 'NEEDS_ADMIN_CLASSIFICATION';
 export type SubscriptionCatalogStatus = 'NOT_OPTED_IN' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'REMOVED';
+export interface IAdminCourseListItem {
+  _id: string;
+  title: string;
+  slug: string;
+  thumbnail?: string;
+  instructorId: string;
+  instructorName: string;
+  category: {
+    _id: string;
+    name: string;
+    slug: string;
+    parentId: string | null;
+  } | null;
+  level: CourseLevel;
+  status: CourseStatus;
+  subscriptionStatus: SubscriptionCatalogStatus;
+  price: number;
+  totalLessons: number;
+  totalSections: number;
+  totalDuration: number;
+  enrollmentCount: number;
+  ratingAverage: number;
+  ratingCount: number;
+  currentVersionId: string | null;
+  draftVersionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IAdminCourseListSummary {
+  total: number;
+  subscriptionApproved: number;
+  subscriptionPending: number;
+  withDraft: number;
+}
 
 export interface ICourseReview {
   _id: string;

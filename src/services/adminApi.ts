@@ -12,6 +12,8 @@ import type {
   ICategory,
   IAdminUser,
   ICourseReview,
+  IAdminCourseListItem,
+  IAdminCourseListSummary,
   ISubscriptionCourseReview,
   SubscriptionCatalogStatus,
   ICourseResource,
@@ -226,6 +228,27 @@ export const unlockUser = async (userId: string, reason?: string): Promise<Admin
 
 // ===== Courses =====
 
+export const getAdminCourses = async (params?: {
+  search?: string;
+  status?: string;
+  subscriptionStatus?: string;
+  categoryId?: string;
+  level?: string;
+  instructorId?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+}): Promise<AdminApiResponse<{
+  courses: IAdminCourseListItem[];
+  total: number;
+  page: number;
+  totalPages: number;
+  summary: IAdminCourseListSummary;
+}>> => {
+  const res = await apiClient.get(`${ADMIN}/courses`, { params });
+  return res.data;
+};
+
 export const getCoursesForReview = async (params?: {
   status?: string;
   search?: string;
@@ -395,6 +418,11 @@ export const getLearningProgress = async (params?: {
   page?: number;
   limit?: number;
 }): Promise<AdminApiResponse<{ progress: ILearningProgress[]; total: number }>> => {
+  if (params?.courseId) {
+    const { courseId, ...rest } = params;
+    const res = await apiClient.get(`${ADMIN}/courses/${courseId}/students`, { params: rest });
+    return res.data;
+  }
   const res = await apiClient.get(`${ADMIN}/notifications/learning-progress`, { params });
   return res.data;
 };

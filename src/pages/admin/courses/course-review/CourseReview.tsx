@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Search,
   CheckCircle,
@@ -761,10 +762,11 @@ const ReviewModeTabs: React.FC<{
 
 const SubscriptionCourseReviewPage: React.FC<{
   onChangeMode: (mode: "PUBLISH" | "SUBSCRIPTION") => void;
-}> = ({ onChangeMode }) => {
+  initialSearch?: string;
+}> = ({ onChangeMode, initialSearch = "" }) => {
   const [status, setStatus] =
     useState<Exclude<SubscriptionCatalogStatus, "NOT_OPTED_IN">>("PENDING");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reasonAction, setReasonAction] = useState<{
     courseId: string;
@@ -1068,13 +1070,18 @@ const SubscriptionCourseReviewPage: React.FC<{
 };
 
 export const CourseReview: React.FC = () => {
+  const location = useLocation();
+  const initialState = (location.state || {}) as {
+    mode?: "PUBLISH" | "SUBSCRIPTION";
+    search?: string;
+  };
   const [reviewMode, setReviewMode] = useState<"PUBLISH" | "SUBSCRIPTION">(
-    "PUBLISH",
+    initialState.mode === "SUBSCRIPTION" ? "SUBSCRIPTION" : "PUBLISH",
   );
   const { data: categories = [] } = usePublicCourseCategories();
   const createCategoryMutation = useCreateAdminCategory();
   const [statusFilter, setStatusFilter] = useState<string>("PENDING");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialState.search || "");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
@@ -1104,7 +1111,7 @@ export const CourseReview: React.FC = () => {
   };
 
   if (reviewMode === "SUBSCRIPTION") {
-    return <SubscriptionCourseReviewPage onChangeMode={setReviewMode} />;
+    return <SubscriptionCourseReviewPage onChangeMode={setReviewMode} initialSearch={initialState.search || ""} />;
   }
 
   return (

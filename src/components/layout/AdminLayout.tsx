@@ -16,7 +16,7 @@ import {
   UserCog,
   ShieldCheck,
   CheckSquare,
-  FolderOpen,
+  ListChecks,
   DollarSign,
   Package,
   FileText,
@@ -60,7 +60,7 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[]): Side
       groupIcon: <BookOpen className="w-5 h-5 shrink-0" />,
       items: [
         { name: 'Kiểm duyệt khóa học', path: '/admin/courses/review', icon: <CheckSquare className="w-4 h-4 shrink-0" />, req: 'course:approve' },
-        { name: 'Tài nguyên', path: '/admin/courses/resources', icon: <FolderOpen className="w-4 h-4 shrink-0" />, req: 'course:read' },
+        { name: 'Danh sách khóa học', path: '/admin/courses/resources', icon: <ListChecks className="w-4 h-4 shrink-0" />, req: 'course:read' },
       ],
     },
     {
