@@ -32,7 +32,9 @@ export interface Coupon {
   finalAmount?: number;
   reasonIfUnavailable?: string;
   createdBy: string;
+  createdByName?: string;
   updatedBy: string;
+  updatedByName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -93,7 +95,7 @@ export interface CouponStats {
   topByDiscount: Array<{ couponId: string; code: string; totalDiscountAmount: number; redemptions: number }>;
 }
 
-export type CouponPayload = Omit<Coupon, '_id' | 'usedCount' | 'createdBy' | 'updatedBy' | 'createdAt' | 'updatedAt'>;
+export type CouponPayload = Omit<Coupon, '_id' | 'usedCount' | 'createdBy' | 'createdByName' | 'updatedBy' | 'updatedByName' | 'createdAt' | 'updatedAt'>;
 
 export interface PaymentCourseItem {
   courseId: string;
@@ -453,5 +455,8 @@ export const getAdminCouponDetailRedemptions = async (id: string, params?: { pag
   const { data } = await apiClient.get<ApiResponse<CouponRedemptionsResponse>>(`/api/payments/admin/coupons/${id}/redemptions`, { params });
   return data;
 };
+
+
+
 
 

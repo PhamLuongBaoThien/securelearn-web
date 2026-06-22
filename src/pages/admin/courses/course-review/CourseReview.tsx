@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Search,
@@ -493,10 +493,44 @@ const LessonTypeIcon: React.FC<{ lesson: ILesson }> = ({ lesson }) => {
   return <Video className="h-4 w-4 text-blue-500" />;
 };
 
+const getCategoryPath = (
+  cat: { _id: string; name: string; parentId: string | null } | null | undefined,
+  nodes: ICourseCategoryNode[]
+): string => {
+  if (!cat) return "Chưa phân loại";
+  if (!cat.parentId) return cat.name;
+
+  const findParent = (parentId: string, list: ICourseCategoryNode[]): ICourseCategoryNode | null => {
+    for (const node of list) {
+      if (node._id === parentId) return node;
+      if (node.children) {
+        const found = findParent(parentId, node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const parent = findParent(cat.parentId, nodes);
+  if (parent) {
+    const getPath = (node: ICourseCategoryNode): string => {
+      if (node.parentId) {
+        const p = findParent(node.parentId, nodes);
+        if (p) return `${getPath(p)} > ${node.name}`;
+      }
+      return node.name;
+    };
+    return `${getPath(parent)} > ${cat.name}`;
+  }
+
+  return cat.name;
+};
+
 const CourseCurriculumPreview: React.FC<{
   courseId: string;
   mode?: "PUBLISH" | "SUBSCRIPTION";
 }> = ({ courseId, mode = "PUBLISH" }) => {
+  const { data: categories = [] } = usePublicCourseCategories();
   const publishedDetailQuery = usePublishedCourseReviewDetail(
     courseId,
     mode === "PUBLISH",
@@ -583,7 +617,7 @@ const CourseCurriculumPreview: React.FC<{
             <div className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
                 <p className="text-xs text-zinc-500">Danh mục</p>
-                <p className="mt-1 font-semibold text-zinc-900 dark:text-white">{course.category?.name || "Chưa phân loại"}</p>
+                <p className="mt-1 font-semibold text-zinc-900 dark:text-white">{getCategoryPath(course.category, categories)}</p>
               </div>
               <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
                 <p className="text-xs text-zinc-500">Giá bán</p>
@@ -797,10 +831,10 @@ const CourseCurriculumPreview: React.FC<{
                 <p className="mt-1 font-semibold text-indigo-700 dark:text-indigo-300">{progressionLabel}</p>
                 <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">{progressionDescription}</p>
               </div>
-              <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
+              {/* <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
                 <p className="text-xs text-zinc-500">Danh mục xuất bản</p>
-                <p className="mt-1 font-semibold text-zinc-900 dark:text-white">{course.category?.name || "Chưa phân loại"}</p>
-              </div>
+                <p className="mt-1 font-semibold text-zinc-900 dark:text-white">{getCategoryPath(course.category, categories)}</p>
+              </div> */}
               {needsAdminClassification(course) && course.suggestedCategoryName && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
                   <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">Danh mục đề xuất</p>

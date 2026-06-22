@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -308,11 +308,50 @@ const Badge: React.FC<{ children: React.ReactNode; className: string }> = ({ chi
   <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}>{children}</span>
 );
 
+const getCategoryPath = (
+  cat: { _id: string; name: string; parentId: string | null } | null | undefined,
+  nodes: ICategory[]
+): string => {
+  if (!cat) return "Chưa phân loại";
+  if (!cat.parentId) return cat.name;
+
+  const findParent = (parentId: string, list: ICategory[]): ICategory | null => {
+    for (const node of list) {
+      if (node._id === parentId) return node;
+      if (node.children) {
+        const found = findParent(parentId, node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const parent = findParent(cat.parentId, nodes);
+  if (parent) {
+    const getPath = (node: ICategory): string => {
+      if (node.parentId) {
+        const p = findParent(node.parentId, nodes);
+        if (p) return `${getPath(p)} > ${node.name}`;
+      }
+      return node.name;
+    };
+    return `${getPath(parent)} > ${cat.name}`;
+  }
+
+  return cat.name;
+};
+
 const CourseDetailDialog: React.FC<{
   course: IAdminCourseListItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }> = ({ course, open, onOpenChange }) => {
+  const categoriesQuery = useQuery({
+    queryKey: ['admin', 'categories', 'course-list-filter'],
+    enabled: open, // chỉ chạy khi popup mở
+  });
+  const categories = (categoriesQuery.data || []) as ICategory[];
+
   if (!course) return null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -339,7 +378,7 @@ const CourseDetailDialog: React.FC<{
               <h2 className="text-base font-bold text-zinc-900 dark:text-white leading-snug">{course.title}</h2>
               <div className="text-xs space-y-1.5 text-zinc-500 dark:text-zinc-400">
                 <p><span className="font-medium text-zinc-700 dark:text-zinc-300">Giảng viên:</span> {course.instructorName || 'Chưa có tên'}</p>
-                <p><span className="font-medium text-zinc-700 dark:text-zinc-300">Danh mục:</span> {course.category?.name || 'Chưa phân loại'}</p>
+                <p><span className="font-medium text-zinc-700 dark:text-zinc-300">Danh mục:</span> {getCategoryPath(course.category, categories)}</p>
                 <div className="pt-1">
                   <span className="font-medium text-zinc-700 dark:text-zinc-300 block mb-0.5">Đường dẫn slug:</span>
                   <code className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded font-mono text-[11px] block truncate" title={course.slug}>
