@@ -143,6 +143,10 @@ const router = createBrowserRouter([
         path: '/payment/momo-return',
         element: <MomoReturn />,
       },
+      // [BẢO MẬT & ĐỊNH TUYẾN - BƯỚC 1]
+      // Tuyến đường học tập chính của học viên. Sử dụng dynamic parameter ':courseId' để xác định khóa học.
+      // Được bảo vệ bởi component ProtectedRoute để ngăn chặn người dùng chưa đăng nhập truy cập trực tiếp.
+      // Layout này được tách biệt hoàn toàn để tối ưu không gian học tập tập trung (full screen).
       {
         path: '/student/courses/:courseId/learn',
         element: (

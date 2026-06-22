@@ -115,36 +115,56 @@ const getResumePositionSeconds = (lesson: ILesson | undefined, lessonProgress?: 
 
 export function LearningInterface() {
   const navigate = useNavigate();
+  // Lấy courseId từ dynamic parameter của URL route (/student/courses/:courseId/learn)
   const { courseId = '' } = useParams();
+  
+  // Quản lý lessonId đang học trên query parameters của trình duyệt (?lessonId=xxxx)
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAppSelector((state) => state.auth.user);
   const dispatch = useAppDispatch();
   const theme = useAppSelector((state) => state.ui.theme);
+  
+  // [ĐỒNG BỘ DỮ LIỆU - BƯỚC 1]
+  // Gọi đồng thời các API qua React Query để tải: thông tin giáo trình, tiến độ thực tế,
+  // danh sách quyền mở khóa của từng bài học và streak hoạt động học tập hàng ngày.
   const courseQuery = useCourseLearning(courseId);
   const progressQuery = useCourseProgress(courseId);
   const accessQuery = useCourseAccess(courseId);
   const activityQuery = useLearnerActivity();
+  
   const [selectedLessonId, setSelectedLessonId] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [pauseSignal, setPauseSignal] = useState(0);
   const lastLockedToastLessonIdRef = useRef('');
 
+  // Làm phẳng danh sách Section thành mảng tất cả các Lesson để dễ dàng duyệt qua lại (Prev/Next)
   const lessons = useMemo(
     () => (courseQuery.data?.sections || []).flatMap((section) => section.lessons),
     [courseQuery.data?.sections],
   );
 
+  // [BẢO MẬT ĐỊNH TUYẾN - BƯỚC 1]
+  // Lấy lessonId được yêu cầu từ URL query (?lessonId=xxx)
   const requestedLessonId = searchParams.get('lessonId') || '';
   const accessByLessonId = accessQuery.data?.lessons || {};
+  
+  // Xác định ID bài học mục tiêu: Ưu tiên state hiện tại -> URL query -> Bài học học dở lần trước -> Bài học đầu tiên
   const requestedOrStoredLessonId = selectedLessonId || requestedLessonId || progressQuery.data?.course.lastLessonId || lessons[0]?._id || '';
+  
+  // Tìm bài học đầu tiên trong giáo trình không bị khóa để làm điểm fallback
   const firstUnlockedLesson = lessons.find((lesson) => !accessByLessonId[lesson._id || '']?.locked) || lessons[0];
+  
+  // Nếu bài học mục tiêu bị khóa (do progressionMode tuần tự), hệ thống TỰ ĐỘNG CHUYỂN HƯỚNG bảo mật về bài học chưa khóa đầu tiên
   const activeLessonId = accessByLessonId[requestedOrStoredLessonId]?.locked
     ? firstUnlockedLesson?._id || ''
     : requestedOrStoredLessonId;
+    
   const activeIndex = lessons.findIndex((lesson) => lesson._id === activeLessonId);
   const activeLesson = activeIndex >= 0 ? lessons[activeIndex] : lessons[0];
   const activeLessonProgress = progressQuery.data?.lessons[activeLesson?._id || ''];
+  
+  // Lấy mốc thời gian xem gần đây nhất của video để tự động phát tiếp tục (Resume Position)
   const initialPositionSeconds = getResumePositionSeconds(activeLesson, activeLessonProgress);
   const currentSection = courseQuery.data?.sections.find((section) =>
     section.lessons.some((lesson) => lesson._id === activeLesson?._id),

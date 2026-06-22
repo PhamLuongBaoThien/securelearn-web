@@ -231,8 +231,13 @@ export function VideoPlayer({
       scheduleProactiveRenew(segmentExpiresIn);
       const manifestUrl = absoluteApiUrl(session.playbackUrl);
 
+      // [BẢO MẬT STREAMING - BƯỚC 2]
+      // Nếu trình duyệt hỗ trợ Hls.js, tiến hành load source manifest HLS được bảo vệ (.m3u8).
       if (Hls.isSupported()) {
         hls = new Hls({
+          // xhrSetup được chạy trước mỗi request tải Playlist HLS hoặc Key giải mã.
+          // Tự động đính kèm header Authorization chứa Bearer JWT token của user để xác thực quyền truy cập.
+          // Không gửi JWT khi request các phân đoạn video (.ts) trực tiếp từ MinIO storage.
           xhrSetup: (xhr, url) => {
             if (!shouldAttachAuthToHlsRequest(url)) return;
             const token = getAccessToken();
@@ -241,8 +246,8 @@ export function VideoPlayer({
           },
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
-          // Presigned HLS segment URLs expire while the learner keeps the page open.
-          // hls.js may report this as 403/410, or only as a generic NETWORK_ERROR.
+          // Xử lý lỗi khi URL presigned của các segment hết hạn hoặc gặp lỗi mạng.
+          // Tự động khôi phục playback session bằng cách xin token mới từ Backend mà không gây reload trang.
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
             recoverPlaybackSession();
             return;
@@ -303,6 +308,8 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!video || !lesson._id) return;
 
+    // [TIẾN ĐỘ & HEARTBEAT - BƯỚC 3]
+    // Hàm gửi heartbeat lên progress-service để ghi nhận tiến trình học tập
     const sendHeartbeat = (deltaSeconds = 0, segmentStartSeconds = video.currentTime) => {
       sendProgressHeartbeat({
         courseId,
@@ -310,13 +317,14 @@ export function VideoPlayer({
         lessonType: 'VIDEO',
         sessionId,
         positionSeconds: Math.floor(video.currentTime),
-        watchedSecondsDelta: deltaSeconds,
+        watchedSecondsDelta: deltaSeconds, // Số giây thực xem
         segmentStartSeconds: Math.floor(segmentStartSeconds),
         playbackRate: video.playbackRate,
         tabVisible: document.visibilityState === 'visible',
       });
     };
 
+    // Đồng bộ nhanh tiến độ khi học viên pause video, chuyển tab hoặc kết thúc video
     const flushProgress = () => {
       const currentTime = Math.floor(video.currentTime);
       const watchedSeconds = Math.floor(video.currentTime - lastPositionRef.current);
@@ -326,6 +334,10 @@ export function VideoPlayer({
       lastPositionRef.current = video.currentTime;
     };
 
+    // [BẢO MẬT TIẾN ĐỘ - BƯỚC 3]
+    // Thiết lập vòng lặp interval gửi heartbeat định kỳ mỗi 15 giây.
+    // Kiểm tra chéo: nếu tab ẩn hoặc đang tua (isSeeking) hoặc đang pause thì KHÔNG gửi heartbeat.
+    // watchedSecondsDelta chỉ được ghi nhận tối đa là 15 giây (bảo vệ chống hack gửi thời gian ảo).
     const interval = window.setInterval(() => {
       if (
         !isPlaying ||
@@ -462,10 +474,15 @@ export function VideoPlayer({
           }}
           onPause={() => setIsPlaying(false)}
           onEnded={() => setIsPlaying(false)}
+          // [CHỐNG GIAN LẬN TUA VIDEO - BƯỚC 2.1]
+          // onSeeking ghi nhận điểm bắt đầu tua video (seekOrigin)
           onSeeking={(event) => {
             seekOriginRef.current = lastPositionRef.current || event.currentTarget.currentTime;
             setIsSeeking(true);
           }}
+          // onSeeked đo lường quãng đường tua. Nếu học viên tua nhanh hơn 10 giây (seekDistance > 10)
+          // thì sẽ kích hoạt warning cảnh báo.
+          // Đồng thời gán cứng lastPositionRef.current về vị trí mới để reset block tích lũy thời gian thực học.
           onSeeked={(event) => {
             const nextPosition = event.currentTarget.currentTime;
             const seekDistance = nextPosition - seekOriginRef.current;
@@ -478,6 +495,9 @@ export function VideoPlayer({
           onTimeUpdate={(event) => onTimeChange?.(event.currentTarget.currentTime)}
         />
 
+        {/* [BẢO MẬT QUAY LÉN - BƯỚC 2]
+            Watermark động hiển thị Email, User ID, Session ID và thời gian hiện tại
+            di chuyển xoay vòng 4 góc để tránh việc bị học viên ghi hình trái phép. */}
         {watermarkText && (
           <span className={`pointer-events-none absolute z-20 text-xs font-mono text-white/20 ${watermarkPositions[watermarkIndex]}`}>
             {watermarkText}

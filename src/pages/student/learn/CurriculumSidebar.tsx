@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { CheckCircle2, ChevronDown, ChevronRight, Clock, HelpCircle, Lock, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ILesson, ISection } from '@/services/courseApi';
@@ -69,6 +69,9 @@ export function CurriculumSidebar({
                     const isCompleted = progress?.status === 'COMPLETED';
                     const access = accessByLessonId[lessonId];
                     const isLocked = Boolean(access?.locked);
+                    
+                    // [BẢO MẬT GIAO DIỆN - BƯỚC 1]
+                    // Xác định nhãn trạng thái dựa trên các cờ: Khóa, Đã hoàn thành hoặc Đang học
                     const statusLabel = isLocked
                       ? 'Đang khóa'
                       : isCompleted
@@ -76,6 +79,8 @@ export function CurriculumSidebar({
                         : isActive
                           ? 'Đang học'
                           : 'Sẵn sàng học';
+                          
+                    // Xác định mô tả chi tiết: Hiển thị lý do khóa, phần trăm đã xem hoặc trạng thái quiz
                     const detailLabel = isLocked
                       ? normalizeLockedReason(access?.reason)
                       : isCompleted
@@ -86,6 +91,9 @@ export function CurriculumSidebar({
                             : formatDuration(lesson.duration)
                           : 'Bài kiểm tra sẵn sàng bắt đầu.';
                     return (
+                      // [BẢO MẬT GIAO DIỆN - BƯỚC 1]
+                      // Nếu bài học bị khóa (isLocked === true), thuộc tính 'disabled' được kích hoạt
+                      // để chặn người dùng click gọi hàm onSelectLesson. Class CSS cũng đổi sang 'cursor-not-allowed opacity-60'.
                       <Button
                         key={lessonId}
                         type="button"
@@ -98,6 +106,7 @@ export function CurriculumSidebar({
                             : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-900'
                         } ${isLocked ? 'cursor-not-allowed opacity-60 hover:bg-transparent dark:hover:bg-transparent' : ''}`}
                       >
+                        {/* Hiển thị icon tương ứng với trạng thái bảo mật/tiến độ của bài học */}
                         {isLocked
                           ? <Lock className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" />
                           : isCompleted
