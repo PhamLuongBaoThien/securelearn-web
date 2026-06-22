@@ -5,8 +5,11 @@
 // tên giảng viên và ngày cập nhật cuối.
 // Component này nằm sát header nên có padding-top lớn để không bị header che.
 
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { Star, ShieldCheck, Users, ChevronRight } from 'lucide-react';
-import type { ICourse } from '@/services/courseApi';
+import type { ICourse, ICourseCategoryNode, ICourseCategory } from '@/services/courseApi';
+import { usePublicCourseCategories } from '@/hooks/usePublicCourseCategories';
 
 // Map từ giá trị enum level sang nhãn tiếng Việt hiển thị trên UI
 const LEVEL_LABEL: Record<ICourse['level'], string> = {
@@ -20,6 +23,44 @@ interface Props {
 }
 
 export function CourseHeroBanner({ course }: Props) {
+  const { data: categoryTree = [] } = usePublicCourseCategories();
+
+  const categoryPath = React.useMemo(() => {
+    if (!course.category?._id || categoryTree.length === 0) return [];
+
+    const findPath = (targetId: string, nodes: ICourseCategoryNode[]): ICourseCategory[] => {
+      for (const node of nodes) {
+        if (node._id === targetId) {
+          return [
+            {
+              _id: node._id,
+              name: node.name,
+              slug: node.slug,
+              parentId: node.parentId,
+            },
+          ];
+        }
+        if (node.children?.length) {
+          const path = findPath(targetId, node.children);
+          if (path.length > 0) {
+            return [
+              {
+                _id: node._id,
+                name: node.name,
+                slug: node.slug,
+                parentId: node.parentId,
+              },
+              ...path,
+            ];
+          }
+        }
+      }
+      return [];
+    };
+
+    return findPath(course.category._id, categoryTree);
+  }, [course.category, categoryTree]);
+
   // Định dạng ngày cập nhật cuối theo locale Việt Nam (mm/yyyy)
   const updatedDate = new Date(course.updatedAt).toLocaleDateString('vi-VN', {
     month: '2-digit',
@@ -35,15 +76,25 @@ export function CourseHeroBanner({ course }: Props) {
 
           {/* Breadcrumb: Khóa học > Danh mục > Tên khóa học */}
           <div className="flex items-center gap-2 text-sm flex-wrap">
-            <span className="text-zinc-400">Khóa học</span>
-            {course.category && (
-              <>
+            <Link
+              to="/courses"
+              className="text-zinc-400 hover:text-zinc-200 hover:underline transition-colors"
+            >
+              Khóa học
+            </Link>
+            {categoryPath.map((cat) => (
+              <React.Fragment key={cat._id}>
                 <ChevronRight className="w-3 h-3 text-zinc-600" />
-                <span className="text-zinc-400">{course.category.name}</span>
-              </>
-            )}
+                <Link
+                  to={`/courses?category=${cat.slug}`}
+                  className="text-zinc-400 hover:text-zinc-200 hover:underline transition-colors"
+                >
+                  {cat.name}
+                </Link>
+              </React.Fragment>
+            ))}
             <ChevronRight className="w-3 h-3 text-zinc-600" />
-            <span className="text-zinc-200 font-medium truncate max-w-[200px]">
+            <span className="text-zinc-200 font-medium truncate max-w-[200px]" title={course.title}>
               {course.title}
             </span>
           </div>

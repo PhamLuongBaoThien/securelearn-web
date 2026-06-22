@@ -1,6 +1,5 @@
-
 import React, { useMemo, useState } from 'react';
-import { Save, Hash } from 'lucide-react';
+import { Save, Hash, ChevronDown, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ICategory } from '@/types/admin.types';
 import {
@@ -8,11 +7,20 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from '@/components/ui/dropdown-menu';
 import {
   MAX_CATEGORY_DEPTH,
   inputCls,
@@ -32,6 +40,14 @@ interface CategoryFormDialogProps {
   categories: ICategory[];
   onSave: (data: FormState) => void;
 }
+
+const Field: React.FC<{ label: string; children: React.ReactNode; helpText?: string }> = ({ label, children, helpText }) => (
+  <div className="space-y-1.5">
+    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</label>
+    {children}
+    {helpText && <p className="text-xs text-zinc-400 dark:text-zinc-500">{helpText}</p>}
+  </div>
+);
 
 export const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
   open,
@@ -82,12 +98,29 @@ export const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
     return current ? getSubtreeHeight(current) : 1;
   }, [flatCategories, initial._id]);
 
-  const availableParents = flatCategories.filter((item) => {
-    if (blockedIds.has(item._id)) return false;
-    const parentDepth = depthMap.get(item._id) || 1;
-    return parentDepth + currentSubtreeHeight <= MAX_CATEGORY_DEPTH;
-  });
+  // Tạo cấu trúc cây đã lọc bỏ các danh mục không hợp lệ
+  const filteredTree = useMemo(() => {
+    const buildTree = (nodes: ICategory[]): ICategory[] => {
+      return nodes
+        .filter((node) => {
+          if (blockedIds.has(node._id)) return false;
+          const parentDepth = depthMap.get(node._id) || 1;
+          return parentDepth + currentSubtreeHeight <= MAX_CATEGORY_DEPTH;
+        })
+        .map((node) => ({
+          ...node,
+          children: node.children ? buildTree(node.children) : [],
+        }));
+    };
+    return buildTree(categories);
+  }, [categories, blockedIds, depthMap, currentSubtreeHeight]);
+
   const slugPreview = autoSlug(form.name);
+
+  const selectedParentLabel = useMemo(() => {
+    if (form.parentId === null) return 'Danh mục gốc (Cấp cao nhất)';
+    return trailMap.get(form.parentId) || 'Chọn danh mục cha';
+  }, [form.parentId, trailMap]);
 
   const handleSubmit = () => {
     if (!form.name.trim()) {
@@ -110,77 +143,144 @@ export const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
     onOpenChange(false);
   };
 
+  const renderCategoryItems = (items: ICategory[]) =>
+    items.map((category) => {
+      const hasChildren = Boolean(category.children?.length);
+      const isSelected = form.parentId === category._id;
+      const labelContent = (
+        <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+          <span className="truncate">{category.name}</span>
+          {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+        </span>
+      );
+
+      if (hasChildren) {
+        return (
+          <DropdownMenuSub key={category._id}>
+            <DropdownMenuSubTrigger
+              className="min-w-56 cursor-pointer rounded-lg px-3 py-2 text-sm"
+              onClick={() => {
+                setForm((prev) => ({
+                  ...prev,
+                  parentId: category._id,
+                  sortOrder: !initial._id && !sortOrderTouched
+                    ? String(getNextSortOrderForParent(category._id))
+                    : prev.sortOrder,
+                }));
+              }}
+            >
+              {labelContent}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="min-w-56 rounded-xl p-1">
+              {renderCategoryItems(category.children || [])}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        );
+      }
+
+      return (
+        <DropdownMenuItem
+          key={category._id}
+          className="min-w-56 cursor-pointer rounded-lg px-3 py-2 text-sm"
+          onClick={() => {
+            setForm((prev) => ({
+              ...prev,
+              parentId: category._id,
+              sortOrder: !initial._id && !sortOrderTouched
+                ? String(getNextSortOrderForParent(category._id))
+                : prev.sortOrder,
+            }));
+          }}
+        >
+          {labelContent}
+        </DropdownMenuItem>
+      );
+    });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {initial._id
-              ? `Chỉnh sửa: ${trailMap.get(initial._id) || initial.name}`
-              : 'Thêm Danh mục'}
+            {initial._id ? 'Chỉnh sửa danh mục' : 'Thêm danh mục mới'}
           </DialogTitle>
+          <DialogDescription>
+            {initial._id
+              ? `Cập nhật thông tin chi tiết cho danh mục "${initial.name}".`
+              : 'Tạo danh mục mới để phân loại các khóa học trên hệ thống.'}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 py-2">
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Tên danh mục</label>
+        <div className="space-y-4 py-2">
+          <Field label="Tên danh mục *">
             <Input
               className={inputCls}
               value={form.name}
               onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-              placeholder="Tên danh mục..."
+              placeholder="Tên danh mục, VD: Lập trình Website"
               autoFocus
             />
-          </div>
+          </Field>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Slug URL</label>
-            <div className={`${inputCls} flex items-center gap-2 text-zinc-500 dark:text-zinc-400`}>
+          <Field label="Slug URL">
+            <div className={`${inputCls} flex items-center gap-2 text-zinc-500 dark:text-zinc-400 bg-zinc-100/50 dark:bg-zinc-900/50 cursor-not-allowed select-none`}>
               <Hash className="w-4 h-4 shrink-0" />
               <span>{slugPreview || 'slug-se-duoc-tao-tu-dong'}</span>
             </div>
-          </div>
+          </Field>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Mô tả</label>
+          <Field label="Mô tả">
             <textarea
               className={`${inputCls} resize-none h-20`}
               value={form.description}
               onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-              placeholder="Mô tả ngắn..."
+              placeholder="Mô tả chi tiết hoặc ngắn gọn về danh mục..."
             />
-          </div>
+          </Field>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Danh mục cha</label>
-            <Select
-              className={inputCls}
-              value={form.parentId || ''}
-              onChange={(e) => {
-                const nextParentId = e.target.value || null;
-                setForm((prev) => ({
-                  ...prev,
-                  parentId: nextParentId,
-                  sortOrder: !initial._id && !sortOrderTouched
-                    ? String(getNextSortOrderForParent(nextParentId))
-                    : prev.sortOrder,
-                }));
-              }}
-            >
-              <option value="">Danh mục gốc</option>
-              {availableParents.map((category) => (
-                <option key={category._id} value={category._id}>
-                  {trailMap.get(category._id) || category.name}
-                </option>
-              ))}
-            </Select>
-            <p className="mt-1.5 text-xs text-zinc-400">
-              Danh mục chỉ được phép sâu tối đa {MAX_CATEGORY_DEPTH} cấp.
-            </p>
-          </div>
+          <Field label="Danh mục cha" helpText={`Danh mục chỉ được phép sâu tối đa ${MAX_CATEGORY_DEPTH} cấp.`}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full justify-between rounded-xl border-zinc-200 bg-background px-3 text-left text-sm font-normal dark:border-zinc-800"
+                >
+                  <span className="truncate text-zinc-900 dark:text-zinc-100">
+                    {selectedParentLabel}
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-zinc-400" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-[420px] min-w-[280px] overflow-y-auto rounded-xl p-1">
+                <DropdownMenuItem
+                  className="min-w-56 cursor-pointer rounded-lg px-3 py-2 text-sm border-b border-zinc-100 dark:border-zinc-800 mb-1"
+                  onClick={() => {
+                    setForm((prev) => ({
+                      ...prev,
+                      parentId: null,
+                      sortOrder: !initial._id && !sortOrderTouched
+                        ? String(getNextSortOrderForParent(null))
+                        : prev.sortOrder,
+                    }));
+                  }}
+                >
+                  <span className="flex min-w-0 flex-1 items-center justify-between gap-3 font-medium">
+                    <span className="truncate">Danh mục gốc (Cấp cao nhất)</span>
+                    {form.parentId === null && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+                  </span>
+                </DropdownMenuItem>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Thứ tự hiển thị</label>
+                {filteredTree.length > 0 ? renderCategoryItems(filteredTree) : (
+                  <DropdownMenuItem disabled className="rounded-lg px-3 py-2 text-sm text-zinc-400">
+                    Không có danh mục cha hợp lệ
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Field>
+
+          <Field label="Thứ tự hiển thị" helpText="Số nhỏ hơn sẽ xuất hiện trước trong cùng cấp danh mục.">
             <Input
               className={inputCls}
               type="number"
@@ -193,24 +293,23 @@ export const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
               }}
               placeholder="0"
             />
-            <p className="mt-1.5 text-xs text-zinc-400">
-              Số nhỏ hơn sẽ xuất hiện trước trong cùng cấp danh mục.
-            </p>
-          </div>
+          </Field>
         </div>
 
         <DialogFooter>
           <Button
+            variant="outline"
             onClick={() => onOpenChange(false)}
-            className="px-4 py-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+            className="px-4 py-2 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800"
           >
             Hủy
           </Button>
           <Button
             onClick={handleSubmit}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors shadow-md shadow-primary/20"
+            className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 shadow-md shadow-primary/20"
           >
-            <Save className="w-4 h-4" /> Lưu
+            <Save className="w-4 h-4" />
+            {initial._id ? 'Cập nhật' : 'Tạo mới'}
           </Button>
         </DialogFooter>
       </DialogContent>

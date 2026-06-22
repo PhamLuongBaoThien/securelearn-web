@@ -1,5 +1,6 @@
-﻿import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { CourseCard } from "@/components/ui/CourseCard";
 import { StaggerContainer, StaggerItem } from "@/components/animations/Stagger";
 import { Button } from "@/components/ui/button";
@@ -154,6 +155,7 @@ function EmptyStateIllustration() {
 export function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { data: categoryTree = [] } = usePublicCourseCategories();
 
   // URL -> State initialization
   const categoryParam = searchParams.get("category") || "";
@@ -190,7 +192,32 @@ export function Catalog() {
     
     // Chuẩn hóa danh mục (tự động check cha/con) khi dữ liệu cây đã tải xong
     if (categoryTree.length > 0 && newCat.length > 0) {
-      newCat = normalizeCategorySelection(newCat, categoryTree);
+      // Thu thập tất cả active slugs trong tree
+      const getAllSlugsInTree = (nodes: any[]): string[] => {
+        const slugs: string[] = [];
+        const traverse = (items: any[]) => {
+          for (const item of items) {
+            slugs.push(item.slug);
+            if (item.children?.length) {
+              traverse(item.children);
+            }
+          }
+        };
+        traverse(nodes);
+        return slugs;
+      };
+
+      const activeSlugs = new Set(getAllSlugsInTree(categoryTree));
+      const validCats = newCat.filter((slug) => activeSlugs.has(slug));
+
+      if (validCats.length !== newCat.length) {
+        toast.info("Một số danh mục đã chọn hiện không hoạt động hoặc không tồn tại.");
+        newCat = validCats;
+      }
+
+      if (newCat.length > 0) {
+        newCat = normalizeCategorySelection(newCat, categoryTree);
+      }
     }
     
     setSelectedCategories((prev) => JSON.stringify(prev) !== JSON.stringify(newCat) ? newCat : prev);
@@ -208,7 +235,7 @@ export function Catalog() {
     setSelectedDuration((prev) => prev !== durationParam ? durationParam : prev);
     setSortKey((prev) => prev !== sortParam ? sortParam : prev);
     setPage((prev) => prev !== Number(pageParam) ? Number(pageParam) : prev);
-  }, [categoryParam, levelParam, ratingParam, minPriceParam, maxPriceParam, durationParam, sortParam, pageParam]);
+  }, [categoryParam, levelParam, ratingParam, minPriceParam, maxPriceParam, durationParam, sortParam, pageParam, categoryTree]);
 
   // State -> URL sync (debounce để tránh update quá nhanh khi kéo thanh giá)
   useEffect(() => {
@@ -279,7 +306,7 @@ export function Catalog() {
     limit: 12,
   });
 
-  const { data: categoryTree = [] } = usePublicCourseCategories();
+
 
   const courses    = data?.courses    ?? [];
   const total      = data?.total      ?? 0;
