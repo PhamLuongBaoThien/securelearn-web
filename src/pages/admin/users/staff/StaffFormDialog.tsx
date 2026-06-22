@@ -57,21 +57,55 @@ export const StaffFormDialog: React.FC<StaffFormDialogProps> = ({
   };
 
   const handleSubmit = () => {
-    if (!form.fullName.trim()) {
-      toast.error('Vui lòng nhập họ tên.');
+    const fullName = form.fullName.trim();
+    const email = form.email.trim();
+    const phone = form.phone.trim();
+    const password = form.password;
+
+    if (!fullName) {
+      toast.error('Vui lòng nhập họ và tên.');
       return;
     }
-    if (!form.email.trim()) {
-      toast.error('Vui lòng nhập email.');
-      return;
-    }
-    if (!isEdit && form.password.length < 6) {
-      toast.error('Mật khẩu tối thiểu 6 ký tự.');
+    if (fullName.length < 2) {
+      toast.error('Họ và tên phải có tối thiểu 2 ký tự.');
       return;
     }
 
-    onSave(form);
-    onOpenChange(false);
+    if (!email) {
+      toast.error('Vui lòng nhập email.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error('Email không đúng định dạng.');
+      return;
+    }
+
+    if (phone) {
+      const phoneRegex = /^0\d{9}$/;
+      if (!phoneRegex.test(phone)) {
+        toast.error('Số điện thoại không hợp lệ (phải gồm 10 chữ số và bắt đầu bằng số 0).');
+        return;
+      }
+    }
+
+    if (!isEdit) {
+      if (!password) {
+        toast.error('Vui lòng nhập mật khẩu.');
+        return;
+      }
+      if (password.length < 6) {
+        toast.error('Mật khẩu phải có tối thiểu 6 ký tự.');
+        return;
+      }
+    }
+
+    onSave({
+      ...form,
+      fullName,
+      email,
+      phone,
+    });
   };
 
   return (
