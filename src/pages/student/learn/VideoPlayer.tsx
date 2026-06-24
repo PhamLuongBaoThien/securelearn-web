@@ -1,11 +1,13 @@
-// [TRÌNH PHÁT VIDEO BẢO MẬT & HEARTBEAT - BƯỚC 2 & 2.1 & 3]
+// [TRÌNH PHÁT VIDEO BẢO MẬT & HEARTBEAT - BƯỚC 2 ĐẾN 2.8 & BƯỚC 3]
 // Component phát video bài học bảo mật tích hợp HLS (HTTP Live Streaming) và chống gian lận/quay lén màn hình.
-// Vai trò chính:
-// 1. Tự động lấy playback session và HLS manifest bảo mật từ media-service.
-// 2. Chặn các hành động sao chép, chuột phải và tổ hợp phím tắt F12 Inspect / in tài liệu để bảo vệ bản quyền.
-// 3. Hiển thị watermark động xoay vòng chứa Email & User ID của học viên đang học để chống quay trộm.
-// 4. Kiểm soát hành vi gian lận tua nhanh video bằng cách so sánh mốc seek và hiển thị warning.
-// 5. Định kỳ gửi heartbeat (mỗi 15s) cập nhật watchedSecondsDelta (giới hạn thực xem) lên progress-service.
+// Vai trò các bước:
+// - BƯỚC 2: Khởi tạo, xin Playback Session và nạp Hls.js đính kèm JWT.
+// - BƯỚC 2.1: Chống tua nhanh (Anti-seek), hiển thị Watermark động, chặn tổ hợp phím tắt F12/Inspect/Chuột phải.
+// - BƯỚC 2.5: Lưu tiến độ tức thời (flushProgress) khi pause, kết thúc, chuyển tab.
+// - BƯỚC 2.6: Heartbeat Engine, giãn cách gửi heartbeat 15s và giới hạn delta xem thực.
+// - BƯỚC 2.7: Luồng tự động gia hạn và khôi phục video (Proactive & Reactive Renew, Hls.js Error recovery).
+// - BƯỚC 2.8: Các cơ chế tối ưu UX & Lọc Request HLS (Autorization bypass cho S3, Resume Playback, Playback Rate Sync).
+// - BƯỚC 3: Heartbeat & Access Control phía progress-service (gửi payload định kỳ).
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type SyntheticEvent } from 'react';
 import Hls from 'hls.js';
@@ -32,11 +34,14 @@ import {
 } from '@/lib/contentProtection';
 
 
+// [BƯỚC 2.8: LỌC YÊU CẦU FILE SEGMENT CHO HLS (AUTHORIZATION BYPASS)]
+// Kiểm tra xem request có phải là tải phân đoạn video trực tiếp từ S3/MinIO không
 const isHlsStorageRequest = (url: string) =>
   /\.(ts|m4s|mp4)(?:[?#]|$)/i.test(url) ||
   url.includes('/securelearn-media/') ||
   url.includes('X-Amz-Signature=') ||
   url.includes('X-Amz-Credential=');
+
 
 const shouldAttachAuthToHlsRequest = (url: string) => {
   if (isHlsStorageRequest(url)) return false;
@@ -56,12 +61,14 @@ const absoluteApiUrl = (path: string) => {
 
 const HEARTBEAT_MS = 15_000;
 const SEEK_WARNING_THRESHOLD_SECONDS = 10;
+// [BƯỚC 2.8: TẠM ẨN CẢNH BÁO TUA NHANH 24H BẰNG LOCALSTORAGE]
 const SEEK_WARNING_SUPPRESS_KEY = 'securelearn.progress.seek-warning.until';
 const SEEK_WARNING_SUPPRESS_MS = 24 * 60 * 60 * 1000;
 const SEEK_WARNING_COOLDOWN_MS = 8_000;
 const FALLBACK_SEGMENT_EXPIRES_IN_SECONDS = 3600;
 const MANIFEST_RENEW_BUFFER_MS = 60_000;
 
+// Kiểm tra xem cảnh báo tua nhanh có đang được tạm ẩn trong vòng 24h không
 const isSeekWarningSuppressed = () => {
   const raw = window.localStorage.getItem(SEEK_WARNING_SUPPRESS_KEY);
   if (!raw) return false;
@@ -189,7 +196,10 @@ export function VideoPlayer({
     }
   }, []);
 
-  // Schedule proactive renew hook này dùng để lên lịch cho segment tiếp theo sẽ được tải về khi segment hiện tại sắp hết hạn
+  // [BƯỚC 2.7: LUỒNG A - GIA HẠN MANIFEST CHỦ ĐỘNG (PROACTIVE RENEW)]
+  // Hàm scheduleProactiveRenew dùng để lên lịch hẹn giờ (setTimeout) làm mới session xem video.
+  // Nhận expiresInSeconds từ Backend (thường là 3600s = 1 giờ). Hệ thống sẽ tự động trừ đi 60s
+  // và hẹn giờ gọi recoverPlaybackSession() trước khi token/presigned URL của phân đoạn HLS (.ts) hết hạn.
   const scheduleProactiveRenew = useCallback((expiresInSeconds?: number) => {
     clearProactiveRenewTimer();
     const ttlSeconds = Number.isFinite(expiresInSeconds) && expiresInSeconds! > 0
@@ -198,12 +208,15 @@ export function VideoPlayer({
     const delayMs = Math.max(10_000, ttlSeconds * 1000 - MANIFEST_RENEW_BUFFER_MS);
     proactiveRenewTimerRef.current = window.setTimeout(() => {
       const video = videoRef.current;
+      // Chỉ tự động gia hạn nếu học viên đang mở tab và video không bị tạm dừng hoặc đã kết thúc
       if (!video || video.paused || video.ended || document.visibilityState !== 'visible') return;
       recoverPlaybackSession();
     }, delayMs);
   }, [clearProactiveRenewTimer, recoverPlaybackSession]);
 
-  // Renew playback if expiring soon hook này dùng để kiểm tra xem segment có sắp hết hạn không, nếu có thì khôi phục session (cái này quan trọng)
+  // [BƯỚC 2.7: LUỒNG B - GIA HẠN PHẢN ỨNG (REACTIVE RENEW) & FOCUS/VISIBILITY CHECK]
+  // Hàm này kiểm tra xem link manifest hiện tại đã hết hạn (hoặc chuẩn bị hết hạn trong 60s tới) chưa.
+  // Nếu có, hệ thống lập tức gọi khôi phục session để nạp lại nguồn phát mới.
   const renewPlaybackIfExpiringSoon = useCallback((resumeAfterRenew = false) => {
     if (!lesson.videoAssetId) return false;
     if (!manifestExpiresAtRef.current) return false;
@@ -238,9 +251,10 @@ export function VideoPlayer({
       // Nếu trình duyệt hỗ trợ Hls.js, tiến hành load source manifest HLS được bảo vệ (.m3u8).
       if (Hls.isSupported()) {
         hls = new Hls({
+          // [BƯỚC 2.8: ĐÍNH KÈM JWT QUA XHRSETUP CHO CÁC API HOÀN THIỆN ĐỊNH DANH]
           // xhrSetup được chạy trước mỗi request tải Playlist HLS hoặc Key giải mã.
           // Tự động đính kèm header Authorization chứa Bearer JWT token của user để xác thực quyền truy cập.
-          // Không gửi JWT khi request các phân đoạn video (.ts) trực tiếp từ MinIO storage.
+          // Không gửi JWT khi request các phân đoạn video (.ts) trực tiếp từ MinIO storage (kiểm tra qua shouldAttachAuthToHlsRequest).
           xhrSetup: (xhr, url) => {
             if (!shouldAttachAuthToHlsRequest(url)) return;
             const token = getAccessToken();
@@ -249,16 +263,20 @@ export function VideoPlayer({
           },
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
-          // Xử lý lỗi khi URL presigned của các segment hết hạn hoặc gặp lỗi mạng.
-          // Tự động khôi phục playback session bằng cách xin token mới từ Backend mà không gây reload trang.
+          // [BƯỚC 2.7: LUỒNG C - KHÔI PHỤC LỖI TỰ ĐỘNG CỦA HLS.JS (ERROR-DRIVEN RECOVERY)]
+          // 1. Lỗi Network: Thường xảy ra khi các phân đoạn (.ts) bị hết hạn link (HTTP 403 Forbidden).
+          //    Frontend sẽ tự động khôi phục session âm thầm mà không bắt học viên F5/reload trang.
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
             recoverPlaybackSession();
             return;
           }
+          // 2. Lỗi Media: Lỗi không đồng bộ âm thanh/hình ảnh.
+          //    Gọi recoverMediaError để tái thiết lập luồng giải mã của trình phát.
           if (data.fatal && data.type === Hls.ErrorTypes.MEDIA_ERROR) {
             hls?.recoverMediaError();
             return;
           }
+          // 3. Các lỗi fatal nghiêm trọng khác không thể tự cứu: Gọi khôi phục session nạp lại manifest.
           if (data.fatal) recoverPlaybackSession();
         });
         hls.loadSource(manifestUrl);
@@ -289,6 +307,8 @@ export function VideoPlayer({
   }, [pauseSignal]);
 
   useEffect(() => {
+    // [BƯỚC 2.7: LUỒNG B - LẮNG NGHE FOCUS/VISIBILITY CHANGE ĐỂ TỰ ĐỘNG RENEW]
+    // Nếu học viên quay lại học sau một thời gian dài rời đi, hệ thống kiểm tra và tự động gia hạn session nếu hết hạn.
     const handlePlaybackResume = () => {
       if (document.visibilityState === 'visible') {
         renewPlaybackIfExpiringSoon();
@@ -302,6 +322,9 @@ export function VideoPlayer({
     };
   }, [renewPlaybackIfExpiringSoon]);
 
+  // [BƯỚC 2.8: PHỤC HỒI TIẾN ĐỘ BẮT ĐẦU (INITIAL POSITION SETUP)]
+  // Khởi chạy lúc nạp bài học mới: Cài đặt vị trí phát ban đầu (`initialPositionSeconds`)
+  // lấy từ DB tiến độ của progress-service và đồng bộ biến lastPosition để theo dõi thời gian thực xem.
   useEffect(() => {
     hasAppliedInitialPositionRef.current = false;
     lastPositionRef.current = Math.max(0, Math.floor(initialPositionSeconds || 0));
@@ -327,6 +350,7 @@ export function VideoPlayer({
       });
     };
 
+    // [BƯỚC 2.5: ĐỒNG BỘ TIẾN ĐỘ TỨC THỜI (FLUSH PROGRESS)]
     // Đồng bộ nhanh tiến độ khi học viên pause video, chuyển tab hoặc kết thúc video
     const flushProgress = () => {
       const currentTime = Math.floor(video.currentTime);
@@ -337,7 +361,7 @@ export function VideoPlayer({
       lastPositionRef.current = video.currentTime;
     };
 
-    // [BẢO MẬT TIẾN ĐỘ - BƯỚC 3]
+    // [BƯỚC 2.6: HEARTBEAT ENGINE & GIẢI TẦN SUẤT / CHỐNG SPAM HEARTBEAT]
     // Thiết lập vòng lặp interval gửi heartbeat định kỳ mỗi 15 giây.
     // Kiểm tra chéo: nếu tab ẩn hoặc đang tua (isSeeking) hoặc đang pause thì KHÔNG gửi heartbeat.
     // watchedSecondsDelta chỉ được ghi nhận tối đa là 15 giây (bảo vệ chống hack gửi thời gian ảo).
@@ -401,6 +425,7 @@ export function VideoPlayer({
   }, []);
 
   useEffect(() => {
+    // [BƯỚC 2.1: BẢO VỆ PHÍA CLIENT - CHẶN PHÍM TẮT F12/INSPECT/PRINT]
     const handleKeyDown = (event: KeyboardEvent) => {
       if (shouldIgnoreProtectionShortcut()) return;
       if (isBlockedProtectionKey(event)) {
@@ -412,7 +437,7 @@ export function VideoPlayer({
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, []);
 
-  const handleContextMenu = useCallback((event: MouseEvent) => event.preventDefault(), []);
+  const handleContextMenu = useCallback((event: MouseEvent) => event.preventDefault(), []); // [BƯỚC 2.1: CHẶN CHUỘT PHẢI]
   const blockProtectedEvent = useCallback((event: SyntheticEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -453,9 +478,14 @@ export function VideoPlayer({
           className="absolute inset-0 h-full w-full"
           onLoadedMetadata={(event) => {
             const video = event.currentTarget;
+            // [BƯỚC 2.7: LUỒNG D - PHỤC HỒI TRẠNG THÁI PHÁT (STATE RESUMPTION & UX PRESERVATION)]
+            // [BƯỚC 2.8: KHÔI PHỤC VỊ TRÍ HỌC CŨ TỪ INITIAL POSITION SECONDS]
+            // Ưu tiên sử dụng pendingPlaybackResumeRef (nếu vừa gia hạn session giữa chừng),
+            // sau đó mới dùng initialPositionSeconds (nếu bắt đầu mở bài học lần đầu).
             const resumePosition = pendingPlaybackResumeRef.current ?? initialPositionSeconds;
             const shouldResumePlayback = resumePlaybackAfterRenewRef.current;
             if (!hasAppliedInitialPositionRef.current && resumePosition > 0) {
+              // Tránh seek sát nút cuối video làm kết thúc bài học ngay lập tức
               if (Number.isFinite(video.duration) && resumePosition < video.duration - 2) {
                 video.currentTime = resumePosition;
                 lastPositionRef.current = resumePosition;
@@ -463,6 +493,7 @@ export function VideoPlayer({
               pendingPlaybackResumeRef.current = null;
               hasAppliedInitialPositionRef.current = true;
             }
+            // Tự động phát tiếp nếu trước đó video đang phát dở
             if (shouldResumePlayback) {
               resumePlaybackAfterRenewRef.current = false;
               void video.play().catch(() => undefined);
