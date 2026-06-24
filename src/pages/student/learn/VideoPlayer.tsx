@@ -169,6 +169,7 @@ export function VideoPlayer({
     });
   }, []);
 
+  // Recover playback session hook này dùng để khôi phục session khi segment hết hạn
   const recoverPlaybackSession = useCallback((resumeAfterRenew = false) => {
     const video = videoRef.current;
     if (!video || playbackRecoveringRef.current) return;
@@ -182,6 +183,7 @@ export function VideoPlayer({
     }, 1500);
   }, []);
 
+  // Clear proactive renew timer hook này dùng để xóa timer khi segment hết hạn (segment là các đoạn video được cắt ra để phát, xóa timer để tránh segment hết hạn mà không khôi phục session)
   const clearProactiveRenewTimer = useCallback(() => {
     if (proactiveRenewTimerRef.current) {
       window.clearTimeout(proactiveRenewTimerRef.current);
@@ -189,6 +191,7 @@ export function VideoPlayer({
     }
   }, []);
 
+  // Schedule proactive renew hook này dùng để lên lịch cho segment tiếp theo sẽ được tải về khi segment hiện tại sắp hết hạn
   const scheduleProactiveRenew = useCallback((expiresInSeconds?: number) => {
     clearProactiveRenewTimer();
     const ttlSeconds = Number.isFinite(expiresInSeconds) && expiresInSeconds! > 0
@@ -202,6 +205,7 @@ export function VideoPlayer({
     }, delayMs);
   }, [clearProactiveRenewTimer, recoverPlaybackSession]);
 
+  // Renew playback if expiring soon hook này dùng để kiểm tra xem segment có sắp hết hạn không, nếu có thì khôi phục session (cái này quan trọng)
   const renewPlaybackIfExpiringSoon = useCallback((resumeAfterRenew = false) => {
     if (!lesson.videoAssetId) return false;
     if (!manifestExpiresAtRef.current) return false;
@@ -212,18 +216,21 @@ export function VideoPlayer({
     return false;
   }, [lesson.videoAssetId, recoverPlaybackSession]);
 
+  // Video player hook này dùng để xử lý video và các tương tác với video
   useEffect(() => {
     const video = videoRef.current;
     const videoAssetId = lesson.videoAssetId;
     if (!video || !videoAssetId) return;
 
-    let hls: Hls | null = null;
-    let canceled = false;
+    let hls: Hls | null = null; // Hls là thư viện xử lý video HLS
+    let canceled = false; // Flag để đánh dấu khi video bị hủy
 
     const setupPlayback = async () => {
       // Mỗi lần mở video, FE phải xin playback session mới.
-      // Backend không trả thẳng manifest hoặc key ngay từ đầu mà chỉ trả one-time playbackUrl.
+      // Backend không trả thẳng manifest (.m3u8) hoặc key ( #EXT-X-KEY METHOD=AES-128...) ngay lập tức mà chỉ trả one-time playbackUrl (dùng 1 lần là hết hạn).
+      // existingMediaSessionToken là token dùng 1 lần để xác thực quyền truy cập video (lưu trong ref current)
       const existingMediaSessionToken = mediaSessionTokenRef.current;
+      // nếu có existingMediaSessionToken thì dùng nó để renew playback session, ngược lại thì tạo mới playback session (dùng cho lần đầu)
       const session = existingMediaSessionToken
         ? await renewPlaybackSession(videoAssetId, existingMediaSessionToken).then((response) => {
             if (response.status === 'ERR' || !response.data) {

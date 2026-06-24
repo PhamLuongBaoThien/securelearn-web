@@ -31,11 +31,17 @@ import { VideoPlayer } from './VideoPlayer';
 import { InteractiveTabs } from './InteractiveTabs';
 import { QuizPlayer } from './QuizPlayer';
 
+// Tạo hình tròn để hiển thị tiến độ học tập: 
+// PROGRESS_RING_SIZE: Kích thước của hình tròn
+// PROGRESS_RING_STROKE: Độ dày của đường tròn
+// PROGRESS_RING_RADIUS: Bán kính của hình tròn
+// PROGRESS_RING_CIRCUMFERENCE: Chu vi của hình tròn
 const PROGRESS_RING_SIZE = 32;
 const PROGRESS_RING_STROKE = 3;
 const PROGRESS_RING_RADIUS = (PROGRESS_RING_SIZE - PROGRESS_RING_STROKE) / 2;
 const PROGRESS_RING_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RING_RADIUS;
 
+// Component hiển thị tiến độ học tập
 const ProgressRing: React.FC<{ percent: number; completedLessons: number; totalLessons: number }> = ({
   percent,
   completedLessons,
@@ -85,8 +91,10 @@ const ProgressRing: React.FC<{ percent: number; completedLessons: number; totalL
   );
 };
 
+// Kiểm tra xem có nên tiếp tục bài học từ vị trí trước đó hay không
 const RESUME_GAP_THRESHOLD_SECONDS = 2;
 
+// Lấy vị trí tiếp tục bài học từ lessonProgress:
 const getResumePositionSeconds = (lesson: ILesson | undefined, lessonProgress?: LessonProgressSummary) => {
   if (!lesson || lesson.type !== 'VIDEO' || !lessonProgress) {
     return lessonProgress?.lastPositionSeconds || 0;
@@ -134,9 +142,14 @@ export function LearningInterface() {
   // [ĐỒNG BỘ DỮ LIỆU - BƯỚC 1]
   // Gọi đồng thời các API qua React Query để tải: thông tin giáo trình, tiến độ thực tế,
   // danh sách quyền mở khóa của từng bài học và streak hoạt động học tập hàng ngày.
+  
+  // hook useCourseLearning để tải thông tin của khóa học hiện tại 
   const courseQuery = useCourseLearning(courseId);
+  // hook useCourseProgress để tải tiến độ của học viên trong khóa học hiện tại
   const progressQuery = useCourseProgress(courseId);
+  // hook useCourseAccess để tải danh sách quyền mở khóa của từng bài học trong khóa học hiện tại
   const accessQuery = useCourseAccess(courseId);
+  // hook useLearnerActivity để tải hoạt động học tập hàng ngày của học viên
   const activityQuery = useLearnerActivity();
   
   const [selectedLessonId, setSelectedLessonId] = useState('');
