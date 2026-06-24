@@ -1,7 +1,7 @@
 // [TAB TƯƠNG TÁC BÀI HỌC - BƯỚC 1 & 4 & 5]
 // Component InteractiveTabs quản lý các tab tương tác bổ trợ bên dưới bài học bao gồm:
 // 1. Tổng quan (Overview): Nội dung mô tả chi tiết bài học.
-// 2. Tài liệu (Resources): Tải signed URL và render tài liệu đính kèm (ProtectedPdfViewer/ImageDocumentViewer).
+// 2. Tài liệu (Resources): Xem hoặc tải tài liệu qua API có JWT và entitlement.
 // 3. Ghi chú (Notes): Ghi chú cá nhân kèm mốc thời gian video (?timestampSec) để học viên dễ xem lại.
 // 4. Thảo luận (Discussions): Hỏi đáp Q&A giữa học viên và giảng viên tại các thời điểm video.
 // 5. Đánh giá (Reviews): Đánh giá, xếp hạng sao và cảm nhận của học viên về khóa học.
@@ -36,13 +36,7 @@ import { Rating } from '@/components/ui/rating';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ICourse, ILearningNote, ILesson } from '@/services/courseApi';
-import {
-  createDocumentDownloadSession,
-  createDocumentViewSession,
-  downloadDocumentFromSession,
-  type IDocumentAsset,
-  type IDocumentViewSession,
-} from '@/services/mediaApi';
+import { downloadDocument, type IDocumentAsset } from '@/services/mediaApi';
 import { ProtectedPdfViewer } from './ProtectedPdfViewer';
 import { ImageDocumentViewer } from './ImageDocumentViewer';
 import { toast } from 'sonner';
@@ -170,7 +164,7 @@ function ResourcesPanel({
   attachmentIds: string[];
 }) {
   const resources = useLearningResources(attachmentIds);
-  const [viewerSession, setViewerSession] = useState<IDocumentViewSession | null>(null);
+  const [viewerAsset, setViewerAsset] = useState<IDocumentAsset | null>(null);
   const [openingId, setOpeningId] = useState('');
   const [downloadCandidate, setDownloadCandidate] = useState<IDocumentAsset | null>(null);
   if (attachmentIds.length === 0) return <EmptyState icon={FileText} message="Bài học này chưa có tài liệu đính kèm." />;
@@ -179,34 +173,23 @@ function ResourcesPanel({
   const isImage = (mimeType?: string) => Boolean(mimeType?.startsWith('image/'));
   const canPreviewInline = (mimeType?: string) => isPdf(mimeType) || isImage(mimeType);
 
-  const openPreview = async (resource: IDocumentAsset) => {
-    setOpeningId(resource._id);
-    try {
-      const response = await createDocumentViewSession(resource._id);
-      if (response.status === 'OK' && response.data) {
-        setViewerSession(response.data);
-      }
-    } finally {
-      setOpeningId('');
-    }
+  const openPreview = (resource: IDocumentAsset) => {
+    setViewerAsset(resource);
   };
 
   const confirmDownload = async () => {
     if (!downloadCandidate) return;
     setOpeningId(downloadCandidate._id);
     try {
-      const response = await createDocumentDownloadSession(downloadCandidate._id);
-      if (response.status === 'OK' && response.data?.downloadUrl) {
-        const blob = await downloadDocumentFromSession(response.data.downloadUrl);
-        const objectUrl = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = objectUrl;
-        anchor.download = downloadCandidate.originalFileName || 'tai-lieu';
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-      }
+      const blob = await downloadDocument(downloadCandidate._id);
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = downloadCandidate.originalFileName || 'tai-lieu';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } finally {
       setOpeningId('');
       setDownloadCandidate(null);
@@ -286,18 +269,18 @@ function ResourcesPanel({
           );
         })}
       </div>
-      {viewerSession && (
-        isPdf(viewerSession.asset.mimeType) ? (
+      {viewerAsset && (
+        isPdf(viewerAsset.mimeType) ? (
           <ProtectedPdfViewer
-            asset={viewerSession.asset}
-            viewerUrl={viewerSession.viewerUrl}
-            onClose={() => setViewerSession(null)}
+            key={viewerAsset._id}
+            asset={viewerAsset}
+            onClose={() => setViewerAsset(null)}
           />
         ) : (
           <ImageDocumentViewer
-            asset={viewerSession.asset}
-            viewerUrl={viewerSession.viewerUrl}
-            onClose={() => setViewerSession(null)}
+            key={viewerAsset._id}
+            asset={viewerAsset}
+            onClose={() => setViewerAsset(null)}
           />
         )
       )}

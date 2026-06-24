@@ -1,17 +1,16 @@
 // [XEM TÀI LIỆU PDF BẢO MẬT - BƯỚC 5]
 // Component hiển thị tài liệu PDF bảo mật đi kèm bài học.
 // Vai trò chính:
-// 1. Nhận signed URL tạm thời có thời hạn ngắn để stream tài liệu PDF từ MinIO.
+// 1. Tải tài liệu qua API có JWT và entitlement; không truy cập trực tiếp MinIO.
 // 2. Sử dụng thư viện react-pdf/PDF.js để tải file và tự động render nội dung lên các thẻ HTML <canvas>.
-// 3. Giúp ngăn chặn việc học viên click chuột phải lưu file, copy text hoặc lộ URL tải trực tiếp của S3/MinIO khi đang xem trước.
-// 4. Hỗ trợ zoom (scale), chuyển trang (Next/Prev) và dọn dẹp URL blob sau khi đóng trình xem.
+// 3. Cung cấp trải nghiệm xem trong ứng dụng mà không làm lộ object key hoặc URL MinIO.
+// 4. Hỗ trợ zoom (scale) và chuyển trang (Next/Prev).
 
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ChevronLeft, ChevronRight, Loader2, Minus, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
-import type { IDocumentAsset } from '@/services/mediaApi';
+import { viewDocument, type IDocumentAsset } from '@/services/mediaApi';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
@@ -20,35 +19,35 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
-const absoluteApiUrl = (path: string) => {
-  if (/^https?:\/\//i.test(path)) return path;
-  const base = getApiBaseUrl() || window.location.origin;
-  return new URL(path, base).toString();
-};
-
 type ProtectedPdfViewerProps = {
   asset: IDocumentAsset;
-  viewerUrl: string;
   onClose: () => void;
 };
 
 export function ProtectedPdfViewer({
   asset,
-  viewerUrl,
   onClose,
 }: ProtectedPdfViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1);
-  const token = getAccessToken();
-  const file = useMemo(
-    () => ({
-      url: absoluteApiUrl(viewerUrl),
-      httpHeaders: token ? { Authorization: `Bearer ${token}` } : undefined,
-      withCredentials: true,
-    }),
-    [token, viewerUrl],
-  );
+  const [file, setFile] = useState<Blob | null>(null);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    viewDocument(asset._id)
+      .then((blob) => {
+        if (active) setFile(blob);
+      })
+      .catch(() => {
+        if (active) setHasError(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [asset._id]);
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col bg-zinc-950 text-white">
@@ -58,7 +57,7 @@ export function ProtectedPdfViewer({
         </Button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{asset.originalFileName || 'Tài liệu bài học'}</p>
-          <p className="text-xs text-zinc-400">Secure PDF Viewer</p>
+          <p className="text-xs text-zinc-400">Trình xem PDF</p>
         </div>
         <Button
           type="button"
@@ -106,21 +105,29 @@ export function ProtectedPdfViewer({
 
       <div className="relative flex-1 overflow-auto bg-zinc-900 px-3 py-6">
         <div className="mx-auto flex min-h-full w-fit items-start justify-center">
-          <Document
-            file={file}
-            loading={<Loader2 className="mt-24 h-7 w-7 animate-spin text-white" />}
-            error={<div className="mt-24 text-sm text-zinc-300">Không thể mở tài liệu.</div>}
-            onLoadSuccess={({ numPages: loadedPages }) => {
-              setNumPages(loadedPages);
-              setPageNumber(1);
-            }}
-          >
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              className="overflow-hidden rounded border border-white/10 shadow-2xl"
-            />
-          </Document>
+          {!file ? (
+            hasError ? (
+              <div className="mt-24 text-sm text-zinc-300">Không thể mở tài liệu.</div>
+            ) : (
+              <Loader2 className="mt-24 h-7 w-7 animate-spin text-white" />
+            )
+          ) : (
+            <Document
+              file={file}
+              loading={<Loader2 className="mt-24 h-7 w-7 animate-spin text-white" />}
+              error={<div className="mt-24 text-sm text-zinc-300">Không thể mở tài liệu.</div>}
+              onLoadSuccess={({ numPages: loadedPages }) => {
+                setNumPages(loadedPages);
+                setPageNumber(1);
+              }}
+            >
+              <Page
+                pageNumber={pageNumber}
+                scale={scale}
+                className="overflow-hidden rounded border border-white/10 shadow-2xl"
+              />
+            </Document>
+          )}
         </div>
       </div>
     </div>

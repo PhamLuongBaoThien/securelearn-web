@@ -150,40 +150,20 @@ export const getDocumentAsset = async (documentAssetId: string) => {
   return data;
 };
 
-export interface IDocumentViewSession {
-  asset: IDocumentAsset;
-  viewerUrl: string;
-  expiresIn: number;
-}
-
-export const createDocumentViewSession = async (documentAssetId: string) => {
-  const { data } = await apiClient.post<ApiResponse<IDocumentViewSession>>(
-    `/api/media/documents/${documentAssetId}/view-session`,
+export const viewDocument = async (documentAssetId: string) => {
+  const { data } = await apiClient.get<Blob>(
+    `/api/media/documents/${documentAssetId}/view`,
+    {
+      responseType: 'blob',
+    },
   );
   return data;
 };
 
-export interface IDocumentDownloadSession {
-  asset: IDocumentAsset;
-  downloadUrl: string;
-  expiresIn: number;
-}
-
-export const createDocumentDownloadSession = async (documentAssetId: string) => {
-  const { data } = await apiClient.post<ApiResponse<IDocumentDownloadSession>>(
-    `/api/media/documents/${documentAssetId}/download-session`,
+export const downloadDocument = async (documentAssetId: string) => {
+  const { data } = await apiClient.get<Blob>(
+    `/api/media/documents/${documentAssetId}/download`,
+    { responseType: 'blob' },
   );
   return data;
 };
-
-export const downloadDocumentFromSession = async (downloadUrl: string) => {
-  const { data } = await apiClient.get<Blob>(downloadUrl, {
-    responseType: 'blob',
-  });
-  return data;
-};
-
-
-
-
-

@@ -1,24 +1,22 @@
 // [XEM TÀI LIỆU ẢNH BẢO MẬT - BƯỚC 5]
 // Component hiển thị các tài liệu dạng hình ảnh đính kèm bài học.
 // Vai trò chính:
-// 1. Nhận signed URL tạm thời, tải file ảnh dạng Blob bằng JS (downloadDocumentFromSession).
+// 1. Tải ảnh qua API view có JWT và entitlement.
 // 2. Chuyển đổi Blob thành URL cục bộ (URL.createObjectURL) để hiển thị trong thẻ <img> nhằm ẩn URL thật của S3/MinIO.
 // 3. Tự động thu hồi (revokeObjectURL) khi đóng màn hình xem để giải phóng bộ nhớ RAM trình duyệt.
 
 import { useEffect, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { downloadDocumentFromSession, type IDocumentAsset } from '@/services/mediaApi';
+import { viewDocument, type IDocumentAsset } from '@/services/mediaApi';
 
 type ImageDocumentViewerProps = {
   asset: IDocumentAsset;
-  viewerUrl: string;
   onClose: () => void;
 };
 
 export function ImageDocumentViewer({
   asset,
-  viewerUrl,
   onClose,
 }: ImageDocumentViewerProps) {
   const [imageUrl, setImageUrl] = useState('');
@@ -33,7 +31,7 @@ export function ImageDocumentViewer({
       setIsLoading(true);
       setHasError(false);
       try {
-        const blob = await downloadDocumentFromSession(viewerUrl);
+        const blob = await viewDocument(asset._id);
         if (!active) return;
         objectUrl = URL.createObjectURL(blob);
         setImageUrl(objectUrl);
@@ -54,7 +52,7 @@ export function ImageDocumentViewer({
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [viewerUrl]);
+  }, [asset._id]);
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col bg-zinc-950 text-white">
