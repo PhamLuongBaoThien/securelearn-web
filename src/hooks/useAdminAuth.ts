@@ -5,8 +5,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppDispatch } from '@/app/hooks';
 import { setAdminUser, updateAdminUser, clearAdminUser } from '@/features/auth/adminAuthSlice';
-import { setAccessToken } from '@/services/apiClient';
-import { loginAdmin, getAdminMe, logoutAdmin, refreshAdminToken } from '@/services/adminAuthApi';
+import { refreshSessionAccessToken, setAccessToken } from '@/services/apiClient';
+import { loginAdmin, getAdminMe, logoutAdmin } from '@/services/adminAuthApi';
 import type { LoginPayload } from '@/types/auth.types';
 import type { AdminPasswordFormData } from '@/pages/admin/profile/adminProfile.types';
 
@@ -72,12 +72,7 @@ export function useInitializeAdminAuth(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: adminAuthKeys.session,
     queryFn: async () => {
-      const refreshRes = await refreshAdminToken();
-      if (refreshRes.status === 'ERR' || !refreshRes.access_token) {
-        throw new Error('Không có session admin.');
-      }
-
-      setAccessToken(refreshRes.access_token, 'admin');
+      await refreshSessionAccessToken('admin');
 
       const profileRes = await getAdminMe();
       return {

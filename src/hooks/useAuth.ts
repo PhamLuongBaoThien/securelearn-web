@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppDispatch } from '@/app/hooks';
 import { setUser, clearUser } from '@/features/auth/authSlice';
-import { setAccessToken } from '@/services/apiClient';
+import { refreshSessionAccessToken, setAccessToken } from '@/services/apiClient';
 import { setCartItems } from '@/features/courses/cartSlice';
 import {
   loginUser, registerUser, logoutUser, getMe, refreshToken, 
@@ -113,14 +113,8 @@ export function useInitializeAuth(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: authKeys.session,
     queryFn: async () => {
-      // Thử refresh token — cookie tự gửi
-      const refreshRes = await refreshToken();
-      if (refreshRes.status === 'ERR' || !refreshRes.access_token) {
-        throw new Error('Không có session.');
-      }
-
-      // Cập nhật token mới
-      setAccessToken(refreshRes.access_token, 'user');
+      // Dùng chung refresh promise với interceptor để tránh gọi trùng khi app vừa F5.
+      await refreshSessionAccessToken('user');
 
       // Lấy profile
       const profileRes = await getMe();

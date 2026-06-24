@@ -1,7 +1,7 @@
 // File này chứa API gọi media-service.
 // Video: initiate upload session → PUT từng part trực tiếp lên storage → confirm upload.
 // Attachment document: flow 1 bước — upload thẳng
-import apiClient, { getApiBaseUrl } from './apiClient';
+import apiClient from './apiClient';
 import type { AxiosProgressEvent } from 'axios';
 
 interface ApiResponse<T = undefined> {
@@ -105,8 +105,6 @@ export interface IVideoPlaybackSession {
   asset: IVideoAsset;
   playbackUrl: string;
   expiresIn: number;
-  mediaSessionToken?: string;
-  mediaSessionExpiresIn?: number;
   segmentExpiresIn?: number;
 }
 
@@ -118,25 +116,6 @@ export const createPlaybackSession = async (videoAssetId: string) => {
 };
 
 
-export const renewPlaybackSession = async (videoAssetId: string, mediaSessionToken: string) => {
-  const baseUrl = getApiBaseUrl() || '';
-  const response = await fetch(`${baseUrl}/api/media/videos/${videoAssetId}/playback-session/renew`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-media-session-token': mediaSessionToken,
-    },
-    body: JSON.stringify({ mediaSessionToken }),
-  });
-  const data = await response.json() as ApiResponse<IVideoPlaybackSession>;
-  if (!response.ok) {
-    return {
-      status: 'ERR',
-      message: data.message || 'Không thể làm mới phiên phát video.',
-    } as ApiResponse<IVideoPlaybackSession>;
-  }
-  return data;
-};
 // --- ATTACHMENT DOCUMENT ---
 
 export const uploadDocumentAsset = async (payload: {

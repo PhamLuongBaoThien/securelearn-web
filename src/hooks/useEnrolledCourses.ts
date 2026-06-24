@@ -43,8 +43,8 @@ function isPopulatedCourse(
 
 export function useEnrolledCourses() {
   // Lấy userId từ Redux để làm query key — không fetch khi chưa đăng nhập
-  const userId = useAppSelector((state) => state.auth.user?._id ?? '');
-  const isAuthenticated = Boolean(userId);
+  const { user, isAuthenticated, authResolved } = useAppSelector((state) => state.auth);
+  const userId = user?._id ?? '';
 
   return useQuery<EnrolledCourseItem[]>({
     queryKey: enrolledKeys.byUser(userId),
@@ -106,7 +106,7 @@ export function useEnrolledCourses() {
         return courses;
       }
     },
-    enabled: isAuthenticated,
+    enabled: authResolved && isAuthenticated && Boolean(userId),
     staleTime: 30 * 1000,
   });
 }

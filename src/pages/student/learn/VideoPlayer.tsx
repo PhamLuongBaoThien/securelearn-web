@@ -12,7 +12,6 @@ import Hls from 'hls.js';
 import { Info, Loader2, Shield, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
-import { renewPlaybackSession } from '@/services/mediaApi';
 import { useCreatePlaybackSession } from '@/hooks/useCourseLearning';
 import { useProgressHeartbeat } from '@/hooks/useLearningProgress';
 import { Button } from '@/components/ui/button';
@@ -103,7 +102,6 @@ export function VideoPlayer({
   const hasAppliedInitialPositionRef = useRef(false);
   const pendingPlaybackResumeRef = useRef<number | null>(null);
   const resumePlaybackAfterRenewRef = useRef(false);
-  const mediaSessionTokenRef = useRef<string | null>(null);
   const manifestExpiresAtRef = useRef(0);
   const proactiveRenewTimerRef = useRef<number | null>(null);
   const playbackRecoveringRef = useRef(false);
@@ -228,20 +226,9 @@ export function VideoPlayer({
     const setupPlayback = async () => {
       // Mỗi lần mở video, FE phải xin playback session mới.
       // Backend không trả thẳng manifest (.m3u8) hoặc key ( #EXT-X-KEY METHOD=AES-128...) ngay lập tức mà chỉ trả one-time playbackUrl (dùng 1 lần là hết hạn).
-      // existingMediaSessionToken là token dùng 1 lần để xác thực quyền truy cập video (lưu trong ref current)
-      const existingMediaSessionToken = mediaSessionTokenRef.current;
-      // nếu có existingMediaSessionToken thì dùng nó để renew playback session, ngược lại thì tạo mới playback session (dùng cho lần đầu)
-      const session = existingMediaSessionToken
-        ? await renewPlaybackSession(videoAssetId, existingMediaSessionToken).then((response) => {
-            if (response.status === 'ERR' || !response.data) {
-              mediaSessionTokenRef.current = null;
-              return createPlayback(videoAssetId);
-            }
-            return response.data;
-          })
-        : await createPlayback(videoAssetId);
+      // Khi manifest/segment cần làm mới, gọi lại endpoint có JWT và kiểm tra entitlement.
+      const session = await createPlayback(videoAssetId);
       if (canceled) return;
-      if (session.mediaSessionToken) mediaSessionTokenRef.current = session.mediaSessionToken;
       const segmentExpiresIn = session.segmentExpiresIn ?? FALLBACK_SEGMENT_EXPIRES_IN_SECONDS;
       manifestExpiresAtRef.current = Date.now() + segmentExpiresIn * 1000;
       scheduleProactiveRenew(segmentExpiresIn);

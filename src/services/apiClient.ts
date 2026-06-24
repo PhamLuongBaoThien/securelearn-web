@@ -42,6 +42,7 @@ let accessToken: string | null = null;
 let accessTokenContext: AuthContext = 'user';
 let isRefreshing = false;
 let failedQueue: QueuedRequest[] = [];
+const refreshPromises: Partial<Record<AuthContext, Promise<string>>> = {};
 
 // Kiểm tra request hiện tại có thuộc nhánh admin hay không.
 // Dùng khi cần quyết định gọi refresh token của admin hay của user.
@@ -137,7 +138,7 @@ const processQueue = (error: unknown, token?: string | null) => {
 // Gọi API refresh-token để lấy access token mới.
 // Dùng khi request nhận 401 và đủ điều kiện retry.
 // Mục đích: duy trì phiên đăng nhập mà user không phải login lại nếu refresh-token còn hạn.
-const refreshAccessToken = async (context: AuthContext): Promise<string> => {
+const requestFreshAccessToken = async (context: AuthContext): Promise<string> => {
   const { data } = await axios.post<RefreshTokenResponse>(
     getRefreshUrl(context),
     {},
@@ -151,6 +152,20 @@ const refreshAccessToken = async (context: AuthContext): Promise<string> => {
   accessToken = data.access_token;
   accessTokenContext = context;
   return data.access_token;
+};
+
+// Dùng chung một request refresh cho bootstrap auth và mọi interceptor 401 chạy đồng thời.
+export const refreshSessionAccessToken = (context: AuthContext = 'user'): Promise<string> => {
+  const inFlight = refreshPromises[context];
+  if (inFlight) return inFlight;
+
+  const refreshPromise = requestFreshAccessToken(context).finally(() => {
+    if (refreshPromises[context] === refreshPromise) {
+      delete refreshPromises[context];
+    }
+  });
+  refreshPromises[context] = refreshPromise;
+  return refreshPromise;
 };
 
 // Cập nhật access token runtime cho toàn bộ apiClient.
@@ -199,7 +214,7 @@ const retryWithRefresh = async (request: RetryableRequestConfig) => {
 
   try {
     const context = getAuthContext(request.url);
-    const nextToken = await refreshAccessToken(context);
+    const nextToken = await refreshSessionAccessToken(context);
 
     processQueue(null, nextToken);
     setAuthorizationHeader(request, nextToken);
