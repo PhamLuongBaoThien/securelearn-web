@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // Frontend Routes
 // Mục đích:
 // - khai báo router chính cho public, student, instructor và admin
@@ -31,6 +31,7 @@ import { NotFound } from '../pages/public/not-found';
 
 // Auth Components
 import { OAuthCallback } from '../pages/shared/auth/oauth-callback';
+import { AuthInitializer } from '../components/auth/AuthInitializer';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 
 // Admin Components
@@ -79,10 +80,10 @@ import { InstructorNotifications } from '../pages/instructor/notifications';
 // Nhờ đó, ScrollToTop luôn tồn tại trong App và hoạt động mỗi lần chuyển Route
 function RootLayout() {
   return (
-    <>
+    <AuthInitializer>
       <ScrollToTop />
       <Outlet />
-    </>
+    </AuthInitializer>
   );
 }
 
@@ -240,4 +241,6 @@ const router = createBrowserRouter([
 export function AppRouter() {
   return <RouterProvider router={router} />;
 }
+
+
 

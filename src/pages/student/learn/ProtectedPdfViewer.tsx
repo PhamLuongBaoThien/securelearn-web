@@ -1,5 +1,5 @@
-// [XEM TÀI LIỆU PDF BẢO MẬT - BƯỚC 5]
-// Component hiển thị tài liệu PDF bảo mật đi kèm bài học.
+// [BƯỚC 2.3: LUỒNG ĐỌC TÀI LIỆU PDF TRONG ỨNG DỤNG (IN-APP PDF VIEW ENGINE)]
+// Component hiển thị tài liệu PDF đi kèm bài học ngay trong ứng dụng.
 // Vai trò chính:
 // 1. Tải tài liệu qua API có JWT và entitlement; không truy cập trực tiếp MinIO.
 // 2. Sử dụng thư viện react-pdf/PDF.js để tải file và tự động render nội dung lên các thẻ HTML <canvas>.

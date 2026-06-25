@@ -1,9 +1,10 @@
-// ========================
+﻿// ========================
 // AuthInitializer: Khôi phục session khi app khởi động
 // Dùng React Query useInitializeAuth() thay cho Redux createAsyncThunk.
 // Lắng nghe event session-expired từ apiClient interceptor.
 // ========================
 import { useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAppDispatch } from '@/app/hooks';
 import { setUser, clearUser } from '@/features/auth/authSlice';
 import { setAdminUser, clearAdminUser } from '@/features/auth/adminAuthSlice';
@@ -19,7 +20,8 @@ interface AuthInitializerProps {
 
 export function AuthInitializer({ children }: AuthInitializerProps) {
   const dispatch = useAppDispatch();
-  const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+  const { pathname } = useLocation();
+  const isAdminPath = pathname === '/admin' || pathname.startsWith('/admin/');
   const userSession = useInitializeAuth({ enabled: !isAdminPath });
   const adminSession = useInitializeAdminAuth({ enabled: isAdminPath });
   const { mutate: mergeGuestCartAfterSessionRestore } = useMergeGuestCart();
@@ -87,3 +89,4 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
 
   return <>{children}</>;
 }
+
