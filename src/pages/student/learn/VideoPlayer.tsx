@@ -45,7 +45,8 @@ const isHlsStorageRequest = (url: string) =>
 
 const shouldAttachAuthToHlsRequest = (url: string) => {
   if (isHlsStorageRequest(url)) return false;
-  if (/\/api\/media\/videos\/[^/]+\/(playback|key)(?:[?#]|$)/.test(url)) return false;
+  // Manifest dùng one-time token; endpoint lấy AES key bắt buộc JWT của user.
+  if (/\/api\/media\/videos\/[^/]+\/playback(?:[?#]|$)/.test(url)) return false;
   try {
     const parsed = new URL(url, window.location.origin);
     return parsed.pathname.startsWith('/api/');

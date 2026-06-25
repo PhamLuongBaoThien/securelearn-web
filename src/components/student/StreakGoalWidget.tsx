@@ -132,7 +132,10 @@ function CelebrationParticles() {
             left: `${50 + (Math.random() - 0.5) * 60}%`,
             top: `${50 + (Math.random() - 0.5) * 60}%`,
             backgroundColor: ['#fbbf24', '#f59e0b', '#fb923c', '#34d399', '#22d3ee', '#a78bfa'][i % 6],
-            animation: `streak-particle ${0.6 + Math.random() * 0.4}s ease-out forwards`,
+            animationName: 'streak-particle',
+            animationDuration: `${0.6 + Math.random() * 0.4}s`,
+            animationTimingFunction: 'ease-out',
+            animationFillMode: 'forwards',
             animationDelay: `${i * 0.05}s`,
           }}
         />
