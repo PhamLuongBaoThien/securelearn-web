@@ -309,6 +309,40 @@ input[type="password"]::-ms-clear {
   justify-content: center;
 }
 
+/* Plyr fills the protected player shell; fullscreen targets this shell so overlays remain visible. */
+.secure-video-player-shell .plyr,
+.secure-video-player-shell .plyr__video-wrapper,
+.secure-video-player-shell .plyr video {
+  width: 100%;
+  height: 100%;
+}
 
+.secure-video-player-shell .plyr {
+  position: absolute;
+  inset: 0;
+}
 
+.secure-video-player-shell,
+.secure-video-player-shell .plyr,
+.secure-video-player-shell .plyr__video-wrapper {
+  overflow: hidden;
+}
+
+.secure-video-player-shell .plyr video {
+  display: block;
+  object-fit: contain;
+}
+
+.secure-video-player-shell:fullscreen,
+.secure-video-player-shell:-webkit-full-screen,
+.secure-video-player-shell.plyr--fullscreen-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto !important;
+  background: #000;
+  contain: layout paint;
+}
 

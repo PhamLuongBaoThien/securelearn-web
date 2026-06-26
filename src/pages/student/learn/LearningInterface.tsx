@@ -28,7 +28,7 @@ import type { LessonProgressSummary } from '@/services/progressApi';
 import logoWeb from '@/assets/logoweb.png';
 import { CurriculumSidebar } from './CurriculumSidebar';
 import { VideoPlayer } from './VideoPlayer';
-import { InteractiveTabs } from './InteractiveTabs';
+import { InteractiveTabs, type LearningTabId } from './InteractiveTabs';
 import { QuizPlayer } from './QuizPlayer';
 
 // Tạo hình tròn để hiển thị tiến độ học tập: 
@@ -156,6 +156,8 @@ export function LearningInterface() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [pauseSignal, setPauseSignal] = useState(0);
+  const [activeInteractionTab, setActiveInteractionTab] = useState<LearningTabId>('overview');
+  const [openNotesSignal, setOpenNotesSignal] = useState(0);
   const lastLockedToastLessonIdRef = useRef('');
 
   // Làm phẳng danh sách Section thành mảng tất cả các Lesson để dễ dàng duyệt qua lại (Prev/Next)
@@ -219,6 +221,7 @@ export function LearningInterface() {
     setSelectedLessonId(lessonId);
     if (lessonId) setSearchParams({ lessonId }, { replace: true });
     setPlaybackTime(0);
+    setActiveInteractionTab('overview');
   };
 
   if (courseQuery.isLoading) {
@@ -358,6 +361,11 @@ export function LearningInterface() {
               onTimeChange={setPlaybackTime}
               initialPositionSeconds={initialPositionSeconds}
               pauseSignal={pauseSignal}
+              onOpenNotes={(timestampSeconds) => {
+                setPlaybackTime(timestampSeconds);
+                setActiveInteractionTab('notes');
+                setOpenNotesSignal((current) => current + 1);
+              }}
             />
           ) : activeLesson ? (
             <QuizPlayer
@@ -379,6 +387,9 @@ export function LearningInterface() {
               lesson={activeLesson}
               playbackTime={playbackTime}
               onRequestPauseVideo={() => setPauseSignal((current) => current + 1)}
+              activeTab={activeInteractionTab}
+              onActiveTabChange={setActiveInteractionTab}
+              openNotesSignal={openNotesSignal}
             />
           )}
         </main>

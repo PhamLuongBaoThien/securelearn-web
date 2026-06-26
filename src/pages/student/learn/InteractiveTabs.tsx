@@ -5,7 +5,7 @@
 // 3. Ghi chú (Notes): Ghi chú cá nhân kèm mốc thời gian video (?timestampSec) để học viên dễ xem lại.
 // 4. Thảo luận (Discussions): Hỏi đáp Q&A giữa học viên và giảng viên tại các thời điểm video.
 // 5. Đánh giá (Reviews): Đánh giá, xếp hạng sao và cảm nhận của học viên về khóa học.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Clock3, Download, Eye, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Send, Star, Trash2 } from 'lucide-react';
 import { RatingSummary } from '@/components/ui/RatingSummary';
@@ -41,7 +41,7 @@ import { ProtectedPdfViewer } from './ProtectedPdfViewer';
 import { ImageDocumentViewer } from './ImageDocumentViewer';
 import { toast } from 'sonner';
 
-type TabId = 'overview' | 'resources' | 'notes' | 'discussions' | 'reviews';
+export type LearningTabId = 'overview' | 'resources' | 'notes' | 'discussions' | 'reviews';
 
 const TABS = [
   { id: 'overview' as const, label: 'Tổng quan', icon: BookOpen },
@@ -77,16 +77,31 @@ export function InteractiveTabs({
   lesson,
   playbackTime,
   onRequestPauseVideo,
+  activeTab,
+  onActiveTabChange,
+  openNotesSignal = 0,
 }: {
   course: ICourse;
   lesson: ILesson;
   playbackTime: number;
   onRequestPauseVideo: () => void;
+  activeTab: LearningTabId;
+  onActiveTabChange: (tab: LearningTabId) => void;
+  openNotesSignal?: number;
 }) {
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const notesTabRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!openNotesSignal) return;
+    window.requestAnimationFrame(() => {
+      sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      notesTabRef.current?.focus({ preventScroll: true });
+    });
+  }, [openNotesSignal]);
 
   return (
-    <section className="border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+    <section ref={sectionRef} className="scroll-mt-4 border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex overflow-x-auto border-b border-zinc-200 px-4 dark:border-zinc-800">
         {TABS.map((tab) => {
           const Icon = tab.icon;
@@ -94,8 +109,9 @@ export function InteractiveTabs({
           return (
             <Button
               key={tab.id}
+              ref={tab.id === 'notes' ? notesTabRef : undefined}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => onActiveTabChange(tab.id)}
               variant="ghost"
               size="sm"
               className={`relative flex min-w-max items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${

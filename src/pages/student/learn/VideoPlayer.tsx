@@ -4,13 +4,15 @@
 // - BƯỚC 2: Khởi tạo, xin Playback Session và nạp Hls.js đính kèm JWT.
 // - BƯỚC 2.1: Chống tua nhanh (Anti-seek), hiển thị Watermark động, chặn tổ hợp phím tắt F12/Inspect/Chuột phải.
 // - BƯỚC 2.5: Lưu tiến độ tức thời (flushProgress) khi pause, kết thúc, chuyển tab.
-// - BƯỚC 2.6: Heartbeat Engine, giãn cách gửi heartbeat 15s và giới hạn delta xem thực.
+// - BƯỚC 2.6: Heartbeat Engine, giãn cách gửi heartbeat 10s và giới hạn delta xem thực.
 // - BƯỚC 2.7: Luồng tự động gia hạn và khôi phục video (Proactive & Reactive Renew, Hls.js Error recovery).
 // - BƯỚC 2.8: Các cơ chế tối ưu UX & Lọc Request HLS (Autorization bypass cho S3, Resume Playback, Playback Rate Sync).
 // - BƯỚC 3: Heartbeat & Access Control phía progress-service (gửi payload định kỳ).
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type SyntheticEvent } from 'react';
 import Hls from 'hls.js';
+import Plyr from 'plyr';
+import 'plyr/dist/plyr.css';
 import { Info, Loader2, Shield, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
@@ -42,6 +44,7 @@ const isHlsStorageRequest = (url: string) =>
   url.includes('X-Amz-Signature=') ||
   url.includes('X-Amz-Credential=');
 
+// Hàm này kiểm tra xem URL có phải là URL của file segment video không
 
 const shouldAttachAuthToHlsRequest = (url: string) => {
   if (isHlsStorageRequest(url)) return false;
@@ -60,7 +63,9 @@ const absoluteApiUrl = (path: string) => {
   return new URL(path, base).toString();
 };
 
-const HEARTBEAT_MS = 15_000;
+const HEARTBEAT_MS = 10_000;
+const MAX_HEARTBEAT_DELTA_SECONDS = 10; // Khoảng cách tối đa giữa 2 lần heartbeat
+const MAX_VALID_WATCH_GAP_SECONDS = 15; // Khoảng cách thời gian tối đa được tính là "xem" (không tính là bỏ qua)
 const SEEK_WARNING_THRESHOLD_SECONDS = 10;
 // [BƯỚC 2.8: TẠM ẨN CẢNH BÁO TUA NHANH 24H BẰNG LOCALSTORAGE]
 const SEEK_WARNING_SUPPRESS_KEY = 'securelearn.progress.seek-warning.until';
@@ -68,7 +73,6 @@ const SEEK_WARNING_SUPPRESS_MS = 24 * 60 * 60 * 1000;
 const SEEK_WARNING_COOLDOWN_MS = 8_000;
 const FALLBACK_SEGMENT_EXPIRES_IN_SECONDS = 3600;
 const MANIFEST_RENEW_BUFFER_MS = 60_000;
-
 // Kiểm tra xem cảnh báo tua nhanh có đang được tạm ẩn trong vòng 24h không
 const isSeekWarningSuppressed = () => {
   const raw = window.localStorage.getItem(SEEK_WARNING_SUPPRESS_KEY);
@@ -92,6 +96,7 @@ interface VideoPlayerProps {
   onTimeChange?: (seconds: number) => void;
   initialPositionSeconds?: number;
   pauseSignal?: number;
+  onOpenNotes?: (timestampSeconds: number) => void;
 }
 
 export function VideoPlayer({
@@ -101,8 +106,12 @@ export function VideoPlayer({
   onTimeChange,
   initialPositionSeconds = 0,
   pauseSignal = 0,
+  onOpenNotes,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const onOpenNotesRef = useRef(onOpenNotes);
+  const onTimeChangeRef = useRef(onTimeChange);
+  const lastReportedPlaybackSecondRef = useRef(-1);
   const sessionId = useMemo(() => crypto.randomUUID(), []);
   const lastPositionRef = useRef(0);
   const seekOriginRef = useRef(0);
@@ -127,6 +136,19 @@ export function VideoPlayer({
     { ...watermarkIdentity, sessionId },
     watermarkTime,
   );
+
+  useEffect(() => {
+    onOpenNotesRef.current = onOpenNotes;
+    onTimeChangeRef.current = onTimeChange;
+  }, [onOpenNotes, onTimeChange]);
+
+  const reportPlaybackTime = useCallback((seconds: number, force = false) => {
+    if (!Number.isFinite(seconds)) return;
+    const playbackSecond = Math.max(0, Math.floor(seconds));
+    if (!force && playbackSecond === lastReportedPlaybackSecondRef.current) return;
+    lastReportedPlaybackSecondRef.current = playbackSecond;
+    onTimeChangeRef.current?.(seconds);
+  }, []);
 
   const showSeekWarning = useCallback(() => {
     const now = Date.now();
@@ -256,32 +278,40 @@ export function VideoPlayer({
           // xhrSetup được chạy trước mỗi request tải Playlist HLS hoặc Key giải mã.
           // Tự động đính kèm header Authorization chứa Bearer JWT token của user để xác thực quyền truy cập.
           // Không gửi JWT khi request các phân đoạn video (.ts) trực tiếp từ MinIO storage (kiểm tra qua shouldAttachAuthToHlsRequest).
+
+          // xhrSetup là một callback function được gọi trước mỗi request tải Playlist HLS hoặc Key giải mã.
           xhrSetup: (xhr, url) => {
+            // Nếu không cần đính kèm JWT (là file .ts hoặc URL đã được rewrite), bỏ qua
             if (!shouldAttachAuthToHlsRequest(url)) return;
+            // Lấy JWT từ bộ nhớ RAM (In-Memory) thông qua apiClient
             const token = getAccessToken();
+            // Nếu có token, đính kèm vào header Authorization
             if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
             xhr.withCredentials = true;
           },
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
-          // [BƯỚC 2.7: LUỒNG C - KHÔI PHỤC LỖI TỰ ĐỘNG CỦA HLS.JS (ERROR-DRIVEN RECOVERY)]
-          // 1. Lỗi Network: Thường xảy ra khi các phân đoạn (.ts) bị hết hạn link (HTTP 403 Forbidden).
-          //    Frontend sẽ tự động khôi phục session âm thầm mà không bắt học viên F5/reload trang.
+          // Hls.js tự retry các timeout/lỗi tải segment không fatal. Chỉ tạo playback session mới
+          // khi token/quyền đã hết hiệu lực hoặc lỗi network đã trở thành fatal.
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-            recoverPlaybackSession();
+            const networkStatus = Number(
+              data.response?.code
+              ?? data.networkDetails?.status
+              ?? data.networkDetails?.statusCode,
+            );
+            const playbackAccessExpired = [401, 403, 410].includes(networkStatus);
+            if (playbackAccessExpired || data.fatal) recoverPlaybackSession();
             return;
           }
-          // 2. Lỗi Media: Lỗi không đồng bộ âm thanh/hình ảnh.
-          //    Gọi recoverMediaError để tái thiết lập luồng giải mã của trình phát.
+          // Lỗi media fatal có thể phục hồi tại chỗ, không cần phá HLS session hiện tại.
           if (data.fatal && data.type === Hls.ErrorTypes.MEDIA_ERROR) {
             hls?.recoverMediaError();
             return;
           }
-          // 3. Các lỗi fatal nghiêm trọng khác không thể tự cứu: Gọi khôi phục session nạp lại manifest.
           if (data.fatal) recoverPlaybackSession();
         });
-        hls.loadSource(manifestUrl);
-        hls.attachMedia(video);
+        hls.loadSource(manifestUrl); // manifestUrl là URL của file playlist HLS (.m3u8) được bảo vệ. .load Source() là phương thức của Hls.js để load source HLS.
+        hls.attachMedia(video); // .attachMedia() là phương thức của Hls.js để attach media player.
         return;
       }
 
@@ -357,15 +387,17 @@ export function VideoPlayer({
       const currentTime = Math.floor(video.currentTime);
       const watchedSeconds = Math.floor(video.currentTime - lastPositionRef.current);
       if (currentTime <= 0) return;
-      const deltaSeconds = watchedSeconds > 0 && watchedSeconds <= 20 ? Math.min(15, watchedSeconds) : 0;
+      const deltaSeconds = watchedSeconds > 0 && watchedSeconds <= MAX_VALID_WATCH_GAP_SECONDS
+        ? Math.min(MAX_HEARTBEAT_DELTA_SECONDS, watchedSeconds)
+        : 0;
       sendHeartbeat(deltaSeconds, deltaSeconds > 0 ? lastPositionRef.current : video.currentTime);
       lastPositionRef.current = video.currentTime;
     };
 
     // [BƯỚC 2.6: HEARTBEAT ENGINE & GIẢI TẦN SUẤT / CHỐNG SPAM HEARTBEAT]
-    // Thiết lập vòng lặp interval gửi heartbeat định kỳ mỗi 15 giây.
+    // Thiết lập vòng lặp interval gửi heartbeat định kỳ mỗi 10 giây.
     // Kiểm tra chéo: nếu tab ẩn hoặc đang tua (isSeeking) hoặc đang pause thì KHÔNG gửi heartbeat.
-    // watchedSecondsDelta chỉ được ghi nhận tối đa là 15 giây (bảo vệ chống hack gửi thời gian ảo).
+    // watchedSecondsDelta chỉ được ghi nhận tối đa là 10 giây (bảo vệ chống hack gửi thời gian ảo).
     const interval = window.setInterval(() => {
       if (
         !isPlaying ||
@@ -377,12 +409,12 @@ export function VideoPlayer({
       ) return;
 
       const watchedSeconds = Math.floor(video.currentTime - lastPositionRef.current);
-      if (watchedSeconds < 1 || watchedSeconds > 20) {
+      if (watchedSeconds < 1 || watchedSeconds > MAX_VALID_WATCH_GAP_SECONDS) {
         lastPositionRef.current = video.currentTime;
         return;
       }
 
-      sendHeartbeat(Math.min(15, watchedSeconds), lastPositionRef.current);
+      sendHeartbeat(Math.min(MAX_HEARTBEAT_DELTA_SECONDS, watchedSeconds), lastPositionRef.current);
       lastPositionRef.current = video.currentTime;
     }, HEARTBEAT_MS);
 
@@ -426,6 +458,104 @@ export function VideoPlayer({
   }, []);
 
   useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const player = new Plyr(video, {
+      iconUrl: '/plyr.svg',
+      blankVideo: 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAAhtZGF0', // chuỗi có ý nghĩa để tránh lỗi 404 khi không có video nào được load
+      controls: [
+        'play-large',
+        'play',
+        'progress',
+        'current-time',
+        'duration',
+        'mute',
+        'volume',
+        'settings',
+        'fullscreen',
+      ],
+      settings: ['speed'],
+      speed: {
+        selected: 1,
+        options: [0.5, 0.75, 1, 1.25, 1.5, 2],
+      },
+      fullscreen: {
+        enabled: true,
+        fallback: true,
+        iosNative: false,
+        container: '.secure-video-player-shell',
+      },
+      keyboard: {
+        focused: true,
+        global: false,
+      },
+      tooltips: {
+        controls: true,
+        seek: true,
+      },
+      hideControls: true,
+      clickToPlay: true,
+      disableContextMenu: true,
+      i18n: {
+        play: 'Phát',
+        pause: 'Tạm dừng',
+        mute: 'Tắt âm thanh',
+        unmute: 'Bật âm thanh',
+        settings: 'Cài đặt',
+        speed: 'Tốc độ',
+        normal: 'Bình thường',
+        enterFullscreen: 'Toàn màn hình',
+        exitFullscreen: 'Thoát toàn màn hình',
+      },
+    });
+
+    const controls = player.elements.controls;
+    const fullscreenButton = player.elements.buttons.fullscreen;
+    const notesButton = document.createElement('button');
+    notesButton.type = 'button';
+    notesButton.className = 'plyr__control plyr__controls__item';
+    notesButton.setAttribute('aria-label', 'Mở ghi chú tại thời điểm hiện tại');
+    notesButton.innerHTML = `
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8.5L13.5 2Z" />
+        <polyline points="13 2 13 9 20 9" />
+        <path d="M9 15h6" />
+        <path d="M12 12v6" />
+      </svg>
+      <span class="plyr__tooltip" role="tooltip">Ghi chú</span>
+    `;
+
+    const openNotes = () => {
+      const timestampSeconds = video.currentTime;
+      player.pause();
+      let hasNavigated = false;
+      const navigateToNotes = () => {
+        if (hasNavigated) return;
+        hasNavigated = true;
+        window.requestAnimationFrame(() => onOpenNotesRef.current?.(timestampSeconds));
+      };
+
+      if (player.fullscreen.active) {
+        player.once('exitfullscreen', navigateToNotes);
+        player.fullscreen.exit();
+        window.setTimeout(navigateToNotes, 400);
+      } else {
+        navigateToNotes();
+      }
+    };
+
+    notesButton.addEventListener('click', openNotes);
+    if (controls) controls.insertBefore(notesButton, fullscreenButton || null);
+
+    return () => {
+      notesButton.removeEventListener('click', openNotes);
+      notesButton.remove();
+      player.destroy();
+    };
+  }, []);
+
+  useEffect(() => {
     // [BƯỚC 2.1: BẢO VỆ PHÍA CLIENT - CHẶN PHÍM TẮT F12/INSPECT/PRINT]
     const handleKeyDown = (event: KeyboardEvent) => {
       if (shouldIgnoreProtectionShortcut()) return;
@@ -466,7 +596,7 @@ export function VideoPlayer({
   return (
     <div className="flex flex-col">
       <div
-        className="relative aspect-video w-full select-none bg-black"
+        className="secure-video-player-shell relative aspect-video w-full select-none overflow-hidden bg-black"
         onContextMenu={handleContextMenu}
         onCopy={blockProtectedEvent}
         onCut={blockProtectedEvent}
@@ -476,7 +606,8 @@ export function VideoPlayer({
           ref={videoRef}
           controls
           playsInline
-          className="absolute inset-0 h-full w-full"
+          preload="metadata"
+          className="h-full w-full"
           onLoadedMetadata={(event) => {
             const video = event.currentTarget;
             // [BƯỚC 2.7: LUỒNG D - PHỤC HỒI TRẠNG THÁI PHÁT (STATE RESUMPTION & UX PRESERVATION)]
@@ -507,8 +638,14 @@ export function VideoPlayer({
             }
             setIsPlaying(true);
           }}
-          onPause={() => setIsPlaying(false)}
-          onEnded={() => setIsPlaying(false)}
+          onPause={(event) => {
+            setIsPlaying(false);
+            reportPlaybackTime(event.currentTarget.currentTime, true);
+          }}
+          onEnded={(event) => {
+            setIsPlaying(false);
+            reportPlaybackTime(event.currentTarget.currentTime, true);
+          }}
           // [CHỐNG GIAN LẬN TUA VIDEO - BƯỚC 2.1]
           // onSeeking ghi nhận điểm bắt đầu tua video (seekOrigin)
           onSeeking={(event) => {
@@ -525,9 +662,10 @@ export function VideoPlayer({
               showSeekWarning();
             }
             lastPositionRef.current = nextPosition;
+            reportPlaybackTime(nextPosition, true);
             setIsSeeking(false);
           }}
-          onTimeUpdate={(event) => onTimeChange?.(event.currentTarget.currentTime)}
+          onTimeUpdate={(event) => reportPlaybackTime(event.currentTarget.currentTime)}
         />
 
         {/* [BẢO MẬT QUAY LÉN - BƯỚC 2]
@@ -540,7 +678,7 @@ export function VideoPlayer({
         )}
 
         {(playbackSession.isIdle || playbackSession.isPending) && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black text-white">
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black text-white">
             <Loader2 className="h-7 w-7 animate-spin" />
           </div>
         )}
