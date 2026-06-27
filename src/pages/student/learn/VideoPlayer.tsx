@@ -63,6 +63,10 @@ const absoluteApiUrl = (path: string) => {
   return new URL(path, base).toString();
 };
 
+const sortQualityLabels = (qualities: string[]) =>
+  [...new Set(qualities.filter((quality) => /^\d+p$/i.test(quality)))]
+    .sort((left, right) => Number.parseInt(left, 10) - Number.parseInt(right, 10));
+
 const HEARTBEAT_MS = 10_000;
 const MAX_HEARTBEAT_DELTA_SECONDS = 10; // Khoảng cách tối đa giữa 2 lần heartbeat
 const MAX_VALID_WATCH_GAP_SECONDS = 15; // Khoảng cách thời gian tối đa được tính là "xem" (không tính là bỏ qua)
@@ -95,6 +99,7 @@ interface VideoPlayerProps {
   watermarkIdentity?: WatermarkIdentity;
   onTimeChange?: (seconds: number) => void;
   initialPositionSeconds?: number;
+  resumePositionReady?: boolean;
   pauseSignal?: number;
   onOpenNotes?: (timestampSeconds: number) => void;
 }
@@ -105,10 +110,23 @@ export function VideoPlayer({
   watermarkIdentity,
   onTimeChange,
   initialPositionSeconds = 0,
+  resumePositionReady = true,
   pauseSignal = 0,
   onOpenNotes,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const selectedQualityRef = useRef<'auto' | string>('auto');
+  const qualityLevelMapRef = useRef<Map<string, number>>(new Map());
+  const qualitySwitchIdRef = useRef(0);
+  const pendingQualitySwitchRef = useRef<{
+    id: number;
+    levelIndex: number;
+    position: number;
+    resumeAfterSwitch: boolean;
+    frameRequested: boolean;
+    timeoutId: number;
+  } | null>(null);
   const onOpenNotesRef = useRef(onOpenNotes);
   const onTimeChangeRef = useRef(onTimeChange);
   const lastReportedPlaybackSecondRef = useRef(-1);
@@ -117,6 +135,7 @@ export function VideoPlayer({
   const seekOriginRef = useRef(0);
   const lastSeekWarningAtRef = useRef(0);
   const hasAppliedInitialPositionRef = useRef(false);
+  const initialPositionRef = useRef(Math.max(0, Math.floor(initialPositionSeconds || 0)));
   const pendingPlaybackResumeRef = useRef<number | null>(null);
   const resumePlaybackAfterRenewRef = useRef(false);
   const manifestExpiresAtRef = useRef(0);
@@ -125,6 +144,11 @@ export function VideoPlayer({
   const [playbackReloadKey, setPlaybackReloadKey] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
+  const [qualityLabels, setQualityLabels] = useState<string[]>([]);
+  const [qualityLevelsReady, setQualityLevelsReady] = useState(!Hls.isSupported());
+  const [selectedQuality, setSelectedQuality] = useState<'auto' | string>('auto');
+
+  const [isQualitySwitching, setIsQualitySwitching] = useState(false);
   const playbackSession = useCreatePlaybackSession();
   const createPlayback = playbackSession.mutateAsync;
   const progressHeartbeat = useProgressHeartbeat(courseId);
@@ -136,11 +160,34 @@ export function VideoPlayer({
     { ...watermarkIdentity, sessionId },
     watermarkTime,
   );
+  const plyrQualityOptionsKey = useMemo(
+    () => qualityLabels.map((quality) => Number.parseInt(quality, 10)).filter(Number.isFinite).join(','),
+    [qualityLabels],
+  );
 
   useEffect(() => {
     onOpenNotesRef.current = onOpenNotes;
     onTimeChangeRef.current = onTimeChange;
   }, [onOpenNotes, onTimeChange]);
+
+  useEffect(() => {
+    selectedQualityRef.current = selectedQuality;
+  }, [selectedQuality]);
+
+  useEffect(() => {
+    setSelectedQuality('auto');
+    setQualityLabels([]);
+    setQualityLevelsReady(!Hls.isSupported());
+    qualityLevelMapRef.current = new Map();
+  }, [lesson._id, lesson.videoAssetId]);
+
+  useEffect(() => {
+    const fallbackQualities = sortQualityLabels(playbackSession.data?.asset.availableQualities ?? []);
+    if (!fallbackQualities.length) return;
+    setQualityLabels((current) => current.length > 0 ? current : fallbackQualities);
+    setQualityLevelsReady(true);
+  }, [playbackSession.data?.asset.availableQualities]);
+
 
   const reportPlaybackTime = useCallback((seconds: number, force = false) => {
     if (!Number.isFinite(seconds)) return;
@@ -149,6 +196,73 @@ export function VideoPlayer({
     lastReportedPlaybackSecondRef.current = playbackSecond;
     onTimeChangeRef.current?.(seconds);
   }, []);
+
+  const updateQualityLevels = useCallback((levels: Hls['levels']) => {
+    const nextLevelMap = new Map<string, number>();
+    levels.forEach((level, index) => {
+      const height = Number(level.height) || 0;
+      if (!height) return;
+      const label = String(height) + 'p';
+      const previousIndex = nextLevelMap.get(label);
+      if (previousIndex === undefined) {
+        nextLevelMap.set(label, index);
+        return;
+      }
+      const previousBitrate = Number(levels[previousIndex]?.bitrate ?? 0);
+      const currentBitrate = Number(level.bitrate ?? 0);
+      if (currentBitrate >= previousBitrate) nextLevelMap.set(label, index);
+    });
+    qualityLevelMapRef.current = nextLevelMap;
+    setQualityLabels(sortQualityLabels([...nextLevelMap.keys()]));
+  }, []);
+
+  const finishQualitySwitch = useCallback((switchId: number) => {
+    const pending = pendingQualitySwitchRef.current;
+    if (!pending || pending.id !== switchId) return;
+    window.clearTimeout(pending.timeoutId);
+    pendingQualitySwitchRef.current = null;
+    setIsQualitySwitching(false);
+
+    const video = videoRef.current;
+    if (pending.resumeAfterSwitch && video?.paused) {
+      void video.play().catch(() => undefined);
+    }
+  }, []);
+
+  const applyQualitySelection = useCallback((quality: 'auto' | string) => {
+    setSelectedQuality(quality);
+    const hls = hlsRef.current;
+    if (!hls) return;
+    if (quality === 'auto') {
+      const pending = pendingQualitySwitchRef.current;
+      if (pending) finishQualitySwitch(pending.id);
+      hls.loadLevel = -1;
+      hls.nextLevel = -1;
+      return;
+    }
+
+    const levelIndex = qualityLevelMapRef.current.get(quality);
+    const video = videoRef.current;
+    if (levelIndex === undefined || !video) return;
+
+    const previousPending = pendingQualitySwitchRef.current;
+    const resumeAfterSwitch = previousPending?.resumeAfterSwitch ?? !video.paused;
+    if (previousPending) window.clearTimeout(previousPending.timeoutId);
+
+    const switchId = ++qualitySwitchIdRef.current;
+    const position = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+    video.pause();
+    setIsQualitySwitching(true);
+    pendingQualitySwitchRef.current = {
+      id: switchId,
+      levelIndex,
+      position,
+      resumeAfterSwitch,
+      frameRequested: false,
+      timeoutId: window.setTimeout(() => finishQualitySwitch(switchId), 10_000),
+    };
+    hls.currentLevel = levelIndex;
+  }, [finishQualitySwitch]);
 
   const showSeekWarning = useCallback(() => {
     const now = Date.now();
@@ -250,13 +364,25 @@ export function VideoPlayer({
     return false;
   }, [lesson.videoAssetId, recoverPlaybackSession]);
 
+  // Đồng bộ mốc resume trước khi effect HLS chạy để tải đúng fragment ngay từ đầu.
+  useEffect(() => {
+    hasAppliedInitialPositionRef.current = false;
+    lastPositionRef.current = initialPositionRef.current;
+  }, [lesson._id]);
+
+  useEffect(() => {
+    if (!resumePositionReady || hasAppliedInitialPositionRef.current) return;
+    initialPositionRef.current = Math.max(0, Math.floor(initialPositionSeconds || 0));
+    lastPositionRef.current = initialPositionRef.current;
+  }, [initialPositionSeconds, resumePositionReady]);
   // Video player hook này dùng để xử lý video và các tương tác với video
   useEffect(() => {
     const video = videoRef.current;
     const videoAssetId = lesson.videoAssetId;
-    if (!video || !videoAssetId) return;
+    if (!video || !videoAssetId || !resumePositionReady) return;
 
     let hls: Hls | null = null; // Hls là thư viện xử lý video HLS
+    hlsRef.current = null;
     let canceled = false; // Flag để đánh dấu khi video bị hủy
 
     const setupPlayback = async () => {
@@ -269,11 +395,20 @@ export function VideoPlayer({
       manifestExpiresAtRef.current = Date.now() + segmentExpiresIn * 1000;
       scheduleProactiveRenew(segmentExpiresIn);
       const manifestUrl = absoluteApiUrl(session.playbackUrl);
+      const resumePosition = pendingPlaybackResumeRef.current ?? initialPositionRef.current;
+      const hlsStartPosition = Number.isFinite(resumePosition) && resumePosition > 0
+        ? resumePosition
+        : -1;
 
       // [BẢO MẬT STREAMING - BƯỚC 2]
       // Nếu trình duyệt hỗ trợ Hls.js, tiến hành load source manifest HLS được bảo vệ (.m3u8).
       if (Hls.isSupported()) {
         hls = new Hls({
+          // Tải ngay fragment chứa mốc đang học thay vì tải từ giây 0 rồi mới seek.
+          startPosition: hlsStartPosition,
+          maxBufferLength: 18,
+          maxMaxBufferLength: 30,
+          backBufferLength: 30,
           // [BƯỚC 2.8: ĐÍNH KÈM JWT QUA XHRSETUP CHO CÁC API HOÀN THIỆN ĐỊNH DANH]
           // xhrSetup được chạy trước mỗi request tải Playlist HLS hoặc Key giải mã.
           // Tự động đính kèm header Authorization chứa Bearer JWT token của user để xác thực quyền truy cập.
@@ -289,6 +424,44 @@ export function VideoPlayer({
             if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
             xhr.withCredentials = true;
           },
+        });
+        hlsRef.current = hls;
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (!hls) return;
+          updateQualityLevels(hls.levels);
+          setQualityLevelsReady(true);
+          if (selectedQualityRef.current !== 'auto') {
+            const selectedLevel = qualityLevelMapRef.current.get(selectedQualityRef.current);
+            if (selectedLevel !== undefined) {
+              hls.loadLevel = selectedLevel;
+              hls.nextLevel = selectedLevel;
+            } else {
+              setSelectedQuality('auto');
+            }
+          }
+        });
+        hls.on(Hls.Events.LEVELS_UPDATED, (_event, data) => {
+          updateQualityLevels(data.levels);
+        });
+
+        hls.on(Hls.Events.FRAG_BUFFERED, (_event, data) => {
+          const pending = pendingQualitySwitchRef.current;
+          if (!pending || pending.frameRequested || data.frag.level !== pending.levelIndex) return;
+
+          const fragmentEnd = data.frag.start + data.frag.duration;
+          if (pending.position < data.frag.start - 0.25 || pending.position > fragmentEnd + 0.25) return;
+
+          pending.frameRequested = true;
+          const refreshPosition = Number.isFinite(video.duration)
+            ? Math.min(pending.position + 0.01, Math.max(0, video.duration - 0.01))
+            : pending.position + 0.01;
+          video.currentTime = refreshPosition;
+
+          if (typeof video.requestVideoFrameCallback === 'function') {
+            video.requestVideoFrameCallback(() => finishQualitySwitch(pending.id));
+          } else {
+            video.addEventListener('seeked', () => finishQualitySwitch(pending.id), { once: true });
+          }
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
           // Hls.js tự retry các timeout/lỗi tải segment không fatal. Chỉ tạo playback session mới
@@ -327,10 +500,15 @@ export function VideoPlayer({
     return () => {
       canceled = true;
       clearProactiveRenewTimer();
+      const pendingQualitySwitch = pendingQualitySwitchRef.current;
+      if (pendingQualitySwitch) window.clearTimeout(pendingQualitySwitch.timeoutId);
+      pendingQualitySwitchRef.current = null;
+      setIsQualitySwitching(false);
+      if (hlsRef.current === hls) hlsRef.current = null;
       hls?.destroy();
       video.removeAttribute('src');
     };
-  }, [clearProactiveRenewTimer, createPlayback, lesson.videoAssetId, lesson._id, playbackReloadKey, recoverPlaybackSession, scheduleProactiveRenew]);
+  }, [clearProactiveRenewTimer, createPlayback, finishQualitySwitch, lesson.videoAssetId, lesson._id, playbackReloadKey, recoverPlaybackSession, resumePositionReady, scheduleProactiveRenew, updateQualityLevels]);
 
   useEffect(() => {
     if (!pauseSignal) return;
@@ -356,10 +534,6 @@ export function VideoPlayer({
   // [BƯỚC 2.8: PHỤC HỒI TIẾN ĐỘ BẮT ĐẦU (INITIAL POSITION SETUP)]
   // Khởi chạy lúc nạp bài học mới: Cài đặt vị trí phát ban đầu (`initialPositionSeconds`)
   // lấy từ DB tiến độ của progress-service và đồng bộ biến lastPosition để theo dõi thời gian thực xem.
-  useEffect(() => {
-    hasAppliedInitialPositionRef.current = false;
-    lastPositionRef.current = Math.max(0, Math.floor(initialPositionSeconds || 0));
-  }, [initialPositionSeconds, lesson._id]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -461,6 +635,14 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!video) return;
 
+    const qualityOptions = plyrQualityOptionsKey
+      ? plyrQualityOptionsKey.split(',').map(Number).filter(Number.isFinite)
+      : [];
+    if (!qualityLevelsReady) return;
+
+    const selectedQualityValue = selectedQualityRef.current === 'auto'
+      ? 0
+      : Number.parseInt(selectedQualityRef.current, 10);
     const player = new Plyr(video, {
       iconUrl: '/plyr.svg',
       blankVideo: 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAAhtZGF0', // chuỗi có ý nghĩa để tránh lỗi 404 khi không có video nào được load
@@ -475,7 +657,15 @@ export function VideoPlayer({
         'settings',
         'fullscreen',
       ],
-      settings: ['speed'],
+      settings: qualityOptions.length > 0 ? ['quality', 'speed'] : ['speed'],
+      quality: {
+        default: Number.isFinite(selectedQualityValue) ? selectedQualityValue : 0,
+        options: qualityOptions.length > 0 ? [0, ...qualityOptions] : [],
+        forced: qualityOptions.length > 0,
+        onChange: (quality) => {
+          applyQualitySelection(quality === 0 ? 'auto' : String(quality) + 'p');
+        },
+      },
       speed: {
         selected: 1,
         options: [0.5, 0.75, 1, 1.25, 1.5, 2],
@@ -503,6 +693,8 @@ export function VideoPlayer({
         mute: 'Tắt âm thanh',
         unmute: 'Bật âm thanh',
         settings: 'Cài đặt',
+        quality: 'Chất lượng',
+        qualityLabel: { 0: 'Auto' },
         speed: 'Tốc độ',
         normal: 'Bình thường',
         enterFullscreen: 'Toàn màn hình',
@@ -511,7 +703,6 @@ export function VideoPlayer({
     });
 
     const controls = player.elements.controls;
-    const fullscreenButton = player.elements.buttons.fullscreen;
     const notesButton = document.createElement('button');
     notesButton.type = 'button';
     notesButton.className = 'plyr__control plyr__controls__item';
@@ -546,14 +737,22 @@ export function VideoPlayer({
     };
 
     notesButton.addEventListener('click', openNotes);
-    if (controls) controls.insertBefore(notesButton, fullscreenButton || null);
+    if (controls) {
+      const directSettingsButton = Array.from(controls.children).find(
+        (element) => element instanceof HTMLElement && element.matches('[data-plyr="settings"]'),
+      );
+      const directFullscreenButton = Array.from(controls.children).find(
+        (element) => element instanceof HTMLElement && element.matches('[data-plyr="fullscreen"]'),
+      );
+      controls.insertBefore(notesButton, directSettingsButton || directFullscreenButton || null);
+    }
 
     return () => {
       notesButton.removeEventListener('click', openNotes);
       notesButton.remove();
       player.destroy();
     };
-  }, []);
+  }, [applyQualitySelection, plyrQualityOptionsKey, qualityLevelsReady]);
 
   useEffect(() => {
     // [BƯỚC 2.1: BẢO VỆ PHÍA CLIENT - CHẶN PHÍM TẮT F12/INSPECT/PRINT]
@@ -614,7 +813,7 @@ export function VideoPlayer({
             // [BƯỚC 2.8: KHÔI PHỤC VỊ TRÍ HỌC CŨ TỪ INITIAL POSITION SECONDS]
             // Ưu tiên sử dụng pendingPlaybackResumeRef (nếu vừa gia hạn session giữa chừng),
             // sau đó mới dùng initialPositionSeconds (nếu bắt đầu mở bài học lần đầu).
-            const resumePosition = pendingPlaybackResumeRef.current ?? initialPositionSeconds;
+            const resumePosition = pendingPlaybackResumeRef.current ?? initialPositionRef.current;
             const shouldResumePlayback = resumePlaybackAfterRenewRef.current;
             if (!hasAppliedInitialPositionRef.current && resumePosition > 0) {
               // Tránh seek sát nút cuối video làm kết thúc bài học ngay lập tức
@@ -667,6 +866,16 @@ export function VideoPlayer({
           }}
           onTimeUpdate={(event) => reportPlaybackTime(event.currentTarget.currentTime)}
         />
+
+
+        {isQualitySwitching && (
+          <div
+            className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black/15"
+            aria-live="polite"
+          >
+            <Loader2 className="h-7 w-7 animate-spin text-white" aria-label="Đang đổi chất lượng video" />
+          </div>
+        )}
 
         {/* [BẢO MẬT QUAY LÉN - BƯỚC 2]
             Watermark động hiển thị Email, User ID, Session ID và thời gian hiện tại

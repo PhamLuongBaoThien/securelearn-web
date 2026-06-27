@@ -10,6 +10,15 @@ interface ApiResponse<T = undefined> {
   data?: T;
 }
 
+export interface IVideoRendition {
+  quality: string;
+  width: number;
+  height: number;
+  bandwidth: number;
+  manifestKey?: string;
+  playlistPath?: string;
+}
+
 export interface IVideoAsset {
   _id: string;
   status: 'INITIATED' | 'UPLOADING' | 'UPLOADED' | 'PROCESSING' | 'READY' | 'FAILED';
@@ -22,6 +31,10 @@ export interface IVideoAsset {
   uploadCompletedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  availableQualities?: string[];
+  sourceWidth?: number | null;
+  sourceHeight?: number | null;
+  renditions?: IVideoRendition[];
 }
 
 export interface IDocumentAsset {
@@ -34,18 +47,12 @@ export interface IDocumentAsset {
   pageCount?: number;
 }
 
-// --- VIDEO ---
-
 export interface IVideoUploadSession {
   _id: string;
   rawObjectKey?: string;
   multipartUploadId?: string;
 }
 
-/**
- * Bước 1: Khởi tạo upload session — luôn dùng direct multipart.
- * Trả về presigned info để FE upload thẳng lên MinIO.
- */
 export const initiateVideoUpload = async (payload: {
   courseId: string;
   lessonId: string;
@@ -60,10 +67,6 @@ export const initiateVideoUpload = async (payload: {
   return data;
 };
 
-/**
- * Lấy tất cả presigned URLs cho 1 file trong 1 lần gọi API.
- * Giúp loại bỏ N round-trips (1 per chunk) trước khi bắt đầu upload song song.
- */
 export const getBatchPartPresignedUrls = async (videoAssetId: string, totalParts: number) => {
   const { data } = await apiClient.get<ApiResponse<{ urls: string[] }>>(
     `/api/media/videos/${videoAssetId}/batch-part-urls?totalParts=${totalParts}`,
@@ -71,7 +74,6 @@ export const getBatchPartPresignedUrls = async (videoAssetId: string, totalParts
   return data;
 };
 
-/** Hoàn tất multipart upload sau khi tất cả parts đã PUT xong. */
 export const confirmVideoUpload = async (
   videoAssetId: string,
   parts: { ETag: string; PartNumber: number }[],
@@ -83,7 +85,6 @@ export const confirmVideoUpload = async (
   return data;
 };
 
-/** Hủy multipart session khi user cancel upload. */
 export const abortVideoUpload = async (videoAssetId: string) => {
   const { data } = await apiClient.post<ApiResponse>(
     `/api/media/videos/${videoAssetId}/abort-upload`,
@@ -91,9 +92,6 @@ export const abortVideoUpload = async (videoAssetId: string) => {
   return data;
 };
 
-/**
- * Poll trạng thái xử lý video (status + processingProgress).
- */
 export const getVideoAsset = async (videoAssetId: string) => {
   const { data } = await apiClient.get<ApiResponse<IVideoAsset>>(
     `/api/media/videos/${videoAssetId}`,
@@ -114,9 +112,6 @@ export const createPlaybackSession = async (videoAssetId: string) => {
   );
   return data;
 };
-
-
-// --- ATTACHMENT DOCUMENT ---
 
 export const uploadDocumentAsset = async (payload: {
   courseId: string;

@@ -61,6 +61,14 @@ const fmt = {
 const clamp = (v?: number) =>
   typeof v !== 'number' || Number.isNaN(v) ? 0 : Math.max(0, Math.min(100, Math.round(v)));
 
+const parseQualityHeight = (value: string) => Number.parseInt(value, 10) || 0;
+const formatQualityList = (qualities?: string[] | null) => {
+  if (!qualities?.length) return null;
+  return Array.from(new Set(qualities))
+    .sort((left, right) => parseQualityHeight(left) - parseQualityHeight(right))
+    .join(', ');
+};
+
 // Media-service dùng status kỹ thuật. FE map về status dễ hiển thị hơn.
 const mapAssetStatus = (s?: string): VideoProcessingStatus => {
   if (s === 'READY') return 'DONE';
@@ -97,7 +105,7 @@ const CONCURRENCY = 5;                  // Số chunks upload song song tối đ
 // Metadata asset dùng riêng cho UI. Những field này được hydrate từ media-service.
 type AssetMeta = Pick<IVideoAsset,
   '_id' | 'status' | 'originalFileName' | 'mimeType' | 'sourceSizeBytes' |
-  'durationSec' | 'processingProgress' | 'errorMessage' | 'uploadCompletedAt' | 'updatedAt'>;
+  'durationSec' | 'processingProgress' | 'errorMessage' | 'uploadCompletedAt' | 'updatedAt' | 'availableQualities' | 'sourceWidth' | 'sourceHeight'>;
 
 const assetMetaCache = new Map<string, AssetMeta>();
 
@@ -678,6 +686,15 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     : processingElapsed >= 60
       ? 'Video vẫn đang xử lý. Không cần giữ tab này mở.'
       : 'Video sẽ sẵn sàng sau vài phút. Bạn có thể tiếp tục chỉnh sửa.';
+  const qualityList = formatQualityList(assetMeta?.availableQualities);
+  const maxQuality = assetMeta?.availableQualities?.length
+    ? [...assetMeta.availableQualities].sort((left, right) => parseQualityHeight(right) - parseQualityHeight(left))[0]
+    : null;
+  const qualityHint = qualityList
+    ? parseQualityHeight(maxQuality || '') >= 1080
+      ? `Chất lượng khả dụng: ${qualityList}`
+      : `Nguồn hiện hỗ trợ tối đa ${maxQuality}. Chất lượng khả dụng: ${qualityList}`
+    : null;
 
   // Chưa có lessonId nghĩa là lesson chưa được lưu, nên chưa thể bind media asset.
   if (!lessonId) return (
@@ -714,6 +731,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
           </p>
           <p className="mt-0.5 text-xs text-zinc-400">MP4, MOV, AVI, MKV</p>
         </div>
+
       </div>
     </>
     );
@@ -774,6 +792,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
           </div>
           <p className="mt-0.5 truncate text-xs text-violet-500">{name}</p>
         </div>
+
       </div>
       <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-violet-100 dark:bg-violet-500/20">
         {progress > 5
@@ -793,12 +812,13 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-green-700 dark:text-green-300">{name}</p>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-green-600 dark:text-green-500">
+        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-green-600 dark:text-green-500">
           <span>Sẵn sàng phát</span>
           {duration > 0 && <><span className="opacity-40">·</span><span className="flex items-center gap-1"><Play className="h-2.5 w-2.5" />{fmt.duration(duration)}</span></>}
           {size && <><span className="opacity-40">·</span><span>{size}</span></>}
           {uploadedAt && <><span className="opacity-40">·</span><span>Tải lên lúc {uploadedAt}</span></>}
         </div>
+        {qualityHint && <p className="mt-1 text-xs text-green-600 dark:text-green-500">{qualityHint}</p>}
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {!isReadOnly && (
@@ -877,3 +897,5 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     </div>
   );
 };
+
+

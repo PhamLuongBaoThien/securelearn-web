@@ -360,6 +360,7 @@ export function LearningInterface() {
               watermarkIdentity={user ? { email: user.email, userId: user._id } : undefined}
               onTimeChange={setPlaybackTime}
               initialPositionSeconds={initialPositionSeconds}
+              resumePositionReady={!progressQuery.isLoading}
               pauseSignal={pauseSignal}
               onOpenNotes={(timestampSeconds) => {
                 setPlaybackTime(timestampSeconds);

@@ -1,4 +1,4 @@
-﻿// File này là màn hình editor chính cho instructor.
+// File này là màn hình editor chính cho instructor.
 // Nó đang ghép 3 lớp logic:
 // - metadata khóa học
 // - curriculum dạng section/lesson
@@ -1061,12 +1061,12 @@ export const CourseEditor: React.FC = () => {
     <div className="space-y-6 pb-12">
 
       {/* ===== HEADER ===== */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/instructor/courses")} className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+        <div className="flex items-start gap-4 min-w-0">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/instructor/courses")} className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors mt-1">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Chỉnh sửa khóa học</h1>
               {getStatusBadge(displayCourse.status)}
@@ -1121,7 +1121,7 @@ export const CourseEditor: React.FC = () => {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap flex-shrink-0 sm:self-start">
           {hasBlockingVideos && !isViewingPublished && (
             <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl text-xs font-medium text-amber-700 dark:text-amber-400">
               <Clock className="w-3.5 h-3.5 animate-pulse" />{pendingVideos.length} video đang xử lý
@@ -1279,7 +1279,7 @@ export const CourseEditor: React.FC = () => {
               <div>
                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Ảnh quảng cáo khóa học</label>
                 <ThumbnailUploader value={isViewingPublished ? displayCourse.thumbnail || "" : thumbnail} onChange={handleThumbnailChange} disabled={updateMutation.isPending || effectiveReadOnly} />
-                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5">Khuyến nghị tỉ lệ 16:9, tối thiểu 1280×720px</p>
+                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5">Khuyến nghị tỉ lệ 16:9, tối thiểu 1280×720px. Muốn có 1080p, hãy dùng nguồn 1920×1080px trở lên</p>
               </div>
             </div>
           </div>
@@ -1713,6 +1713,7 @@ const getStatusBadge = (status: string) => {
   if (status === "DRAFT") return <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 text-xs">Bản nháp</Badge>;
   return null;
 };
+
 
 
 
