@@ -4,7 +4,7 @@
 // - cho learner chọn cổng thanh toán và tạo checkout session
 // - đọc coupon đã áp ở Cart để hiển thị discount và gửi couponCode lên payment-service
 // ========================
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, ShieldCheck, ShoppingCart, CreditCard, CheckCircle2, ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,8 @@ const STEPS = [
 
 export const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('VNPAY');
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const checkoutLockRef = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, authResolved } = useAppSelector((state) => state.auth);
@@ -66,19 +68,30 @@ export const Checkout = () => {
       // FE không tự mở quyền học ở bước này.
       // Sau khi có paymentUrl, browser được chuyển sang cổng thanh toán; quyền học chỉ được mở sau callback confirm thành công.
       if (!data?.paymentUrl) {
+        checkoutLockRef.current = false;
         toast.error('Không tìm thấy đường dẫn thanh toán.');
         return;
       }
+
+      // Giữ nút bị khóa trong khoảng trống giữa lúc API hoàn tất và browser thực sự rời trang.
+      // Ref chặn đồng bộ cả các click liên tiếp trước khi React kịp render lại.
+      setIsRedirecting(true);
       window.location.href = data.paymentUrl;
     },
     onError: (error) => {
+      checkoutLockRef.current = false;
       toast.error(error instanceof Error ? error.message : 'Không thể thanh toán lúc này.');
     },
   });
 
   const handleCheckout = () => {
+    if (checkoutLockRef.current) return;
+
+    checkoutLockRef.current = true;
     checkoutMutation.mutate();
   };
+
+  const isCheckoutLocked = checkoutMutation.isPending || isRedirecting;
 
   if (!authResolved) {
     return (
@@ -197,11 +210,11 @@ export const Checkout = () => {
               variant="udemy_dark"
               className="w-full text-base h-13 rounded-xl font-bold flex items-center justify-center gap-2.5"
               onClick={handleCheckout}
-              disabled={checkoutMutation.isPending}
+              disabled={isCheckoutLocked}
             >
-              {checkoutMutation.isPending ? (
+              {isCheckoutLocked ? (
                 <>
-                  Đang tạo giao dịch...
+                  {isRedirecting ? 'Đang chuyển đến cổng thanh toán...' : 'Đang tạo giao dịch...'}
                   <Loader2 className="h-5 w-5 animate-spin" />
                 </>
               ) : (
