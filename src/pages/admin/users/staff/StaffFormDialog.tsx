@@ -57,9 +57,9 @@ export const StaffFormDialog: React.FC<StaffFormDialogProps> = ({
   };
 
   const handleSubmit = () => {
-    const fullName = form.fullName.trim();
+    const fullName = form.fullName.trim().normalize('NFC');
     const email = form.email.trim();
-    const phone = form.phone.trim();
+    const phone = (form.phone || '').trim();
     const password = form.password;
 
     if (!fullName) {
@@ -68,6 +68,10 @@ export const StaffFormDialog: React.FC<StaffFormDialogProps> = ({
     }
     if (fullName.length < 2) {
       toast.error('Họ và tên phải có tối thiểu 2 ký tự.');
+      return;
+    }
+    if (/\d/.test(fullName)) {
+      toast.error('Họ và tên không được chứa số.');
       return;
     }
 

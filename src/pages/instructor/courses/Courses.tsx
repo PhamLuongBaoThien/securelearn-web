@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Instructor Courses Page
 // Mục đích:
 // - hiển thị danh sách khóa học của giảng viên và các action editor/review
@@ -116,7 +116,8 @@ export const InstructorCourses: React.FC = () => {
         toast.success('Khóa học đã được gửi duyệt!');
       },
       onError: (err: unknown) => {
-        toast.error((err as Error).message || 'Không thể gửi duyệt khóa học.');
+        const message = (err as Error).message || 'Không thể gửi duyệt khóa học.';
+        toast.error(message, message.includes('Hồ sơ giảng viên') ? { action: { label: 'Cập nhật hồ sơ', onClick: () => navigate('/profile') } } : undefined);
       },
     });
   };

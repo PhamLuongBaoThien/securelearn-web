@@ -9,7 +9,7 @@ import { setUser, clearUser } from '@/features/auth/authSlice';
 import { refreshSessionAccessToken, setAccessToken } from '@/services/apiClient';
 import { setCartItems } from '@/features/courses/cartSlice';
 import {
-  loginUser, registerUser, logoutUser, getMe, refreshToken, 
+  loginUser, registerUser, verifyRegistrationOTP, logoutUser, getMe, refreshToken, 
   updateProfile, deleteAccount, changePassword,
   forgotPasswordRequest, resetPasswordRequest, verifyOTPRequest,
   switchToInstructor,
@@ -83,6 +83,15 @@ export function useRegister() {
   });
 }
 
+export function useVerifyRegistration() {
+  return useMutation({
+    mutationFn: async (payload: { email: string; otp: string }) => {
+      const response = await verifyRegistrationOTP(payload);
+      if (response.status === 'ERR') throw new Error(response.message);
+      return response;
+    },
+  });
+}
 // ===== useLogout =====
 // Gọi API logout + xóa state
 export function useLogout() {

@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Auth API Service: Tập trung toàn bộ API calls liên quan Authentication
 // Sử dụng apiClient (Axios) đã có interceptor tự động refresh token.
 // ========================
@@ -28,6 +28,10 @@ export const registerUser = async (payload: RegisterPayload) => {
   return data;
 };
 
+export const verifyRegistrationOTP = async (payload: { email: string; otp: string }) => {
+  const { data } = await apiClient.post<ApiResponse<RegisterResponseData>>('/api/auth/register/verify-otp', payload);
+  return data;
+};
 /**
  * Đăng nhập bằng email + mật khẩu.
  * POST /api/auth/login

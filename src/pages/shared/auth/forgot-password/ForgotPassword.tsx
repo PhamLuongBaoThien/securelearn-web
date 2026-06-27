@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { StaggerContainer, StaggerItem } from '@/components/animations/Stagger';
 import { Input } from '@/components/ui/input';
 import { Mail, ArrowLeft, KeyRound, Lock, CheckCircle2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForgotPassword, useVerifyOTP, useResetPassword } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -21,6 +21,13 @@ export function ForgotPassword() {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    if (!countdown) return;
+    const timer = window.setInterval(() => setCountdown((v) => Math.max(0, v - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [countdown]);
 
   // Call API Hooks
   const forgotPasswordMutation = useForgotPassword();
@@ -38,6 +45,7 @@ export function ForgotPassword() {
       onSuccess: () => {
         toast.success(`Đã gửi OTP đến email ${email}. Vui lòng kiểm tra hộp thư.`);
         setStep(2); // Chuyển sang bước 2: nhập OTP
+        setCountdown(30);
       },
       onError: (err: unknown) => {
         toast.error((err as Error).message || 'Lỗi gửi yêu cầu.');
@@ -183,7 +191,7 @@ export function ForgotPassword() {
             </StaggerItem>
           </form>
 
-          <StaggerItem className="mt-8 flex justify-center text-sm">
+          <StaggerItem className="mt-8 flex items-center justify-between text-sm">
             <Button 
               type="button"
               variant="ghost"
@@ -191,6 +199,15 @@ export function ForgotPassword() {
               className="flex items-center gap-2 font-medium text-muted-foreground hover:text-foreground hover:bg-transparent transition-colors h-auto p-0 focus-visible:ring-0"
             >
               <ArrowLeft className="h-4 w-4" /> Đổi email nhận mã
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={countdown > 0 || forgotPasswordMutation.isPending}
+              onClick={(e) => { e.preventDefault(); handleSendEmail(e as unknown as React.FormEvent); }}
+              className="font-medium text-muted-foreground hover:text-foreground hover:bg-transparent transition-colors h-auto p-0 focus-visible:ring-0 disabled:opacity-50"
+            >
+              {countdown ? `Gửi lại sau ${countdown}s` : 'Gửi lại OTP'}
             </Button>
           </StaggerItem>
         </>

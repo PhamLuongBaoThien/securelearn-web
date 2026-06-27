@@ -9,7 +9,6 @@ import {
   Loader2,
   RefreshCw,
   Search,
-  Shield,
   Users,
   GraduationCap,
   Filter,

@@ -45,7 +45,7 @@ export const AdminProfileFormPanel: React.FC<AdminProfileFormPanelProps> = ({
             </label>
             <Input
               id="fullName"
-              {...register('fullName', { required: 'Vui lòng nhập họ và tên' })}
+              {...register('fullName', { required: 'Vui lòng nhập họ và tên', validate: { noOnlySpaces: (v) => v.trim().length > 0 || 'Vui lòng nhập họ và tên', minLen: (v) => v.trim().length >= 2 || 'Họ và tên phải có tối thiểu 2 ký tự', validChars: (v) => !/\d/.test(v) || 'Họ và tên không được chứa số' } })}
               className={adminProfileInputClassName}
             />
             {errors.fullName && <p className="text-sm text-red-500">{errors.fullName.message}</p>}

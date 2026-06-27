@@ -31,14 +31,14 @@ export function Profile() {
   const {
     register,
     handleSubmit,
-    setValue,
-    formState: { errors },
+    reset,
+    formState: { errors, isDirty },
   } = useForm<ProfileFormData>({
     defaultValues: {
-      fullName: '',
-      phone: '',
-      bio: '',
-      headline: '',
+      fullName: user?.fullName || '',
+      phone: user?.phone || '',
+      bio: user?.profile?.bio || '',
+      headline: user?.profile?.headline || '',
     },
   });
 
@@ -52,11 +52,13 @@ export function Profile() {
   useEffect(() => {
     if (!user) return;
 
-    setValue('fullName', user.fullName || '');
-    setValue('phone', user.phone || '');
-    setValue('bio', user.profile?.bio || '');
-    setValue('headline', user.profile?.headline || '');
-  }, [setValue, user]);
+    reset({
+      fullName: user.fullName || '',
+      phone: user.phone || '',
+      bio: user.profile?.bio || '',
+      headline: user.profile?.headline || '',
+    });
+  }, [reset, user]);
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files?.[0]) return;
@@ -181,6 +183,7 @@ export function Profile() {
               handleSubmit={handleSubmit}
               errors={errors}
               isUpdating={isUpdating}
+              isDirty={isDirty}
               onSubmit={onSubmitProfile}
             />
           )}

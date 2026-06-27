@@ -31,6 +31,7 @@ export interface IUser {
   role: Role;
   subscriptionStatus: SubscriptionStatus;
   phone?: string;
+  emailVerifiedAt?: string;
   profile?: IUserProfile;
   // --- Admin properties ---
   avatarUrl?: string;
@@ -56,6 +57,7 @@ export interface IAdminUser {
   status: 'ACTIVE' | 'LOCKED';   // ← Trạng thái tài khoản
   permissions: string[];
   phone?: string;
+  emailVerifiedAt?: string;
   department?: string;
   bio?: string;
   avatarUrl?: string;
@@ -69,6 +71,7 @@ export interface IAdminUser {
 export interface RegisterPayload {
   email: string;
   password: string;
+  confirmPassword: string;
   fullName: string;
 }
 
