@@ -59,7 +59,7 @@ export const NavMobileDrawer = ({
                 <UserAvatar user={null} className="h-10 w-10 text-base" />
               )
             }
-            profileLink={isAuthenticated ? '/profile' : undefined}
+            profileLink={isAuthenticated ? (user?.publicSlug ? '/users/' + user.publicSlug : '/account/settings/profile') : undefined}
             theme={currentTheme}
             onThemeChange={onThemeChange}
             onLogout={isAuthenticated ? onLogout : undefined}

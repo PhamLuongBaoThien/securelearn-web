@@ -155,6 +155,9 @@ export function useUpdateProfile() {
       queryClient.setQueryData(authKeys.profile, updatedUser);
       queryClient.setQueryData(authKeys.session, { user: updatedUser });
       dispatch(setUser({ user: updatedUser }));
+      if (updatedUser.publicSlug) {
+        queryClient.invalidateQueries({ queryKey: ['public-profile', updatedUser.publicSlug] });
+      }
     },
   });
 }

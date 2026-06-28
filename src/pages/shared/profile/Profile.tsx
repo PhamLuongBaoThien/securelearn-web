@@ -1,16 +1,16 @@
 // User Profile Page: Điều phối state, form và các panel con cho trang hồ sơ người dùng.
 import React, { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Briefcase, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppSelector } from '@/app/hooks';
-import { FadeIn } from '@/components/animations/FadeIn';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useChangePassword, useDeleteAccount, useUpdateProfile, authKeys } from '@/hooks/useAuth';
 import { ProfileAvatarPanel } from './ProfileAvatarPanel';
 import { ProfileEditPanel } from './ProfileEditPanel';
-import { ProfilePublicPanel } from './ProfilePublicPanel';
+import { ProfileSessionsPanel } from './ProfileSessionsPanel';
 import { ProfileSecurityPanel } from './ProfileSecurityPanel';
 import { ProfileTabNav } from './ProfileTabNav';
 import type { PasswordFormData, ProfileFormData, ProfileTabType } from './profile.types';
@@ -21,8 +21,9 @@ export function Profile() {
   const { mutateAsync: deleteAccount, isPending: isDeleting } = useDeleteAccount();
   const { mutateAsync: changePassword, isPending: isChangingPassword } = useChangePassword();
   const queryClient = useQueryClient();
-
-  const [activeTab, setActiveTab] = useState<ProfileTabType>('public');
+  const { tab } = useParams<{ tab: string }>();
+  const validTabs: ProfileTabType[] = ['profile', 'avatar', 'security', 'sessions'];
+  const activeTab = (tab && validTabs.includes(tab as ProfileTabType)) ? (tab as ProfileTabType) : 'profile';
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,6 +40,11 @@ export function Profile() {
       phone: user?.phone || '',
       bio: user?.profile?.bio || '',
       headline: user?.profile?.headline || '',
+      website: user?.profile?.website || '',
+      github: user?.profile?.github || '',
+      facebook: user?.profile?.facebook || '',
+      youtube: user?.profile?.youtube || '',
+      linkedin: user?.profile?.linkedin || '',
     },
   });
 
@@ -57,6 +63,11 @@ export function Profile() {
       phone: user.phone || '',
       bio: user.profile?.bio || '',
       headline: user.profile?.headline || '',
+      website: user.profile?.website || '',
+      github: user.profile?.github || '',
+      facebook: user.profile?.facebook || '',
+      youtube: user.profile?.youtube || '',
+      linkedin: user.profile?.linkedin || '',
     });
   }, [reset, user]);
 
@@ -98,6 +109,11 @@ export function Profile() {
       if (data.phone !== undefined) formData.append('phone', data.phone);
       if (data.bio !== undefined) formData.append('bio', data.bio);
       if (data.headline !== undefined) formData.append('headline', data.headline);
+      if (data.website !== undefined) formData.append('website', data.website);
+      if (data.github !== undefined) formData.append('github', data.github);
+      if (data.facebook !== undefined) formData.append('facebook', data.facebook);
+      if (data.youtube !== undefined) formData.append('youtube', data.youtube);
+      if (data.linkedin !== undefined) formData.append('linkedin', data.linkedin);
 
       await updateProfile(formData);
       toast.success('Hồ sơ của bạn đã được cập nhật thành công!');
@@ -157,26 +173,31 @@ export function Profile() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-      <FadeIn direction="down" distance={20} duration={0.35} className="bg-card rounded-2xl shadow-sm border border-border p-8 mb-8">
-        <div className="flex flex-col md:flex-row items-center gap-6">
-          <UserAvatar user={user} className="w-24 h-24 text-4xl border-2 border-primary/20 shadow-md" />
-          <div className="flex-1 text-center md:text-left">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">{user.fullName}</h1>
-            <p className="text-muted-foreground mt-1 text-lg flex items-center justify-center md:justify-start gap-2">
-              <Briefcase size={18} />
-              {user.profile?.headline || 'Thành viên SecureLearn'}
-            </p>
-          </div>
-        </div>
-      </FadeIn>
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+      {/* Tiêu đề trang phẳng, hiện đại */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Cài đặt tài khoản</h1>
+        <p className="text-muted-foreground mt-1.5 text-sm">
+          Quản lý thông tin hồ sơ cá nhân, thiết lập ảnh đại diện, bảo mật và quản lý các phiên đăng nhập.
+        </p>
+        <hr className="border-border/60 mt-6" />
+      </div>
 
       <div className="flex flex-col md:flex-row gap-8">
-        <ProfileTabNav activeTab={activeTab} onTabChange={setActiveTab} />
+        {/* Sidebar chứa thông tin User & Menu */}
+        <aside className="w-full shrink-0 md:w-64 space-y-6">
+          <div className="flex items-center gap-3.5 px-2 pb-5 border-b border-border/50">
+            <UserAvatar user={user} className="w-12 h-12 border border-border shadow-sm text-lg" />
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-foreground truncate">{user.fullName}</h3>
+              <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+            </div>
+          </div>
+          <ProfileTabNav />
+        </aside>
 
         <div className="flex-1 min-w-0">
-          {activeTab === 'public' && <ProfilePublicPanel user={user} />}
-          {activeTab === 'edit-profile' && (
+          {activeTab === 'profile' && (
             <ProfileEditPanel
               user={user}
               register={register}
@@ -211,6 +232,9 @@ export function Profile() {
               onSubmitPassword={onSubmitPassword}
               onDeleteAccount={handleDeleteAccount}
             />
+          )}
+          {activeTab === 'sessions' && (
+            <ProfileSessionsPanel />
           )}
         </div>
       </div>

@@ -17,6 +17,7 @@ export interface NavbarUser {
   fullName: string;
   email: string;
   role?: string;
+  publicSlug?: string;
 }
 
 // ===== CSS Helper Functions =====
@@ -117,8 +118,8 @@ export const buildMobileSidebarEntries = (
         labelName: 'Tài khoản',
         items: [
           { name: 'Khóa học của tôi', path: '/student/dashboard', icon: icons.bookOpen },
-          { name: 'Hồ sơ cá nhân', path: '/profile', icon: icons.user },
-          { name: 'Cài đặt', path: '/settings', icon: icons.settings },
+          { name: 'Hồ sơ công khai', path: user.publicSlug ? '/users/' + user.publicSlug : '/account/settings/profile', icon: icons.user },
+          { name: 'Cài đặt tài khoản', path: '/account/settings/profile', icon: icons.settings },
         ],
       },
     });

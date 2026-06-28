@@ -602,7 +602,7 @@ export const CourseEditor: React.FC = () => {
             toast.success("Khóa học đã được gửi duyệt!");
             navigate("/instructor/courses");
           },
-          onError: (err: Error) => toast.error(err.message, err.message.includes('Hồ sơ giảng viên') ? { action: { label: 'Cập nhật hồ sơ', onClick: () => navigate('/profile') } } : undefined),
+          onError: (err: Error) => toast.error(err.message, err.message.includes('Hồ sơ giảng viên') ? { action: { label: 'Cập nhật hồ sơ', onClick: () => navigate('/account/settings/profile') } } : undefined),
         });
       },
       onError: (err: Error) => toast.error(err.message || "Không thể kiểm tra điều kiện xuất bản."),

@@ -117,7 +117,7 @@ export const InstructorCourses: React.FC = () => {
       },
       onError: (err: unknown) => {
         const message = (err as Error).message || 'Không thể gửi duyệt khóa học.';
-        toast.error(message, message.includes('Hồ sơ giảng viên') ? { action: { label: 'Cập nhật hồ sơ', onClick: () => navigate('/profile') } } : undefined);
+        toast.error(message, message.includes('Hồ sơ giảng viên') ? { action: { label: 'Cập nhật hồ sơ', onClick: () => navigate('/account/settings/profile') } } : undefined);
       },
     });
   };

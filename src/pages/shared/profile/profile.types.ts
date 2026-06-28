@@ -6,6 +6,11 @@ export type ProfileFormData = {
   phone: string;
   bio: string;
   headline: string;
+  website?: string;
+  github?: string;
+  facebook?: string;
+  youtube?: string;
+  linkedin?: string;
 };
 
 export type PasswordFormData = {
@@ -14,6 +19,6 @@ export type PasswordFormData = {
   confirmPassword?: string;
 };
 
-export type ProfileTabType = 'public' | 'edit-profile' | 'avatar' | 'security';
+export type ProfileTabType = 'profile' | 'avatar' | 'security' | 'sessions';
 
 export type ProfileUser = AuthUser;

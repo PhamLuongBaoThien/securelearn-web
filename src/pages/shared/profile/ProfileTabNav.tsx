@@ -1,35 +1,24 @@
-// User Profile Tab Nav: Sidebar điều hướng giữa các tab trong trang hồ sơ người dùng.
-import React from 'react';
+import { NavLink } from 'react-router-dom';
 import { profileTabs } from './profile.utils';
-import type { ProfileTabType } from './profile.types';
 
-interface ProfileTabNavProps {
-  activeTab: ProfileTabType;
-  onTabChange: (tab: ProfileTabType) => void;
-}
-
-export const ProfileTabNav: React.FC<ProfileTabNavProps> = ({ activeTab, onTabChange }) => (
-  <div className="w-full md:w-64 shrink-0">
-    <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-4 md:pb-0 scrollbar-hide">
-      {profileTabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
-
-        return (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-              isActive
-                ? 'bg-primary text-primary-foreground shadow-md'
-                : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Icon size={18} />
-            {tab.label}
-          </button>
-        );
-      })}
-    </div>
-  </div>
+export const ProfileTabNav = () => (
+  <nav aria-label="Cài đặt tài khoản" className="flex gap-1 overflow-x-auto pb-3 md:flex-col md:overflow-visible md:pb-0 w-full">
+    {profileTabs.map((tab) => {
+      const Icon = tab.icon;
+      return (
+        <NavLink
+          key={tab.id}
+          to={`/account/settings/${tab.id}`}
+          className={({ isActive }) => `flex min-w-max items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            isActive
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+        >
+          <Icon size={17} className="shrink-0" />
+          <span>{tab.label}</span>
+        </NavLink>
+      );
+    })}
+  </nav>
 );

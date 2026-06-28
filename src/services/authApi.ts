@@ -14,6 +14,7 @@ import type {
   ForgotPasswordPayload,
   VerifyOTPPayload,
   ResetPasswordPayload,
+  IUserProfile,
 } from '@/types/auth.types';
 
 /**
@@ -65,14 +66,37 @@ export const getMe = async () => {
 
 export interface PublicInstructorProfile {
   _id: string;
+  publicSlug?: string;
   fullName: string;
-  profile?: {
-    avatarUrl?: string;
-    bio?: string;
-    headline?: string;
-  };
+  profile?: IUserProfile;
 }
 
+export interface PublicUserProfile {
+  _id: string;
+  publicSlug: string;
+  fullName: string;
+  role: 'STUDENT' | 'INSTRUCTOR';
+  createdAt: string;
+  profile: IUserProfile;
+}
+
+export interface PublicInstructorSearchItem {
+  _id: string;
+  publicSlug: string;
+  fullName: string;
+  headline?: string;
+  avatarUrl?: string;
+}
+
+export const getPublicProfileBySlug = async (slug: string) => {
+  const { data } = await apiClient.get<ApiResponse<PublicUserProfile>>(`/api/auth/users/${encodeURIComponent(slug)}/public-profile`);
+  return data;
+};
+
+export const searchPublicInstructors = async (search: string, limit = 3) => {
+  const { data } = await apiClient.get<ApiResponse<PublicInstructorSearchItem[]>>('/api/auth/instructors', { params: { search, limit } });
+  return data;
+};
 export const getPublicInstructorProfile = async (instructorId: string) => {
   const { data } = await apiClient.get<ApiResponse<PublicInstructorProfile>>(
     `/api/auth/instructors/${instructorId}/public-profile`

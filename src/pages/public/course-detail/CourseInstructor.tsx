@@ -4,6 +4,7 @@
 // fallback về chữ viết tắt khi giảng viên chưa cập nhật ảnh.
 
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { Star, Users, UserRoundCheck } from 'lucide-react';
 import { getPublicInstructorProfile } from '@/services/authApi';
 import { useInstructorRatingStats } from '@/hooks/useCourseReviews';
@@ -18,7 +19,7 @@ interface Props {
 }
 
 export function CourseInstructor({ instructorId, instructorName, enrollmentCount, avatarUrl, bio }: Props) {
-  const shouldFetchProfile = Boolean(instructorId && (!avatarUrl || !bio));
+  const shouldFetchProfile = Boolean(instructorId);
   const { data: ratingStats } = useInstructorRatingStats(instructorId);
   const { data: publicProfile } = useQuery({
     queryKey: ['public-instructor-profile', instructorId],
@@ -51,9 +52,9 @@ export function CourseInstructor({ instructorId, instructorName, enrollmentCount
 
         {/* Thông tin giảng viên */}
         <div className="min-w-0 flex-1">
-          <h3 className="text-xl font-bold text-foreground">
-            {displayedName}
-          </h3>
+          {publicProfile?.publicSlug ? (
+            <Link to={'/users/' + publicProfile.publicSlug} className="text-xl font-bold text-foreground underline-offset-4 hover:text-primary hover:underline">{displayedName}</Link>
+          ) : <h3 className="text-xl font-bold text-foreground">{displayedName}</h3>}
           <p className="text-sm text-muted-foreground mb-4">Giảng viên khóa học</p>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">

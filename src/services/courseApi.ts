@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Course API Client
 // Mục đích:
 // - gom type và API cho catalog, editor, enrollment và learning của course-service
@@ -536,6 +536,8 @@ export const getPublishedCourses = async (params?: {
   minDuration?: number;
   maxDuration?: number;
   sort?: string;
+  instructorId?: string;
+  ids?: string;
 }) => {
   const { data } = await apiClient.get<ApiResponse<PaginatedData>>('/api/courses', { params });
   return data;

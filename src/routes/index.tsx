@@ -1,15 +1,16 @@
-﻿// ========================
+// ========================
 // Frontend Routes
 // Mục đích:
 // - khai báo router chính cho public, student, instructor và admin
 // - gắn thêm pricing route cho flow thuê bao song song với checkout giỏ khóa học
 // ========================
-import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom';
 import { Home } from '../pages/public/home';
 
 import { StudentDashboard } from '../pages/student/dashboard';
 import { LearningInterface } from '../pages/student/learn';
 import { Profile } from '../pages/shared/profile';
+import { PublicUserProfile } from '../pages/public/user-profile';
 
 // Public & Auth Imports
 import { PublicLayout } from '../components/layout/PublicLayout';
@@ -104,14 +105,11 @@ const router = createBrowserRouter([
           // Pricing là entry cho flow mua thuê bao, độc lập với checkout giỏ khóa học.
           { path: 'pricing', element: <Pricing /> },
           { path: 'subscription-catalog', element: <SubscriptionCatalog /> },
-          {
-            path: 'profile',
-            element: (
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            ),
-          },
+          { path: 'users/:slug', element: <PublicUserProfile /> },
+          { path: 'profile', element: <ProtectedRoute><Navigate to="/account/settings/profile" replace /></ProtectedRoute> },
+          { path: 'settings', element: <ProtectedRoute><Navigate to="/account/settings/profile" replace /></ProtectedRoute> },
+          { path: 'account/settings', element: <ProtectedRoute><Navigate to="/account/settings/profile" replace /></ProtectedRoute> },
+          { path: 'account/settings/:tab', element: <ProtectedRoute><Profile /></ProtectedRoute> },
           {
             path: 'student/dashboard',
             element: (

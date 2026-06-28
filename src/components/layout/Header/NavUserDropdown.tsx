@@ -72,8 +72,8 @@ export const NavUserDropdown = ({
           {/* Menu Items */}
           <div className="py-1">
             {[
-              { to: '/profile', label: 'Hồ sơ công khai' },
-              { to: '/settings', label: 'Cài đặt' },
+              { to: user.publicSlug ? '/users/' + user.publicSlug : '/account/settings/profile', label: 'Hồ sơ công khai' },
+              { to: '/account/settings/profile', label: 'Cài đặt tài khoản' },
               { to: '/student/dashboard', label: 'Học tập' },
               { to: '/cart', label: 'Giỏ hàng' },
               { to: '/student/dashboard?tab=wishlist', label: 'Khóa học mong muốn' },

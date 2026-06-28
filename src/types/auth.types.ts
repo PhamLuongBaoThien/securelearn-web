@@ -18,6 +18,11 @@ export interface IUserProfile {
   avatarUrl?: string;
   bio?: string;
   headline?: string;
+  website?: string;
+  github?: string;
+  facebook?: string;
+  youtube?: string;
+  linkedin?: string;
 }
 
 /**
@@ -28,6 +33,7 @@ export interface IUser {
   _id: string;
   email: string;
   fullName: string;
+  publicSlug?: string;
   role: Role;
   subscriptionStatus: SubscriptionStatus;
   phone?: string;
@@ -117,6 +123,7 @@ export interface LoginResponseData {
     _id: string;
     email: string;
     fullName: string;
+    publicSlug?: string;
     role: Role;
     subscriptionStatus: SubscriptionStatus;
   };
@@ -133,6 +140,7 @@ export interface RegisterResponseData {
   _id: string;
   email: string;
   fullName: string;
+  publicSlug?: string;
   role: Role;
 }
 

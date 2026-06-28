@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Star, Clock, BookOpen, Check, GraduationCap, Heart, BadgePercent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { getBestCourseCouponPreview, type BestCouponResponse } from '@/services/paymentApi';
+import { getPublicInstructorProfile } from '@/services/authApi';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const LEVEL_LABEL: Record<string, string> = {
@@ -70,6 +71,16 @@ export const CourseCard = ({ course, mode = 'default', couponPreview, disableCou
   const resolvedIsEnrolled = isAuthenticated && enrolledCourses.some((e) => e.courseId === course._id);
   const isEnrolled = isEnrolledOverride ?? resolvedIsEnrolled;
   const isOwnCourse = isAuthenticated && user && user.role === 'INSTRUCTOR' && course.instructorId === user._id;
+  const instructorProfileQuery = useQuery({
+    queryKey: ['public-instructor-profile', course.instructorId],
+    queryFn: async () => {
+      const response = await getPublicInstructorProfile(course.instructorId);
+      return response.data ?? null;
+    },
+    enabled: Boolean(course.instructorId),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
   const { data: subscription } = useMySubscription();
   const hasActiveSubscription = Boolean(subscription?.current);
   const canUseSubscription = mode === 'subscription' && course.subscriptionStatus === 'APPROVED';
@@ -180,7 +191,7 @@ export const CourseCard = ({ course, mode = 'default', couponPreview, disableCou
         </Link>
 
         {/* Instructor */}
-        <p className="text-sm text-muted-foreground line-clamp-1 mb-1.5">{course.instructorName}</p>
+        {instructorProfileQuery.data?.publicSlug ? <Link to={'/users/' + instructorProfileQuery.data.publicSlug} className="mb-1.5 line-clamp-1 text-sm text-muted-foreground hover:text-primary hover:underline" onClick={(event) => event.stopPropagation()}>{course.instructorName}</Link> : <p className="mb-1.5 line-clamp-1 text-sm text-muted-foreground">{course.instructorName}</p>}
 
         {/* Rating (chỉ hiển thị khi có data) */}
         {course.rating != null && (

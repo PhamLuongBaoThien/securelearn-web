@@ -67,6 +67,7 @@ export const Navbar = () => {
   const trimmedSearchQuery = searchQuery.trim();
   const suggestionsQuery = useCourseSearchSuggestions(searchQuery, 5);
   const suggestions = suggestionsQuery.data?.courses ?? [];
+  const instructorSuggestions = suggestionsQuery.data?.instructors ?? [];
   const totalSuggestions = suggestionsQuery.data?.total ?? 0;
   const hasMoreSuggestions = totalSuggestions > suggestions.length;
   const shouldShowSuggestions = isSearchActive && trimmedSearchQuery.length > 0;
@@ -83,8 +84,11 @@ export const Navbar = () => {
   }, []);
 
   useEffect(() => {
-    setIsSearchActive(false);
-    setIsMobileSearchOpen(false);
+    const timeoutId = window.setTimeout(() => {
+      setIsSearchActive(false);
+      setIsMobileSearchOpen(false);
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [location.pathname, location.search]);
 
   // ─── Mega menu derived state ──────────────────────────────────
@@ -271,28 +275,20 @@ export const Navbar = () => {
                         </div>
                       ))}
                     </div>
-                  ) : suggestions.length > 0 ? (
+                  ) : suggestions.length > 0 || instructorSuggestions.length > 0 ? (
                     <div className="p-2">
+                      {suggestions.length > 0 && <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Khóa học</p>}
                       {suggestions.map((course) => (
-                        <button
-                          key={course._id}
-                          type="button"
-                          onClick={() => handleSuggestionSelect(course.slug)}
-                          className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-secondary"
-                        >
-                          <div className="h-11 w-16 shrink-0 overflow-hidden rounded-lg bg-secondary">
-                            {course.thumbnail ? (
-                              <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center">
-                                <BookOpen className="h-4 w-4 text-zinc-400" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="line-clamp-1 text-sm font-semibold text-foreground">{course.title}</p>
-                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{course.instructorName}</p>
-                          </div>
+                        <button key={course._id} type="button" onClick={() => handleSuggestionSelect(course.slug)} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-secondary">
+                          <div className="h-11 w-16 shrink-0 overflow-hidden rounded-lg bg-secondary">{course.thumbnail ? <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><BookOpen className="h-4 w-4 text-zinc-400" /></div>}</div>
+                          <div className="min-w-0 flex-1"><p className="line-clamp-1 text-sm font-semibold text-foreground">{course.title}</p><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{course.instructorName}</p></div>
+                        </button>
+                      ))}
+                      {instructorSuggestions.length > 0 && <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Giảng viên</p>}
+                      {instructorSuggestions.map((instructor) => (
+                        <button key={instructor._id} type="button" onClick={() => { navigate(`/users/${instructor.publicSlug}`); setIsSearchActive(false); setIsMobileSearchOpen(false); }} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-secondary">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 font-semibold text-primary">{instructor.avatarUrl ? <img src={instructor.avatarUrl} alt={instructor.fullName} className="h-full w-full object-cover"/> : instructor.fullName.charAt(0).toUpperCase()}</div>
+                          <div className="min-w-0 flex-1"><p className="line-clamp-1 text-sm font-semibold">{instructor.fullName}</p><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{instructor.headline || 'Giảng viên SecureLearn'}</p></div>
                         </button>
                       ))}
                       {hasMoreSuggestions && (
@@ -469,28 +465,20 @@ export const Navbar = () => {
                         </div>
                       ))}
                     </div>
-                  ) : suggestions.length > 0 ? (
+                  ) : suggestions.length > 0 || instructorSuggestions.length > 0 ? (
                     <div className="p-2">
+                      {suggestions.length > 0 && <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Khóa học</p>}
                       {suggestions.map((course) => (
-                        <button
-                          key={course._id}
-                          type="button"
-                          onClick={() => handleSuggestionSelect(course.slug)}
-                          className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-secondary"
-                        >
-                          <div className="h-11 w-16 shrink-0 overflow-hidden rounded-lg bg-secondary">
-                            {course.thumbnail ? (
-                              <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center">
-                                <BookOpen className="h-4 w-4 text-zinc-400" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="line-clamp-1 text-sm font-semibold text-foreground">{course.title}</p>
-                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{course.instructorName}</p>
-                          </div>
+                        <button key={course._id} type="button" onClick={() => handleSuggestionSelect(course.slug)} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-secondary">
+                          <div className="h-11 w-16 shrink-0 overflow-hidden rounded-lg bg-secondary">{course.thumbnail ? <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center"><BookOpen className="h-4 w-4 text-zinc-400" /></div>}</div>
+                          <div className="min-w-0 flex-1"><p className="line-clamp-1 text-sm font-semibold text-foreground">{course.title}</p><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{course.instructorName}</p></div>
+                        </button>
+                      ))}
+                      {instructorSuggestions.length > 0 && <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Giảng viên</p>}
+                      {instructorSuggestions.map((instructor) => (
+                        <button key={instructor._id} type="button" onClick={() => { navigate(`/users/${instructor.publicSlug}`); setIsSearchActive(false); setIsMobileSearchOpen(false); }} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-secondary">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 font-semibold text-primary">{instructor.avatarUrl ? <img src={instructor.avatarUrl} alt={instructor.fullName} className="h-full w-full object-cover"/> : instructor.fullName.charAt(0).toUpperCase()}</div>
+                          <div className="min-w-0 flex-1"><p className="line-clamp-1 text-sm font-semibold">{instructor.fullName}</p><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{instructor.headline || 'Giảng viên SecureLearn'}</p></div>
                         </button>
                       ))}
                       {hasMoreSuggestions && (
