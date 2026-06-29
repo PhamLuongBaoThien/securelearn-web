@@ -1,13 +1,12 @@
 // User Profile Page: Điều phối state, form và các panel con cho trang hồ sơ người dùng.
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAppSelector } from '@/app/hooks';
 import { UserAvatar } from '@/components/ui/UserAvatar';
-import { useChangePassword, useDeleteAccount, useUpdateProfile, authKeys } from '@/hooks/useAuth';
+import { useChangePassword, useDeleteAccount, useUpdateProfile } from '@/hooks/useAuth';
 import { ProfileAvatarPanel } from './ProfileAvatarPanel';
 import { ProfileEditPanel } from './ProfileEditPanel';
 import { ProfileSessionsPanel } from './ProfileSessionsPanel';
@@ -17,10 +16,10 @@ import type { PasswordFormData, ProfileFormData, ProfileTabType } from './profil
 
 export function Profile() {
   const { user } = useAppSelector((state) => state.auth);
+  const navigate = useNavigate();
   const { mutateAsync: updateProfile, isPending: isUpdating } = useUpdateProfile();
   const { mutateAsync: deleteAccount, isPending: isDeleting } = useDeleteAccount();
   const { mutateAsync: changePassword, isPending: isChangingPassword } = useChangePassword();
-  const queryClient = useQueryClient();
   const { tab } = useParams<{ tab: string }>();
   const validTabs: ProfileTabType[] = ['profile', 'avatar', 'security', 'sessions'];
   const activeTab = (tab && validTabs.includes(tab as ProfileTabType)) ? (tab as ProfileTabType) : 'profile';
@@ -144,12 +143,11 @@ export function Profile() {
       });
       toast.success(
         isPasswordless
-          ? 'Tạo mật khẩu thành công! Bạn có thể đăng nhập bằng email/mật khẩu.'
-          : 'Mật khẩu đã được thay đổi thành công!'
+          ? 'Tạo mật khẩu thành công. Vui lòng đăng nhập lại.'
+          : 'Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại.'
       );
       resetPasswordForm();
-      queryClient.invalidateQueries({ queryKey: authKeys.profile });
-      queryClient.invalidateQueries({ queryKey: authKeys.session });
+      navigate('/auth/login', { replace: true });
     } catch (error: unknown) {
       toast.error((error as Error).message || 'Có lỗi xảy ra khi đổi mật khẩu.');
     }

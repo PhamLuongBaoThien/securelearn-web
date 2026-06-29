@@ -192,22 +192,16 @@ export function useChangePassword() {
   return useMutation({
     mutationFn: async (payload: { oldPassword?: string; newPassword?: string }) => {
       const response = await changePassword(payload);
-      if (response.status === 'ERR') {
-        throw new Error(response.message);
-      }
-      if (!response.data) {
-        throw new Error('Không nhận được thông tin người dùng sau khi cập nhật mật khẩu.');
-      }
-      return response.data;
+      if (response.status === 'ERR') throw new Error(response.message);
+      return response;
     },
-    onSuccess: (updatedUser) => {
-      queryClient.setQueryData(authKeys.profile, updatedUser);
-      queryClient.setQueryData(authKeys.session, { user: updatedUser });
-      dispatch(setUser({ user: updatedUser }));
+    onSuccess: () => {
+      setAccessToken(null, 'user');
+      dispatch(clearUser());
+      queryClient.clear();
     },
   });
 }
-
 // ===== useForgotPassword =====
 export function useForgotPassword() {
   return useMutation({

@@ -15,6 +15,7 @@ import type {
   VerifyOTPPayload,
   ResetPasswordPayload,
   IUserProfile,
+  AccountSession,
 } from '@/types/auth.types';
 
 /**
@@ -198,3 +199,18 @@ export const switchToInstructor = async () => {
 
 
 
+
+export const getActiveSessions = async () => {
+  const { data } = await apiClient.get<ApiResponse<AccountSession[]>>('/api/auth/sessions');
+  return data;
+};
+
+export const revokeActiveSession = async (sessionId: string) => {
+  const { data } = await apiClient.delete<ApiResponse>(`/api/auth/sessions/${encodeURIComponent(sessionId)}`);
+  return data;
+};
+
+export const revokeOtherSessions = async () => {
+  const { data } = await apiClient.post<ApiResponse<{ revokedCount: number }>>('/api/auth/sessions/revoke-others');
+  return data;
+};

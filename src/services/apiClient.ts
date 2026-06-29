@@ -1,4 +1,4 @@
-﻿import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import type { RefreshTokenResponse } from '@/types/auth.types';
 
 type AuthContext = 'user' | 'admin';
@@ -135,24 +135,33 @@ const processQueue = (error: unknown, token?: string | null) => {
   failedQueue = [];
 };
 
+// Khóa refresh giữa nhiều tab cùng origin. Cookie được dùng chung nên tab chờ khóa
+// sẽ gửi token mới nhất sau khi tab trước đã rotate xong.
+const withCrossTabRefreshLock = async <T>(context: AuthContext, task: () => Promise<T>): Promise<T> => {
+  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+    return navigator.locks.request(`securelearn-refresh-${context}`, task);
+  }
+  return task();
+};
 // Gọi API refresh-token để lấy access token mới.
 // Dùng khi request nhận 401 và đủ điều kiện retry.
 // Mục đích: duy trì phiên đăng nhập mà user không phải login lại nếu refresh-token còn hạn.
-const requestFreshAccessToken = async (context: AuthContext): Promise<string> => {
-  const { data } = await axios.post<RefreshTokenResponse>(
-    getRefreshUrl(context),
-    {},
-    { withCredentials: true }
-  );
+const requestFreshAccessToken = async (context: AuthContext): Promise<string> =>
+  withCrossTabRefreshLock(context, async () => {
+    const { data } = await axios.post<RefreshTokenResponse>(
+      getRefreshUrl(context),
+      {},
+      { withCredentials: true }
+    );
 
-  if (data.status !== 'OK' || !data.access_token) {
-    throw new Error(data.message || 'Refresh token thất bại');
-  }
+    if (data.status !== 'OK' || !data.access_token) {
+      throw new Error(data.message || 'Refresh token thất bại');
+    }
 
-  accessToken = data.access_token;
-  accessTokenContext = context;
-  return data.access_token;
-};
+    accessToken = data.access_token;
+    accessTokenContext = context;
+    return data.access_token;
+  });
 
 // Dùng chung một request refresh cho bootstrap auth và mọi interceptor 401 chạy đồng thời.
 export const refreshSessionAccessToken = (context: AuthContext = 'user'): Promise<string> => {

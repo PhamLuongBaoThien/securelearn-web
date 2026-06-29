@@ -170,3 +170,18 @@ export interface AdminAuthState {
   isAuthenticated: boolean;
   authResolved: boolean;
 }
+
+export type SessionDeviceType = 'desktop' | 'mobile' | 'tablet' | 'unknown';
+
+export interface AccountSession {
+  id: string;
+  deviceType: SessionDeviceType;
+  deviceName: string;
+  browser: string;
+  operatingSystem: string;
+  ipAddress: string;
+  signedInAt: string;
+  lastActiveAt: string;
+  expiresAt: string;
+  current: boolean;
+}

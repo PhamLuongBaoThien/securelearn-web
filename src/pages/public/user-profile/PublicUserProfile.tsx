@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertCircle, BookOpen, CalendarDays, Loader2, Star, UsersRound, Globe, Linkedin, Share2, ChevronDown, ChevronUp, ExternalLink, Github, Facebook, Youtube } from 'lucide-react';
+import { AlertCircle, BookOpen, CalendarDays, Loader2, Star, UsersRound, Globe, Linkedin, Share2, ChevronDown, ChevronUp, Github, Facebook, Youtube } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { getPublicProfileBySlug } from '@/services/authApi';
 import { getPublishedCourses, type ICourse } from '@/services/courseApi';
