@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { toggleTheme } from '@/features/dashboard/uiSlice';
@@ -13,6 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import sidebarLogo from '@/assets/logoweb.png';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Sidebar } from './Sidebar';
@@ -24,6 +25,7 @@ export const InstructorLayout: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   const { theme } = useAppSelector((state) => state.ui);
   const [collapsed, setCollapsed] = useState(false);
+  const { count: unreadNotifications } = useUnreadNotifications();
 
   const logoutMutation = useLogout();
 
@@ -67,7 +69,7 @@ export const InstructorLayout: React.FC = () => {
         labelName: 'Giao tiếp',
         items: [
           { name: 'Hỏi đáp & Tin nhắn', path: '/instructor/communication', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
-          { name: 'Thông báo', path: '/instructor/notifications', icon: <Bell className="w-5 h-5 shrink-0" /> },
+          { name: unreadNotifications ? 'Thông báo (' + unreadNotifications + ')' : 'Thông báo', path: '/instructor/notifications', icon: <Bell className="w-5 h-5 shrink-0" /> },
         ],
       }
     },

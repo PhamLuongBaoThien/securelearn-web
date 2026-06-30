@@ -513,14 +513,13 @@ export interface IActiveSubscription {
 
 // ===== Notifications & Progress =====
 
-export type NotificationType = 'EMAIL' | 'PUSH';
+export type NotificationType = 'EMAIL' | 'IN_APP';
 export type TemplateEvent =
   | 'PAYMENT_SUCCESS'
   | 'PAYMENT_FAILED'
   | 'COURSE_APPROVED'
   | 'COURSE_REJECTED'
-  | 'WELCOME'
-  | 'PASSWORD_RESET';
+  | 'WELCOME';
 
 export interface INotificationTemplate {
   _id: string;

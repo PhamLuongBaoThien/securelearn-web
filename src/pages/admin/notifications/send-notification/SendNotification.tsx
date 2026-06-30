@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Send, Users, User, Mail, Bell, MessageSquare } from 'lucide-react';
+import { Send, Users, User, Mail, MessageSquare } from 'lucide-react';
+import { notificationApi } from '@/services/notificationApi';
+import type { NotificationChannel } from '@/types/notification.types';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,7 +13,7 @@ export const SendNotification: React.FC = () => {
   const [specificEmail, setSpecificEmail] = useState('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [methods, setMethods] = useState({ email: true, push: true, inApp: true });
+  const [methods, setMethods] = useState({ email: true, inApp: true });
   const [sending, setSending] = useState(false);
 
   const handleSend = async () => {
@@ -23,14 +25,22 @@ export const SendNotification: React.FC = () => {
       toast.error('Tiêu đề và nội dung không được để trống.');
       return;
     }
-    if (!methods.email && !methods.push && !methods.inApp) {
+    if (!methods.email && !methods.inApp) {
       toast.error('Vui lòng chọn ít nhất một phương thức gửi.');
       return;
     }
 
     setSending(true);
-    // Giả lập API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const channels: NotificationChannel[] = [];
+    if (methods.email) channels.push('EMAIL');
+    if (methods.inApp) channels.push('IN_APP');
+    try {
+      await notificationApi.sendCampaign({ audience: targetType, specificEmail: targetType === 'SPECIFIC_USER' ? specificEmail : undefined, title, content, channels });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể gửi thông báo.');
+      setSending(false);
+      return;
+    }
     setSending(false);
     toast.success('Gửi thông báo thành công.');
     
@@ -99,10 +109,6 @@ export const SendNotification: React.FC = () => {
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 rounded border-zinc-300 text-primary focus:ring-primary" checked={methods.email} onChange={(e) => setMethods({...methods, email: e.target.checked})} />
               <span className="text-sm flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300"><Mail className="w-4 h-4" /> Email</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" className="w-4 h-4 rounded border-zinc-300 text-primary focus:ring-primary" checked={methods.push} onChange={(e) => setMethods({...methods, push: e.target.checked})} />
-              <span className="text-sm flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300"><Bell className="w-4 h-4" /> Push Notification</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 rounded border-zinc-300 text-primary focus:ring-primary" checked={methods.inApp} onChange={(e) => setMethods({...methods, inApp: e.target.checked})} />

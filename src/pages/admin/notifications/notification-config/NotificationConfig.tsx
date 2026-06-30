@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { notificationApi } from '@/services/notificationApi';
 import { Bell, Mail, Smartphone, Plus, Save, X, Eye, Code } from 'lucide-react';
 import { toast } from 'sonner';
 import type { INotificationTemplate, TemplateEvent, NotificationType } from '@/types/admin.types';
@@ -13,13 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 
-const MOCK_TEMPLATES: INotificationTemplate[] = [
-  { _id: 'n1', name: 'Thanh toán thành công', event: 'PAYMENT_SUCCESS', type: 'EMAIL', subject: 'Xác nhận thanh toán - {{courseName}}', body: 'Chào {{userName}},\n\nChúng tôi xác nhận bạn đã thanh toán thành công cho khóa học "{{courseName}}" với số tiền {{amount}}.\n\nMã giao dịch: {{transactionId}}\nThời gian: {{createdAt}}\n\nChúc bạn học tập hiệu quả!\nTeam SecureLearn', variables: ['{{userName}}', '{{courseName}}', '{{amount}}', '{{transactionId}}', '{{createdAt}}'], isActive: true, createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-03-15T08:00:00Z' },
-  { _id: 'n2', name: 'Khóa học được duyệt', event: 'COURSE_APPROVED', type: 'EMAIL', subject: 'Khóa học của bạn đã được phê duyệt!', body: 'Chào {{instructorName}},\n\nXin chúc mừng! Khóa học "{{courseName}}" của bạn đã được phê duyệt và xuất bản trên SecureLearn.\n\nHọc viên đã có thể đăng ký ngay bây giờ.\n\nTrân trọng,\nTeam SecureLearn', variables: ['{{instructorName}}', '{{courseName}}'], isActive: true, createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-02-01T00:00:00Z' },
-  { _id: 'n3', name: 'Chào mừng người dùng mới', event: 'WELCOME', type: 'EMAIL', subject: 'Chào mừng bạn đến với SecureLearn! 🎉', body: 'Chào {{userName}},\n\nChào mừng bạn đến với SecureLearn — nền tảng học trực tuyến về bảo mật và CNTT hàng đầu Việt Nam!\n\nTài khoản của bạn đã được tạo thành công. Hãy bắt đầu hành trình học tập ngay hôm nay.\n\n👉 Khám phá khóa học: https://securelearn.vn/courses\n\nChúc bạn học tập vui vẻ!', variables: ['{{userName}}'], isActive: true, createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-01-10T00:00:00Z' },
-  { _id: 'n4', name: 'Thông báo thanh toán thành công (Push)', event: 'PAYMENT_SUCCESS', type: 'PUSH', body: '✅ Đã thanh toán thành công {{amount}} cho "{{courseName}}". Bắt đầu học ngay!', variables: ['{{amount}}', '{{courseName}}'], isActive: true, createdAt: '2026-02-01T00:00:00Z', updatedAt: '2026-02-01T00:00:00Z' },
-];
-
 const inputCls = 'w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all';
 
 const eventLabel: Record<TemplateEvent, string> = {
@@ -28,7 +22,6 @@ const eventLabel: Record<TemplateEvent, string> = {
   COURSE_APPROVED: 'Khóa học được duyệt',
   COURSE_REJECTED: 'Khóa học cần chỉnh sửa',
   WELCOME: 'Chào mừng người dùng',
-  PASSWORD_RESET: 'Đặt lại mật khẩu',
 };
 
 // ===== Preview Dialog =====
@@ -75,7 +68,7 @@ const PreviewDialog: React.FC<PreviewDialogProps> = ({ open, onOpenChange, templ
 
 // ===== Main Page =====
 export const NotificationConfig: React.FC = () => {
-  const [templates, setTemplates] = useState<INotificationTemplate[]>(MOCK_TEMPLATES);
+  const [templates, setTemplates] = useState<INotificationTemplate[]>([]);
   const [activeTab, setActiveTab] = useState<NotificationType>('EMAIL');
   const [editItem, setEditItem] = useState<INotificationTemplate | null>(null);
   const [previewItem, setPreviewItem] = useState<INotificationTemplate | null>(null);
@@ -83,10 +76,14 @@ export const NotificationConfig: React.FC = () => {
 
   const filtered = templates.filter((t) => t.type === activeTab);
 
+  useEffect(() => {
+    void notificationApi.listTemplates().then((data) => setTemplates(data as INotificationTemplate[])).catch((error) => toast.error(error instanceof Error ? error.message : 'Không thể tải template.'));
+  }, []);
+
   const handleSave = async () => {
     if (!editItem) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
+    await notificationApi.updateTemplate(editItem._id, editItem as never);
     setTemplates((p) => p.map((t) => t._id === editItem._id ? editItem : t));
     setSaving(false);
     setEditItem(null);
@@ -106,11 +103,11 @@ export const NotificationConfig: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Cấu hình Thông báo</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">Soạn thảo và quản lý mẫu email hóa đơn và thông báo đẩy cho các sự kiện hệ thống.</p>
+          <p className="text-zinc-500 dark:text-zinc-400">Soạn thảo và quản lý mẫu email và thông báo trong ứng dụng cho các sự kiện hệ thống.</p>
         </div>
         <Button
           id="btn-add-template"
-          onClick={() => toast.info('Tính năng thêm template đang phát triển.')}
+          onClick={async () => { try { const created = await notificationApi.createTemplate({ name: 'Template mới', event: 'WELCOME', type: activeTab, subject: activeTab === 'EMAIL' ? 'Tiêu đề mới' : undefined, body: 'Nội dung mới', isActive: false }); const data = (created as { data?: INotificationTemplate }).data; if (data) setTemplates((p) => [...p, data]); } catch (error) { toast.error(error instanceof Error ? error.message : 'Không thể tạo template.'); } }}
           className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
         >
           <Plus className="w-4 h-4" /> Thêm Template
@@ -119,7 +116,7 @@ export const NotificationConfig: React.FC = () => {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-2xl w-fit">
-        {(['EMAIL', 'PUSH'] as NotificationType[]).map((tab) => (
+        {(['EMAIL', 'IN_APP'] as NotificationType[]).map((tab) => (
           <Button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -130,7 +127,7 @@ export const NotificationConfig: React.FC = () => {
               : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
           >
             {tab === 'EMAIL' ? <Mail className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
-            {tab === 'EMAIL' ? 'Email' : 'Push'}
+            {tab === 'EMAIL' ? 'Email' : 'In-app'}
           </Button>
         ))}
       </div>
