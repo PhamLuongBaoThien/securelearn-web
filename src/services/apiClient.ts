@@ -43,6 +43,43 @@ let accessTokenContext: AuthContext = 'user';
 let isRefreshing = false;
 let failedQueue: QueuedRequest[] = [];
 const refreshPromises: Partial<Record<AuthContext, Promise<string>>> = {};
+let proactiveRefreshTimer: number | null = null;
+const PROACTIVE_REFRESH_BUFFER_MS = 60_000;
+
+const getJwtExpiresAt = (token: string | null): number => {
+  if (!token) return 0;
+  try {
+    const payloadPart = token.split('.')[1];
+    if (!payloadPart) return 0;
+    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const payload = JSON.parse(window.atob(padded)) as { exp?: number };
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const clearProactiveRefreshTimer = () => {
+  if (proactiveRefreshTimer !== null) {
+    window.clearTimeout(proactiveRefreshTimer);
+    proactiveRefreshTimer = null;
+  }
+};
+
+const scheduleProactiveRefresh = (token: string | null, context: AuthContext) => {
+  clearProactiveRefreshTimer();
+  const expiresAt = getJwtExpiresAt(token);
+  if (!expiresAt) return;
+  const delay = Math.max(0, expiresAt - Date.now() - PROACTIVE_REFRESH_BUFFER_MS);
+  proactiveRefreshTimer = window.setTimeout(() => {
+    proactiveRefreshTimer = null;
+    void refreshSessionAccessToken(context).catch(() => {
+      accessToken = null;
+      emitSessionExpired(context);
+    });
+  }, delay);
+};
 
 // Kiểm tra request hiện tại có thuộc nhánh admin hay không.
 // Dùng khi cần quyết định gọi refresh token của admin hay của user.
@@ -160,6 +197,7 @@ const requestFreshAccessToken = async (context: AuthContext): Promise<string> =>
 
     accessToken = data.access_token;
     accessTokenContext = context;
+    scheduleProactiveRefresh(data.access_token, context);
     return data.access_token;
   });
 
@@ -183,6 +221,18 @@ export const refreshSessionAccessToken = (context: AuthContext = 'user'): Promis
 export const setAccessToken = (token: string | null, context: AuthContext = 'user') => {
   accessToken = token;
   accessTokenContext = context;
+  scheduleProactiveRefresh(token, context);
+};
+
+export const ensureFreshAccessToken = async (
+  context: AuthContext = 'user',
+  minimumValidityMs = PROACTIVE_REFRESH_BUFFER_MS,
+): Promise<string> => {
+  const expiresAt = getJwtExpiresAt(accessToken);
+  if (accessToken && accessTokenContext === context && expiresAt - Date.now() > minimumValidityMs) {
+    return accessToken;
+  }
+  return refreshSessionAccessToken(context);
 };
 
 // Trả về access token hiện đang lưu trong memory.
@@ -231,6 +281,7 @@ const retryWithRefresh = async (request: RetryableRequestConfig) => {
   } catch (refreshError) {
     const normalizedError = normalizeRefreshError(refreshError);
     accessToken = null;
+    clearProactiveRefreshTimer();
     processQueue(normalizedError, null);
     emitSessionExpired(getAuthContext(request.url));
     return Promise.reject(normalizedError);
@@ -251,6 +302,7 @@ const handleResponseError = async (error: AxiosError) => {
   if (isLockedAccountError(error)) {
     applyApiErrorMessage(error);
     accessToken = null;
+    clearProactiveRefreshTimer();
     emitSessionExpired(getAuthContext(originalRequest?.url));
     return Promise.reject(error);
   }

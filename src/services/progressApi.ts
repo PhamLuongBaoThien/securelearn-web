@@ -94,11 +94,37 @@ export interface CourseAnalyticsSummary {
   }>;
 }
 
+export interface LearningSessionGrant {
+  bypass: boolean;
+  learningSessionId?: string;
+  learningSessionToken?: string;
+  leaseVersion?: number;
+  leaseExpiresIn: number;
+  replacedPreviousSession?: boolean;
+}
+
+export interface LearningSessionConflict {
+  activeSessionId: string;
+  deviceName: string;
+  lastActiveAt: string;
+  sameAuthSession: boolean;
+}
+
+export interface AcquireLearningSessionPayload {
+  courseId: string;
+  lessonId: string;
+  videoAssetId: string;
+  clientInstanceId: string;
+  force?: boolean;
+  expectedActiveSessionId?: string;
+}
+
 export interface ProgressHeartbeatPayload {
   courseId: string;
   lessonId: string;
   lessonType: LessonProgressType;
   sessionId: string;
+  learningSessionToken?: string;
   positionSeconds?: number;
   watchedSecondsDelta?: number;
   segmentStartSeconds?: number;
@@ -115,8 +141,23 @@ export interface QuizCompleteProgressPayload {
   passed: boolean;
 }
 
+export const acquireLearningSession = async (payload: AcquireLearningSessionPayload) => {
+  const { data } = await apiClient.post<ApiResponse<LearningSessionGrant>>('/api/progress/learning-sessions/acquire', payload);
+  return data;
+};
+
+export const releaseLearningSession = async (sessionId: string, token: string) => {
+  const { data } = await apiClient.delete<ApiResponse<{ released: boolean }>>(`/api/progress/learning-sessions/${sessionId}`, {
+    headers: { 'X-Learning-Session-Token': token },
+  });
+  return data;
+};
+
 export const sendProgressHeartbeat = async (payload: ProgressHeartbeatPayload) => {
-  const { data } = await apiClient.post<ApiResponse<CourseProgressDetail>>('/api/progress/heartbeat', payload);
+  const { learningSessionToken, ...body } = payload;
+  const { data } = await apiClient.post<ApiResponse<CourseProgressDetail>>('/api/progress/heartbeat', body, {
+    headers: learningSessionToken ? { 'X-Learning-Session-Token': learningSessionToken } : undefined,
+  });
   return data;
 };
 

@@ -11,11 +11,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type SyntheticEvent } from 'react';
 import Hls from 'hls.js';
+import axios from 'axios';
 import Plyr from 'plyr';
 import 'plyr/dist/plyr.css';
-import { Info, Loader2, Shield, VideoOff } from 'lucide-react';
+import { AlertTriangle, Info, Loader2, Play, Shield, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAccessToken, getApiBaseUrl } from '@/services/apiClient';
+import { ensureFreshAccessToken, getAccessToken, getApiBaseUrl } from '@/services/apiClient';
 import { useCreatePlaybackSession } from '@/hooks/useCourseLearning';
 import { useProgressHeartbeat } from '@/hooks/useLearningProgress';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { ILesson } from '@/services/courseApi';
+import { acquireLearningSession, releaseLearningSession, type LearningSessionConflict, type LearningSessionGrant } from '@/services/progressApi';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   formatWatermarkText,
   isBlockedProtectionKey,
@@ -55,6 +58,14 @@ const shouldAttachAuthToHlsRequest = (url: string) => {
     return parsed.pathname.startsWith('/api/');
   } catch {
     return url.startsWith('/api/');
+  }
+};
+const isProtectedSegmentRequest = (url: string) => {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return /^\/api\/media\/videos\/[^/]+\/segment$/.test(parsed.pathname);
+  } catch {
+    return /\/api\/media\/videos\/[^/]+\/segment(?:[?#]|$)/.test(url);
   }
 };
 const absoluteApiUrl = (path: string) => {
@@ -93,6 +104,25 @@ const isSeekWarningSuppressed = () => {
   return true;
 };
 
+type LearningSessionState = LearningSessionGrant & {
+  acquiredAt: number;
+};
+
+const LEARNING_CLIENT_INSTANCE_KEY = 'securelearn.learning.client-instance';
+const getLearningClientInstanceId = () => {
+  const existing = window.sessionStorage.getItem(LEARNING_CLIENT_INSTANCE_KEY);
+  if (existing) return existing;
+  const value = crypto.randomUUID();
+  window.sessionStorage.setItem(LEARNING_CLIENT_INSTANCE_KEY, value);
+  return value;
+};
+
+const getLearningError = (error: unknown) => {
+  if (!axios.isAxiosError(error)) return { code: '', message: error instanceof Error ? error.message : 'Đã xảy ra lỗi.' };
+  const body = error.response?.data as { code?: string; message?: string; data?: LearningSessionConflict } | undefined;
+  return { code: body?.code || '', message: body?.message || error.message, data: body?.data };
+};
+
 interface VideoPlayerProps {
   courseId: string;
   lesson: ILesson;
@@ -116,6 +146,8 @@ export function VideoPlayer({
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const plyrRef = useRef<Plyr | null>(null);
+  const plyrUiCleanupRef = useRef<(() => void) | null>(null);
   const selectedQualityRef = useRef<'auto' | string>('auto');
   const qualityLevelMapRef = useRef<Map<string, number>>(new Map());
   const qualitySwitchIdRef = useRef(0);
@@ -130,7 +162,15 @@ export function VideoPlayer({
   const onOpenNotesRef = useRef(onOpenNotes);
   const onTimeChangeRef = useRef(onTimeChange);
   const lastReportedPlaybackSecondRef = useRef(-1);
-  const sessionId = useMemo(() => crypto.randomUUID(), []);
+  const clientInstanceId = useMemo(getLearningClientInstanceId, []);
+  const videoAssetId = typeof lesson.videoAssetId === 'string'
+    ? lesson.videoAssetId
+    : String(lesson.videoAssetId || '');
+  const [learningSession, setLearningSession] = useState<LearningSessionState | null>(null);
+  const [learningConflict, setLearningConflict] = useState<LearningSessionConflict | null>(null);
+  const [isStartingLearning, setIsStartingLearning] = useState(false);
+  const [learningRevoked, setLearningRevoked] = useState(false);
+  const sessionId = learningSession?.learningSessionId || clientInstanceId;
   const lastPositionRef = useRef(0);
   const seekOriginRef = useRef(0);
   const lastSeekWarningAtRef = useRef(0);
@@ -142,18 +182,123 @@ export function VideoPlayer({
   const proactiveRenewTimerRef = useRef<number | null>(null);
   const playbackRecoveringRef = useRef(false);
   const [playbackReloadKey, setPlaybackReloadKey] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isSeeking, setIsSeeking] = useState(false);
+
   const [qualityLabels, setQualityLabels] = useState<string[]>([]);
   const [qualityLevelsReady, setQualityLevelsReady] = useState(!Hls.isSupported());
+  const [isPlaybackReady, setIsPlaybackReady] = useState(false);
   const [selectedQuality, setSelectedQuality] = useState<'auto' | string>('auto');
 
   const [isQualitySwitching, setIsQualitySwitching] = useState(false);
   const playbackSession = useCreatePlaybackSession();
   const createPlayback = playbackSession.mutateAsync;
+  const learningSessionRef = useRef<LearningSessionState | null>(null);
+  const leaseLastActiveAtRef = useRef(0);
+  const startLearningPendingRef = useRef(false);
+  const isSeekingRef = useRef(false);
+
+  const preservePlaybackPosition = useCallback(() => {
+    const video = videoRef.current;
+    const currentPosition = video && Number.isFinite(video.currentTime)
+      ? video.currentTime
+      : lastPositionRef.current;
+    pendingPlaybackResumeRef.current = Math.max(0, currentPosition || 0);
+    hasAppliedInitialPositionRef.current = false;
+  }, []);
+
+  const resetPlaybackUi = useCallback(() => {
+    setIsPlaybackReady(false);
+    setQualityLevelsReady(!Hls.isSupported());
+    setQualityLabels([]);
+    qualityLevelMapRef.current.clear();
+  }, []);
+
+  const clearVideoSource = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.removeAttribute('src');
+    video.load();
+  }, []);
+
+  const destroyActiveHls = useCallback(() => {
+    const activeHls = hlsRef.current;
+    hlsRef.current = null;
+    activeHls?.stopLoad();
+    activeHls?.destroy();
+  }, []);
+
+  const markLearningRevoked = useCallback((expected?: LearningSessionState) => {
+    if (expected && learningSessionRef.current !== expected) return false;
+    preservePlaybackPosition();
+    learningSessionRef.current = null;
+    videoRef.current?.pause();
+    clearVideoSource();
+    destroyActiveHls();
+    leaseLastActiveAtRef.current = 0;
+    resetPlaybackUi();
+    setLearningSession(null);
+    setLearningRevoked(true);
+    return true;
+  }, [clearVideoSource, destroyActiveHls, preservePlaybackPosition, resetPlaybackUi]);
+
+  const markLearningExpired = useCallback((expected?: LearningSessionState) => {
+    if (expected && learningSessionRef.current !== expected) return false;
+    preservePlaybackPosition();
+    learningSessionRef.current = null;
+    videoRef.current?.pause();
+    clearVideoSource();
+    destroyActiveHls();
+    leaseLastActiveAtRef.current = 0;
+    resetPlaybackUi();
+    setLearningSession(null);
+    setLearningRevoked(false);
+    return true;
+  }, [clearVideoSource, destroyActiveHls, preservePlaybackPosition, resetPlaybackUi]);
+
+  const isCurrentLearningSession = useCallback((candidate: LearningSessionState) =>
+    learningSessionRef.current === candidate, []);
+
+  const startLearning = useCallback(async (force = false, expectedActiveSessionId = '', playAfterAcquire = true) => {
+    if (!videoAssetId || startLearningPendingRef.current) return;
+    const current = learningSessionRef.current;
+    if (!force && current && (current.bypass || Date.now() - leaseLastActiveAtRef.current < current.leaseExpiresIn * 1000)) return;
+    startLearningPendingRef.current = true;
+    setIsStartingLearning(true);
+    try {
+      // HLS dùng XHR riêng nên không đi qua interceptor Axios. Làm mới access
+      // token trước khi acquire để manifest/key/segment mới không khởi đầu bằng 401.
+      await ensureFreshAccessToken('user');
+      const response = await acquireLearningSession({
+        courseId,
+        lessonId: lesson._id || '',
+        videoAssetId,
+        clientInstanceId,
+        force,
+        expectedActiveSessionId: force ? expectedActiveSessionId : undefined,
+      });
+      if (!response.data) throw new Error(response.message || 'Không thể bắt đầu phiên học.');
+      const next = { ...response.data, acquiredAt: Date.now() };
+      learningSessionRef.current = next;
+      leaseLastActiveAtRef.current = Date.now();
+      resetPlaybackUi();
+      setLearningSession(next);
+      setLearningConflict(null);
+      setLearningRevoked(false);
+      resumePlaybackAfterRenewRef.current = playAfterAcquire;
+    } catch (error) {
+      const parsed = getLearningError(error);
+      if (parsed.code === 'LEARNING_SESSION_CONFLICT' && parsed.data) {
+        setLearningConflict(parsed.data);
+      } else {
+        toast.error(parsed.message || 'Không thể bắt đầu phiên học.');
+      }
+    } finally {
+      startLearningPendingRef.current = false;
+      setIsStartingLearning(false);
+    }
+  }, [clientInstanceId, courseId, lesson._id, resetPlaybackUi, videoAssetId]);
   const progressHeartbeat = useProgressHeartbeat(courseId);
   const sendProgressHeartbeat = progressHeartbeat.mutate;
-  const progressHeartbeatPending = progressHeartbeat.isPending;
+
   const [watermarkIndex, setWatermarkIndex] = useState(0);
   const [watermarkTime, setWatermarkTime] = useState(() => new Date());
   const watermarkText = formatWatermarkText(
@@ -165,6 +310,22 @@ export function VideoPlayer({
     [qualityLabels],
   );
 
+  useEffect(() => {
+    learningSessionRef.current = learningSession;
+  }, [learningSession]);
+
+  // Chuẩn bị manifest/segment ngay khi mở lesson để player có metadata và frame thật.
+  // Acquire không force nên không thu hồi video đang phát ở thiết bị khác.
+  useEffect(() => {
+    void startLearning(false, '', false);
+  }, [startLearning]);
+
+  useEffect(() => () => {
+    const active = learningSessionRef.current;
+    if (active?.learningSessionId && active.learningSessionToken && !active.bypass) {
+      void releaseLearningSession(active.learningSessionId, active.learningSessionToken).catch(() => undefined);
+    }
+  }, []);
   useEffect(() => {
     onOpenNotesRef.current = onOpenNotes;
     onTimeChangeRef.current = onTimeChange;
@@ -179,7 +340,7 @@ export function VideoPlayer({
     setQualityLabels([]);
     setQualityLevelsReady(!Hls.isSupported());
     qualityLevelMapRef.current = new Map();
-  }, [lesson._id, lesson.videoAssetId]);
+  }, [lesson._id, videoAssetId]);
 
   useEffect(() => {
     const fallbackQualities = sortQualityLabels(playbackSession.data?.asset.availableQualities ?? []);
@@ -319,6 +480,7 @@ export function VideoPlayer({
     if (resumeAfterRenew) resumePlaybackAfterRenewRef.current = true;
     pendingPlaybackResumeRef.current = Number.isFinite(video.currentTime) ? video.currentTime : lastPositionRef.current;
     hasAppliedInitialPositionRef.current = false;
+    setIsPlaybackReady(false);
     setPlaybackReloadKey((current) => current + 1);
     window.setTimeout(() => {
       playbackRecoveringRef.current = false;
@@ -355,14 +517,14 @@ export function VideoPlayer({
   // Hàm này kiểm tra xem link manifest hiện tại đã hết hạn (hoặc chuẩn bị hết hạn trong 60s tới) chưa.
   // Nếu có, hệ thống lập tức gọi khôi phục session để nạp lại nguồn phát mới.
   const renewPlaybackIfExpiringSoon = useCallback((resumeAfterRenew = false) => {
-    if (!lesson.videoAssetId) return false;
+    if (!videoAssetId) return false;
     if (!manifestExpiresAtRef.current) return false;
     if (Date.now() >= manifestExpiresAtRef.current - MANIFEST_RENEW_BUFFER_MS) {
       recoverPlaybackSession(resumeAfterRenew);
       return true;
     }
     return false;
-  }, [lesson.videoAssetId, recoverPlaybackSession]);
+  }, [videoAssetId, recoverPlaybackSession]);
 
   // Đồng bộ mốc resume trước khi effect HLS chạy để tải đúng fragment ngay từ đầu.
   useEffect(() => {
@@ -378,9 +540,12 @@ export function VideoPlayer({
   // Video player hook này dùng để xử lý video và các tương tác với video
   useEffect(() => {
     const video = videoRef.current;
-    const videoAssetId = lesson.videoAssetId;
-    if (!video || !videoAssetId || !resumePositionReady) return;
+    if (!video || !videoAssetId || !resumePositionReady || !learningSession) return;
 
+    // Mỗi learning session phải khởi tạo một thế hệ player sạch. Đợi cả metadata
+    // và danh sách quality của manifest mới dựng Plyr để tránh destroy MediaSource
+    // giữa chừng khi quality vừa được cập nhật sau lúc chuyển thiết bị.
+    resetPlaybackUi();
     let hls: Hls | null = null; // Hls là thư viện xử lý video HLS
     hlsRef.current = null;
     let canceled = false; // Flag để đánh dấu khi video bị hủy
@@ -389,7 +554,14 @@ export function VideoPlayer({
       // Mỗi lần mở video, FE phải xin playback session mới.
       // Backend không trả thẳng manifest (.m3u8) hoặc key ( #EXT-X-KEY METHOD=AES-128...) ngay lập tức mà chỉ trả one-time playbackUrl (dùng 1 lần là hết hạn).
       // Khi manifest/segment cần làm mới, gọi lại endpoint có JWT và kiểm tra entitlement.
-      const session = await createPlayback(videoAssetId);
+      const session = await createPlayback({
+        videoAssetId,
+        learningSession: learningSession.bypass ? undefined : {
+          id: learningSession.learningSessionId!,
+          token: learningSession.learningSessionToken!,
+        },
+        clientInstanceId,
+      });
       if (canceled) return;
       const segmentExpiresIn = session.segmentExpiresIn ?? FALLBACK_SEGMENT_EXPIRES_IN_SECONDS;
       manifestExpiresAtRef.current = Date.now() + segmentExpiresIn * 1000;
@@ -422,7 +594,12 @@ export function VideoPlayer({
             const token = getAccessToken();
             // Nếu có token, đính kèm vào header Authorization
             if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-            xhr.withCredentials = true;
+            // Segment API trả redirect sang MinIO. Custom header/credential trên XHR sẽ bị
+            // mang theo qua redirect và làm preflight của object storage thất bại.
+            if (!isProtectedSegmentRequest(url)) {
+              xhr.setRequestHeader('X-Learning-Client-Instance-Id', clientInstanceId);
+              xhr.withCredentials = true;
+            }
           },
         });
         hlsRef.current = hls;
@@ -464,6 +641,9 @@ export function VideoPlayer({
           }
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
+          // Hls.js của một thế hệ player cũ có thể báo lỗi sau khi phiên mới đã
+          // được acquire. Không để callback cũ phá player/lease vừa tạo.
+          if (!isCurrentLearningSession(learningSession)) return;
           // Hls.js tự retry các timeout/lỗi tải segment không fatal. Chỉ tạo playback session mới
           // khi token/quyền đã hết hiệu lực hoặc lỗi network đã trở thành fatal.
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
@@ -472,8 +652,27 @@ export function VideoPlayer({
               ?? data.networkDetails?.status
               ?? data.networkDetails?.statusCode,
             );
-            const playbackAccessExpired = [401, 403, 410].includes(networkStatus);
-            if (playbackAccessExpired || data.fatal) recoverPlaybackSession();
+            const leaseExpired = !learningSession.bypass
+              && Date.now() - leaseLastActiveAtRef.current >= learningSession.leaseExpiresIn * 1000;
+            if (networkStatus === 409) {
+              if (leaseExpired) {
+                const shouldResumePlayback = !video.paused || resumePlaybackAfterRenewRef.current;
+                if (markLearningExpired(learningSession)) {
+                  void startLearning(false, '', shouldResumePlayback);
+                }
+              } else {
+                markLearningRevoked(learningSession);
+              }
+              return;
+            }
+            if ([401, 403].includes(networkStatus) && leaseExpired) {
+              const shouldResumePlayback = !video.paused || resumePlaybackAfterRenewRef.current;
+              if (markLearningExpired(learningSession)) {
+                void startLearning(false, '', shouldResumePlayback);
+              }
+              return;
+            }
+            if (data.fatal) recoverPlaybackSession();
             return;
           }
           // Lỗi media fatal có thể phục hồi tại chỗ, không cần phá HLS session hiện tại.
@@ -493,8 +692,24 @@ export function VideoPlayer({
       }
     };
 
-    setupPlayback().catch(() => {
-      if (!canceled) video.removeAttribute('src');
+    setupPlayback().catch((error) => {
+      if (canceled || !isCurrentLearningSession(learningSession)) return;
+      const parsed = getLearningError(error);
+      if (parsed.code === 'LEARNING_SESSION_REPLACED') {
+        markLearningRevoked(learningSession);
+        return;
+      }
+      if (parsed.code === 'LEARNING_SESSION_EXPIRED') {
+        const shouldResumePlayback = resumePlaybackAfterRenewRef.current;
+        if (markLearningExpired(learningSession)) {
+          void startLearning(false, '', shouldResumePlayback);
+        }
+        return;
+      }
+      toast.error(parsed.message || 'Không thể tải phiên phát video.');
+      learningSessionRef.current = null;
+      setLearningSession(null);
+      clearVideoSource();
     });
 
     return () => {
@@ -505,10 +720,11 @@ export function VideoPlayer({
       pendingQualitySwitchRef.current = null;
       setIsQualitySwitching(false);
       if (hlsRef.current === hls) hlsRef.current = null;
+      clearVideoSource();
+      hls?.stopLoad();
       hls?.destroy();
-      video.removeAttribute('src');
     };
-  }, [clearProactiveRenewTimer, createPlayback, finishQualitySwitch, lesson.videoAssetId, lesson._id, playbackReloadKey, recoverPlaybackSession, resumePositionReady, scheduleProactiveRenew, updateQualityLevels]);
+  }, [clearVideoSource, clearProactiveRenewTimer, clientInstanceId, createPlayback, finishQualitySwitch, isCurrentLearningSession, learningSession, videoAssetId, lesson._id, markLearningExpired, markLearningRevoked, playbackReloadKey, recoverPlaybackSession, resetPlaybackUi, resumePositionReady, scheduleProactiveRenew, startLearning, updateQualityLevels]);
 
   useEffect(() => {
     if (!pauseSignal) return;
@@ -519,9 +735,12 @@ export function VideoPlayer({
     // [BƯỚC 2.7: LUỒNG B - LẮNG NGHE FOCUS/VISIBILITY CHANGE ĐỂ TỰ ĐỘNG RENEW]
     // Nếu học viên quay lại học sau một thời gian dài rời đi, hệ thống kiểm tra và tự động gia hạn session nếu hết hạn.
     const handlePlaybackResume = () => {
-      if (document.visibilityState === 'visible') {
-        renewPlaybackIfExpiringSoon();
-      }
+      if (document.visibilityState !== 'visible') return;
+      // Tab nền có thể throttle timer refresh. Làm mới token ngay khi người dùng
+      // quay lại để lần bấm Play kế tiếp không khởi đầu bằng segment 401.
+      void ensureFreshAccessToken('user')
+        .then(() => renewPlaybackIfExpiringSoon())
+        .catch(() => undefined);
     };
     document.addEventListener('visibilitychange', handlePlaybackResume);
     window.addEventListener('focus', handlePlaybackResume);
@@ -537,21 +756,65 @@ export function VideoPlayer({
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !lesson._id) return;
+    if (!video || !lesson._id || !learningSession || learningSession.bypass) return;
+    let disposed = false;
+    let heartbeatPending = false;
+    let queuedHeartbeat: { deltaSeconds: number; segmentStartSeconds: number } | null = null;
 
     // [TIẾN ĐỘ & HEARTBEAT - BƯỚC 3]
     // Hàm gửi heartbeat lên progress-service để ghi nhận tiến trình học tập
     const sendHeartbeat = (deltaSeconds = 0, segmentStartSeconds = video.currentTime) => {
+      if (disposed || !isCurrentLearningSession(learningSession)) return;
+      if (heartbeatPending) {
+        queuedHeartbeat = { deltaSeconds, segmentStartSeconds };
+        return;
+      }
+      heartbeatPending = true;
       sendProgressHeartbeat({
         courseId,
         lessonId: lesson._id!,
         lessonType: 'VIDEO',
         sessionId,
+        learningSessionToken: learningSession.learningSessionToken,
         positionSeconds: Math.floor(video.currentTime),
-        watchedSecondsDelta: deltaSeconds, // Số giây thực xem
+        watchedSecondsDelta: deltaSeconds,
         segmentStartSeconds: Math.floor(segmentStartSeconds),
         playbackRate: video.playbackRate,
         tabVisible: document.visibilityState === 'visible',
+      }, {
+        onSuccess: () => {
+          if (isCurrentLearningSession(learningSession)) {
+            leaseLastActiveAtRef.current = Date.now();
+          }
+        },
+        onError: (error) => {
+          if (!isCurrentLearningSession(learningSession)) return;
+          const code = getLearningError(error).code;
+          if (code === 'LEARNING_SESSION_REPLACED') {
+            markLearningRevoked(learningSession);
+            return;
+          }
+          if (code === 'LEARNING_SESSION_EXPIRED') {
+            const shouldResumePlayback = !video.paused || isSeekingRef.current;
+            // Heartbeat này chứng minh người dùng vẫn đang tương tác với player.
+            // Xin lease mới ngay và dựng lại HLS tại timestamp đã lưu thay vì để video trắng.
+            if (markLearningExpired(learningSession)) {
+              void startLearning(false, '', shouldResumePlayback);
+            }
+          }
+        },
+        onSettled: () => {
+          heartbeatPending = false;
+          if (disposed) {
+            queuedHeartbeat = null;
+            return;
+          }
+          const queued = queuedHeartbeat;
+          queuedHeartbeat = null;
+          if (queued && isCurrentLearningSession(learningSession)) {
+            sendHeartbeat(queued.deltaSeconds, queued.segmentStartSeconds);
+          }
+        },
       });
     };
 
@@ -560,7 +823,12 @@ export function VideoPlayer({
     const flushProgress = () => {
       const currentTime = Math.floor(video.currentTime);
       const watchedSeconds = Math.floor(video.currentTime - lastPositionRef.current);
-      if (currentTime <= 0) return;
+      if (currentTime <= 0) {
+        // Tua về đầu vẫn là hoạt động hợp lệ; delta=0 chỉ gia hạn lease, không cộng tiến độ.
+        sendHeartbeat(0, 0);
+        lastPositionRef.current = video.currentTime;
+        return;
+      }
       const deltaSeconds = watchedSeconds > 0 && watchedSeconds <= MAX_VALID_WATCH_GAP_SECONDS
         ? Math.min(MAX_HEARTBEAT_DELTA_SECONDS, watchedSeconds)
         : 0;
@@ -574,16 +842,18 @@ export function VideoPlayer({
     // watchedSecondsDelta chỉ được ghi nhận tối đa là 10 giây (bảo vệ chống hack gửi thời gian ảo).
     const interval = window.setInterval(() => {
       if (
-        !isPlaying ||
-        isSeeking ||
+        isSeekingRef.current ||
         document.visibilityState !== 'visible' ||
         video.paused ||
         video.ended ||
-        progressHeartbeatPending
+        heartbeatPending
       ) return;
 
       const watchedSeconds = Math.floor(video.currentTime - lastPositionRef.current);
       if (watchedSeconds < 1 || watchedSeconds > MAX_VALID_WATCH_GAP_SECONDS) {
+        // Player vẫn active nhưng có thể đang buffer sau khi seek. Gia hạn lease với
+        // delta=0 để không cộng tiến độ trong thời gian video chưa thực sự chạy.
+        sendHeartbeat(0, video.currentTime);
         lastPositionRef.current = video.currentTime;
         return;
       }
@@ -593,10 +863,21 @@ export function VideoPlayer({
     }, HEARTBEAT_MS);
 
     const handlePlay = () => {
+      const leaseStale = !learningSession.bypass
+        && Date.now() - leaseLastActiveAtRef.current >= learningSession.leaseExpiresIn * 1000;
       lastPositionRef.current = video.currentTime;
+      if (leaseStale) return;
       sendHeartbeat(0);
     };
-    const handlePause = () => flushProgress();
+    const handlePause = () => {
+      const leaseStale = Date.now() - leaseLastActiveAtRef.current >= learningSession.leaseExpiresIn * 1000;
+      // onPlay chủ động pause nguồn cũ trước khi reacquire. Không gửi thêm một
+      // heartbeat chắc chắn hết hạn vì response muộn có thể đua với phiên mới.
+      if (leaseStale) return;
+      flushProgress();
+    };
+    const handleSeeked = () => sendHeartbeat(0, video.currentTime);
+    // Không release tại ended: HLS/Plyr còn có thể phát sinh event cuối. TTL sẽ dọn lease.
     const handleEnded = () => flushProgress();
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'visible') flushProgress();
@@ -604,23 +885,29 @@ export function VideoPlayer({
 
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
+    video.addEventListener('seeked', handleSeeked);
     video.addEventListener('ended', handleEnded);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
+      disposed = true;
+      queuedHeartbeat = null;
       window.clearInterval(interval);
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
+      video.removeEventListener('seeked', handleSeeked);
       video.removeEventListener('ended', handleEnded);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [
     courseId,
-    isPlaying,
-    isSeeking,
+    learningSession,
+    markLearningExpired,
+    markLearningRevoked,
     lesson._id,
-    progressHeartbeatPending,
     sendProgressHeartbeat,
     sessionId,
+    startLearning,
+    isCurrentLearningSession,
   ]);
 
   useEffect(() => {
@@ -638,7 +925,7 @@ export function VideoPlayer({
     const qualityOptions = plyrQualityOptionsKey
       ? plyrQualityOptionsKey.split(',').map(Number).filter(Number.isFinite)
       : [];
-    if (!qualityLevelsReady) return;
+    if (!qualityLevelsReady || !isPlaybackReady || plyrRef.current) return;
 
     const selectedQualityValue = selectedQualityRef.current === 'auto'
       ? 0
@@ -662,7 +949,7 @@ export function VideoPlayer({
         default: Number.isFinite(selectedQualityValue) ? selectedQualityValue : 0,
         options: qualityOptions.length > 0 ? [0, ...qualityOptions] : [],
         forced: qualityOptions.length > 0,
-        onChange: (quality) => {
+        onChange: (quality: number) => {
           applyQualitySelection(quality === 0 ? 'auto' : String(quality) + 'p');
         },
       },
@@ -701,6 +988,7 @@ export function VideoPlayer({
         exitFullscreen: 'Thoát toàn màn hình',
       },
     });
+    plyrRef.current = player;
 
     const controls = player.elements.controls;
     const notesButton = document.createElement('button');
@@ -747,12 +1035,19 @@ export function VideoPlayer({
       controls.insertBefore(notesButton, directSettingsButton || directFullscreenButton || null);
     }
 
-    return () => {
+    plyrUiCleanupRef.current = () => {
       notesButton.removeEventListener('click', openNotes);
       notesButton.remove();
-      player.destroy();
     };
-  }, [applyQualitySelection, plyrQualityOptionsKey, qualityLevelsReady]);
+  }, [applyQualitySelection, isPlaybackReady, plyrQualityOptionsKey, qualityLevelsReady]);
+
+  useEffect(() => () => {
+    plyrUiCleanupRef.current?.();
+    plyrUiCleanupRef.current = null;
+    const player = plyrRef.current;
+    plyrRef.current = null;
+    player?.destroy();
+  }, []);
 
   useEffect(() => {
     // [BƯỚC 2.1: BẢO VỆ PHÍA CLIENT - CHẶN PHÍM TẮT F12/INSPECT/PRINT]
@@ -773,7 +1068,7 @@ export function VideoPlayer({
     event.stopPropagation();
   }, []);
 
-  if (!lesson.videoAssetId) {
+  if (!videoAssetId) {
     return (
       <div className="flex aspect-video items-center justify-center bg-black text-zinc-300">
         <div className="text-center">
@@ -784,7 +1079,7 @@ export function VideoPlayer({
     );
   }
 
-  if (playbackSession.error || playbackSession.data?.asset.status === 'FAILED') {
+  if (playbackSession.data?.asset.status === 'FAILED') {
     return (
       <div className="flex aspect-video items-center justify-center bg-black px-6 text-center text-sm text-zinc-300">
         Video chưa sẵn sàng hoặc bạn không còn quyền truy cập.
@@ -803,12 +1098,14 @@ export function VideoPlayer({
       >
         <video
           ref={videoRef}
-          controls
+          controls={isPlaybackReady}
           playsInline
           preload="metadata"
           className="h-full w-full"
           onLoadedMetadata={(event) => {
             const video = event.currentTarget;
+            if (!learningSessionRef.current || video.currentSrc.startsWith('data:')) return;
+            setIsPlaybackReady(true);
             // [BƯỚC 2.7: LUỒNG D - PHỤC HỒI TRẠNG THÁI PHÁT (STATE RESUMPTION & UX PRESERVATION)]
             // [BƯỚC 2.8: KHÔI PHỤC VỊ TRÍ HỌC CŨ TỪ INITIAL POSITION SECONDS]
             // Ưu tiên sử dụng pendingPlaybackResumeRef (nếu vừa gia hạn session giữa chừng),
@@ -831,25 +1128,44 @@ export function VideoPlayer({
             }
           }}
           onPlay={(event) => {
+            // Phiên phát thường đã được chuẩn bị ngầm khi mở lesson. Nhánh này là
+            // fallback nếu warm-up chưa hoàn tất, đã hết hạn hoặc vừa gặp xung đột.
+            if (!learningSession) {
+              event.currentTarget.pause();
+              if (!learningConflict) void startLearning();
+              return;
+            }
+            const leaseExpired = learningSession && !learningSession.bypass
+              && Date.now() - leaseLastActiveAtRef.current >= learningSession.leaseExpiresIn * 1000;
+            if (leaseExpired) {
+              const video = event.currentTarget;
+              video.pause();
+              // Vô hiệu hóa ref đồng bộ trước khi request cũ kịp trả về. Sau đó
+              // acquire lease mới và dựng HLS lại tại đúng vị trí đang dừng.
+              if (markLearningExpired(learningSession)) {
+                void startLearning(false, '', true);
+              }
+              return;
+            }
             if (renewPlaybackIfExpiringSoon(true)) {
               event.currentTarget.pause();
               return;
             }
-            setIsPlaying(true);
+
           }}
           onPause={(event) => {
-            setIsPlaying(false);
+
             reportPlaybackTime(event.currentTarget.currentTime, true);
           }}
           onEnded={(event) => {
-            setIsPlaying(false);
+
             reportPlaybackTime(event.currentTarget.currentTime, true);
           }}
           // [CHỐNG GIAN LẬN TUA VIDEO - BƯỚC 2.1]
           // onSeeking ghi nhận điểm bắt đầu tua video (seekOrigin)
           onSeeking={(event) => {
             seekOriginRef.current = lastPositionRef.current || event.currentTarget.currentTime;
-            setIsSeeking(true);
+            isSeekingRef.current = true;
           }}
           // onSeeked đo lường quãng đường tua. Nếu học viên tua nhanh hơn 10 giây (seekDistance > 10)
           // thì sẽ kích hoạt warning cảnh báo.
@@ -862,7 +1178,7 @@ export function VideoPlayer({
             }
             lastPositionRef.current = nextPosition;
             reportPlaybackTime(nextPosition, true);
-            setIsSeeking(false);
+            isSeekingRef.current = false;
           }}
           onTimeUpdate={(event) => reportPlaybackTime(event.currentTarget.currentTime)}
         />
@@ -886,9 +1202,50 @@ export function VideoPlayer({
           </span>
         )}
 
-        {(playbackSession.isIdle || playbackSession.isPending) && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black text-white">
-            <Loader2 className="h-7 w-7 animate-spin" />
+        {!learningSession && !learningRevoked && !learningConflict && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+            <button
+              type="button"
+              aria-label={isStartingLearning ? 'Đang chuẩn bị video' : 'Phát video'}
+              className="pointer-events-auto flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-white/90 text-zinc-950 shadow-xl transition-colors duration-200 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-wait disabled:opacity-80"
+              onClick={() => void startLearning()}
+              disabled={isStartingLearning}
+            >
+              {isStartingLearning
+                ? <Loader2 className="h-7 w-7 animate-spin" aria-hidden="true" />
+                : <Play className="ml-1 h-7 w-7 fill-current" aria-hidden="true" />}
+            </button>
+          </div>
+        )}
+        {!learningSession && learningRevoked && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-gradient-to-b from-zinc-950/80 to-black px-5 text-white">
+            <div className="max-w-md text-center">
+              <AlertTriangle className="mx-auto h-9 w-9 text-amber-400" />
+              <h3 className="mt-3 text-lg font-semibold">Video đã được chuyển sang nơi khác</h3>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+                Video đã dừng vì tài khoản của bạn đang học trên một thiết bị hoặc tab khác. Tài khoản trên thiết bị này vẫn được đăng nhập.
+              </p>
+              <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+                <Button type="button" onClick={() => void startLearning()} disabled={isStartingLearning}>
+                  {isStartingLearning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Tiếp tục tại đây
+                </Button>
+                <Button type="button" variant="outline" onClick={() => window.history.back()} className="border-zinc-600 bg-transparent text-white hover:bg-white/10 hover:text-white">
+                  Quay lại khóa học
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {learningSession && !isPlaybackReady && (
+          <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-black/80 px-5 text-white" aria-live="polite" aria-label="Đang khôi phục video">
+            <div className="flex max-w-sm flex-col items-center text-center">
+              <Loader2 className="h-7 w-7 animate-spin text-emerald-400 motion-reduce:animate-none" aria-hidden="true" />
+              <p className="mt-3 text-sm font-medium">Đang khôi phục video…</p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                Video sẽ tiếp tục từ vị trí gần nhất ngay khi luồng phát sẵn sàng.
+              </p>
+            </div>
           </div>
         )}
         <div className="absolute left-3 top-3 z-10">
@@ -913,6 +1270,32 @@ export function VideoPlayer({
         </div>
       </div>
 
+
+      <Dialog open={Boolean(learningConflict)} onOpenChange={(open) => { if (!open && !isStartingLearning) setLearningConflict(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Tài khoản đang phát video ở nơi khác
+            </DialogTitle>
+            <DialogDescription className="space-y-2 pt-2 leading-relaxed">
+              <span className="block">
+                {learningConflict?.sameAuthSession
+                  ? 'Một tab khác trên thiết bị này đang phát video.'
+                  : `Video đang được phát trên ${learningConflict?.deviceName || 'một thiết bị khác'}.`}
+              </span>
+              <span className="block">Nếu tiếp tục tại đây, video ở nơi kia sẽ dừng nhưng thiết bị đó không bị đăng xuất.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setLearningConflict(null)} disabled={isStartingLearning}>Hủy</Button>
+            <Button type="button" onClick={() => learningConflict && void startLearning(true, learningConflict.activeSessionId)} disabled={isStartingLearning}>
+              {isStartingLearning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Tiếp tục trên thiết bị này
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="border-b border-zinc-200 bg-white px-5 py-3.5 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="line-clamp-1 text-base font-semibold text-zinc-900 dark:text-white">{lesson.title}</h2>
         <p className="mt-0.5 text-xs text-zinc-500">

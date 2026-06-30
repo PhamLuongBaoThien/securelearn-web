@@ -106,9 +106,11 @@ export interface IVideoPlaybackSession {
   segmentExpiresIn?: number;
 }
 
-export const createPlaybackSession = async (videoAssetId: string) => {
+export const createPlaybackSession = async (videoAssetId: string, learningSession?: { id: string; token: string }, clientInstanceId?: string) => {
   const { data } = await apiClient.post<ApiResponse<IVideoPlaybackSession>>(
     `/api/media/videos/${videoAssetId}/playback-session`,
+    {},
+    { headers: learningSession ? { 'X-Learning-Session-Id': learningSession.id, 'X-Learning-Session-Token': learningSession.token, ...(clientInstanceId ? { 'X-Learning-Client-Instance-Id': clientInstanceId } : {}) } : undefined },
   );
   return data;
 };

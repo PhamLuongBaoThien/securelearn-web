@@ -37,8 +37,8 @@ export function useCourseLearning(courseId: string) {
 
 export function useCreatePlaybackSession() {
   return useMutation({
-    mutationFn: async (videoAssetId: string) => {
-      const response = await createPlaybackSession(videoAssetId);
+    mutationFn: async ({ videoAssetId, learningSession, clientInstanceId }: { videoAssetId: string; learningSession?: { id: string; token: string }; clientInstanceId?: string }) => {
+      const response = await createPlaybackSession(videoAssetId, learningSession, clientInstanceId);
       if (response.status === 'ERR' || !response.data) {
         throw new Error(response.message || 'Không thể tạo phiên phát video.');
       }
