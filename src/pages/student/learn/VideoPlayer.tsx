@@ -14,7 +14,7 @@ import Hls from 'hls.js';
 import axios from 'axios';
 import Plyr from 'plyr';
 import 'plyr/dist/plyr.css';
-import { AlertTriangle, Info, Loader2, Play, Shield, VideoOff } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, Loader2, Play, Shield, VideoOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { ensureFreshAccessToken, getAccessToken, getApiBaseUrl } from '@/services/apiClient';
 import { useCreatePlaybackSession } from '@/hooks/useCourseLearning';
@@ -132,6 +132,8 @@ interface VideoPlayerProps {
   resumePositionReady?: boolean;
   pauseSignal?: number;
   onOpenNotes?: (timestampSeconds: number) => void;
+  nextLesson?: ILesson | null;
+  onPlayNext?: () => void;
 }
 
 export function VideoPlayer({
@@ -143,8 +145,11 @@ export function VideoPlayer({
   resumePositionReady = true,
   pauseSignal = 0,
   onOpenNotes,
+  nextLesson,
+  onPlayNext,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const playerShellRef = useRef<HTMLDivElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const plyrRef = useRef<Plyr | null>(null);
   const plyrUiCleanupRef = useRef<(() => void) | null>(null);
@@ -170,6 +175,7 @@ export function VideoPlayer({
   const [learningConflict, setLearningConflict] = useState<LearningSessionConflict | null>(null);
   const [isStartingLearning, setIsStartingLearning] = useState(false);
   const [learningRevoked, setLearningRevoked] = useState(false);
+  const [hasEnded, setHasEnded] = useState(false);
   const sessionId = learningSession?.learningSessionId || clientInstanceId;
   const lastPositionRef = useRef(0);
   const seekOriginRef = useRef(0);
@@ -530,6 +536,7 @@ export function VideoPlayer({
   useEffect(() => {
     hasAppliedInitialPositionRef.current = false;
     lastPositionRef.current = initialPositionRef.current;
+    setHasEnded(false);
   }, [lesson._id]);
 
   useEffect(() => {
@@ -1061,6 +1068,48 @@ export function VideoPlayer({
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, []);
+  useEffect(() => {
+    const handlePlaybackShortcut = (event: KeyboardEvent) => {
+      if (!learningSession || learningRevoked || learningConflict || hasEnded) return;
+      if (shouldIgnoreProtectionShortcut()) return;
+
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('button, a, input, textarea, select, [role="button"], [contenteditable="true"]')) {
+        return;
+      }
+
+      const key = event.key;
+      const isSpaceKey = key === ' ' || key === 'Spacebar' || key === 'Space';
+      const isArrowLeft = key === 'ArrowLeft';
+      const isArrowRight = key === 'ArrowRight';
+      if (!isSpaceKey && !isArrowLeft && !isArrowRight) return;
+
+      const video = videoRef.current;
+      if (!video) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (isSpaceKey) {
+        if (video.paused) {
+          void video.play().catch(() => undefined);
+        } else {
+          video.pause();
+        }
+        return;
+      }
+
+      const step = 5;
+      const nextTime = isArrowLeft
+        ? Math.max(0, video.currentTime - step)
+        : Math.min(Number.isFinite(video.duration) ? video.duration : video.currentTime + step, video.currentTime + step);
+      video.currentTime = nextTime;
+      reportPlaybackTime(nextTime, true);
+    };
+
+    window.addEventListener('keydown', handlePlaybackShortcut, true);
+    return () => window.removeEventListener('keydown', handlePlaybackShortcut, true);
+  }, [hasEnded, learningConflict, learningRevoked, learningSession, reportPlaybackTime]);
 
   const handleContextMenu = useCallback((event: MouseEvent) => event.preventDefault(), []); // [BƯỚC 2.1: CHẶN CHUỘT PHẢI]
   const blockProtectedEvent = useCallback((event: SyntheticEvent) => {
@@ -1090,11 +1139,17 @@ export function VideoPlayer({
   return (
     <div className="flex flex-col">
       <div
+        ref={playerShellRef}
         className="secure-video-player-shell relative aspect-video w-full select-none overflow-hidden bg-black"
+        tabIndex={0}
+        aria-label="Khung phát video"
         onContextMenu={handleContextMenu}
         onCopy={blockProtectedEvent}
         onCut={blockProtectedEvent}
         onDragStart={blockProtectedEvent}
+        onPointerDown={() => {
+          playerShellRef.current?.focus({ preventScroll: true });
+        }}
       >
         <video
           ref={videoRef}
@@ -1128,6 +1183,8 @@ export function VideoPlayer({
             }
           }}
           onPlay={(event) => {
+            setHasEnded(false);
+            playerShellRef.current?.focus({ preventScroll: true });
             // Phiên phát thường đã được chuẩn bị ngầm khi mở lesson. Nhánh này là
             // fallback nếu warm-up chưa hoàn tất, đã hết hạn hoặc vừa gặp xung đột.
             if (!learningSession) {
@@ -1158,7 +1215,7 @@ export function VideoPlayer({
             reportPlaybackTime(event.currentTarget.currentTime, true);
           }}
           onEnded={(event) => {
-
+            setHasEnded(true);
             reportPlaybackTime(event.currentTarget.currentTime, true);
           }}
           // [CHỐNG GIAN LẬN TUA VIDEO - BƯỚC 2.1]
@@ -1200,6 +1257,42 @@ export function VideoPlayer({
           <span className={`pointer-events-none absolute z-20 text-xs font-mono text-white/20 ${watermarkPositions[watermarkIndex]}`}>
             {watermarkText}
           </span>
+        )}
+
+        {hasEnded && learningSession && !learningRevoked && !learningConflict && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-gradient-to-b from-zinc-950/85 to-black px-5 text-white" role="status" aria-live="polite">
+            <div className="max-w-md text-center">
+              <CheckCircle2 className="mx-auto h-11 w-11 text-emerald-400" aria-hidden="true" />
+              <h3 className="mt-3 text-xl font-semibold">Đã hoàn thành bài học</h3>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+                {nextLesson
+                  ? <>Bài tiếp theo: <span className="font-semibold text-white">{nextLesson.title}</span></>
+                  : 'Bạn đã hoàn thành bài học cuối cùng của khóa học.'}
+              </p>
+              <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+                {nextLesson && onPlayNext && (
+                  <Button type="button" onClick={onPlayNext} className="min-h-10">
+                    Học bài tiếp theo
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-10 border-zinc-600 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                  onClick={() => {
+                    const video = videoRef.current;
+                    if (!video) return;
+                    setHasEnded(false);
+                    video.currentTime = 0;
+                    lastPositionRef.current = 0;
+                    void video.play().catch(() => undefined);
+                  }}
+                >
+                  Xem lại
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
         {!learningSession && !learningRevoked && !learningConflict && (
@@ -1252,9 +1345,15 @@ export function VideoPlayer({
           <TooltipProvider delayDuration={120}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex h-7 w-7 items-center justify-center text-zinc-400 transition-colors hover:bg-black/80 hover:text-white">
-                  <Info className="h-4 w-4" />
-                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Thông tin bảo vệ nội dung"
+                  className="h-8 w-8 rounded-full text-zinc-400 transition-colors hover:bg-black/80 hover:text-white focus-visible:ring-white"
+                >
+                  <Info className="h-4 w-4" aria-hidden="true" />
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs rounded-xl bg-black/90 border-zinc-800 text-xs text-white">
                 <div className="flex items-center gap-2">

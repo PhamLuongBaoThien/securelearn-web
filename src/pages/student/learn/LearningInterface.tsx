@@ -21,6 +21,7 @@ import {
 import { useCourseLearning } from '@/hooks/useCourseLearning';
 import { useCourseAccess, useCourseProgress, useLearnerActivity } from '@/hooks/useLearningProgress';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { StreakGoalWidget } from '@/components/student/StreakGoalWidget';
 import type { ILesson } from '@/services/courseApi';
@@ -53,7 +54,13 @@ const ProgressRing: React.FC<{ percent: number; completedLessons: number; totalL
     <TooltipProvider delayDuration={120}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="relative flex h-8 w-8 shrink-0 cursor-default items-center justify-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={`Tiến độ khóa học ${Math.round(percent)}%, đã hoàn thành ${completedLessons} trên ${totalLessons} bài học`}
+            className="relative h-10 w-10 shrink-0 cursor-default rounded-full p-1"
+          >
             <svg width={PROGRESS_RING_SIZE} height={PROGRESS_RING_SIZE} className="-rotate-90">
               <circle
                 cx={PROGRESS_RING_SIZE / 2}
@@ -80,7 +87,7 @@ const ProgressRing: React.FC<{ percent: number; completedLessons: number; totalL
             <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-zinc-700 dark:text-zinc-200">
               {Math.round(percent)}%
             </span>
-          </div>
+          </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="rounded-xl">
           <p className="text-xs font-semibold">Tiến độ khóa học</p>
@@ -154,6 +161,7 @@ export function LearningInterface() {
   
   const [selectedLessonId, setSelectedLessonId] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileCurriculumOpen, setMobileCurriculumOpen] = useState(false);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [pauseSignal, setPauseSignal] = useState(0);
   const [activeInteractionTab, setActiveInteractionTab] = useState<LearningTabId>('overview');
@@ -169,7 +177,7 @@ export function LearningInterface() {
   // [BẢO MẬT ĐỊNH TUYẾN - BƯỚC 1]
   // Lấy lessonId được yêu cầu từ URL query (?lessonId=xxx)
   const requestedLessonId = searchParams.get('lessonId') || '';
-  const accessByLessonId = accessQuery.data?.lessons || {};
+  const accessByLessonId = useMemo(() => accessQuery.data?.lessons || {}, [accessQuery.data?.lessons]);
   
   // Xác định ID bài học mục tiêu: Ưu tiên state hiện tại -> URL query -> Bài học học dở lần trước -> Bài học đầu tiên
   const requestedOrStoredLessonId = selectedLessonId || requestedLessonId || progressQuery.data?.course.lastLessonId || lessons[0]?._id || '';
@@ -222,6 +230,7 @@ export function LearningInterface() {
     if (lessonId) setSearchParams({ lessonId }, { replace: true });
     setPlaybackTime(0);
     setActiveInteractionTab('overview');
+    setMobileCurriculumOpen(false);
   };
 
   if (courseQuery.isLoading) {
@@ -344,9 +353,23 @@ export function LearningInterface() {
           title={sidebarOpen ? 'Ẩn giáo trình' : 'Hiện giáo trình'}
           variant="ghost"
           size="icon"
-          className="h-9 w-9 rounded-lg"
+          aria-label={sidebarOpen ? 'Ẩn giáo trình' : 'Hiện giáo trình'}
+          aria-expanded={sidebarOpen}
+          className="hidden h-9 w-9 rounded-lg lg:inline-flex"
         >
-          {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          {sidebarOpen ? <X className="h-4 w-4" aria-hidden="true" /> : <Menu className="h-4 w-4" aria-hidden="true" />}
+        </Button>
+        <Button
+          type="button"
+          onClick={() => setMobileCurriculumOpen(true)}
+          title="Mở giáo trình"
+          aria-label="Mở giáo trình"
+          aria-expanded={mobileCurriculumOpen}
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 rounded-lg lg:hidden"
+        >
+          <Menu className="h-5 w-5" aria-hidden="true" />
         </Button>
       </header>
 
@@ -367,6 +390,8 @@ export function LearningInterface() {
                 setActiveInteractionTab('notes');
                 setOpenNotesSignal((current) => current + 1);
               }}
+              nextLesson={nextLesson}
+              onPlayNext={() => nextLesson && selectLesson(nextLesson)}
             />
           ) : activeLesson ? (
             <QuizPlayer
@@ -399,7 +424,7 @@ export function LearningInterface() {
           initial={false}
           animate={{ width: sidebarOpen ? 320 : 0 }}
           transition={{ type: 'spring', stiffness: 400, damping: 38 }}
-          className="shrink-0 overflow-hidden"
+          className="hidden shrink-0 overflow-hidden lg:block"
           style={{ minWidth: 0 }}
         >
           <div className="h-full w-[320px]">
@@ -412,6 +437,22 @@ export function LearningInterface() {
             />
           </div>
         </motion.aside>
+
+        <Sheet open={mobileCurriculumOpen} onOpenChange={setMobileCurriculumOpen}>
+          <SheetContent className="p-0">
+            <SheetTitle className="sr-only">Nội dung khóa học</SheetTitle>
+            <SheetDescription className="sr-only">Chọn chương hoặc bài học để tiếp tục học.</SheetDescription>
+            <div className="min-h-0 flex-1 pt-12">
+              <CurriculumSidebar
+                sections={course.sections}
+                activeLessonId={activeLesson?._id || ''}
+                progressByLessonId={progressQuery.data?.lessons || {}}
+                accessByLessonId={accessByLessonId}
+                onSelectLesson={selectLesson}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   );
