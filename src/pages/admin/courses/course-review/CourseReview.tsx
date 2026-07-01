@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {
   Search,
   CheckCircle,
@@ -1237,6 +1237,7 @@ const SubscriptionCourseReviewPage: React.FC<{
 
 export const CourseReview: React.FC = () => {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const initialState = (location.state || {}) as {
     mode?: "PUBLISH" | "SUBSCRIPTION";
     search?: string;
@@ -1262,6 +1263,10 @@ export const CourseReview: React.FC = () => {
   const rejectMutation = useRejectPublishedCourse();
 
   const courses = reviewQuery.data?.courses || [];
+  useEffect(() => {
+    const versionId = searchParams.get('versionId');
+    if (versionId && courses.some(course => course._id === versionId)) setExpandedId(versionId);
+  }, [courses, searchParams]);
   const approveTarget =
     courses.find((course) => course._id === approveTargetId) || null;
   const pendingCount =

@@ -75,7 +75,7 @@ import { InstructorCourses, CourseEditor } from '../pages/instructor/courses';
 import { InstructorPerformance } from '../pages/instructor/performance';
 import { InstructorStudents } from '../pages/instructor/students';
 import { InstructorCommunication } from '../pages/instructor/communication';
-import { InstructorNotifications } from '../pages/instructor/notifications';
+import { NotificationCenter } from '../pages/shared/notifications';
 
 // Tạo một RootLayout chung bọc bên ngoài toàn bộ các route
 // Nhờ đó, ScrollToTop luôn tồn tại trong App và hoạt động mỗi lần chuyển Route
@@ -110,6 +110,7 @@ const router = createBrowserRouter([
           { path: 'settings', element: <ProtectedRoute><Navigate to="/account/settings/profile" replace /></ProtectedRoute> },
           { path: 'account/settings', element: <ProtectedRoute><Navigate to="/account/settings/profile" replace /></ProtectedRoute> },
           { path: 'account/settings/:tab', element: <ProtectedRoute><Profile /></ProtectedRoute> },
+          { path: 'notifications', element: <ProtectedRoute><NotificationCenter /></ProtectedRoute> },
           {
             path: 'student/dashboard',
             element: (
@@ -170,7 +171,7 @@ const router = createBrowserRouter([
           { path: 'performance', element: <InstructorPerformance /> },
           { path: 'students', element: <InstructorStudents /> },
           { path: 'communication', element: <InstructorCommunication /> },
-          { path: 'notifications', element: <InstructorNotifications /> },
+          { path: 'notifications', element: <Navigate to="/notifications" replace /> },
         ]
       },
       // ===== Admin Routes =====
@@ -222,6 +223,7 @@ const router = createBrowserRouter([
           { path: 'finance/coupons', element: <CouponManager /> },
           // ===== Notifications & Progress =====
           { path: 'notifications/send', element: <SendNotification /> },
+          { path: 'notifications/system', element: <NotificationCenter /> },
           { path: 'notifications/inbox', element: <Inbox /> },
           { path: 'notifications/config', element: <NotificationConfig /> },
           // ===== Profile =====

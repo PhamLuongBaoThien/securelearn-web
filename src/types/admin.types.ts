@@ -519,6 +519,8 @@ export type TemplateEvent =
   | 'PAYMENT_FAILED'
   | 'COURSE_APPROVED'
   | 'COURSE_REJECTED'
+  | 'COURSE_SUBMITTED_FOR_REVIEW'
+  | 'ENROLLMENT_CREATED'
   | 'WELCOME';
 
 export interface INotificationTemplate {

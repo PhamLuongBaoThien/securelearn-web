@@ -28,6 +28,7 @@ import brandLogo from '@/assets/logoweb.png';
 import { MegaMenuColumn } from './MegaMenuColumn';
 import { NavUserDropdown } from './NavUserDropdown';
 import { NavMobileDrawer } from './NavMobileDrawer';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import {
   desktopNavLinkClass,
   getTeachButtonProps,
@@ -338,6 +339,7 @@ export const Navbar = () => {
 
               {/* Actions */}
               <div className="flex items-center gap-2 shrink-0">
+                <NotificationBell enabled={showAuthenticatedUI} />
                 {/* Wishlist */}
                 <Link
                   to="/student/dashboard?tab=wishlist"

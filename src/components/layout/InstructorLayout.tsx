@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import sidebarLogo from '@/assets/logoweb.png';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Sidebar } from './Sidebar';
@@ -113,6 +114,7 @@ export const InstructorLayout: React.FC = () => {
              {/* Logo or page title placeholder */}
           </div>
           <div className="flex items-center gap-4">
+            <NotificationBell allPath="/notifications" />
             <button 
               onClick={handleBackToStudent}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"

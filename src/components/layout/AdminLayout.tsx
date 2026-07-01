@@ -28,6 +28,7 @@ import {
 import { toast } from 'sonner';
 import sidebarLogo from '@/assets/logoweb.png';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 import { Sidebar } from './Sidebar';
 import type { SidebarEntry } from './Sidebar';
@@ -77,6 +78,7 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[]): Side
       groupIcon: <Bell className="w-5 h-5 shrink-0" />,
       items: [
         { name: 'Gửi thông báo', path: '/admin/notifications/send', icon: <Send className="w-4 h-4 shrink-0" />, req: 'notif:manage' },
+        { name: 'Thông báo hệ thống', path: '/admin/notifications/system', icon: <Bell className="w-4 h-4 shrink-0" />, req: 'notif:read' },
         { name: 'Hộp thư đến', path: '/admin/notifications/inbox', icon: <Inbox className="w-4 h-4 shrink-0" />, req: 'notif:read' },
         { name: 'Mẫu thông báo', path: '/admin/notifications/config', icon: <FileText className="w-4 h-4 shrink-0" />, req: 'notif:manage' },
       ],
@@ -167,6 +169,7 @@ export const AdminLayout: React.FC = () => {
 
       {/* Main Content */}
       <main className={`flex-1 transition-[margin-left] duration-200 ease-out relative min-h-screen will-change-[margin-left] ${!sidebarOpen ? 'ml-20' : 'ml-72'}`}>
+        <div className="sticky top-0 z-20 flex h-14 items-center justify-end border-b bg-background/80 px-8 backdrop-blur"><NotificationBell allPath="/admin/notifications/system" /></div>
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none -z-10" />
         <div className="p-8 pb-12 w-full max-w-7xl mx-auto h-full">
           <Outlet />
