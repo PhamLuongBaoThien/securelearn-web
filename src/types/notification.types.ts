@@ -8,7 +8,7 @@ export type PreferenceChannels = Record<NotificationCategory, { email: boolean; 
 export type NotificationChannelCapability = { email: boolean; emailAvailable: boolean; inApp: boolean; inAppAvailable: boolean; missingEmailEvents: NotificationEvent[]; missingInAppEvents: NotificationEvent[] };
 export type NotificationCapabilities = Record<NotificationCategory, NotificationChannelCapability>;
 export interface NotificationPreferences { recipientType: 'USER' | 'ADMIN'; userId: string; categories: PreferenceChannels; }
-export interface CampaignInput { audience: 'ALL_LEARNERS' | 'ALL_INSTRUCTORS' | 'ALL_USERS' | 'SPECIFIC_USER' | 'COURSE_STUDENTS'; specificEmail?: string; courseId?: string; title: string; content: string; channels: NotificationChannel[]; }
+export interface CampaignInput { audience: 'ALL_LEARNERS' | 'ALL_INSTRUCTORS' | 'ALL_ADMINS' | 'ALL_USERS' | 'SPECIFIC_USER' | 'COURSE_STUDENTS'; specificEmail?: string; courseId?: string; title: string; content: string; channels: NotificationChannel[]; }
 export interface Campaign { _id: string; audience: CampaignInput['audience']; title: string; channels: NotificationChannel[]; status: 'PROCESSING' | 'COMPLETED' | 'PARTIAL' | 'FAILED'; stats: { requested: number; inAppSent: number; emailSent: number; emailFailed: number }; createdAt: string; }
 export interface NotificationSocketEvents {
   'notification:new': NotificationItem;

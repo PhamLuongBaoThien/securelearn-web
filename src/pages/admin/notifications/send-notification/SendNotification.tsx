@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 
 const audiences: Array<{ id: CampaignInput['audience']; label: string }> = [
   { id: 'ALL_LEARNERS', label: 'Tất cả người học' }, { id: 'ALL_INSTRUCTORS', label: 'Tất cả giảng viên' },
-  { id: 'ALL_USERS', label: 'Toàn hệ thống' }, { id: 'SPECIFIC_USER', label: 'Một người dùng' },
-  { id: 'COURSE_STUDENTS', label: 'Học viên khóa học' },
+  { id: 'ALL_ADMINS', label: 'Tất cả admin' }, { id: 'ALL_USERS', label: 'Toàn hệ thống' },
+  { id: 'SPECIFIC_USER', label: 'Một người dùng' }, { id: 'COURSE_STUDENTS', label: 'Học viên khóa học' },
 ];
 const baseVariables = [
   { key: 'userName', token: '{{userName}}', label: 'Tên người nhận', sample: 'Nguyễn Văn A' },
