@@ -54,7 +54,7 @@ const eventLabels: Record<string, string> = {
 const categoryStyles: Record<
   NotificationCategory,
   { 
-    icon: React.ComponentType<any>; 
+    icon: React.ComponentType<{ className?: string }>; 
     colorClass: string; 
     iconBgClass: string; 
     borderClass: string;

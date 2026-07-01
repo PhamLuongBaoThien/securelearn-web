@@ -26,6 +26,31 @@ const eventLabel: Record<TemplateEvent, string> = {
   WELCOME: 'Chào mừng người dùng',
 };
 
+const eventVariables: Record<TemplateEvent, string[]> = {
+  WELCOME: ['{{userName}}'],
+  PAYMENT_SUCCESS: ['{{userName}}', '{{amount}}', '{{transactionId}}', '{{courseName}}', '{{createdAt}}'],
+  PAYMENT_FAILED: ['{{userName}}', '{{amount}}', '{{transactionId}}', '{{reason}}', '{{createdAt}}'],
+  COURSE_APPROVED: ['{{instructorName}}', '{{courseName}}', '{{courseUrl}}'],
+  COURSE_REJECTED: ['{{instructorName}}', '{{courseName}}', '{{reason}}'],
+  COURSE_SUBMITTED_FOR_REVIEW: ['{{courseName}}', '{{instructorName}}'],
+  ENROLLMENT_CREATED: ['{{courseName}}', '{{learnerName}}'],
+};
+
+const variableDescription: Record<string, string> = {
+  userName: 'Tên người dùng',
+  amount: 'Số tiền thanh toán',
+  transactionId: 'Mã giao dịch',
+  courseName: 'Tên khóa học',
+  createdAt: 'Thời gian giao dịch',
+  reason: 'Lý do hoặc nội dung cần chỉnh sửa',
+  instructorName: 'Tên giảng viên',
+  courseUrl: 'Đường dẫn khóa học',
+  learnerName: 'Tên học viên mới',
+};
+
+const extractVariables = (text: string) =>
+  Array.from(text.matchAll(/{{\s*([A-Za-z][\w]*)\s*}}/g), (match) => `{{${match[1]}}}`);
+
 // ===== Preview Dialog =====
 interface PreviewDialogProps {
   open: boolean;
@@ -77,6 +102,10 @@ export const NotificationConfig: React.FC = () => {
   const [saving, setSaving] = useState(false);
 
   const filtered = templates.filter((t) => t.type === activeTab);
+  const invalidVariables = editItem
+    ? [...new Set([...extractVariables(editItem.subject || ''), ...extractVariables(editItem.body)]
+      .filter((variable) => !eventVariables[editItem.event].includes(variable)))]
+    : [];
 
   useEffect(() => {
     void notificationApi.listTemplates().then((data) => setTemplates(data as INotificationTemplate[])).catch((error) => toast.error(error instanceof Error ? error.message : 'Không thể tải template.'));
@@ -84,12 +113,21 @@ export const NotificationConfig: React.FC = () => {
 
   const handleSave = async () => {
     if (!editItem) return;
+    if (invalidVariables.length > 0) {
+      toast.error(`Biến không hợp lệ: ${invalidVariables.join(', ')}`);
+      return;
+    }
     setSaving(true);
-    await notificationApi.updateTemplate(editItem._id, editItem as never);
-    setTemplates((p) => p.map((t) => t._id === editItem._id ? editItem : t));
-    setSaving(false);
-    setEditItem(null);
-    toast.success('Đã lưu mẫu thông báo.');
+    try {
+      await notificationApi.updateTemplate(editItem._id, editItem as never);
+      setTemplates((p) => p.map((t) => t._id === editItem._id ? editItem : t));
+      setEditItem(null);
+      toast.success('Đã lưu mẫu thông báo.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể lưu mẫu thông báo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -250,23 +288,42 @@ export const NotificationConfig: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Variables khả dụng — click để chèn</p>
                 <div className="flex flex-wrap gap-2">
-                  {editItem.variables.map((v) => (
-                    <code
-                      key={v}
-                      className="px-2.5 py-1 bg-primary/10 text-primary text-xs rounded-lg font-mono cursor-pointer hover:bg-primary/20 transition-colors"
-                      onClick={() => {
-                        const el = document.querySelector<HTMLTextAreaElement>('textarea');
-                        if (el) {
-                          const pos = el.selectionStart;
-                          const newBody = editItem.body.slice(0, pos) + v + editItem.body.slice(pos);
-                          setEditItem((p) => p ? { ...p, body: newBody } : p);
-                        }
-                      }}
-                    >
-                      {v}
-                    </code>
-                  ))}
+                  {eventVariables[editItem.event].map((v) => {
+                    const name = v.slice(2, -2);
+                    return (
+                      <button
+                        type="button"
+                        key={v}
+                        title={variableDescription[name]}
+                        className="px-3 py-2 bg-primary/10 text-left rounded-xl cursor-pointer hover:bg-primary/20 transition-colors"
+                        onClick={() => {
+                          const el = document.querySelector<HTMLTextAreaElement>('textarea');
+                          if (el) {
+                            const start = el.selectionStart;
+                            const end = el.selectionEnd;
+                            const newBody = editItem.body.slice(0, start) + v + editItem.body.slice(end);
+                            setEditItem((p) => p ? { ...p, body: newBody } : p);
+                            requestAnimationFrame(() => {
+                              el.focus();
+                              el.setSelectionRange(start + v.length, start + v.length);
+                            });
+                          }
+                        }}
+                      >
+                        <code className="block text-primary text-xs font-mono">{v}</code>
+                        <span className="block mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">{variableDescription[name]}</span>
+                      </button>
+                    );
+                  })}
                 </div>
+                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  Danh sách thay đổi theo sự kiện đã chọn. Click một biến để chèn vào vị trí con trỏ trong nội dung.
+                </p>
+                {invalidVariables.length > 0 && (
+                  <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">
+                    Biến không hợp lệ với sự kiện này: {invalidVariables.join(', ')}
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">
@@ -279,7 +336,7 @@ export const NotificationConfig: React.FC = () => {
                 </Button>
                 <Button
                   onClick={handleSave}
-                  disabled={saving}
+                  disabled={saving || invalidVariables.length > 0}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors shadow-md shadow-primary/20"
                 >
                   <Save className="w-4 h-4" />{saving ? 'Đang lưu...' : 'Lưu Template'}
