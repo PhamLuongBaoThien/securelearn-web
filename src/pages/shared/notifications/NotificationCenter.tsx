@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { notificationApi } from '@/services/notificationApi';
+import { NOTIFICATION_REALTIME_EVENT, type NotificationRealtimeDetail } from '@/services/notificationSocket';
 import type { NotificationCapabilities, NotificationCategory, NotificationItem, NotificationPreferences } from '@/types/notification.types';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ const eventLabels: Record<string, string> = {
   WELCOME: 'Chào mừng tài khoản', PAYMENT_SUCCESS: 'Thanh toán thành công', PAYMENT_FAILED: 'Thanh toán thất bại',
   COURSE_APPROVED: 'Khóa học được duyệt', COURSE_REJECTED: 'Khóa học cần chỉnh sửa',
   COURSE_SUBMITTED_FOR_REVIEW: 'Khóa học gửi duyệt', ENROLLMENT_CREATED: 'Học viên mới ghi danh', MANUAL: 'Thông báo từ quản trị viên',
+  REPORT_CREATED: 'Báo cáo mới', SUPPORT_REQUEST_CREATED: 'Yêu cầu hỗ trợ mới', FEEDBACK_CREATED: 'Góp ý mới',
 };
 const categoryStyles: Record<
   NotificationCategory,
@@ -134,7 +136,7 @@ export function NotificationCenter() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const { count: unreadCount, refresh: refreshUnread } = useUnreadNotifications(true);
+  const { count: unreadCount, setCount: setUnreadCount } = useUnreadNotifications(true);
 
   const [activeTab, setActiveTab] = useState<'inbox' | 'preferences'>('inbox');
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
@@ -172,6 +174,14 @@ export function NotificationCenter() {
 
   useEffect(() => { void load(); }, [filter, category, search, from, to, page]);
   useEffect(() => { setPage(1); }, [filter, category, search, from, to]);
+  useEffect(() => {
+    const handleRealtime = (event: Event) => {
+      const detail = (event as CustomEvent<NotificationRealtimeDetail>).detail;
+      if (activeTab === 'inbox' && ['new', 'read', 'read-all', 'reconcile'].includes(detail.type)) void load();
+    };
+    window.addEventListener(NOTIFICATION_REALTIME_EVENT, handleRealtime);
+    return () => window.removeEventListener(NOTIFICATION_REALTIME_EVENT, handleRealtime);
+  }, [activeTab, filter, category, search, from, to, page]);
   const loadPreferences = async () => {
     setLoadingPrefs(true);
     try {
@@ -197,13 +207,20 @@ export function NotificationCenter() {
     if (!item.readAt) {
       try {
         await notificationApi.markRead(item._id);
+        const readAt = new Date().toISOString();
+        const updatedItem = { ...item, readAt };
         if (filter === 'unread') {
           setItems(current => current.filter(notification => notification._id !== item._id));
           setTotal(current => Math.max(0, current - 1));
         } else {
-          setItems(current => current.map(notification => notification._id === item._id ? { ...notification, readAt: new Date().toISOString() } : notification));
+          setItems(current => current.map(notification => notification._id === item._id ? updatedItem : notification));
         }
-        await refreshUnread();
+        window.dispatchEvent(new CustomEvent<NotificationRealtimeDetail>(NOTIFICATION_REALTIME_EVENT, {
+          detail: { type: 'read', item: updatedItem },
+        }));
+        window.dispatchEvent(new CustomEvent<NotificationRealtimeDetail>(NOTIFICATION_REALTIME_EVENT, {
+          detail: { type: 'unread-delta', delta: -1 },
+        }));
       } catch (err) {
         console.error(err);
       }
@@ -216,9 +233,16 @@ export function NotificationCenter() {
   const markAllRead = async () => {
     try {
       await notificationApi.markAllRead();
+      const readAt = new Date().toISOString();
       if (filter === 'unread') { setItems([]); setTotal(0); setTotalPages(0); }
-      else setItems(current => current.map(notification => ({ ...notification, readAt: notification.readAt || new Date().toISOString() })));
-      await refreshUnread();
+      else setItems(current => current.map(notification => ({ ...notification, readAt: notification.readAt || readAt })));
+      setUnreadCount(0);
+      window.dispatchEvent(new CustomEvent<NotificationRealtimeDetail>(NOTIFICATION_REALTIME_EVENT, {
+        detail: { type: 'read-all', readAt },
+      }));
+      window.dispatchEvent(new CustomEvent<NotificationRealtimeDetail>(NOTIFICATION_REALTIME_EVENT, {
+        detail: { type: 'unread-count', count: 0 },
+      }));
       toast.success('Đã đánh dấu đọc tất cả thông báo');
     } catch (err) {
       console.error(err);
@@ -504,7 +528,7 @@ export function NotificationCenter() {
           <div>
             <h3 className="font-bold text-lg text-foreground">Cấu hình nhận thông báo</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Chọn cách bạn muốn nhận cập nhật từ SecureLearn. Một số thông báo giao dịch quan trọng (như Thanh toán và Đăng ký khóa học) luôn được bật mặc định in-app để đảm bảo thông tin thông suốt.
+              Chọn cách bạn muốn nhận cập nhật từ SecureLearn. Một số thông báo giao dịch quan trọng (như Thanh toán và Đăng ký khóa học) luôn được bật mặc định trên website để đảm bảo thông tin thông suốt.
             </p>
           </div>
           <div className={`rounded-xl border px-3 py-2 text-xs ${preferencesDirty ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300'}`}>{preferencesDirty ? 'Bạn có thay đổi chưa lưu.' : 'Cài đặt hiện tại đã được lưu.'}</div>
@@ -568,7 +592,7 @@ export function NotificationCenter() {
                     {/* In-app Switch */}
                     <div className="flex items-center gap-2">
                       <Smartphone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-xs font-semibold text-muted-foreground mr-1">In-app</span>
+                      <span className="text-xs font-semibold text-muted-foreground mr-1">Thông báo web</span>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"

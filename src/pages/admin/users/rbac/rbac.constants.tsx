@@ -1,7 +1,7 @@
 // ========================
 // RBAC Constants: Tập trung constants dùng chung cho module RBAC đã tách nhỏ.
 // ========================
-import { Bell, BookOpen, DollarSign, Settings, Users } from 'lucide-react';
+import { Bell, BookOpen, DollarSign, Inbox, Settings, Users } from 'lucide-react';
 
 export const ALL_PERMISSIONS = [
   { id: 'course:read', resource: 'course', label: 'Xem khóa học', desc: 'Truy cập danh sách và chi tiết khóa học' },
@@ -14,6 +14,7 @@ export const ALL_PERMISSIONS = [
   { id: 'finance:manage', resource: 'finance', label: 'Quản lý gói cước', desc: 'Thêm, sửa, xóa các gói cước' },
   { id: 'notif:read', resource: 'notif', label: 'Xem thông báo', desc: 'Xem lịch sử và cấu hình thông báo' },
   { id: 'notif:manage', resource: 'notif', label: 'Quản lý thông báo', desc: 'Tạo và gửi thông báo cho học viên/giảng viên' },
+  { id: 'inbox:manage', resource: 'inbox', label: 'Quản lý hộp thư', desc: 'Xem và xử lý báo cáo, hỗ trợ và góp ý nhạy cảm' },
   { id: 'system:config', resource: 'system', label: 'Cấu hình hệ thống', desc: 'Thay đổi cài đặt toàn hệ thống' },
   { id: 'system:rbac', resource: 'system', label: 'Quản lý phân quyền', desc: 'Thiết lập RBAC và quản lý nhân viên' },
 ] as const;
@@ -23,6 +24,7 @@ export const RESOURCE_GROUPS = [
   { label: 'Người dùng', key: 'user', icon: <Users className="w-3.5 h-3.5" /> },
   { label: 'Tài chính', key: 'finance', icon: <DollarSign className="w-3.5 h-3.5" /> },
   { label: 'Thông báo', key: 'notif', icon: <Bell className="w-3.5 h-3.5" /> },
+  { label: 'Hộp thư', key: 'inbox', icon: <Inbox className="w-3.5 h-3.5" /> },
   { label: 'Hệ thống', key: 'system', icon: <Settings className="w-3.5 h-3.5" /> },
 ];
 

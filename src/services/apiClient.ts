@@ -195,9 +195,7 @@ const requestFreshAccessToken = async (context: AuthContext): Promise<string> =>
       throw new Error(data.message || 'Refresh token thất bại');
     }
 
-    accessToken = data.access_token;
-    accessTokenContext = context;
-    scheduleProactiveRefresh(data.access_token, context);
+    setAccessToken(data.access_token, context);
     return data.access_token;
   });
 
@@ -222,6 +220,7 @@ export const setAccessToken = (token: string | null, context: AuthContext = 'use
   accessToken = token;
   accessTokenContext = context;
   scheduleProactiveRefresh(token, context);
+  window.dispatchEvent(new CustomEvent('auth:token-updated', { detail: { context, authenticated: Boolean(token) } }));
 };
 
 export const ensureFreshAccessToken = async (

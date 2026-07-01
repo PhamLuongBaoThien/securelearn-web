@@ -156,7 +156,7 @@ export const ALL_PERMISSION_IDS = [
   'course:read', 'course:update', 'course:delete', 'course:approve',
   'user:read', 'user:lock',
   'finance:read', 'finance:manage',
-  'notif:read', 'notif:manage',
+  'notif:read', 'notif:manage', 'inbox:manage',
   'system:config', 'system:rbac',
 ] as const;
 
@@ -521,6 +521,9 @@ export type TemplateEvent =
   | 'COURSE_REJECTED'
   | 'COURSE_SUBMITTED_FOR_REVIEW'
   | 'ENROLLMENT_CREATED'
+  | 'REPORT_CREATED'
+  | 'SUPPORT_REQUEST_CREATED'
+  | 'FEEDBACK_CREATED'
   | 'WELCOME';
 
 export interface INotificationTemplate {

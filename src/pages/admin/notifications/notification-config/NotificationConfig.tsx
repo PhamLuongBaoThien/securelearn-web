@@ -24,6 +24,9 @@ const eventLabel: Record<TemplateEvent, string> = {
   COURSE_SUBMITTED_FOR_REVIEW: 'Khóa học gửi duyệt',
   ENROLLMENT_CREATED: 'Học viên mới',
   WELCOME: 'Chào mừng người dùng',
+  REPORT_CREATED: 'Báo cáo mới',
+  SUPPORT_REQUEST_CREATED: 'Yêu cầu hỗ trợ mới',
+  FEEDBACK_CREATED: 'Góp ý mới',
 };
 
 const eventVariables: Record<TemplateEvent, string[]> = {
@@ -34,6 +37,9 @@ const eventVariables: Record<TemplateEvent, string[]> = {
   COURSE_REJECTED: ['{{instructorName}}', '{{courseName}}', '{{reason}}'],
   COURSE_SUBMITTED_FOR_REVIEW: ['{{courseName}}', '{{instructorName}}'],
   ENROLLMENT_CREATED: ['{{courseName}}', '{{learnerName}}'],
+  REPORT_CREATED: ['{{senderName}}', '{{title}}', '{{summary}}', '{{createdAt}}'],
+  SUPPORT_REQUEST_CREATED: ['{{senderName}}', '{{title}}', '{{summary}}', '{{createdAt}}'],
+  FEEDBACK_CREATED: ['{{senderName}}', '{{title}}', '{{summary}}', '{{createdAt}}'],
 };
 
 const variableDescription: Record<string, string> = {
@@ -46,6 +52,9 @@ const variableDescription: Record<string, string> = {
   instructorName: 'Tên giảng viên',
   courseUrl: 'Đường dẫn khóa học',
   learnerName: 'Tên học viên mới',
+  senderName: 'Tên người gửi',
+  title: 'Tiêu đề báo cáo/yêu cầu',
+  summary: 'Nội dung tóm tắt',
 };
 
 const extractVariables = (text: string) =>
@@ -64,23 +73,23 @@ const PreviewDialog: React.FC<PreviewDialogProps> = ({ open, onOpenChange, templ
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Preview: {template.name}</DialogTitle>
-          <DialogDescription>Xem trước nội dung template trước khi lưu.</DialogDescription>
+          <DialogTitle>Xem trước: {template.name}</DialogTitle>
+          <DialogDescription>Xem trước nội dung mẫu thông báo trước khi lưu.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3 py-2">
           {template.subject && (
             <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
-              <p className="text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wider">Subject</p>
+              <p className="text-xs font-semibold text-zinc-400 mb-1 uppercase tracking-wider">Tiêu đề</p>
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{template.subject}</p>
             </div>
           )}
           <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
-            <p className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Body</p>
+            <p className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Nội dung</p>
             <pre className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap font-sans leading-relaxed">{template.body}</pre>
           </div>
           <div>
-            <p className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Variables</p>
+            <p className="text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wider">Các biến khả dụng</p>
             <div className="flex flex-wrap gap-2">
               {template.variables.map((v) => (
                 <code key={v} className="px-2.5 py-1 bg-primary/10 text-primary text-xs rounded-lg font-mono">{v}</code>
@@ -167,7 +176,7 @@ export const NotificationConfig: React.FC = () => {
               : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
           >
             {tab === 'EMAIL' ? <Mail className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
-            {tab === 'EMAIL' ? 'Email' : 'In-app'}
+            {tab === 'EMAIL' ? 'Email' : 'Thông báo web'}
           </Button>
         ))}
       </div>
@@ -200,7 +209,7 @@ export const NotificationConfig: React.FC = () => {
                 variant="ghost"
                 className="flex items-center gap-1 text-xs text-zinc-400 hover:text-blue-500 transition-colors mt-2"
               >
-                <Eye className="w-3 h-3" />Preview
+                <Eye className="w-3 h-3" />Xem trước
               </Button>
             </div>
           ))}
@@ -224,7 +233,7 @@ export const NotificationConfig: React.FC = () => {
                     variant="outline"
                     className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-500 hover:text-blue-500 border border-zinc-200 dark:border-zinc-700 rounded-xl hover:border-blue-300 transition-all"
                   >
-                    <Eye className="w-4 h-4" />Preview
+                    <Eye className="w-4 h-4" />Xem trước
                   </Button>
                   <Button
                     onClick={() => setEditItem(null)}
@@ -274,7 +283,7 @@ export const NotificationConfig: React.FC = () => {
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Nội dung</label>
                   <div className="flex items-center gap-1 text-xs text-zinc-400">
-                    <Code className="w-3 h-3" />Hỗ trợ variables &#123;&#123;name&#125;&#125;
+                    <Code className="w-3 h-3" />Hỗ trợ các biến &#123;&#123;name&#125;&#125;
                   </div>
                 </div>
                 <textarea
@@ -286,7 +295,7 @@ export const NotificationConfig: React.FC = () => {
               </div>
 
               <div>
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Variables khả dụng — click để chèn</p>
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Các biến khả dụng — nhấn để chèn</p>
                 <div className="flex flex-wrap gap-2">
                   {eventVariables[editItem.event].map((v) => {
                     const name = v.slice(2, -2);
@@ -346,7 +355,7 @@ export const NotificationConfig: React.FC = () => {
           ) : (
             <div className="h-full min-h-80 flex flex-col items-center justify-center text-zinc-400 bg-white dark:bg-zinc-900/40 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-3xl">
               <Bell className="w-12 h-12 mb-3 opacity-20" />
-              <p className="text-sm">Chọn một template để chỉnh sửa</p>
+              <p className="text-sm">Chọn một mẫu thông báo để chỉnh sửa</p>
             </div>
           )}
         </div>
