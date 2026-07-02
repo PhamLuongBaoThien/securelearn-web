@@ -2,6 +2,7 @@ import { io, type Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 import { getAccessToken, getApiBaseUrl } from './apiClient';
 import type { NotificationItem, NotificationSocketEvents } from '@/types/notification.types';
+import { getActiveInboxTicket } from './inboxSocket';
 
 export const NOTIFICATION_REALTIME_EVENT = 'notification:realtime';
 export type NotificationRealtimeDetail =
@@ -29,8 +30,9 @@ const bindSocket = (client: Socket) => {
   client.on('connect_error', () => dispatch({ type: 'status', connected: false }));
   client.on('notification:new', (item: NotificationSocketEvents['notification:new']) => {
     dispatch({ type: 'new', item });
-    if (item.priority === 'HIGH') toast.warning(item.title, { description: item.body });
-    else toast.info(item.title, { description: item.body });
+    const activeTicket = getActiveInboxTicket();
+    const suppressToast = item.category === 'INBOX' && Boolean(activeTicket) && String(item.data?.ticketId || item.data?.resourceId || '') === activeTicket;
+    if (!suppressToast) { if (item.priority === 'HIGH') toast.warning(item.title, { description: item.body }); else toast.info(item.title, { description: item.body }); }
   });
   client.on('notification:read', (item: NotificationSocketEvents['notification:read']) => dispatch({ type: 'read', item }));
   client.on('notification:read-all', ({ readAt }: NotificationSocketEvents['notification:read-all']) => dispatch({ type: 'read-all', readAt }));
@@ -76,3 +78,4 @@ window.addEventListener('auth:session-expired', () => {
   socket?.disconnect();
   dispatch({ type: 'status', connected: false });
 });
+

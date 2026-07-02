@@ -29,13 +29,14 @@ import { toast } from 'sonner';
 import sidebarLogo from '@/assets/logoweb.png';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { useInboxUnread } from '@/hooks/useInboxUnread';
 
 import { Sidebar } from './Sidebar';
 import type { SidebarEntry } from './Sidebar';
 import { adminSubMenuVariants, adminTextVariants } from '@/components/animations/sidebar';
 
 // ===== Hàm tạo sidebar entries động theo role =====
-function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[]): SidebarEntry[] {
+function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[], inboxUnread = 0): SidebarEntry[] {
   const hasPerm = (p: string) => isSuperAdmin || permissions.includes(p);
 
   const rawGroups = [
@@ -80,7 +81,7 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[]): Side
       items: [
         { name: 'Gửi thông báo', path: '/admin/notifications/send', icon: <Send className="w-4 h-4 shrink-0" />, req: 'notif:manage' },
         { name: 'Lịch sử thông báo', path: '/admin/notifications/system', icon: <Bell className="w-4 h-4 shrink-0" />, req: 'notif:read' },
-        { name: 'Hỗ trợ & Báo cáo', path: '/admin/notifications/inbox', icon: <Inbox className="w-4 h-4 shrink-0" />, req: 'inbox:manage' },
+{ name: inboxUnread ? 'Hỗ trợ & Báo cáo (' + inboxUnread + ')' : 'Hỗ trợ & Báo cáo', path: '/admin/notifications/inbox', icon: <Inbox className="w-4 h-4 shrink-0" />, req: 'inbox:manage' },
         { name: 'Mẫu thông báo', path: '/admin/notifications/config', icon: <FileText className="w-4 h-4 shrink-0" />, req: 'notif:manage' },
       ],
     },
@@ -144,7 +145,8 @@ export const AdminLayout: React.FC = () => {
   };
 
   const userPermissions = user?.permissions ?? [];
-  const sidebarEntries = buildSidebarEntries(isSuperAdmin, userPermissions);
+  const inboxUnread = useInboxUnread(true);
+  const sidebarEntries = buildSidebarEntries(isSuperAdmin, userPermissions, inboxUnread);
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-[#0A0A0A] flex text-zinc-900 dark:text-zinc-100 font-sans selection:bg-primary/30">
@@ -181,3 +183,4 @@ export const AdminLayout: React.FC = () => {
     </div>
   );
 };
+

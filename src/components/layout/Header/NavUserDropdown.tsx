@@ -7,6 +7,7 @@ import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { NavbarUser } from './navbar.utils';
+import { useInboxUnread } from '@/hooks/useInboxUnread';
 
 interface NavUserDropdownProps {
   user: NavbarUser;
@@ -25,6 +26,7 @@ export const NavUserDropdown = ({
 }: NavUserDropdownProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const inboxUnread = useInboxUnread();
 
   // Đóng dropdown khi click bên ngoài
   useEffect(() => {
@@ -78,7 +80,7 @@ export const NavUserDropdown = ({
               { to: '/cart', label: 'Giỏ hàng' },
               { to: '/student/dashboard?tab=wishlist', label: 'Khóa học mong muốn' },
               { to: '/pricing', label: 'Thuê bao' },
-              { to: '/support', label: 'Hỗ trợ & góp ý' },
+              { to: '/support', label: inboxUnread ? 'Hỗ trợ & góp ý (' + inboxUnread + ')' : 'Hỗ trợ & góp ý' },
               ...(user.role === 'INSTRUCTOR' ? [{ to: '/instructor/dashboard', label: 'Bảng điều khiển Giảng viên', isInstructor: true }] : []),
               { to: '/student/dashboard?tab=payments', label: 'Lịch sử thanh toán' },
             ].map((item, idx) => (
@@ -114,3 +116,4 @@ export const NavUserDropdown = ({
     </div>
   );
 };
+

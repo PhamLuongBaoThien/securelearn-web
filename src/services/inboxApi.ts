@@ -8,10 +8,13 @@ import type {
   TicketStatus,
   TicketType,
   ReportTargetType,
+  CannedReply,
 } from "@/types/inbox.types";
 type R<T> = { status: "OK" | "ERR"; message?: string; data: T };
 const root = (admin = false) => (admin ? "/api/admin/inbox" : "/api/inbox");
 export const inboxApi = {
+  unreadCount: async (admin = false) => (await apiClient.get<R<{count:number}>>(`${root(admin)}/unread-count`)).data.data.count,
+  markRead: async (id:string, admin=false) => (await apiClient.post<R<{unreadCount:number}>>(`${root(admin)}/tickets/${id}/read`)).data.data,
   list: async (params: Record<string, unknown> = {}, admin = false) =>
     (await apiClient.get<R<TicketList>>(`${root(admin)}/tickets`, { params }))
       .data.data,
@@ -34,7 +37,7 @@ export const inboxApi = {
     (await apiClient.post<R<Ticket>>("/api/inbox/tickets", input)).data.data,
   message: async (
     id: string,
-    input: { content: string; internal?: boolean; attachmentIds?: string[] },
+    input: { content: string; internal?: boolean; attachmentIds?: string[]; silentNotification?: boolean },
     admin = false,
   ) =>
     (
@@ -60,6 +63,10 @@ export const inboxApi = {
       )
     ).data.data;
   },
+  cannedReplies: async (params: Record<string,unknown> = {}) => (await apiClient.get<R<{items:CannedReply[];total:number}>>("/api/admin/inbox/canned-replies",{params})).data.data,
+  createCannedReply: async (input:Partial<CannedReply>) => (await apiClient.post<R<CannedReply>>("/api/admin/inbox/canned-replies",input)).data.data,
+  updateCannedReply: async (id:string,input:Partial<CannedReply>) => (await apiClient.patch<R<CannedReply>>(`/api/admin/inbox/canned-replies/${id}`,input)).data.data,
+  deleteCannedReply: async (id:string) => (await apiClient.delete(`/api/admin/inbox/canned-replies/${id}`)).data,
   openAttachment: async (id: string, admin = false) => {
     const response = await apiClient.get(`${root(admin)}/attachments/${id}`, {
       responseType: "blob",
@@ -73,3 +80,4 @@ export const inboxApi = {
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   },
 };
+

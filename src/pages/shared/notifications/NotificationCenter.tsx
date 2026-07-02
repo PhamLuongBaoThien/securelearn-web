@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Bell, CheckCircle2, Clock, Settings, Inbox, Loader2, ChevronRight, Mail, Smartphone } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { notificationApi } from '@/services/notificationApi';
@@ -47,20 +47,34 @@ function getVisiblePages(currentPage: number, totalPages: number): Array<number 
   return items;
 }
 
+interface NotificationCache {
+  items: NotificationItem[];
+  total: number;
+  totalPages: number;
+  page: number;
+  filter: NotificationReadFilter;
+  category: NotificationCategory | '';
+  search: string;
+}
+
+let staticCache: NotificationCache | null = null;
+
 export function NotificationCenter() {
   const navigate = useNavigate();
   const isAdmin = useLocation().pathname.startsWith('/admin');
-  const [items, setItems] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<NotificationReadFilter>('all');
-  const [category, setCategory] = useState<NotificationCategory | ''>('');
-  const [searchDraft, setSearchDraft] = useState('');
-  const [search, setSearch] = useState('');
+  const [items, setItems] = useState<NotificationItem[]>(() => staticCache?.items || []);
+  const [loading, setLoading] = useState(() => !staticCache);
+  const [filter, setFilter] = useState<NotificationReadFilter>(() => staticCache?.filter || 'all');
+  const [category, setCategory] = useState<NotificationCategory | ''>(() => staticCache?.category || '');
+  const [searchDraft, setSearchDraft] = useState(() => staticCache?.search || '');
+  const [search, setSearch] = useState(() => staticCache?.search || '');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const [page, setPage] = useState(() => staticCache?.page || 1);
+  const [total, setTotal] = useState(() => staticCache?.total || 0);
+  const [totalPages, setTotalPages] = useState(() => staticCache?.totalPages || 0);
+  const loadSequence = useRef(0);
+  const knownItemIds = useRef(new Set<string>());
   const { count: unreadCount, setCount: setUnreadCount } = useUnreadNotifications(true);
 
   const [activeTab, setActiveTab] = useState<'inbox' | 'preferences'>('inbox');
@@ -73,8 +87,12 @@ export function NotificationCenter() {
 
   const visiblePages = useMemo(() => getVisiblePages(page, totalPages), [page, totalPages]);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (forceLoader = false) => {
+    const sequence = ++loadSequence.current;
+    const hasCache = staticCache && staticCache.items.length > 0;
+    if (forceLoader || !hasCache) {
+      setLoading(true);
+    }
     try {
       const data = await notificationApi.list({
         page,
@@ -86,26 +104,83 @@ export function NotificationCenter() {
         ...(from ? { from } : {}),
         ...(to ? { to } : {}),
       });
+      if (sequence !== loadSequence.current) return;
+      data.items.forEach(item => knownItemIds.current.add(item._id));
       setItems(data.items);
       setTotal(data.total);
       setTotalPages(data.totalPages);
+      staticCache = {
+        items: data.items,
+        total: data.total,
+        totalPages: data.totalPages,
+        page,
+        filter,
+        category,
+        search
+      };
     } catch (err) {
       console.error(err);
       toast.error('Không thể tải danh sách thông báo');
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
   };
 
-  useEffect(() => { void load(); }, [filter, category, search, from, to, page]);
+  useEffect(() => { void load(false); }, [filter, category, search, from, to, page]);
   useEffect(() => { setPage(1); }, [filter, category, search, from, to]);
+  useEffect(() => {
+    if (activeTab === 'inbox') void load(false);
+  }, [unreadCount, activeTab]);
   useEffect(() => {
     const handleRealtime = (event: Event) => {
       const detail = (event as CustomEvent<NotificationRealtimeDetail>).detail;
-      if (activeTab === 'inbox' && ['new', 'read', 'read-all', 'reconcile'].includes(detail.type)) void load();
+      if (activeTab !== 'inbox') return;
+      if (detail.type === 'new') {
+        const item = detail.item;
+        const normalizedSearch = search.trim().toLocaleLowerCase('vi-VN');
+        const createdAt = new Date(item.createdAt);
+        const matches = filter !== 'read'
+          && (!category || item.category === category)
+          && (!normalizedSearch || `${item.title} ${item.body}`.toLocaleLowerCase('vi-VN').includes(normalizedSearch))
+          && (!from || createdAt >= new Date(`${from}T00:00:00+07:00`))
+          && (!to || createdAt <= new Date(`${to}T23:59:59.999+07:00`));
+        if (!matches) return;
+        loadSequence.current += 1;
+        setLoading(false);
+        if (knownItemIds.current.has(item._id)) return;
+        knownItemIds.current.add(item._id);
+        setTotal(currentTotal => {
+          const next = currentTotal + 1;
+          setTotalPages(Math.ceil(next / 10));
+          return next;
+        });
+        if (page !== 1) setPage(1);
+        setItems(current => [item, ...current].slice(0, 10));
+        return;
+      }
+      if (detail.type === 'read') {
+        setItems(current => filter === 'unread'
+          ? current.filter(item => item._id !== detail.item._id)
+          : current.map(item => item._id === detail.item._id ? detail.item : item));
+        return;
+      }
+      if (detail.type === 'read-all') {
+        setItems(current => filter === 'unread'
+          ? []
+          : current.map(item => ({ ...item, readAt: item.readAt || detail.readAt })));
+        return;
+      }
+      if (detail.type === 'reconcile' || detail.type === 'unread-count') void load();
     };
     window.addEventListener(NOTIFICATION_REALTIME_EVENT, handleRealtime);
     return () => window.removeEventListener(NOTIFICATION_REALTIME_EVENT, handleRealtime);
+  }, [activeTab, filter, category, search, from, to, page]);
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && activeTab === 'inbox') void load();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [activeTab, filter, category, search, from, to, page]);
   const loadPreferences = async () => {
     setLoadingPrefs(true);
@@ -595,3 +670,7 @@ export function NotificationCenter() {
     </div>
   );
 }
+
+
+
+

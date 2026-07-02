@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useInboxUnread } from '@/hooks/useInboxUnread';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { toggleTheme } from '@/features/dashboard/uiSlice';
@@ -44,6 +45,8 @@ export const InstructorLayout: React.FC = () => {
     navigate('/student/dashboard');
   };
 
+  const inboxUnread = useInboxUnread();
+
   const instructorEntries: SidebarEntry[] = [
     {
       type: 'label',
@@ -72,7 +75,7 @@ export const InstructorLayout: React.FC = () => {
         items: [
           { name: 'Hỏi đáp & Tin nhắn', path: '/instructor/communication', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
           { name: unreadNotifications ? 'Thông báo (' + unreadNotifications + ')' : 'Thông báo', path: '/instructor/notifications', icon: <Bell className="w-5 h-5 shrink-0" /> },
-          { name: 'Hỗ trợ & góp ý', path: '/support', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
+{ name: inboxUnread ? 'Hỗ trợ & góp ý (' + inboxUnread + ')' : 'Hỗ trợ & góp ý', path: '/support', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
         ],
       }
     },
@@ -138,4 +141,6 @@ export const InstructorLayout: React.FC = () => {
     </div>
   );
 };
+
+
 

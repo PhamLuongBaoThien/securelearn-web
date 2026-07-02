@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { ElementType } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { inboxApi } from '@/services/inboxApi';
-import type { TicketStatus, TicketType, TicketActivity } from '@/types/inbox.types';
+import { INBOX_REALTIME_EVENT, emitInboxTyping, isInboxConnected, retainInboxSocket, subscribeInboxTicket, type InboxRealtimeDetail } from '@/services/inboxSocket';
+import type { TicketStatus, TicketType, TicketActivity, TicketMessage } from '@/types/inbox.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { TicketPagination } from '@/components/inbox/TicketPagination';
+
+import { CannedReplyManager } from '@/components/inbox/CannedReplyManager';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, HelpCircle, MessageSquare, Send, User, Shield, BookOpen, Play, Star, FileText, Loader2, ChevronRight, Paperclip, FileIcon, X, History } from 'lucide-react';
 
@@ -58,6 +60,13 @@ interface ApiError {
 
 export const Inbox = () => {
   const queryClient = useQueryClient();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [allMessages, setAllMessages] = useState<TicketMessage[]>([]);
+  const scrollHeightRef = useRef<number>(0);
+  const shouldScrollToBottomRef = useRef<boolean>(true);
+
+
   const [params, setParams] = useSearchParams();
   const [selected, setSelected] = useState(params.get('id') || '');
   const [searchDraft, setSearchDraft] = useState('');
@@ -69,7 +78,36 @@ export const Inbox = () => {
   const [messagePage, setMessagePage] = useState(1);
   const [activityPage, setActivityPage] = useState(1);
   const [files, setFiles] = useState<File[]>([]);
+  const [socketConnected, setSocketConnected] = useState(isInboxConnected());
+  const [typing, setTyping] = useState(false);
 
+  useEffect(() => retainInboxSocket(), []);
+  useEffect(() => selected ? subscribeInboxTicket(selected) : undefined, [selected]);
+  useEffect(() => {
+    let typingTimer: ReturnType<typeof setTimeout> | undefined;
+    const handler = (event: Event) => {
+      const d = (event as CustomEvent<InboxRealtimeDetail>).detail;
+      if (d.type === 'status') { setSocketConnected(d.connected); if(!d.connected)setTyping(false); }
+      if (['reconcile','ticket-new','ticket-updated','read'].includes(d.type)) { void queryClient.invalidateQueries({ queryKey: ['adminInboxList'] }); if (selected) void queryClient.invalidateQueries({ queryKey: ['adminInboxDetail', selected] }); }
+      if (d.type === 'message-new') {
+        void queryClient.invalidateQueries({ queryKey: ['adminInboxList'] });
+        const newMsg = d.payload as TicketMessage;
+        if (newMsg && newMsg.ticketId === selected) {
+          setAllMessages(prev => {
+            if (prev.some(m => m._id === newMsg._id)) return prev;
+            shouldScrollToBottomRef.current = true;
+            return [...prev, newMsg];
+          });
+          void queryClient.invalidateQueries({ queryKey: ['adminInboxDetail', selected] });
+        } else if (selected) {
+          void queryClient.invalidateQueries({ queryKey: ['adminInboxDetail', selected] });
+        }
+      }
+      if (d.type === 'typing' && d.ticketId === selected && d.identityType === 'USER') { setTyping(d.typing); clearTimeout(typingTimer); if(d.typing) typingTimer=setTimeout(()=>setTyping(false),5000); }
+    };
+    window.addEventListener(INBOX_REALTIME_EVENT, handler); return () => { window.removeEventListener(INBOX_REALTIME_EVENT, handler); clearTimeout(typingTimer); };
+  }, [queryClient, selected]);
+  useEffect(() => { if(socketConnected || document.hidden) return; const timer=setInterval(()=>{void queryClient.invalidateQueries({queryKey:['adminInboxList']});if(selected)void queryClient.invalidateQueries({queryKey:['adminInboxDetail',selected]});},15000);return()=>clearInterval(timer);},[socketConnected,selected,queryClient]);
   // Đồng bộ ID được chọn lên URL search params
   useEffect(() => {
     if (selected) {
@@ -85,6 +123,8 @@ export const Inbox = () => {
       setMessagePage(1);
       setActivityPage(1);
       setFiles([]);
+      setAllMessages([]);
+      shouldScrollToBottomRef.current = true;
     }, 0);
     return () => clearTimeout(timer);
   }, [selected]);
@@ -99,12 +139,60 @@ export const Inbox = () => {
   const items = listData?.items || [];
 
   // Query: Chi tiết ticket
-  const { data: detail, isLoading: isLoadingDetail } = useQuery({
+  const { data: detail, isLoading: isLoadingDetail, isFetching: isFetchingDetail } = useQuery({
     queryKey: ['adminInboxDetail', selected, messagePage, activityPage],
     queryFn: () => inboxApi.detail(selected, true, { messagePage, activityPage }),
     enabled: Boolean(selected),
   });
 
+  const loadMoreMessages = () => {
+    if (!detail || messagePage >= detail.messages.totalPages || isFetchingDetail) return;
+    const container = chatContainerRef.current;
+    if (container) {
+      scrollHeightRef.current = container.scrollHeight;
+    }
+    shouldScrollToBottomRef.current = false;
+    setMessagePage(prev => prev + 1);
+  };
+
+  useEffect(() => {
+    if (!detail) return;
+    if (messagePage === 1) {
+      setAllMessages(detail.messages.items);
+      shouldScrollToBottomRef.current = true;
+    } else {
+      setAllMessages(prev => {
+        const existingIds = new Set(prev.map(m => m._id));
+        const newItems = detail.messages.items.filter(m => !existingIds.has(m._id));
+        return [...newItems, ...prev];
+      });
+    }
+  }, [detail, messagePage]);
+
+  useEffect(() => {
+    if (!detail) return;
+    const container = chatContainerRef.current;
+    if (!container) return;
+
+    if (shouldScrollToBottomRef.current) {
+      const timer = setTimeout(() => {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    } else {
+      const newScrollHeight = container.scrollHeight;
+      const diff = newScrollHeight - scrollHeightRef.current;
+      if (diff > 0) {
+        container.scrollTop = diff;
+      }
+      shouldScrollToBottomRef.current = true;
+    }
+  }, [allMessages.length, selected]);
+
+  useEffect(() => { if(!selected) return; void inboxApi.markRead(selected,true).then(()=>queryClient.invalidateQueries({queryKey:['adminInboxList']})); }, [selected, allMessages.length, queryClient]);
   // Mutation: Gửi tin nhắn phản hồi
   const replyMutation = useMutation({
     mutationFn: async () => {
@@ -116,6 +204,8 @@ export const Inbox = () => {
       setReply('');
       toast.success('Đã gửi phản hồi.');
       void queryClient.invalidateQueries({ queryKey: ['adminInboxList'] });
+      setMessagePage(1);
+      shouldScrollToBottomRef.current = true;
       void queryClient.invalidateQueries({ queryKey: ['adminInboxDetail', selected] });
     },
     onError: (e: ApiError) => {
@@ -259,10 +349,10 @@ export const Inbox = () => {
                     
                     <div className="flex-1 min-w-0 pr-4">
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`text-sm text-foreground truncate block ${t.adminUnread ? 'font-bold text-primary' : 'font-medium'}`}>
+                        <span className={`text-sm text-foreground truncate block ${t.unread ? 'font-bold text-primary' : 'font-medium'}`}>
                           {t.title}
                         </span>
-                        {t.adminUnread && (
+                        {t.unread && (
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary ring-4 ring-primary/10" />
                         )}
                       </div>
@@ -351,10 +441,31 @@ export const Inbox = () => {
                   </div>
                 )}
 
+                {detail.messages.page < detail.messages.totalPages && (
+                  <div className="flex justify-center pb-2 border-b border-border/45 mb-2 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={loadMoreMessages}
+                      disabled={isFetchingDetail}
+                      className="text-xs text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1.5 rounded-xl border border-border/50 hover:bg-muted/50 py-1.5 px-3"
+                    >
+                      {isFetchingDetail ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                          Đang tải tin nhắn cũ...
+                        </>
+                      ) : (
+                        'Xem tin nhắn cũ hơn'
+                      )}
+                    </Button>
+                  </div>
+                )}
+
                 {/* Chat window */}
-                <div className="max-h-[380px] min-h-[250px] space-y-4 overflow-y-auto pr-1 py-2 border-b border-border/40">
+                <div ref={chatContainerRef} className="max-h-[380px] min-h-[250px] space-y-4 overflow-y-auto pr-1 py-2 border-b border-border/40">
                   <AnimatePresence initial={false}>
-                    {detail.messages.items.map((m) => {
+                    {allMessages.map((m) => {
                       const isInternal = m.internal;
                       const isFromAdmin = m.author.type === 'ADMIN';
                       
@@ -425,7 +536,7 @@ export const Inbox = () => {
                     })}
                   </AnimatePresence>
                 
-                  <TicketPagination page={detail.messages.page} totalPages={detail.messages.totalPages} onChange={setMessagePage} /></div>
+                  <div ref={messagesEndRef} className="h-6" /></div>
                  {(() => {
                    const statusActivities = detail.activities.items.filter(act => act.action === 'STATUS_CHANGED');
                    if (statusActivities.length === 0) return null;
@@ -457,6 +568,8 @@ export const Inbox = () => {
                       Chế độ Ghi chú nội bộ (Người dùng không nhìn thấy)
                     </div>
                   )}
+                  {!internal && <CannedReplyManager ticketType={detail.type} onInsert={setReply} />}
+                  {typing && <p className="text-xs text-muted-foreground">Người dùng đang nhập…</p>}
                   <textarea
                     className={`min-h-24 w-full rounded-2xl border bg-transparent p-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/10 ${
                       internal 
@@ -464,7 +577,7 @@ export const Inbox = () => {
                         : 'border-border focus:border-primary'
                     }`}
                     value={reply}
-                    onChange={(e) => setReply(e.target.value)}
+                    onChange={(e) => { setReply(e.target.value); if(selected && !internal) emitInboxTyping(selected,true); }}
                     placeholder={
                       internal
                         ? 'Nhập ghi chú chỉ các quản trị viên nhìn thấy với nhau...'
@@ -510,3 +623,8 @@ export const Inbox = () => {
     </div>
   );
 };
+
+
+
+
+
