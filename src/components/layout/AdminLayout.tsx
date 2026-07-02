@@ -32,6 +32,7 @@ import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 import { Sidebar } from './Sidebar';
 import type { SidebarEntry } from './Sidebar';
+import { adminSubMenuVariants, adminTextVariants } from '@/components/animations/sidebar';
 
 // ===== Hàm tạo sidebar entries động theo role =====
 function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[]): SidebarEntry[] {
@@ -161,6 +162,8 @@ export const AdminLayout: React.FC = () => {
           />
         }
         profileLink="/admin/profile"
+        subMenuVariants={adminSubMenuVariants}
+        textVariants={adminTextVariants}
         theme={theme}
         onThemeChange={handleThemeChange}
         onLogout={handleLogout}

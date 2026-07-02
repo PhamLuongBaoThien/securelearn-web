@@ -1,27 +1,16 @@
 import { useEffect, useState } from 'react';
+import type { ElementType } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { inboxApi } from '@/services/inboxApi';
-import type { TicketStatus, TicketType } from '@/types/inbox.types';
+import type { TicketStatus, TicketType, TicketActivity } from '@/types/inbox.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { TicketPagination } from '@/components/inbox/TicketPagination';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  AlertTriangle,
-  HelpCircle,
-  MessageSquare,
-  Send,
-  User,
-  Shield,
-  BookOpen,
-  Play,
-  Star,
-  FileText,
-  Loader2,
-  ChevronRight
-} from 'lucide-react';
+import { AlertTriangle, HelpCircle, MessageSquare, Send, User, Shield, BookOpen, Play, Star, FileText, Loader2, ChevronRight, Paperclip, FileIcon, X, History } from 'lucide-react';
 
 const label: Record<string, string> = {
   REPORT: 'Báo cáo',
@@ -38,7 +27,7 @@ const label: Record<string, string> = {
   USER: 'Người dùng',
 };
 
-const typeStyles: Record<string, { icon: any; label: string; color: string; bg: string; border: string }> = {
+const typeStyles: Record<string, { icon: ElementType; label: string; color: string; bg: string; border: string }> = {
   REPORT: { icon: AlertTriangle, label: 'Báo cáo', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-950/20', border: 'border-rose-200 dark:border-rose-900/50' },
   SUPPORT: { icon: HelpCircle, label: 'Hỗ trợ', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/20', border: 'border-blue-200 dark:border-blue-900/50' },
   FEEDBACK: { icon: MessageSquare, label: 'Góp ý', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/20', border: 'border-emerald-200 dark:border-emerald-900/50' },
@@ -52,12 +41,20 @@ const statusStyles: Record<string, { label: string; badge: string }> = {
   CLOSED: { label: 'Đã đóng', badge: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700' },
 };
 
-const targetIcons: Record<string, any> = {
+const targetIcons: Record<string, ElementType> = {
   COURSE: BookOpen,
   LESSON: Play,
   REVIEW: Star,
   USER: User,
 };
+
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
 
 export const Inbox = () => {
   const queryClient = useQueryClient();
@@ -69,6 +66,9 @@ export const Inbox = () => {
   const [status, setStatus] = useState('');
   const [reply, setReply] = useState('');
   const [internal, setInternal] = useState(false);
+  const [messagePage, setMessagePage] = useState(1);
+  const [activityPage, setActivityPage] = useState(1);
+  const [files, setFiles] = useState<File[]>([]);
 
   // Đồng bộ ID được chọn lên URL search params
   useEffect(() => {
@@ -78,6 +78,15 @@ export const Inbox = () => {
       params.delete('id');
       setParams(params);
     }
+  }, [selected]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMessagePage(1);
+      setActivityPage(1);
+      setFiles([]);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [selected]);
 
   // Query: Danh sách ticket
@@ -91,15 +100,17 @@ export const Inbox = () => {
 
   // Query: Chi tiết ticket
   const { data: detail, isLoading: isLoadingDetail } = useQuery({
-    queryKey: ['adminInboxDetail', selected],
-    queryFn: () => inboxApi.detail(selected, true),
+    queryKey: ['adminInboxDetail', selected, messagePage, activityPage],
+    queryFn: () => inboxApi.detail(selected, true, { messagePage, activityPage }),
     enabled: Boolean(selected),
   });
 
   // Mutation: Gửi tin nhắn phản hồi
   const replyMutation = useMutation({
     mutationFn: async () => {
-      return inboxApi.message(selected, { content: reply, internal }, true);
+      let attachmentIds: string[] = [];
+      if (files.length) attachmentIds = (await inboxApi.upload(selected, files, true)).map(item => item._id);
+      return inboxApi.message(selected, { content: reply.trim() || 'Gửi tệp đính kèm', internal, attachmentIds }, true);
     },
     onSuccess: () => {
       setReply('');
@@ -107,7 +118,7 @@ export const Inbox = () => {
       void queryClient.invalidateQueries({ queryKey: ['adminInboxList'] });
       void queryClient.invalidateQueries({ queryKey: ['adminInboxDetail', selected] });
     },
-    onError: (e: any) => {
+    onError: (e: ApiError) => {
       toast.error(e?.response?.data?.message || 'Không thể gửi phản hồi.');
     }
   });
@@ -122,18 +133,55 @@ export const Inbox = () => {
       void queryClient.invalidateQueries({ queryKey: ['adminInboxList'] });
       void queryClient.invalidateQueries({ queryKey: ['adminInboxDetail', selected] });
     },
-    onError: (e: any) => {
+    onError: (e: ApiError) => {
       toast.error(e?.response?.data?.message || 'Không thể cập nhật trạng thái.');
     }
   });
 
   const send = () => {
-    if (!reply.trim()) return;
+    if (!reply.trim() && !files.length) return;
     replyMutation.mutate();
   };
 
   const handleStatusChange = (newStatus: TicketStatus) => {
     statusMutation.mutate(newStatus);
+  };
+  const messageAttachments = (ids: string[]) => detail?.attachments.filter(item => ids.includes(item._id)) || [];
+  const handleFiles = (selectedFiles: FileList | null) => {
+    const valid = Array.from(selectedFiles || []).filter(file => {
+      if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} vượt quá 10MB.`); return false; }
+      if (!['image/jpeg','image/png','image/webp','application/pdf'].includes(file.type)) { toast.error(`${file.name} không đúng định dạng.`); return false; }
+      return true;
+    }).slice(0, 5);
+    setFiles(valid);
+  };
+  const formatActivityAction = (act: TicketActivity) => {
+    const actorName = act.actor.name || 'Hệ thống';
+    
+    switch (act.action) {
+      case 'CREATED':
+        return `${actorName} đã tạo yêu cầu`;
+      case 'REPLIED':
+        if (act.actor.type === 'ADMIN') {
+          return `${actorName} (Quản trị viên) đã phản hồi`;
+        }
+        const createdActivity = detail?.activities.items.find(x => x.action === 'CREATED');
+        if (createdActivity) {
+          const diffMs = Math.abs(new Date(act.createdAt).getTime() - new Date(createdActivity.createdAt).getTime());
+          if (diffMs < 20000) {
+            return `${actorName} đã đính kèm tệp tin`;
+          }
+        }
+        return `${actorName} đã phản hồi`;
+      case 'INTERNAL_NOTE':
+        return `${actorName} (Quản trị viên) đã thêm ghi chú nội bộ`;
+      case 'STATUS_CHANGED':
+        const fromStr = label[act.fromValue || ''] || act.fromValue || 'Không rõ';
+        const toStr = label[act.toValue || ''] || act.toValue || 'Không rõ';
+        return `${actorName} đã cập nhật trạng thái từ [${fromStr}] sang [${toStr}]`;
+      default:
+        return `${actorName} · ${act.action}`;
+    }
   };
 
   return (
@@ -306,7 +354,7 @@ export const Inbox = () => {
                 {/* Chat window */}
                 <div className="max-h-[380px] min-h-[250px] space-y-4 overflow-y-auto pr-1 py-2 border-b border-border/40">
                   <AnimatePresence initial={false}>
-                    {detail.messages.map((m) => {
+                    {detail.messages.items.map((m) => {
                       const isInternal = m.internal;
                       const isFromAdmin = m.author.type === 'ADMIN';
                       
@@ -325,7 +373,11 @@ export const Inbox = () => {
                               </div>
                               <p className="mt-1 text-amber-900/90 dark:text-amber-300/90 whitespace-pre-wrap leading-relaxed">
                                 {m.content}
+                                {messageAttachments(m.attachmentIds).map(attachment => <button key={attachment._id} type="button" onClick={() => void inboxApi.openAttachment(attachment._id, true)} className="mt-2 flex w-full items-center gap-2 rounded-lg border border-amber-300/50 px-2 py-1.5 text-xs"><FileIcon className="h-4 w-4"/><span className="truncate">{attachment.originalName}</span></button>)}
                               </p>
+                              <span className="text-[9px] text-amber-800/60 dark:text-amber-400/60 mt-1.5 block text-right font-medium">
+                                {new Date(m.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · {new Date(m.createdAt).toLocaleDateString('vi-VN')}
+                              </span>
                             </div>
                           </motion.div>
                         );
@@ -356,6 +408,10 @@ export const Inbox = () => {
                               }`}
                             >
                               {m.content}
+                              {messageAttachments(m.attachmentIds).map(attachment => <button key={attachment._id} type="button" onClick={() => void inboxApi.openAttachment(attachment._id, true)} className="mt-2 flex w-full items-center gap-2 rounded-lg border border-current/20 px-2 py-1.5 text-xs"><FileIcon className="h-4 w-4"/><span className="truncate">{attachment.originalName}</span></button>)}
+                              <span className={`text-[9px] mt-1.5 block text-right font-medium ${isFromAdmin ? 'text-primary-foreground/75' : 'text-muted-foreground/80'}`}>
+                                {new Date(m.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · {new Date(m.createdAt).toLocaleDateString('vi-VN')}
+                              </span>
                             </div>
                           </div>
 
@@ -368,7 +424,28 @@ export const Inbox = () => {
                       );
                     })}
                   </AnimatePresence>
-                </div>
+                
+                  <TicketPagination page={detail.messages.page} totalPages={detail.messages.totalPages} onChange={setMessagePage} /></div>
+                 {(() => {
+                   const statusActivities = detail.activities.items.filter(act => act.action === 'STATUS_CHANGED');
+                   if (statusActivities.length === 0) return null;
+                   return (
+                     <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 space-y-3">
+                       <h3 className="flex items-center gap-2 text-sm font-bold">
+                         <History className="h-4 w-4" />
+                         Lịch sử xử lý
+                       </h3>
+                       <div className="space-y-2">
+                         {statusActivities.map(activity => (
+                           <div key={activity._id} className="flex justify-between gap-3 text-xs text-muted-foreground">
+                             <span>{formatActivityAction(activity)}</span>
+                             <span>{new Date(activity.createdAt).toLocaleString('vi-VN')}</span>
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   );
+                 })()}
               </div>
 
               {/* Input section */}
@@ -394,7 +471,9 @@ export const Inbox = () => {
                         : 'Nhập nội dung phản hồi gửi trực tiếp đến người dùng...'
                     }
                   />
+                  {files.length > 0 && <div className="flex flex-wrap gap-2">{files.map((file,index)=><span key={`${file.name}-${index}`} className="flex items-center gap-1 rounded-lg border px-2 py-1 text-xs"><FileIcon className="h-3.5 w-3.5"/>{file.name}<button onClick={()=>setFiles(current=>current.filter((_,i)=>i!==index))}><X className="h-3.5 w-3.5"/></button></span>)}</div>}
                   <div className="flex items-center justify-between">
+                    <label className="cursor-pointer text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Paperclip className="h-4 w-4"/>Đính kèm ({files.length}/5)<input className="hidden" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event)=>handleFiles(event.target.files)}/></label>
                     <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer select-none">
                       <input
                         type="checkbox"
@@ -405,7 +484,7 @@ export const Inbox = () => {
                       Ghi chú nội bộ
                     </label>
                     <Button 
-                      disabled={!reply.trim() || replyMutation.isPending} 
+                      disabled={(!reply.trim() && !files.length) || replyMutation.isPending} 
                       onClick={send}
                       variant={internal ? "secondary" : "default"}
                       className="rounded-xl px-5 flex items-center gap-2"

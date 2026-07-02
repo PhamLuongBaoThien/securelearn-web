@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { Variants } from 'framer-motion';
 import {
   Menu,
   ChevronLeft,
@@ -10,6 +12,7 @@ import {
   Sun,
   Monitor,
 } from 'lucide-react';
+import { sidebarSubMenuVariants, sidebarTextVariants } from '@/components/animations/sidebar';
 
 export interface MenuItem {
   name: string;
@@ -44,7 +47,7 @@ export interface SidebarProps {
   userFullName?: string;
   userEmail?: string;
   userAvatarNode?: React.ReactNode;
-  userBadgeNode?: React.ReactNode; // Badge vai trò hiển thị bên dưới email
+  userBadgeNode?: React.ReactNode;
   profileLink?: string;
   
   // Theme
@@ -55,7 +58,22 @@ export interface SidebarProps {
   onLogout?: () => void;
 
   logoSrc: string;
+
+  // Custom animations configuration
+  subMenuVariants?: Variants;
+  textVariants?: Variants;
 }
+
+// Sidebar Animation Context to prevent prop drilling down to recursive sub-menus
+interface SidebarAnimationContextType {
+  subMenuVariants: Variants;
+  textVariants: Variants;
+}
+
+const SidebarAnimationContext = createContext<SidebarAnimationContextType>({
+  subMenuVariants: sidebarSubMenuVariants,
+  textVariants: sidebarTextVariants,
+});
 
 // Recursive Menu Item for nested subcategories
 const RecursiveMenuItem: React.FC<{
@@ -64,6 +82,7 @@ const RecursiveMenuItem: React.FC<{
   currentPath: string;
   isTopLevel?: boolean;
 }> = ({ item, collapsed, currentPath, isTopLevel = false }) => {
+  const { subMenuVariants, textVariants } = useContext(SidebarAnimationContext);
   const hasChildren = item.children && item.children.length > 0;
   
   const isDescendantActive = (m: MenuItem): boolean => {
@@ -73,7 +92,7 @@ const RecursiveMenuItem: React.FC<{
   };
   
   const isActive = isDescendantActive(item);
-  const [open, setOpen] = useState(false); // Default closed for cleaner look, or isActive if preferred
+  const [open, setOpen] = useState(isActive);
 
   useEffect(() => {
     if (isActive) {
@@ -105,7 +124,19 @@ const RecursiveMenuItem: React.FC<{
             <span className={`shrink-0 ${linkActive && isTopLevel ? 'text-primary' : ''}`}>
               {item.icon}
             </span>
-            {!collapsed && <span className="break-words line-clamp-2">{item.name}</span>}
+            <AnimatePresence initial={false}>
+              {!collapsed && (
+                <motion.span
+                  variants={textVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  className="break-words line-clamp-2 truncate whitespace-nowrap overflow-hidden"
+                >
+                  {item.name}
+                </motion.span>
+              )}
+            </AnimatePresence>
             {linkActive && !collapsed && isTopLevel && (
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md shadow-[0_0_10px_theme('colors.primary.DEFAULT')]" />
             )}
@@ -134,9 +165,19 @@ const RecursiveMenuItem: React.FC<{
               <span className={`shrink-0 ${linkActive && isTopLevel ? 'text-primary' : ''}`}>
                 {item.icon}
               </span>
-              {!collapsed && (
-                <span className={`flex-1 text-left break-words line-clamp-2 ${isActive ? 'font-medium text-primary' : ''}`}>{item.name}</span>
-              )}
+              <AnimatePresence initial={false}>
+                {!collapsed && (
+                  <motion.span
+                    variants={textVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    className={`flex-1 text-left break-words line-clamp-2 truncate whitespace-nowrap overflow-hidden ${isActive ? 'font-medium text-primary' : ''}`}
+                  >
+                    {item.name}
+                  </motion.span>
+                )}
+              </AnimatePresence>
               {linkActive && !collapsed && isTopLevel && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md shadow-[0_0_10px_theme('colors.primary.DEFAULT')]" />
               )}
@@ -156,18 +197,26 @@ const RecursiveMenuItem: React.FC<{
         )}
       </div>
 
-      {!collapsed && open && (
-        <div className="ml-4 mt-1 pl-3 border-l border-zinc-200 dark:border-zinc-800 space-y-1">
-          {item.children!.map((child, idx) => (
-            <RecursiveMenuItem
-              key={child.path + idx}
-              item={child}
-              collapsed={collapsed}
-              currentPath={currentPath}
-            />
-          ))}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {!collapsed && open && (
+          <motion.div
+            variants={subMenuVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            className="ml-4 mt-1 pl-3 border-l border-zinc-200 dark:border-zinc-800 space-y-1 overflow-hidden"
+          >
+            {item.children!.map((child, idx) => (
+              <RecursiveMenuItem
+                key={child.path + idx}
+                item={child}
+                collapsed={collapsed}
+                currentPath={currentPath}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -178,6 +227,7 @@ const GroupMenu: React.FC<{
   collapsed: boolean;
   currentPath: string;
 }> = ({ group, collapsed, currentPath }) => {
+  const { subMenuVariants, textVariants } = useContext(SidebarAnimationContext);
   const isGroupActive = group.items.some((item) => currentPath.startsWith(item.path));
   const [open, setOpen] = useState(isGroupActive);
 
@@ -192,7 +242,7 @@ const GroupMenu: React.FC<{
   };
 
   return (
-    <div>
+    <div className="w-full">
       {/* Group Header */}
       <button
         onClick={toggleOpen}
@@ -206,29 +256,45 @@ const GroupMenu: React.FC<{
         <span className={`shrink-0 ${isGroupActive ? 'text-primary' : ''}`}>
           {group.groupIcon}
         </span>
-        {!collapsed && (
-          <>
-            <span className="flex-1 text-left font-medium text-sm break-words line-clamp-2 pr-2">{group.groupName}</span>
-            <span className="transition-transform duration-200">
-              {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </span>
-          </>
-        )}
+        <AnimatePresence initial={false}>
+          {!collapsed && (
+            <motion.div
+              variants={textVariants}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              className="flex-1 flex items-center justify-between overflow-hidden whitespace-nowrap"
+            >
+              <span className="flex-1 text-left font-medium text-sm truncate pr-2">{group.groupName}</span>
+              <span className="transition-transform duration-200 shrink-0">
+                {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </button>
 
       {/* Group Items */}
-      {!collapsed && open && (
-        <div className="ml-3 mt-1 pl-3 border-l border-zinc-200 dark:border-zinc-800 space-y-1">
-          {group.items.map((item, idx) => (
-            <RecursiveMenuItem
-              key={item.path + idx}
-              item={item}
-              collapsed={collapsed}
-              currentPath={currentPath}
-            />
-          ))}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {!collapsed && open && (
+          <motion.div
+            variants={subMenuVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            className="ml-3 mt-1 pl-3 border-l border-zinc-200 dark:border-zinc-800 space-y-1 overflow-hidden"
+          >
+            {group.items.map((item, idx) => (
+              <RecursiveMenuItem
+                key={item.path + idx}
+                item={item}
+                collapsed={collapsed}
+                currentPath={currentPath}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -246,7 +312,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   theme,
   onThemeChange,
   onLogout,
-  logoSrc
+  logoSrc,
+  subMenuVariants = sidebarSubMenuVariants,
+  textVariants = sidebarTextVariants,
 }) => {
   const location = useLocation();
   const navRef = useRef<HTMLDivElement | null>(null);
@@ -270,157 +338,187 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside
-      className={`${collapsed ? 'w-20' : 'w-72'} bg-white/80 dark:bg-zinc-950/50 backdrop-blur-xl border-r border-zinc-200 dark:border-zinc-800/60 flex flex-col fixed h-full z-20 transition-[width] duration-200 ease-out will-change-[width]`}
-    >
-      {/* Header Sidebar */}
-      <div className="h-20 flex items-center justify-between px-4 border-b border-zinc-200 dark:border-zinc-800/60 shrink-0">
-        <div
-          className={`flex items-center gap-3 text-primary overflow-hidden transition-[width,opacity] duration-200 ease-out ${collapsed ? 'opacity-0 w-0' : 'w-[calc(100%-3.5rem)] opacity-100'}`}
-        >
-          <div className="bg-primary/10 p-2 rounded-xl shrink-0">
-            <img src={logoSrc} alt="SecureLearn logo" className="w-6 h-6 object-contain" />
+    <SidebarAnimationContext.Provider value={{ subMenuVariants, textVariants }}>
+      <aside
+        className={`${collapsed ? 'w-20' : 'w-72'} bg-white/80 dark:bg-zinc-950/50 backdrop-blur-xl border-r border-zinc-200 dark:border-zinc-800/60 flex flex-col fixed h-full z-20 transition-[width] duration-200 ease-out will-change-[width]`}
+      >
+        {/* Header Sidebar */}
+        <div className="h-20 flex items-center justify-between px-4 border-b border-zinc-200 dark:border-zinc-800/60 shrink-0">
+          <div
+            className={`flex items-center gap-3 text-primary overflow-hidden transition-[width,opacity] duration-200 ease-out ${collapsed ? 'opacity-0 w-0' : 'w-[calc(100%-3.5rem)] opacity-100'}`}
+          >
+            <div className="bg-primary/10 p-2 rounded-xl shrink-0">
+              <img src={logoSrc} alt="SecureLearn logo" className="w-6 h-6 object-contain" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white whitespace-nowrap">Secure Learn</h1>
+              {roleTitle && <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{roleTitle}</p>}
+            </div>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white whitespace-nowrap">Secure Learn</h1>
-            {roleTitle && <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400 whitespace-nowrap">{roleTitle}</p>}
-          </div>
+
+          <button
+            onClick={onToggleCollapsed}
+            className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors flex-shrink-0"
+          >
+            {collapsed ? <Menu className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          </button>
         </div>
 
-        <button
-          onClick={onToggleCollapsed}
-          className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors flex-shrink-0"
-        >
-          {collapsed ? <Menu className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-        </button>
-      </div>
-
-      {/* User Info */}
-      {profileLink ? (
-        <>
-          {!collapsed && (
-            <NavLink
-              to={profileLink}
-              className={({ isActive }) =>
-                `p-4 flex items-center gap-3 shrink-0 rounded-xl mx-3 mt-2 transition-colors duration-150 ${
-                  isActive
-                    ? 'bg-primary/10 ring-1 ring-primary/20'
-                    : 'hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                }`
-              }
-              title="Quản lý tài khoản"
-            >
-              {userAvatarNode}
-              <div className="flex flex-col overflow-hidden gap-0.5">
-                <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{userFullName}</span>
-                <span className="text-xs text-zinc-500 truncate">{userEmail}</span>
-                {userBadgeNode}
-              </div>
-            </NavLink>
-          )}
-          {collapsed && (
-            <NavLink
-              to={profileLink}
-              title="Quản lý tài khoản"
-              className="flex items-center justify-center p-3 mx-3 mt-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
-            >
-              {userAvatarNode}
-            </NavLink>
-          )}
-        </>
-      ) : (
-        <>
-          {!collapsed && (
-            <div className="p-4 flex items-center gap-3 shrink-0 rounded-xl mx-3 mt-2 transition-colors duration-150 hover:bg-zinc-100 dark:hover:bg-zinc-900">
-              {userAvatarNode}
-              <div className="flex flex-col overflow-hidden gap-0.5">
-                <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{userFullName}</span>
-                <span className="text-xs text-zinc-500 truncate">{userEmail}</span>
-                {userBadgeNode}
-              </div>
-            </div>
-          )}
-          {collapsed && (
-            <div className="flex items-center justify-center p-3 mx-3 mt-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-              {userAvatarNode}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Navigation */}
-      <nav ref={navRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar ${collapsed ? 'mt-4 space-y-2' : 'mt-2 space-y-1'}`}>
-        {entries.map((entry, idx) => {
-          if (entry.type === 'single') {
-            return (
-              <RecursiveMenuItem
-                key={entry.path + idx}
-                item={entry as MenuItem}
-                collapsed={collapsed}
-                currentPath={location.pathname}
-                isTopLevel={true}
-              />
-            );
-          } else if (entry.type === 'group') {
-            return (
-              <GroupMenu
-                key={idx}
-                group={entry.group}
-                collapsed={collapsed}
-                currentPath={location.pathname}
-              />
-            );
-          } else if (entry.type === 'label') {
-            return (
-              <div key={idx} className={`${idx > 0 ? 'mt-4' : ''}`}>
-                {/* Group Label */}
-                {!collapsed && (
-                  <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-600">
-                    {entry.label.labelName}
-                  </p>
-                )}
-                <div className="space-y-0.5">
-                  {entry.label.items.map((item, idx) => (
-                    <RecursiveMenuItem
-                      key={item.path + idx}
-                      item={item as MenuItem}
-                      collapsed={collapsed}
-                      currentPath={location.pathname}
-                      isTopLevel={true}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          }
-          return null;
-        })}
-      </nav>
-
-      {/* Footer Area */}
-      <div className="p-3 border-t border-zinc-200 dark:border-zinc-800/60 shrink-0 space-y-2">
-        <button
-          onClick={onThemeChange}
-          title={collapsed ? "Đổi giao diện" : ""}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors group ${collapsed ? 'justify-center' : ''}`}
-        >
-          <div>{getThemeIcon()}</div>
-          {!collapsed && <span className="font-medium whitespace-nowrap text-sm">
-            {theme === 'light' ? 'Nền sáng' : theme === 'dark' ? 'Nền tối' : 'Mặc định HT'}
-          </span>}
-        </button>
-
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            title={collapsed ? "Đăng xuất" : ""}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-400 transition-colors group ${collapsed ? 'justify-center' : ''}`}
+        {/* User Info */}
+        {profileLink ? (
+          <NavLink
+            to={profileLink}
+            className={({ isActive }) =>
+              `p-4 flex items-center gap-3 shrink-0 rounded-xl mx-3 mt-2 transition-colors duration-150 ${
+                isActive
+                  ? 'bg-primary/10 ring-1 ring-primary/20'
+                  : 'hover:bg-zinc-100 dark:hover:bg-zinc-900'
+              } ${collapsed ? 'justify-center' : ''}`
+            }
+            title="Quản lý tài khoản"
           >
-            <LogOut className="w-5 h-5 shrink-0" />
-            {!collapsed && <span className="font-medium whitespace-nowrap text-sm">Đăng xuất</span>}
-          </button>
+            {userAvatarNode}
+            <AnimatePresence initial={false}>
+              {!collapsed && (
+                <motion.div
+                  variants={textVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  className="flex flex-col overflow-hidden gap-0.5 whitespace-nowrap"
+                >
+                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{userFullName}</span>
+                  <span className="text-xs text-zinc-500 truncate">{userEmail}</span>
+                  {userBadgeNode}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </NavLink>
+        ) : (
+          <div className={`p-4 flex items-center gap-3 shrink-0 rounded-xl mx-3 mt-2 transition-colors duration-150 hover:bg-zinc-100 dark:hover:bg-zinc-900 ${collapsed ? 'justify-center' : ''}`}>
+            {userAvatarNode}
+            <AnimatePresence initial={false}>
+              {!collapsed && (
+                <motion.div
+                  variants={textVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  className="flex flex-col overflow-hidden gap-0.5 whitespace-nowrap"
+                >
+                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{userFullName}</span>
+                  <span className="text-xs text-zinc-500 truncate">{userEmail}</span>
+                  {userBadgeNode}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         )}
-      </div>
-    </aside>
+
+        {/* Navigation */}
+        <nav ref={navRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar ${collapsed ? 'mt-4 space-y-2' : 'mt-2 space-y-1'}`}>
+          {entries.map((entry, idx) => {
+            if (entry.type === 'single') {
+              return (
+                <RecursiveMenuItem
+                  key={entry.path + idx}
+                  item={entry as MenuItem}
+                  collapsed={collapsed}
+                  currentPath={location.pathname}
+                  isTopLevel={true}
+                />
+              );
+            } else if (entry.type === 'group') {
+              return (
+                <GroupMenu
+                  key={idx}
+                  group={entry.group}
+                  collapsed={collapsed}
+                  currentPath={location.pathname}
+                />
+              );
+            } else if (entry.type === 'label') {
+              return (
+                <div key={idx} className={`${idx > 0 ? 'mt-4' : ''}`}>
+                  {/* Group Label */}
+                  <AnimatePresence initial={false}>
+                    {!collapsed && (
+                      <motion.p
+                        variants={textVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="hidden"
+                        className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-600 truncate"
+                      >
+                        {entry.label.labelName}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                  <div className="space-y-0.5">
+                    {entry.label.items.map((item, idx) => (
+                      <RecursiveMenuItem
+                        key={item.path + idx}
+                        item={item as MenuItem}
+                        collapsed={collapsed}
+                        currentPath={location.pathname}
+                        isTopLevel={true}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })}
+        </nav>
+
+        {/* Footer Area */}
+        <div className="p-3 border-t border-zinc-200 dark:border-zinc-800/60 shrink-0 space-y-2">
+          <button
+            onClick={onThemeChange}
+            title={collapsed ? "Đổi giao diện" : ""}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors group ${collapsed ? 'justify-center' : ''}`}
+          >
+            <div>{getThemeIcon()}</div>
+            <AnimatePresence initial={false}>
+              {!collapsed && (
+                <motion.span
+                  variants={textVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  className="font-medium whitespace-nowrap text-sm truncate"
+                >
+                  {theme === 'light' ? 'Nền sáng' : theme === 'dark' ? 'Nền tối' : 'Mặc định HT'}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
+
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              title={collapsed ? "Đăng xuất" : ""}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-400 transition-colors group ${collapsed ? 'justify-center' : ''}`}
+            >
+              <LogOut className="w-5 h-5 shrink-0" />
+              <AnimatePresence initial={false}>
+                {!collapsed && (
+                  <motion.span
+                    variants={textVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    className="font-medium whitespace-nowrap text-sm truncate"
+                  >
+                    Đăng xuất
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
+          )}
+        </div>
+      </aside>
+    </SidebarAnimationContext.Provider>
   );
 };

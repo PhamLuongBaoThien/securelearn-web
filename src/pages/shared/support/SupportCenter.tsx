@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import type { ElementType } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { inboxApi } from '@/services/inboxApi';
 import type { Ticket, TicketDetail, TicketType, TicketMessage } from '@/types/inbox.types';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { TicketPagination } from '@/components/inbox/TicketPagination';
 import { 
   ArrowLeft, 
   Send, 
@@ -31,7 +33,7 @@ const statusStyles: Record<string, { label: string; badgeCls: string }> = {
   CLOSED: { label: 'Đã đóng', badgeCls: 'bg-zinc-50 text-zinc-700 dark:bg-zinc-950/30 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800' },
 };
 
-const typeStyles: Record<string, { label: string; badgeCls: string; icon: React.ComponentType<any>; colorCls: string; iconBgCls: string }> = {
+const typeStyles: Record<string, { label: string; badgeCls: string; icon: ElementType; colorCls: string; iconBgCls: string }> = {
   SUPPORT: { 
     label: 'Hỗ trợ', 
     badgeCls: 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-400 border-sky-200 dark:border-sky-850',
@@ -55,6 +57,14 @@ const typeStyles: Record<string, { label: string; badgeCls: string; icon: React.
   },
 };
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
 export function SupportCenter() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -69,30 +79,32 @@ export function SupportCenter() {
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [replying, setReplying] = useState(false);
+  const [messagePage, setMessagePage] = useState(1);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     try {
       if (id) {
-        const res = await inboxApi.detail(id);
+        const res = await inboxApi.detail(id, false, { messagePage });
         setDetail(res);
       } else {
         const res = await inboxApi.list();
         setItems(res.items);
       }
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Không thể tải thông tin yêu cầu.');
+    } catch (e) {
+      const error = e as ApiError;
+      toast.error(error.response?.data?.message || 'Không thể tải thông tin yêu cầu.');
     }
   };
 
   useEffect(() => {
     void load();
-  }, [id]);
+  }, [id, messagePage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [detail?.messages]);
+  }, [detail?.messages.items]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -130,8 +142,9 @@ export function SupportCenter() {
       setDescription('');
       setFiles([]);
       nav(`/support/tickets/${ticket._id}`);
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Không thể gửi yêu cầu hỗ trợ.');
+    } catch (e) {
+      const error = e as ApiError;
+      toast.error(error.response?.data?.message || 'Không thể gửi yêu cầu hỗ trợ.');
     } finally {
       setLoading(false);
     }
@@ -152,9 +165,11 @@ export function SupportCenter() {
       
       setReply('');
       setFiles([]);
+      setMessagePage(1);
       await load();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Không thể gửi phản hồi.');
+    } catch (e) {
+      const error = e as ApiError;
+      toast.error(error.response?.data?.message || 'Không thể gửi phản hồi.');
     } finally {
       setReplying(false);
     }
@@ -210,12 +225,12 @@ export function SupportCenter() {
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1">Cuộc trò chuyện</h3>
           
           <div className="space-y-4">
-            {detail.messages.length === 0 ? (
+            {detail.messages.items.length === 0 ? (
               <div className="text-center py-10 text-muted-foreground border border-dashed border-border/60 rounded-2xl bg-card/20">
                 Chưa có phản hồi nào cho yêu cầu này.
               </div>
             ) : (
-              detail.messages.map(m => {
+              detail.messages.items.map(m => {
                 const isAdminMsg = m.author.type === 'ADMIN';
                 const msgAttachments = getMessageAttachments(m);
                 
@@ -242,37 +257,21 @@ export function SupportCenter() {
                       {msgAttachments.length > 0 && (
                         <div className="mt-3.5 space-y-2 border-t border-border/20 pt-2.5">
                           {msgAttachments.map(att => {
-                            const isImg = att.mimeType.startsWith('image/');
                             return (
-                              <a
+                              <button
+                                type="button"
                                 key={att._id}
-                                href={inboxApi.attachmentUrl(att._id)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`flex items-center gap-2 p-2 rounded-xl text-xs transition-colors border ${
-                                  isAdminMsg 
-                                    ? 'bg-background hover:bg-muted border-border/50 text-foreground' 
+                                onClick={() => void inboxApi.openAttachment(att._id)}
+                                className={`flex w-full items-center gap-2 p-2 rounded-xl text-xs transition-colors border ${
+                                  isAdminMsg
+                                    ? 'bg-background hover:bg-muted border-border/50 text-foreground'
                                     : 'bg-primary-foreground/10 hover:bg-primary-foreground/20 border-white/10 text-primary-foreground'
                                 }`}
                               >
-                                {isImg ? (
-                                  <div className="relative group overflow-hidden rounded-lg">
-                                    <img 
-                                      src={inboxApi.attachmentUrl(att._id)} 
-                                      alt={att.originalName} 
-                                      className="max-w-full max-h-[160px] object-cover rounded-md" 
-                                    />
-                                  </div>
-                                ) : (
-                                  <>
-                                    <FileIcon className="h-4 w-4 shrink-0" />
-                                    <span className="truncate max-w-[180px] font-medium">{att.originalName}</span>
-                                    <span className="text-[10px] opacity-80 shrink-0">
-                                      ({(att.sizeBytes / 1024 / 1024).toFixed(2)} MB)
-                                    </span>
-                                  </>
-                                )}
-                              </a>
+                                <FileIcon className="h-4 w-4 shrink-0" />
+                                <span className="truncate max-w-[180px] font-medium">{att.originalName}</span>
+                                <span className="text-[10px] opacity-80 shrink-0">({(att.sizeBytes / 1024 / 1024).toFixed(2)} MB)</span>
+                              </button>
                             );
                           })}
                         </div>
@@ -286,6 +285,7 @@ export function SupportCenter() {
                 );
               })
             )}
+            <TicketPagination page={detail.messages.page} totalPages={detail.messages.totalPages} onChange={setMessagePage} />
             <div ref={messagesEndRef} />
           </div>
         </div>

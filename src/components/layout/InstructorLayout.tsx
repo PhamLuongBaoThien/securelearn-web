@@ -19,6 +19,7 @@ import sidebarLogo from '@/assets/logoweb.png';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Sidebar } from './Sidebar';
 import type { SidebarEntry } from './Sidebar';
+import { instructorTextVariants } from '@/components/animations/sidebar';
 
 export const InstructorLayout: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -100,6 +101,7 @@ export const InstructorLayout: React.FC = () => {
             className="w-10 h-10 min-w-[2.5rem] min-h-[2.5rem] text-base aspect-square"
           />
         }
+        textVariants={instructorTextVariants}
         theme={theme}
         onThemeChange={handleThemeChange}
         onLogout={handleLogout}
