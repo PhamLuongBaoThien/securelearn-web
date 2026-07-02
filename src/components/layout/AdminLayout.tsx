@@ -74,12 +74,12 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[]): Side
       ],
     },
     {
-      groupName: 'Thông báo',
+      groupName: 'Thông báo & Hỗ trợ',
       groupIcon: <Bell className="w-5 h-5 shrink-0" />,
       items: [
         { name: 'Gửi thông báo', path: '/admin/notifications/send', icon: <Send className="w-4 h-4 shrink-0" />, req: 'notif:manage' },
-        { name: 'Thông báo hệ thống', path: '/admin/notifications/system', icon: <Bell className="w-4 h-4 shrink-0" />, req: 'notif:read' },
-        { name: 'Hộp thư đến', path: '/admin/notifications/inbox', icon: <Inbox className="w-4 h-4 shrink-0" />, req: 'inbox:manage' },
+        { name: 'Lịch sử thông báo', path: '/admin/notifications/system', icon: <Bell className="w-4 h-4 shrink-0" />, req: 'notif:read' },
+        { name: 'Hỗ trợ & Báo cáo', path: '/admin/notifications/inbox', icon: <Inbox className="w-4 h-4 shrink-0" />, req: 'inbox:manage' },
         { name: 'Mẫu thông báo', path: '/admin/notifications/config', icon: <FileText className="w-4 h-4 shrink-0" />, req: 'notif:manage' },
       ],
     },

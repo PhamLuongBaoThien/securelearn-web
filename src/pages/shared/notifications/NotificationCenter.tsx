@@ -1,24 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { 
-  Bell, 
-  CheckCircle2, 
-  Clock, 
-  Settings, 
-  ShieldAlert, 
-  CreditCard, 
-  BookOpen, 
-  GraduationCap, 
-  Megaphone,
-  Inbox,
-  Check,
-  Loader2,
-  ChevronRight,
-  SlidersHorizontal,
-  Mail,
-  Smartphone,
-  Search,
-  CalendarDays
-} from 'lucide-react';
+import { Bell, CheckCircle2, Clock, Settings, Inbox, Loader2, ChevronRight, Mail, Smartphone } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { notificationApi } from '@/services/notificationApi';
 import { NOTIFICATION_REALTIME_EVENT, type NotificationRealtimeDetail } from '@/services/notificationSocket';
@@ -27,6 +8,13 @@ import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { NotificationFilters, type NotificationReadFilter } from './NotificationFilters';
+import {
+  NOTIFICATION_CATEGORY_LABELS as labels,
+  NOTIFICATION_CATEGORY_STYLES as categoryStyles,
+  NOTIFICATION_EVENT_LABELS as eventLabels,
+  USER_NOTIFICATION_CATEGORIES as categories,
+} from './notification.constants';
 import {
   Pagination,
   PaginationContent,
@@ -36,69 +24,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-
-const categories: NotificationCategory[] = ['SYSTEM', 'PAYMENT', 'COURSE', 'LEARNING', 'CAMPAIGN'];
-
-const labels: Record<NotificationCategory, string> = { 
-  SYSTEM: 'Hệ thống', 
-  PAYMENT: 'Thanh toán', 
-  COURSE: 'Khóa học', 
-  LEARNING: 'Học tập', 
-  CAMPAIGN: 'Thông báo chung' 
-};
-
-const eventLabels: Record<string, string> = {
-  WELCOME: 'Chào mừng tài khoản', PAYMENT_SUCCESS: 'Thanh toán thành công', PAYMENT_FAILED: 'Thanh toán thất bại',
-  COURSE_APPROVED: 'Khóa học được duyệt', COURSE_REJECTED: 'Khóa học cần chỉnh sửa',
-  COURSE_SUBMITTED_FOR_REVIEW: 'Khóa học gửi duyệt', ENROLLMENT_CREATED: 'Học viên mới ghi danh', MANUAL: 'Thông báo từ quản trị viên',
-  REPORT_CREATED: 'Báo cáo mới', SUPPORT_REQUEST_CREATED: 'Yêu cầu hỗ trợ mới', FEEDBACK_CREATED: 'Góp ý mới', INBOX_USER_REPLIED: 'Ticket có phản hồi', INBOX_ADMIN_REPLIED: 'Hỗ trợ đã phản hồi', INBOX_STATUS_CHANGED: 'Trạng thái ticket', INBOX_ASSIGNED: 'Ticket được phân công',
-};
-const categoryStyles: Record<
-  NotificationCategory,
-  { 
-    icon: React.ComponentType<{ className?: string }>; 
-    colorClass: string; 
-    iconBgClass: string; 
-    borderClass: string;
-    badgeClass: string;
-  }
-> = {
-  SYSTEM: {
-    icon: ShieldAlert,
-    colorClass: 'text-blue-600 dark:text-blue-400',
-    iconBgClass: 'bg-blue-50 dark:bg-blue-950/40',
-    borderClass: 'border-l-blue-500',
-    badgeClass: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-  },
-  PAYMENT: {
-    icon: CreditCard,
-    colorClass: 'text-emerald-600 dark:text-emerald-400',
-    iconBgClass: 'bg-emerald-50 dark:bg-emerald-950/40',
-    borderClass: 'border-l-emerald-500',
-    badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-  },
-  COURSE: {
-    icon: BookOpen,
-    colorClass: 'text-purple-600 dark:text-purple-400',
-    iconBgClass: 'bg-purple-50 dark:bg-purple-950/40',
-    borderClass: 'border-l-purple-500',
-    badgeClass: 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800',
-  },
-  LEARNING: {
-    icon: GraduationCap,
-    colorClass: 'text-amber-600 dark:text-amber-400',
-    iconBgClass: 'bg-amber-50 dark:bg-amber-950/40',
-    borderClass: 'border-l-amber-500',
-    badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-  },
-  CAMPAIGN: {
-    icon: Megaphone,
-    colorClass: 'text-rose-600 dark:text-rose-400',
-    iconBgClass: 'bg-rose-50 dark:bg-rose-950/40',
-    borderClass: 'border-l-rose-500',
-    badgeClass: 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300 border-rose-200 dark:border-rose-800',
-  },
-};
 
 function getVisiblePages(currentPage: number, totalPages: number): Array<number | 'ellipsis-start' | 'ellipsis-end'> {
   if (totalPages <= 5) {
@@ -123,11 +48,11 @@ function getVisiblePages(currentPage: number, totalPages: number): Array<number 
 }
 
 export function NotificationCenter() {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const isAdmin = useLocation().pathname.startsWith('/admin');
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
+  const [filter, setFilter] = useState<NotificationReadFilter>('all');
   const [category, setCategory] = useState<NotificationCategory | ''>('');
   const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
@@ -269,78 +194,23 @@ export function NotificationCenter() {
   const renderInbox = () => {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-        {/* Sidebar Bộ lọc (Filters) */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Card Lọc */}
-          <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4" />
-                Bộ lọc tìm kiếm
-              </h3>
-              {(filter !== 'all' || category !== '' || search || from || to) && (
-                <button
-                  onClick={() => {
-                    setFilter('all');
-                    setCategory('');
-                    setSearchDraft(''); setSearch(''); setFrom(''); setTo(''); setPage(1);
-                  }}
-                  className="text-xs text-primary hover:underline font-medium cursor-pointer"
-                >
-                  Đặt lại
-                </button>
-              )}
-            </div>
-
-            {/* Tìm kiếm */}
-            <form className="space-y-2" onSubmit={event => { event.preventDefault(); setSearch(searchDraft.trim()); setPage(1); }}>
-              <span className="text-xs font-medium text-muted-foreground/80">Tìm kiếm nội dung</span>
-              <div className="flex gap-2"><div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground"/><input value={searchDraft} onChange={event => setSearchDraft(event.target.value)} className="h-9 w-full rounded-xl border bg-background pl-9 pr-3 text-xs" placeholder="Tiêu đề hoặc nội dung..."/></div><Button type="submit" size="sm">Tìm</Button></div>
-            </form>
-
-            {/* Trạng thái */}
-            <div className="space-y-2">
-              <span className="text-xs font-medium text-muted-foreground/80">Trạng thái</span>
-              <div className="grid grid-cols-3 gap-1 bg-muted p-1 rounded-xl">
-                {([{id:'all',label:'Tất cả'},{id:'unread',label:'Chưa đọc'},{id:'read',label:'Đã đọc'}] as const).map(option => <button key={option.id} onClick={() => { setFilter(option.id); setPage(1); }} className={`py-1.5 text-xs font-semibold rounded-lg transition-all ${filter===option.id?'bg-background text-foreground shadow-sm':'text-muted-foreground hover:text-foreground'}`}>{option.label}{option.id==='unread'&&unreadCount>0&&<span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-primary"/>}</button>)}
-              </div>
-            </div>
-
-            {/* Khoảng thời gian */}
-            <div className="space-y-2"><span className="flex items-center gap-1 text-xs font-medium text-muted-foreground/80"><CalendarDays className="h-3.5 w-3.5"/>Thời gian tạo</span><label className="block text-[11px] text-muted-foreground">Từ ngày<input type="date" value={from} max={to||undefined} onChange={event=>{setFrom(event.target.value);setPage(1)}} className="mt-1 h-9 w-full rounded-xl border bg-background px-2 text-xs"/></label><label className="block text-[11px] text-muted-foreground">Đến ngày<input type="date" value={to} min={from||undefined} onChange={event=>{setTo(event.target.value);setPage(1)}} className="mt-1 h-9 w-full rounded-xl border bg-background px-2 text-xs"/></label></div>
-            {/* Danh mục (Categories) */}
-            <div className="space-y-2.5">
-              <span className="text-xs font-medium text-muted-foreground/80">Danh mục</span>
-              <div className="flex flex-col gap-1.5">
-                {categories.map(c => {
-                  const style = categoryStyles[c];
-                  const IconComp = style.icon;
-                  const isSelected = category === c;
-                  return (
-                    <button
-                      key={c}
-                      onClick={() => setCategory(category === c ? '' : c)}
-                      className={`flex items-center justify-between w-full p-2.5 rounded-xl text-left text-xs font-medium transition-all duration-200 border cursor-pointer ${
-                        isSelected
-                          ? `${style.badgeClass} border-transparent shadow-sm scale-[1.02]`
-                          : 'border-transparent text-foreground hover:bg-muted/80'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className={`p-1.5 rounded-lg ${style.iconBgClass} ${style.colorClass}`}>
-                          <IconComp className="h-3.5 w-3.5" />
-                        </div>
-                        {labels[c]}
-                      </div>
-                      {isSelected && <Check className="h-3.5 w-3.5 stroke-[3px]" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
+        <NotificationFilters
+          isAdmin={isAdmin}
+          filter={filter}
+          category={category}
+          searchDraft={searchDraft}
+          search={search}
+          from={from}
+          to={to}
+          unreadCount={unreadCount}
+          onFilterChange={(value) => { setFilter(value); setPage(1); }}
+          onCategoryChange={(value) => { setCategory(value); setPage(1); }}
+          onSearchDraftChange={setSearchDraft}
+          onSearch={(value) => { setSearch(value); setPage(1); }}
+          onFromChange={(value) => { setFrom(value); setPage(1); }}
+          onToChange={(value) => { setTo(value); setPage(1); }}
+          onReset={() => { setFilter('all'); setCategory(''); setSearchDraft(''); setSearch(''); setFrom(''); setTo(''); setPage(1); }}
+        />
         {/* Danh sách thông báo */}
         <div className="lg:col-span-3">
           <AnimatePresence mode="popLayout">
@@ -360,7 +230,7 @@ export function NotificationCenter() {
                   <Bell className="h-10 w-10 opacity-40 text-muted-foreground" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-foreground mb-1">Hộp thư trống</h3>
+                  <h3 className="font-bold text-lg text-foreground mb-1">Không có thông báo</h3>
                   <p className="text-sm px-6">Không tìm thấy thông báo nào phù hợp với bộ lọc hiện tại.</p>
                 </div>
               </motion.div>
@@ -383,9 +253,8 @@ export function NotificationCenter() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.2 }}
                       onClick={() => void markRead(item)}
-                      className={`relative cursor-pointer rounded-2xl border p-5 shadow-sm hover:shadow-md hover:border-primary/25 transition-all duration-300 bg-card select-none flex gap-4 ${style.borderClass} border-l-4 ${
-                        isUnread ? 'bg-gradient-to-r from-card to-primary/5 dark:to-primary/5 border-primary/20' : 'border-border/60 opacity-85'
-                      }`}
+                      className={`relative cursor-pointer rounded-2xl border p-5 shadow-sm hover:shadow-md hover:border-primary/25 transition-all duration-300 bg-card select-none flex gap-4 ${style.borderClass} border-l-4 ${isUnread ? 'bg-gradient-to-r from-card to-primary/5 dark:to-primary/5 border-primary/20' : 'border-border/60 opacity-85'
+                        }`}
                     >
                       {/* Left Category Icon */}
                       <div className="flex-shrink-0">
@@ -411,7 +280,7 @@ export function NotificationCenter() {
                             })}
                           </span>
                         </div>
-                        
+
                         <h3 className={`mt-2 font-bold text-foreground text-sm sm:text-base tracking-tight leading-snug ${isUnread ? 'text-primary' : ''}`}>
                           {item.title}
                         </h3>
@@ -658,15 +527,15 @@ export function NotificationCenter() {
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
             <Bell className="h-8 w-8 text-primary animate-pulse" />
-            {isAdmin ? 'Thông báo hệ thống' : 'Trung tâm thông báo'}
+            {isAdmin ? 'Lịch sử thông báo' : 'Trung tâm thông báo'}
           </h1>
           <p className="text-muted-foreground mt-1.5 text-sm">
             {isAdmin
-              ? 'Xem và quản lý các thông báo hệ thống của ứng dụng SecureLearn.'
+              ? 'Xem lịch sử các thông báo và chiến dịch đã được gửi đi của ứng dụng SecureLearn.'
               : 'Nhận các cập nhật quan trọng về học tập, giao dịch thanh toán và khóa học của bạn.'}
           </p>
         </div>
-        
+
         {/* Nút hành động nhanh */}
         <div className="flex items-center gap-2.5 self-start md:self-center">
           {unreadCount > 0 && (
@@ -682,7 +551,7 @@ export function NotificationCenter() {
           )}
         </div>
       </div>
-      
+
       <hr className="border-border/60 mb-8" />
 
       {/* Tabs */}
@@ -691,14 +560,13 @@ export function NotificationCenter() {
           <div className="flex border-b border-border/60">
             <button
               onClick={() => setActiveTab('inbox')}
-              className={`pb-4 px-6 text-sm font-semibold border-b-2 transition-all duration-300 flex items-center gap-2 cursor-pointer ${
-                activeTab === 'inbox'
+              className={`pb-4 px-6 text-sm font-semibold border-b-2 transition-all duration-300 flex items-center gap-2 cursor-pointer ${activeTab === 'inbox'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <Inbox className="h-4 w-4" />
-              Hộp thư thông báo
+              Danh sách thông báo
               {unreadCount > 0 && (
                 <span className="ml-1.5 px-2 py-0.5 text-xs font-bold rounded-full bg-primary text-primary-foreground">
                   {unreadCount}
@@ -707,11 +575,10 @@ export function NotificationCenter() {
             </button>
             <button
               onClick={() => setActiveTab('preferences')}
-              className={`pb-4 px-6 text-sm font-semibold border-b-2 transition-all duration-300 flex items-center gap-2 cursor-pointer ${
-                activeTab === 'preferences'
+              className={`pb-4 px-6 text-sm font-semibold border-b-2 transition-all duration-300 flex items-center gap-2 cursor-pointer ${activeTab === 'preferences'
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <Settings className="h-4 w-4" />
               Cài đặt nhận tin
