@@ -11,6 +11,7 @@ import { CourseCard } from '@/components/ui/CourseCard';
 import { toast } from 'sonner';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { PublicUserProfileSkeleton } from './PublicUserProfileSkeleton';
+import { ReportDialog } from '@/components/inbox/ReportDialog';
 
 function CourseGrid({ courses, emptyText }: { courses: ICourse[]; emptyText: string }) {
   if (courses.length === 0) {
@@ -114,7 +115,12 @@ export function PublicUserProfile() {
         
         {/* Cột phụ Sidebar (Bên phải trên Desktop, trên cùng ở Mobile) - lg:col-span-4 */}
         <aside className="lg:col-span-4 lg:order-2">
-          <div className="sticky top-6 flex flex-col items-center rounded-3xl border border-border bg-card p-6 text-center shadow-sm sm:p-8">
+          <div className="sticky top-6 flex flex-col items-center rounded-3xl border border-border bg-card p-6 text-center shadow-sm sm:p-8 relative">
+            {currentUser && !isOwner && profile._id && (
+              <div className="absolute right-4 top-4">
+                <ReportDialog targetType="USER" targetId={profile._id} label="Báo cáo người dùng" />
+              </div>
+            )}
             {/* Avatar lớn */}
             <div className="relative">
               <UserAvatar 
@@ -155,6 +161,7 @@ export function PublicUserProfile() {
                 </div>
               </TooltipProvider>
             )}
+
 
             {/* Chỉ số giảng dạy (Chỉ hiển thị đối với Instructor) */}
             {isInstructor && (

@@ -78,6 +78,7 @@ export const NavUserDropdown = ({
               { to: '/cart', label: 'Giỏ hàng' },
               { to: '/student/dashboard?tab=wishlist', label: 'Khóa học mong muốn' },
               { to: '/pricing', label: 'Thuê bao' },
+              { to: '/support', label: 'Hỗ trợ & góp ý' },
               ...(user.role === 'INSTRUCTOR' ? [{ to: '/instructor/dashboard', label: 'Bảng điều khiển Giảng viên', isInstructor: true }] : []),
               { to: '/student/dashboard?tab=payments', label: 'Lịch sử thanh toán' },
             ].map((item, idx) => (

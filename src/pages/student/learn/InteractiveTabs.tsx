@@ -1,4 +1,5 @@
 // [TAB TƯƠNG TÁC BÀI HỌC - BƯỚC 1 & 4 & 5]
+import { ReportDialog } from '@/components/inbox/ReportDialog';
 // Component InteractiveTabs quản lý các tab tương tác bổ trợ bên dưới bài học bao gồm:
 // 1. Tổng quan (Overview): Nội dung mô tả chi tiết bài học.
 // 2. Tài liệu (Resources): Xem hoặc tải tài liệu qua API có JWT và entitlement.
@@ -133,7 +134,7 @@ export function InteractiveTabs({
       </div>
 
       <div className="min-h-64 p-5 md:p-6">
-        {activeTab === 'overview' && <OverviewPanel lesson={lesson} />}
+        {activeTab === 'overview' && <OverviewPanel lesson={lesson} courseId={course._id} />}
         {activeTab === 'resources' && (
           <ResourcesPanel attachmentIds={lesson.attachments || []} />
         )}
@@ -154,12 +155,18 @@ export function InteractiveTabs({
   );
 }
 
-function OverviewPanel({ lesson }: { lesson: ILesson }) {
+function OverviewPanel({ lesson, courseId }: { lesson: ILesson; courseId?: string }) {
+  const user = useAppSelector((state) => state.auth.user);
   return (
     <div className="max-w-4xl space-y-5">
-      <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
+      <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20 relative">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Bài học hiện tại</p>
-        <h3 className="mt-1 text-xl font-bold text-zinc-900 dark:text-white">{lesson.title}</h3>
+        <h3 className="mt-1 text-xl font-bold text-zinc-900 dark:text-white pr-10">{lesson.title}</h3>
+        {user && lesson._id && courseId && (
+          <div className="absolute right-4 top-4">
+            <ReportDialog targetType="LESSON" targetId={lesson._id} courseId={courseId} label="Báo cáo bài học" />
+          </div>
+        )}
       </div>
       
       <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
@@ -675,19 +682,24 @@ function ReviewsPanel({ course }: { course: ICourse }) {
         ) : reviews.length > 0 ? (
           <div className="space-y-4">
             {reviews.map((review) => (
-              <article key={review._id} className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+              <article key={review._id} className="relative rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                {user && user._id !== review.userId && (
+                  <div className="absolute right-4 top-3.5">
+                    <ReportDialog targetType="REVIEW" targetId={review._id} courseId={course._id} label="Báo cáo đánh giá" />
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <UserAvatar
                     user={{ fullName: review.userName, avatarUrl: review.userAvatarUrl }}
                     className="h-9 w-9 text-xs"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-bold text-zinc-950 dark:text-white">{review.userName || 'Học viên SecureLearn'}</p>
-                        <p className="mt-0.5 text-xs text-zinc-400">{formatReviewDate(review.updatedAt)}</p>
+                    <div className="flex flex-col gap-1 pr-8">
+                      <p className="text-sm font-bold text-zinc-950 dark:text-white">{review.userName || 'Học viên SecureLearn'}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Rating value={review.rating} readOnly />
+                        <span className="text-xs text-zinc-400">• {formatReviewDate(review.updatedAt)}</span>
                       </div>
-                      <Rating value={review.rating} readOnly />
                     </div>
                     {review.comment && (
                       <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">{review.comment}</p>
@@ -748,4 +760,5 @@ function EmptyState({ icon: Icon, message }: { icon: typeof FileText; message: s
     </div>
   );
 }
+
 

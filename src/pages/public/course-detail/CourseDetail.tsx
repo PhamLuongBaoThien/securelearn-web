@@ -23,6 +23,7 @@ import { CourseRequirements } from './CourseRequirements';
 import { CourseInstructor } from './CourseInstructor';
 import { CourseIncludes } from './CourseIncludes';
 import { CourseReviews } from './CourseReviews';
+import { ReportDialog } from '@/components/inbox/ReportDialog';
 
 // Skeleton cho phần hero banner — hiển thị trong lúc API đang tải
 function HeroBannerSkeleton() {
@@ -195,7 +196,11 @@ export function CourseDetail() {
         </StaggerContainer>
 
         {/* Cột phải: sidebar mua hàng (sticky) */}
-        <CoursePurchaseCard course={course} isEnrolled={isEnrolled} />
+        <CoursePurchaseCard 
+          course={course} 
+          isEnrolled={isEnrolled} 
+          reportButton={isAuthenticated ? <ReportDialog targetType="COURSE" targetId={course._id} label="Báo cáo khóa học" /> : null}
+        />
 
       </div>
     </div>

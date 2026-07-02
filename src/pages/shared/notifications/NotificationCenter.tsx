@@ -51,7 +51,7 @@ const eventLabels: Record<string, string> = {
   WELCOME: 'Chào mừng tài khoản', PAYMENT_SUCCESS: 'Thanh toán thành công', PAYMENT_FAILED: 'Thanh toán thất bại',
   COURSE_APPROVED: 'Khóa học được duyệt', COURSE_REJECTED: 'Khóa học cần chỉnh sửa',
   COURSE_SUBMITTED_FOR_REVIEW: 'Khóa học gửi duyệt', ENROLLMENT_CREATED: 'Học viên mới ghi danh', MANUAL: 'Thông báo từ quản trị viên',
-  REPORT_CREATED: 'Báo cáo mới', SUPPORT_REQUEST_CREATED: 'Yêu cầu hỗ trợ mới', FEEDBACK_CREATED: 'Góp ý mới',
+  REPORT_CREATED: 'Báo cáo mới', SUPPORT_REQUEST_CREATED: 'Yêu cầu hỗ trợ mới', FEEDBACK_CREATED: 'Góp ý mới', INBOX_USER_REPLIED: 'Ticket có phản hồi', INBOX_ADMIN_REPLIED: 'Hỗ trợ đã phản hồi', INBOX_STATUS_CHANGED: 'Trạng thái ticket', INBOX_ASSIGNED: 'Ticket được phân công',
 };
 const categoryStyles: Record<
   NotificationCategory,

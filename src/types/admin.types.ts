@@ -524,6 +524,10 @@ export type TemplateEvent =
   | 'REPORT_CREATED'
   | 'SUPPORT_REQUEST_CREATED'
   | 'FEEDBACK_CREATED'
+  | 'INBOX_USER_REPLIED'
+  | 'INBOX_ADMIN_REPLIED'
+  | 'INBOX_STATUS_CHANGED'
+  | 'INBOX_ASSIGNED'
   | 'WELCOME';
 
 export interface INotificationTemplate {

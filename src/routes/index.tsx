@@ -76,6 +76,7 @@ import { InstructorPerformance } from '../pages/instructor/performance';
 import { InstructorStudents } from '../pages/instructor/students';
 import { InstructorCommunication } from '../pages/instructor/communication';
 import { NotificationCenter } from '../pages/shared/notifications';
+import { SupportCenter } from '../pages/shared/support';
 
 // Tạo một RootLayout chung bọc bên ngoài toàn bộ các route
 // Nhờ đó, ScrollToTop luôn tồn tại trong App và hoạt động mỗi lần chuyển Route
@@ -111,6 +112,8 @@ const router = createBrowserRouter([
           { path: 'account/settings', element: <ProtectedRoute><Navigate to="/account/settings/profile" replace /></ProtectedRoute> },
           { path: 'account/settings/:tab', element: <ProtectedRoute><Profile /></ProtectedRoute> },
           { path: 'notifications', element: <ProtectedRoute><NotificationCenter /></ProtectedRoute> },
+          { path: 'support', element: <ProtectedRoute><SupportCenter /></ProtectedRoute> },
+          { path: 'support/tickets/:id', element: <ProtectedRoute><SupportCenter /></ProtectedRoute> },
           {
             path: 'student/dashboard',
             element: (

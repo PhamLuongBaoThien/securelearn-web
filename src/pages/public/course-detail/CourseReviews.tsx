@@ -8,6 +8,7 @@ import type { ICourse } from '@/services/courseApi';
 import { useAppSelector } from '@/app/hooks';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { RatingSummary } from '@/components/ui/RatingSummary';
+import { ReportDialog } from '@/components/inbox/ReportDialog';
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('vi-VN', {
@@ -125,19 +126,24 @@ export function CourseReviews({ course, canReview }: { course: ICourse; canRevie
         {reviews.length > 0 && (
           <div className="divide-y divide-border border-y border-border">
             {reviews.map((review) => (
-              <article key={review._id} className="py-4">
+              <article key={review._id} className="py-4 relative">
+                {user && user._id !== review.userId && (
+                  <div className="absolute right-0 top-3">
+                    <ReportDialog targetType="REVIEW" targetId={review._id} courseId={course._id} label="Báo cáo" />
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <UserAvatar
                     user={{ fullName: review.userName, avatarUrl: review.userAvatarUrl }}
                     className="h-10 w-10 text-sm"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-bold">{review.userName || 'Học viên SecureLearn'}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(review.updatedAt)}</p>
+                    <div className="flex flex-col gap-1 pr-8">
+                      <p className="text-sm font-bold text-foreground">{review.userName || 'Học viên SecureLearn'}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Rating value={review.rating} readOnly />
+                        <span className="text-xs text-muted-foreground">• {formatDate(review.updatedAt)}</span>
                       </div>
-                      <Rating value={review.rating} readOnly />
                     </div>
                     {review.comment && (
                       <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{review.comment}</p>

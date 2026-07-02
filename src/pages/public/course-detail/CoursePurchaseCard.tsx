@@ -1,4 +1,4 @@
-﻿// File: CoursePurchaseCard.tsx
+// File: CoursePurchaseCard.tsx
 // Sidebar mua hàng nằm bên phải trang Course Detail.
 // Tính năng:
 //   - Sticky: bám theo viewport khi cuộn xuống, ẩn thumbnail khi đang sticky
@@ -19,19 +19,24 @@ import { enrollWithSubscription, type ICourse } from '@/services/courseApi';
 import { getBestCourseCouponPreview } from '@/services/paymentApi';
 import { enrolledKeys } from '@/hooks/useEnrolledCourses';
 import { useMySubscription } from '@/hooks/useMySubscription';
-import { BadgePercent, CheckCircle2, CreditCard, Heart, GraduationCap } from 'lucide-react';
+import { BadgePercent, CheckCircle2, CreditCard, Heart, GraduationCap, Share2 } from 'lucide-react';
 
 interface Props {
   course: ICourse;     // Dữ liệu khóa học cần hiển thị
   isEnrolled: boolean; // Người dùng đã ghi danh khóa này chưa (kiểm tra từ useEnrolledCourses)
+  reportButton?: React.ReactNode;
 }
 
-export function CoursePurchaseCard({ course, isEnrolled }: Props) {
+export function CoursePurchaseCard({ course, isEnrolled, reportButton }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addItem, isAdding } = useCartActions();
   const { toggleItem: toggleWishlistItem, isAdding: isSavingWishlist, isRemoving: isRemovingWishlist } = useWishlistActions();
   const user = useAppSelector((state) => state.auth.user);
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success('Đã sao chép liên kết khóa học vào clipboard!');
+  };
   const isOwnCourse = !!user && user.role === 'INSTRUCTOR' && course.instructorId === user._id;
   const { data: subscription } = useMySubscription();
   const hasActiveSubscription = Boolean(subscription?.current);
@@ -300,6 +305,24 @@ export function CoursePurchaseCard({ course, isEnrolled }: Props) {
               </div>
             )}
 
+            <div className="mt-5 pt-4 border-t border-border flex flex-col gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full py-5 font-bold rounded-lg hover:bg-muted text-sm cursor-pointer flex items-center justify-center"
+                onClick={handleShare}
+              >
+                <Share2 className="mr-2 h-4 w-4 text-muted-foreground" />
+                Chia sẻ
+              </Button>
+
+              {reportButton && (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mt-1">
+                  <span>Bạn thấy nội dung không phù hợp?</span>
+                  {reportButton}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

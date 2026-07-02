@@ -27,6 +27,8 @@ const eventLabel: Record<TemplateEvent, string> = {
   REPORT_CREATED: 'Báo cáo mới',
   SUPPORT_REQUEST_CREATED: 'Yêu cầu hỗ trợ mới',
   FEEDBACK_CREATED: 'Góp ý mới',
+  INBOX_USER_REPLIED: 'Người dùng phản hồi ticket', INBOX_ADMIN_REPLIED: 'Admin phản hồi ticket',
+  INBOX_STATUS_CHANGED: 'Trạng thái ticket thay đổi', INBOX_ASSIGNED: 'Ticket được phân công',
 };
 
 const eventVariables: Record<TemplateEvent, string[]> = {
@@ -40,6 +42,8 @@ const eventVariables: Record<TemplateEvent, string[]> = {
   REPORT_CREATED: ['{{senderName}}', '{{title}}', '{{summary}}', '{{createdAt}}'],
   SUPPORT_REQUEST_CREATED: ['{{senderName}}', '{{title}}', '{{summary}}', '{{createdAt}}'],
   FEEDBACK_CREATED: ['{{senderName}}', '{{title}}', '{{summary}}', '{{createdAt}}'],
+  INBOX_USER_REPLIED: ['{{senderName}}','{{title}}','{{summary}}','{{status}}'], INBOX_ADMIN_REPLIED: ['{{senderName}}','{{title}}','{{summary}}','{{status}}'],
+  INBOX_STATUS_CHANGED: ['{{senderName}}','{{title}}','{{summary}}','{{status}}'], INBOX_ASSIGNED: ['{{senderName}}','{{title}}','{{summary}}','{{status}}'],
 };
 
 const variableDescription: Record<string, string> = {
