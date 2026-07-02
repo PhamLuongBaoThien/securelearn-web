@@ -166,7 +166,7 @@ export function SupportCenter() {
             shouldScrollToBottomRef.current = true;
             return [...prev, newMsg];
           });
-          void inboxApi.detail(id, false, { messagePage: 1 }).then(res => setDetail(res));
+          void inboxApi.detail(id, false, { messagePage }).then(res => setDetail(res));
         } else {
           void load();
         }
@@ -276,7 +276,7 @@ export function SupportCenter() {
         shouldScrollToBottomRef.current = true;
         return [...prev, newMsg];
       });
-      void inboxApi.detail(id, false, { messagePage: 1 }).then(res => setDetail(res));
+      void inboxApi.detail(id, false, { messagePage }).then(res => setDetail(res));
     } catch (e) {
       const error = e as ApiError;
       toast.error(error.response?.data?.message || 'Không thể gửi phản hồi.');
@@ -373,7 +373,7 @@ export function SupportCenter() {
               </div>
 
               <div ref={chatContainerRef} className="p-5 space-y-6 max-h-[520px] overflow-y-auto scrollbar-thin scrollbar-thumb-border">
-                {detail.messages.page < detail.messages.totalPages && (
+                {allMessages.length < detail.messages.total && (
                   <div className="flex justify-center pb-2.5 border-b border-border/40 mb-3 shrink-0">
                     <Button
                       variant="ghost"
@@ -741,7 +741,7 @@ export function SupportCenter() {
                           )}
                         </h3>
                         <p className="mt-1 text-xs sm:text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-                          {t.description}
+                          {t.lastMessageContent || t.description}
                         </p>
                       </div>
 

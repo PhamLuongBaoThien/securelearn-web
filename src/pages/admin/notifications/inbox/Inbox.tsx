@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import type { ElementType } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useAppSelector } from '@/app/hooks';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { inboxApi } from '@/services/inboxApi';
 import { INBOX_REALTIME_EVENT, emitInboxTyping, isInboxConnected, retainInboxSocket, subscribeInboxTicket, type InboxRealtimeDetail } from '@/services/inboxSocket';
@@ -59,6 +60,7 @@ interface ApiError {
 }
 
 export const Inbox = () => {
+  const { user } = useAppSelector((state) => state.auth);
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -118,16 +120,15 @@ export const Inbox = () => {
     }
   }, [selected]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setMessagePage(1);
-      setActivityPage(1);
-      setFiles([]);
-      setAllMessages([]);
-      shouldScrollToBottomRef.current = true;
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [selected]);
+  const prevSelectedRef = useRef(selected);
+  if (selected !== prevSelectedRef.current) {
+    prevSelectedRef.current = selected;
+    setMessagePage(1);
+    setActivityPage(1);
+    setFiles([]);
+    setAllMessages([]);
+    shouldScrollToBottomRef.current = true;
+  }
 
   // Query: Danh sách ticket
   const { data: listData, isLoading: isLoadingList } = useQuery({
@@ -143,6 +144,8 @@ export const Inbox = () => {
     queryKey: ['adminInboxDetail', selected, messagePage, activityPage],
     queryFn: () => inboxApi.detail(selected, true, { messagePage, activityPage }),
     enabled: Boolean(selected),
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const loadMoreMessages = () => {
@@ -349,16 +352,29 @@ export const Inbox = () => {
                     
                     <div className="flex-1 min-w-0 pr-4">
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`text-sm text-foreground truncate block ${t.unread ? 'font-bold text-primary' : 'font-medium'}`}>
+                        <span className={`text-sm text-foreground truncate block ${t.unread ? 'font-bold text-primary' : 'font-semibold'}`}>
                           {t.title}
                         </span>
                         {t.unread && (
-                          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary ring-4 ring-primary/10" />
+                          <span className="h-2 w-2 shrink-0 rounded-full bg-primary ring-4 ring-primary/10" />
                         )}
                       </div>
                       
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide uppercase ${statusStyle.badge}`}>
+                      <p className={`text-xs mt-1 truncate ${t.unread ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>
+                        {(() => {
+                          const preview = t.lastMessageContent || t.description;
+                          const isFromSelf = t.lastMessageSenderId === user?._id;
+                          const prefix = isFromSelf
+                            ? 'Bạn: '
+                            : t.lastMessageAuthorType === 'ADMIN'
+                            ? `${t.lastMessageSenderName || 'Admin'}: `
+                            : `${t.sender.name}: `;
+                          return `${prefix}${preview}`;
+                        })()}
+                      </p>
+                      
+                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wide uppercase ${statusStyle.badge}`}>
                           {statusStyle.label}
                         </span>
                         <span>·</span>
@@ -441,7 +457,7 @@ export const Inbox = () => {
                   </div>
                 )}
 
-                {detail.messages.page < detail.messages.totalPages && (
+                {allMessages.length < detail.messages.total && (
                   <div className="flex justify-center pb-2 border-b border-border/45 mb-2 shrink-0">
                     <Button
                       variant="ghost"
