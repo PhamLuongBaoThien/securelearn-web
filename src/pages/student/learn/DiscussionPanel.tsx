@@ -3,6 +3,7 @@ import { Eye, EyeOff, Loader2, MessageSquare, Pencil, Send, Trash2 } from 'lucid
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import {
   learningInteractionKeys,
@@ -22,6 +23,7 @@ import {
 } from '@/services/discussionSocket';
 import type { ILessonDiscussion } from '@/services/courseApi';
 import { toast } from 'sonner';
+import { formatExactDateTime, formatRelativeTime } from '@/lib/dateTime';
 
 const dedupe = (items: ILessonDiscussion[]) =>
   Array.from(new Map(items.map(item => [item._id, item])).values());
@@ -40,6 +42,12 @@ export function DiscussionPanel({
   const createDiscussion = useCreateLessonDiscussion(courseId, lessonId);
   const [content, setContent] = useState('');
   const [connected, setConnected] = useState(isDiscussionConnected());
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!focusedId || !discussions.data) return;
@@ -92,7 +100,8 @@ export function DiscussionPanel({
   };
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <TooltipProvider delayDuration={200}>
+      <div className="max-w-4xl space-y-5">
       <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Thảo luận bài học</p>
         <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Trao đổi cùng giảng viên và học viên</h3>
@@ -117,7 +126,7 @@ export function DiscussionPanel({
       ) : items.length ? (
         <div className="space-y-4">
           {items.map(item => (
-            <DiscussionItem key={item._id} item={item} courseId={courseId} lessonId={lessonId} />
+            <DiscussionItem key={item._id} item={item} courseId={courseId} lessonId={lessonId} now={now} />
           ))}
           {discussions.hasNextPage && (
             <Button
@@ -137,7 +146,8 @@ export function DiscussionPanel({
           Chưa có bình luận nào cho bài học này.
         </div>
       )}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
 
@@ -145,10 +155,12 @@ function DiscussionItem({
   item,
   courseId,
   lessonId,
+  now,
 }: {
   item: ILessonDiscussion;
   courseId: string;
   lessonId: string;
+  now: number;
 }) {
   const [expanded, setExpanded] = useState(Boolean(item.focusReplyId));
   const [reply, setReply] = useState('');
@@ -207,7 +219,14 @@ function DiscussionItem({
             </div>
             <div className="flex items-center gap-2 text-xs text-zinc-400">
 
-              {new Date(item.createdAt).toLocaleString('vi-VN')}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <time dateTime={item.createdAt} className="cursor-help transition-colors hover:text-zinc-600 dark:hover:text-zinc-300">
+                    {formatRelativeTime(item.createdAt, now)}
+                  </time>
+                </TooltipTrigger>
+                <TooltipContent>{formatExactDateTime(item.createdAt)}</TooltipContent>
+              </Tooltip>
             </div>
           </div>
 
@@ -258,7 +277,7 @@ function DiscussionItem({
               {!isReply && (
                 <>
                   {replies.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-zinc-400" /> : replyItems.map(replyItem => (
-                    <DiscussionItem key={replyItem._id} item={replyItem} courseId={courseId} lessonId={lessonId} />
+                    <DiscussionItem key={replyItem._id} item={replyItem} courseId={courseId} lessonId={lessonId} now={now} />
                   ))}
                   {replies.hasNextPage && (
                     <Button size="sm" variant="ghost" disabled={replies.isFetchingNextPage} onClick={() => void replies.fetchNextPage()}>
