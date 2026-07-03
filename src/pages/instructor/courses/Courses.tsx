@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Instructor Courses Page
 // Mục đích:
 // - hiển thị danh sách khóa học của giảng viên và các action editor/review
@@ -6,7 +6,7 @@
 // ========================
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, Edit, Trash2, Upload, Loader2, Clock, AlertCircle, ArrowRightLeft, WalletCards, MessageSquare } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Upload, Loader2, Clock, AlertCircle, ArrowRightLeft, WalletCards, MessageSquare, BookOpen } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -307,6 +307,13 @@ export const InstructorCourses: React.FC = () => {
                         onClick={() => navigate('/instructor/courses/' + course._id + '/discussions')}
                       >
                         <MessageSquare className="w-4 h-4" /> Thảo luận
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        className="gap-2 cursor-pointer"
+                        onClick={() => navigate(`/student/courses/${course._id}/learn`)}
+                      >
+                        <BookOpen className="w-4 h-4" /> Xem giao diện học tập
                       </DropdownMenuItem>
                       {(course.status === 'DRAFT' || course.status === 'REJECTED') && (
                         <>

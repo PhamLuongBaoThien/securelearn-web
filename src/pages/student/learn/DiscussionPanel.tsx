@@ -113,50 +113,50 @@ export function DiscussionPanel({
   return (
     <TooltipProvider delayDuration={200}>
       <div className="max-w-4xl space-y-5">
-      <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Thảo luận bài học</p>
-        <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Trao đổi cùng giảng viên và học viên</h3>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Đặt câu hỏi, chia sẻ góc nhìn và trao đổi về nội dung bài học theo thời gian thực.
-        </p>
-      </div>
+        <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Thảo luận bài học</p>
+          <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Trao đổi cùng giảng viên và học viên</h3>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Đặt câu hỏi, chia sẻ góc nhìn và trao đổi về nội dung bài học theo thời gian thực.
+          </p>
+        </div>
 
-      <Composer
-        value={content}
-        onChange={setContent}
-        onSubmit={submit}
-       
-        pending={createDiscussion.isPending}
-        submitLabel="Đăng thảo luận"
-      />
+        <Composer
+          value={content}
+          onChange={setContent}
+          onSubmit={submit}
 
-      {discussions.isLoading ? (
-        <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700">
-          <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
-        </div>
-      ) : items.length ? (
-        <div className="space-y-4">
-          {items.map(item => (
-            <DiscussionItem key={item._id} item={item} courseId={courseId} lessonId={lessonId} now={now} scrollToFocusedItem={scrollToFocusedItem} />
-          ))}
-          {discussions.hasNextPage && (
-            <Button
-              variant="outline"
-              className="w-full rounded-2xl"
-              disabled={discussions.isFetchingNextPage}
-              onClick={() => void discussions.fetchNextPage()}
-            >
-              {discussions.isFetchingNextPage && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Xem thêm bình luận
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="flex min-h-40 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 text-center text-sm text-zinc-500 dark:border-zinc-700">
-          <MessageSquare className="mb-3 h-8 w-8 opacity-40" />
-          Chưa có bình luận nào cho bài học này.
-        </div>
-      )}
+          pending={createDiscussion.isPending}
+          submitLabel="Đăng thảo luận"
+        />
+
+        {discussions.isLoading ? (
+          <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700">
+            <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+          </div>
+        ) : items.length ? (
+          <div className="space-y-4">
+            {items.map(item => (
+              <DiscussionItem key={item._id} item={item} courseId={courseId} lessonId={lessonId} now={now} scrollToFocusedItem={scrollToFocusedItem} />
+            ))}
+            {discussions.hasNextPage && (
+              <Button
+                variant="outline"
+                className="w-full rounded-2xl"
+                disabled={discussions.isFetchingNextPage}
+                onClick={() => void discussions.fetchNextPage()}
+              >
+                {discussions.isFetchingNextPage && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Xem thêm bình luận
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="flex min-h-40 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 text-center text-sm text-zinc-500 dark:border-zinc-700">
+            <MessageSquare className="mb-3 h-8 w-8 opacity-40" />
+            Chưa có bình luận nào cho bài học này.
+          </div>
+        )}
       </div>
     </TooltipProvider>
   );
@@ -218,7 +218,7 @@ function DiscussionItem({
   return (
     <article id={'discussion-' + item._id} className={`rounded-3xl border bg-white p-5 shadow-sm dark:bg-zinc-950 ${item.hiddenAt ? 'border-amber-300 dark:border-amber-800' : 'border-zinc-200 dark:border-zinc-800'}`}>
       <div className="flex gap-3">
-        <UserAvatar user={{ fullName: item.authorName }} className="h-9 w-9 text-xs" />
+        <UserAvatar user={{ fullName: item.authorName, avatarUrl: item.authorAvatarUrl }} className="h-9 w-9 text-xs" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">

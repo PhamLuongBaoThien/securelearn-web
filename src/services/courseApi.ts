@@ -131,6 +131,7 @@ export interface ILessonDiscussion {
   replyToAuthorName?: string;
   authorId: string;
   authorName: string;
+  authorAvatarUrl: string;
   authorRole: 'STUDENT' | 'INSTRUCTOR';
   content: string;
   replyCount: number;
