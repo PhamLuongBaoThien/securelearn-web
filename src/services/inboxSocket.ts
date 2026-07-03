@@ -105,6 +105,7 @@ export const emitInboxTyping = (ticketId: string, typing: boolean) => {
   lastTypingAt = now;
   socket?.emit("inbox:typing", { ticketId, typing });
 };
+export const emitInboxReconcile = () => dispatch({ type: "reconcile" });
 export const isInboxConnected = () => connected;
 export const getActiveInboxTicket = () => activeTicket;
 window.addEventListener("auth:token-updated", () => {

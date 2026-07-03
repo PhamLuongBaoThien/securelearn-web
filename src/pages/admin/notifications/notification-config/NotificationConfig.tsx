@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { notificationApi } from '@/services/notificationApi';
-import { Bell, Mail, Smartphone, Plus, Save, X, Eye, Code } from 'lucide-react';
+import { Bell, Mail, Smartphone, Save, X, Eye, Code } from 'lucide-react';
 import { toast } from 'sonner';
 import type { INotificationTemplate, TemplateEvent, NotificationType } from '@/types/admin.types';
 import {
@@ -27,8 +27,8 @@ const eventLabel: Record<TemplateEvent, string> = {
   REPORT_CREATED: 'Báo cáo mới',
   SUPPORT_REQUEST_CREATED: 'Yêu cầu hỗ trợ mới',
   FEEDBACK_CREATED: 'Góp ý mới',
-  INBOX_USER_REPLIED: 'Người dùng phản hồi ticket', INBOX_ADMIN_REPLIED: 'Admin phản hồi ticket',
-  INBOX_STATUS_CHANGED: 'Trạng thái ticket thay đổi',
+  INBOX_USER_REPLIED: 'Người dùng phản hồi yêu cầu', INBOX_ADMIN_REPLIED: 'Quản trị viên phản hồi yêu cầu',
+  INBOX_STATUS_CHANGED: 'Trạng thái yêu cầu thay đổi',
 };
 
 const eventVariables: Record<TemplateEvent, string[]> = {
@@ -158,13 +158,6 @@ export const NotificationConfig: React.FC = () => {
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Cấu hình Thông báo</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Soạn thảo và quản lý mẫu email và thông báo trong ứng dụng cho các sự kiện hệ thống.</p>
         </div>
-        <Button
-          id="btn-add-template"
-          onClick={async () => { try { const created = await notificationApi.createTemplate({ name: 'Template mới', event: 'WELCOME', type: activeTab, subject: activeTab === 'EMAIL' ? 'Tiêu đề mới' : undefined, body: 'Nội dung mới', isActive: false }); const data = (created as { data?: INotificationTemplate }).data; if (data) setTemplates((p) => [...p, data]); } catch (error) { toast.error(error instanceof Error ? error.message : 'Không thể tạo template.'); } }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
-        >
-          <Plus className="w-4 h-4" /> Thêm Template
-        </Button>
       </div>
 
       {/* Tabs */}

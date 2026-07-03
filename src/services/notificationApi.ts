@@ -6,6 +6,7 @@ export const notificationApi = {
   recent: async () => (await apiClient.get<R<NotificationItem[]>>('/api/notifications/recent')).data.data,
   unreadCount: async () => (await apiClient.get<R<{ count: number }>>('/api/notifications/unread-count')).data.data.count,
   markRead: async (id: string) => (await apiClient.patch(`/api/notifications/${id}/read`)).data,
+  markReadByUrl: async (actionUrl: string) => (await apiClient.patch('/api/notifications/read-by-url', { actionUrl })).data,
   markAllRead: async () => (await apiClient.patch('/api/notifications/read-all')).data,
   getCapabilities: async () => (await apiClient.get<R<NotificationCapabilities>>('/api/notifications/channel-capabilities')).data.data,
   getPreferences: async () => (await apiClient.get<R<NotificationPreferences>>('/api/notifications/preferences')).data.data,

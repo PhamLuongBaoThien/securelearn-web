@@ -39,7 +39,7 @@ export function CannedReplyManager({ ticketType, onInsert }: { ticketType: Ticke
     {open && <div className="space-y-2 rounded-xl border p-3">
       <div className="grid gap-2 sm:grid-cols-2">
         <Input value={title} onChange={event => setTitle(event.target.value)} placeholder="Tên mẫu" />
-        <Select value={type} onChange={event => setType(event.target.value as TicketType | '')}><option value="">Mọi loại ticket</option><option value="REPORT">Báo cáo</option><option value="SUPPORT">Hỗ trợ</option><option value="FEEDBACK">Góp ý</option></Select>
+        <Select value={type} onChange={event => setType(event.target.value as TicketType | '')}><option value="">Mọi phân loại</option><option value="REPORT">Báo cáo</option><option value="SUPPORT">Hỗ trợ</option><option value="FEEDBACK">Góp ý</option></Select>
       </div>
       <textarea className="min-h-20 w-full rounded-lg border bg-transparent p-2 text-sm" value={content} onChange={event => setContent(event.target.value)} placeholder="Nội dung mẫu" />
       <Button type="button" disabled={!title.trim() || !content.trim() || save.isPending} onClick={() => save.mutate()}>Lưu mẫu</Button>

@@ -79,3 +79,7 @@ window.addEventListener('auth:session-expired', () => {
   dispatch({ type: 'status', connected: false });
 });
 
+export const emitNotificationReconcile = () => {
+  dispatch({ type: 'reconcile' });
+};
+

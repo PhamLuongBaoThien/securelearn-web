@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import type { ElementType } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { inboxApi } from '@/services/inboxApi';
+import { notificationApi } from '@/services/notificationApi';
+import { emitNotificationReconcile } from '@/services/notificationSocket';
 import { INBOX_REALTIME_EVENT, emitInboxTyping, isInboxConnected, retainInboxSocket, subscribeInboxTicket, type InboxRealtimeDetail } from '@/services/inboxSocket';
 import type { Ticket, TicketDetail, TicketType, TicketMessage } from '@/types/inbox.types';
 import { Button } from '@/components/ui/button';
@@ -184,7 +186,14 @@ export function SupportCenter() {
     };
   }, [id]);
 
-  useEffect(() => { if (id && detail) void inboxApi.markRead(id); }, [id, allMessages.length]);
+  useEffect(() => {
+    if (id && detail) {
+      void inboxApi.markRead(id);
+      void notificationApi.markReadByUrl(`/support/tickets/${id}`).then(() => {
+        emitNotificationReconcile();
+      });
+    }
+  }, [id, allMessages.length, detail]);
   useEffect(() => { if (socketConnected || document.hidden) return; const timer = setInterval(() => void load(), 15000); return () => clearInterval(timer); }, [socketConnected, id]);
 
   useEffect(() => {
@@ -270,7 +279,7 @@ export function SupportCenter() {
 
       setReply('');
       setFiles([]);
-      
+
       setAllMessages(prev => {
         if (prev.some(m => m._id === newMsg._id)) return prev;
         shouldScrollToBottomRef.current = true;
@@ -293,20 +302,20 @@ export function SupportCenter() {
   if (id && detail) {
     const style = typeStyles[detail.type] || typeStyles.SUPPORT;
     const status = statusStyles[detail.status] || statusStyles.OPEN;
-    
+
     return (
       <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
         {/* Nút quay lại và badges */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => nav('/support')}
             className="rounded-xl h-9 border-border/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-all cursor-pointer flex items-center gap-1.5 self-start"
           >
             <ArrowLeft className="h-4 w-4" />
             Danh sách yêu cầu
           </Button>
-          
+
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider border ${style.badgeCls}`}>
               {style.label}
@@ -319,7 +328,7 @@ export function SupportCenter() {
 
         {/* Bố cục 2 Cột hiện đại */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          
+
           {/* CỘT TRÁI: Thông tin chi tiết yêu cầu */}
           <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-24 self-start">
             <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm space-y-4 relative overflow-hidden">
@@ -359,7 +368,7 @@ export function SupportCenter() {
 
           {/* CỘT PHẢI: Khung chat và soạn thảo phản hồi */}
           <div className="lg:col-span-2 space-y-5">
-            
+
             {/* Lịch sử trò chuyện */}
             <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden flex flex-col">
               <div className="p-4 border-b border-border/60 bg-muted/5 flex items-center justify-between">
@@ -393,7 +402,7 @@ export function SupportCenter() {
                     </Button>
                   </div>
                 )}
-                
+
                 {allMessages.length === 0 ? (
                   <div className="text-center py-16 text-muted-foreground border border-dashed border-border/60 rounded-2xl bg-muted/10">
                     Chưa có phản hồi nào cho yêu cầu này.
@@ -402,10 +411,10 @@ export function SupportCenter() {
                   allMessages.map(m => {
                     const isAdminMsg = m.author.type === 'ADMIN';
                     const msgAttachments = getMessageAttachments(m);
-                    
+
                     return (
-                      <div 
-                        key={m._id} 
+                      <div
+                        key={m._id}
                         className={`flex gap-3 items-start w-full ${isAdminMsg ? 'justify-start' : 'justify-end'}`}
                       >
                         {/* Avatar Admin */}
@@ -414,21 +423,19 @@ export function SupportCenter() {
                             S
                           </div>
                         )}
-                        
+
                         <div className={`flex flex-col max-w-[75%] ${isAdminMsg ? 'items-start' : 'items-end'}`}>
-                          <div 
-                            className={`rounded-2xl p-4 shadow-sm border ${
-                              isAdminMsg 
-                                ? 'bg-muted text-foreground border-border/60 rounded-tl-none' 
-                                : 'bg-gradient-to-br from-primary to-primary/95 text-primary-foreground border-transparent rounded-tr-none shadow-md shadow-primary/5'
-                            }`}
+                          <div
+                            className={`rounded-2xl p-4 shadow-sm border ${isAdminMsg
+                              ? 'bg-muted text-foreground border-border/60 rounded-tl-none'
+                              : 'bg-gradient-to-br from-primary to-primary/95 text-primary-foreground border-transparent rounded-tr-none shadow-md shadow-primary/5'
+                              }`}
                           >
-                            <div className={`text-[10px] font-extrabold uppercase tracking-wider mb-1 ${
-                              isAdminMsg ? 'text-primary' : 'text-primary-foreground/80'
-                            }`}>
+                            <div className={`text-[10px] font-extrabold uppercase tracking-wider mb-1 ${isAdminMsg ? 'text-primary' : 'text-primary-foreground/80'
+                              }`}>
                               {isAdminMsg ? 'Hỗ trợ SecureLearn' : 'Bạn'}
                             </div>
-                            
+
                             <p className="text-sm whitespace-pre-wrap leading-relaxed break-words">{m.content}</p>
 
                             {msgAttachments.length > 0 && (
@@ -439,11 +446,10 @@ export function SupportCenter() {
                                       type="button"
                                       key={att._id}
                                       onClick={() => void inboxApi.openAttachment(att._id)}
-                                      className={`flex w-full items-center gap-2.5 p-2 rounded-xl text-xs transition-all border ${
-                                        isAdminMsg
-                                          ? 'bg-background hover:bg-muted border-border/50 text-foreground'
-                                          : 'bg-white/10 hover:bg-white/20 border-white/10 text-primary-foreground'
-                                      }`}
+                                      className={`flex w-full items-center gap-2.5 p-2 rounded-xl text-xs transition-all border ${isAdminMsg
+                                        ? 'bg-background hover:bg-muted border-border/50 text-foreground'
+                                        : 'bg-white/10 hover:bg-white/20 border-white/10 text-primary-foreground'
+                                        }`}
                                     >
                                       <FileIcon className="h-4 w-4 shrink-0" />
                                       <span className="truncate max-w-[180px] font-medium">{att.originalName}</span>
@@ -454,7 +460,7 @@ export function SupportCenter() {
                               </div>
                             )}
                           </div>
-                          
+
                           <span className="text-[9px] text-muted-foreground mt-1.5 px-1 flex items-center gap-1">
                             <Clock className="h-2.5 w-2.5" />
                             {new Date(m.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · {new Date(m.createdAt).toLocaleDateString('vi-VN')}
@@ -471,7 +477,7 @@ export function SupportCenter() {
                     );
                   })
                 )}
-                
+
                 <div ref={messagesEndRef} className="h-6" />
               </div>
             </div>
@@ -486,8 +492,8 @@ export function SupportCenter() {
                         <FileIcon className="h-3.5 w-3.5 text-primary" />
                         <span className="truncate max-w-[150px]">{file.name}</span>
                         <span className="text-[9px] text-muted-foreground">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => removeFile(idx)}
                           className="ml-1 text-muted-foreground hover:text-red-500 transition-colors cursor-pointer"
                         >
@@ -507,12 +513,12 @@ export function SupportCenter() {
                     <p className="animate-pulse">Quản trị viên đang nhập phản hồi…</p>
                   </div>
                 )}
-                
+
                 <div className="flex items-center gap-2">
-                  <textarea 
-                    className="min-h-16 flex-1 w-full rounded-xl border border-border/80 bg-transparent p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none placeholder:text-muted-foreground/50 leading-relaxed" 
-                    value={reply} 
-                    onChange={e => { setReply(e.target.value); if(id)emitInboxTyping(id,true); }} 
+                  <textarea
+                    className="min-h-16 flex-1 w-full rounded-xl border border-border/80 bg-transparent p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none placeholder:text-muted-foreground/50 leading-relaxed"
+                    value={reply}
+                    onChange={e => { setReply(e.target.value); if (id) emitInboxTyping(id, true); }}
                     placeholder="Nhập nội dung câu trả lời của bạn..."
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -525,11 +531,11 @@ export function SupportCenter() {
 
                 <div className="flex items-center justify-between border-t border-border/40 pt-3">
                   <div>
-                    <input 
-                      type="file" 
+                    <input
+                      type="file"
                       ref={fileInputRef}
-                      multiple 
-                      accept="image/jpeg,image/png,image/webp,application/pdf" 
+                      multiple
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
                       onChange={handleFileChange}
                       className="hidden"
                     />
@@ -546,7 +552,7 @@ export function SupportCenter() {
                     </Button>
                   </div>
 
-                  <Button 
+                  <Button
                     onClick={() => void send()}
                     disabled={replying || (!reply.trim() && !files.length)}
                     className="rounded-xl h-9 px-5 text-xs font-bold cursor-pointer shadow-md shadow-primary/10 hover:shadow-lg transition-all"
