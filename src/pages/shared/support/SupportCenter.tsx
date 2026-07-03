@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+﻿import { useEffect, useState, useRef } from 'react';
 import type { ElementType } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { inboxApi } from '@/services/inboxApi';
@@ -9,6 +9,7 @@ import type { Ticket, TicketDetail, TicketType, TicketMessage } from '@/types/in
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { TicketPagination } from '@/components/inbox/TicketPagination';
 import { toast } from 'sonner';
 
 import {
@@ -75,6 +76,9 @@ export function SupportCenter() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const [items, setItems] = useState<Ticket[]>([]);
+  const [listPage, setListPage] = useState(1);
+  const [listTotal, setListTotal] = useState(0);
+  const [listTotalPages, setListTotalPages] = useState(0);
   const [detail, setDetail] = useState<TicketDetail | null>(null);
   const [allMessages, setAllMessages] = useState<TicketMessage[]>([]);
   const [type, setType] = useState<TicketType>('SUPPORT');
@@ -108,8 +112,11 @@ export function SupportCenter() {
           shouldScrollToBottomRef.current = true;
         }
       } else {
-        const res = await inboxApi.list();
+        const res = await inboxApi.list({ page: listPage, limit: 20 });
         setItems(res.items);
+        setListTotal(res.total);
+        setListTotalPages(res.totalPages);
+        if (res.totalPages > 0 && listPage > res.totalPages) setListPage(res.totalPages);
       }
     } catch (e) {
       const error = e as ApiError;
@@ -148,7 +155,7 @@ export function SupportCenter() {
     } else {
       void load();
     }
-  }, [id]);
+  }, [id, listPage]);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const handler = (event: Event) => {
@@ -157,7 +164,7 @@ export function SupportCenter() {
         setSocketConnected(d.connected);
         if (!d.connected) setTyping(false);
       }
-      if (['reconcile', 'ticket-updated', 'read'].includes(d.type)) {
+      if (['reconcile', 'ticket-new', 'ticket-updated', 'read'].includes(d.type)) {
         void load();
       }
       if (d.type === 'message-new') {
@@ -184,7 +191,7 @@ export function SupportCenter() {
       window.removeEventListener(INBOX_REALTIME_EVENT, handler);
       clearTimeout(timer);
     };
-  }, [id]);
+  }, [id, listPage, messagePage]);
 
   useEffect(() => {
     if (id && detail) {
@@ -693,7 +700,7 @@ export function SupportCenter() {
               <History className="h-5 w-5 text-muted-foreground" />
               Yêu cầu đã gửi của bạn
             </h2>
-            <span className="text-xs text-muted-foreground font-medium">Tổng số: {items.length}</span>
+            <span className="text-xs text-muted-foreground font-medium">Tổng số: {listTotal}</span>
           </div>
 
           <div className="space-y-4">
@@ -760,10 +767,18 @@ export function SupportCenter() {
               </div>
             )}
           </div>
+          <TicketPagination
+            page={listPage}
+            totalPages={listTotalPages}
+            total={listTotal}
+            visibleCount={items.length}
+            onPageChange={setListPage}
+          />
         </div>
       </div>
     </div>
   );
 }
+
 
 

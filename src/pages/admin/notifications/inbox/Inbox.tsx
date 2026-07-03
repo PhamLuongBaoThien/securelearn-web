@@ -14,6 +14,7 @@ import { Select } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 import { CannedReplyManager } from '@/components/inbox/CannedReplyManager';
+import { TicketPagination } from '@/components/inbox/TicketPagination';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, HelpCircle, MessageSquare, Send, User, Shield, BookOpen, Play, Star, FileText, Loader2, ChevronRight, Paperclip, FileIcon, X, History } from 'lucide-react';
 
@@ -77,6 +78,7 @@ export const Inbox = () => {
     const [search, setSearch] = useState('');
     const [type, setType] = useState('');
     const [status, setStatus] = useState('');
+    const [listPage, setListPage] = useState(1);
     const [reply, setReply] = useState('');
     const [internal, setInternal] = useState(false);
     const [messagePage, setMessagePage] = useState(1);
@@ -132,14 +134,24 @@ export const Inbox = () => {
         shouldScrollToBottomRef.current = true;
     }
 
+    useEffect(() => {
+        setListPage(1);
+    }, [search, type, status]);
+
     // Query: Danh sách ticket
-    const { data: listData, isLoading: isLoadingList } = useQuery({
-        queryKey: ['adminInboxList', search, type, status],
-        queryFn: () => inboxApi.list({ search, type, status }, true),
+    const { data: listData, isLoading: isLoadingList, isFetching: isFetchingList } = useQuery({
+        queryKey: ['adminInboxList', search, type, status, listPage],
+        queryFn: () => inboxApi.list({ search, type, status, page: listPage, limit: 20 }, true),
         placeholderData: keepPreviousData,
     });
 
     const items = listData?.items || [];
+
+    useEffect(() => {
+        if (listData?.totalPages && listPage > listData.totalPages) {
+            setListPage(listData.totalPages);
+        }
+    }, [listData?.totalPages, listPage]);
 
     // Query: Chi tiết ticket
     const { data: detail, isLoading: isLoadingDetail, isFetching: isFetchingDetail } = useQuery({
@@ -332,7 +344,7 @@ export const Inbox = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto max-h-[580px] divide-y divide-border/40">
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden max-h-[580px] divide-y divide-border/40">
                         {isLoadingList ? (
                             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
                                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -401,6 +413,17 @@ export const Inbox = () => {
                             })
                         )}
                     </div>
+                    <TicketPagination
+                        page={listData?.page || listPage}
+                        totalPages={listData?.totalPages || 0}
+                        total={listData?.total || 0}
+                        visibleCount={items.length}
+                        loading={isFetchingList}
+                        onPageChange={(nextPage) => {
+                            setListPage(nextPage);
+                            setSelected('');
+                        }}
+                    />
                 </section>
 
                 {/* Cột phải: Chi tiết và Phản hồi yêu cầu */}
@@ -646,6 +669,8 @@ export const Inbox = () => {
         </div>
     );
 };
+
+
 
 
 
