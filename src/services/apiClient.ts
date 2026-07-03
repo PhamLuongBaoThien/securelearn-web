@@ -28,6 +28,8 @@ const isMediaDataPath = (url?: string) => {
   return (
     /\.(ts|m4s|mp4)(?:[?#]|$)/i.test(url) ||
     url.includes('/securelearn-media/') ||
+    url.includes('.r2.dev') ||
+    url.includes('.r2.cloudflarestorage.com') ||
     url.includes('X-Amz-Signature=') ||
     url.includes('X-Amz-Credential=')
   );
