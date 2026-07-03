@@ -1,4 +1,4 @@
-﻿import type React from 'react';
+import type React from 'react';
 import { BookOpen, CreditCard, GraduationCap, Inbox, Megaphone, ShieldAlert } from 'lucide-react';
 import type { NotificationCategory } from '@/types/notification.types';
 
@@ -21,7 +21,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<string, string> = {
   WELCOME: 'Chào mừng tài khoản', PAYMENT_SUCCESS: 'Thanh toán thành công', PAYMENT_FAILED: 'Thanh toán thất bại',
   COURSE_APPROVED: 'Khóa học được duyệt', COURSE_REJECTED: 'Khóa học cần chỉnh sửa',
   COURSE_SUBMITTED_FOR_REVIEW: 'Khóa học gửi duyệt', ENROLLMENT_CREATED: 'Học viên mới ghi danh',
-  DISCUSSION_CREATED: 'Bình luận mới', DISCUSSION_REPLIED: 'Phản hồi bình luận', MANUAL: 'Thông báo từ quản trị viên',
+  DISCUSSION_CREATED: 'Thảo luận mới', DISCUSSION_REPLIED: 'Phản hồi thảo luận', MANUAL: 'Thông báo từ quản trị viên',
   REPORT_CREATED: 'Báo cáo mới', SUPPORT_REQUEST_CREATED: 'Yêu cầu hỗ trợ mới', FEEDBACK_CREATED: 'Góp ý mới',
   INBOX_USER_REPLIED: 'Yêu cầu có phản hồi', INBOX_ADMIN_REPLIED: 'Hỗ trợ đã phản hồi', INBOX_STATUS_CHANGED: 'Trạng thái yêu cầu',
 };

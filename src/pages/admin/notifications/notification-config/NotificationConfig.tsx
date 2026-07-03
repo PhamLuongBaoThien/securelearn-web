@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { notificationApi } from '@/services/notificationApi';
 import { Bell, Mail, Smartphone, Save, X, Eye, Code } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,8 +23,8 @@ const eventLabel: Record<TemplateEvent, string> = {
   COURSE_REJECTED: 'Khóa học cần chỉnh sửa',
   COURSE_SUBMITTED_FOR_REVIEW: 'Khóa học gửi duyệt',
   ENROLLMENT_CREATED: 'Học viên mới',
-  DISCUSSION_CREATED: 'Bình luận mới trong khóa học',
-  DISCUSSION_REPLIED: 'Phản hồi bình luận',
+  DISCUSSION_CREATED: 'Thảo luận mới trong khóa học',
+  DISCUSSION_REPLIED: 'Phản hồi thảo luận',
   WELCOME: 'Chào mừng người dùng',
   REPORT_CREATED: 'Báo cáo mới',
   SUPPORT_REQUEST_CREATED: 'Yêu cầu hỗ trợ mới',
