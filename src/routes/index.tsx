@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // Frontend Routes
 // Mục đích:
 // - khai báo router chính cho public, student, instructor và admin
@@ -71,7 +71,7 @@ import { Inbox } from '../pages/admin/notifications/inbox';
 // Instructor Components
 import { InstructorLayout } from '../components/layout/InstructorLayout';
 import { InstructorDashboard } from '../pages/instructor/dashboard';
-import { InstructorCourses, CourseEditor } from '../pages/instructor/courses';
+import { InstructorCourses, CourseEditor, InstructorDiscussions } from '../pages/instructor/courses';
 import { InstructorPerformance } from '../pages/instructor/performance';
 import { InstructorStudents } from '../pages/instructor/students';
 import { InstructorCommunication } from '../pages/instructor/communication';
@@ -171,6 +171,7 @@ const router = createBrowserRouter([
           { path: 'dashboard', element: <InstructorDashboard /> },
           { path: 'courses', element: <InstructorCourses /> },
           { path: 'courses/:courseId/edit', element: <CourseEditor /> },
+          { path: 'courses/:courseId/discussions', element: <InstructorDiscussions /> },
           { path: 'performance', element: <InstructorPerformance /> },
           { path: 'students', element: <InstructorStudents /> },
           { path: 'communication', element: <InstructorCommunication /> },
@@ -244,6 +245,7 @@ const router = createBrowserRouter([
 export function AppRouter() {
   return <RouterProvider router={router} />;
 }
+
 
 
 

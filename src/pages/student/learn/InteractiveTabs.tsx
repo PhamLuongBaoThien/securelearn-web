@@ -8,15 +8,13 @@ import { ReportDialog } from '@/components/inbox/ReportDialog';
 // 5. Đánh giá (Reviews): Đánh giá, xếp hạng sao và cảm nhận của học viên về khóa học.
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Clock3, Download, Eye, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Send, Star, Trash2 } from 'lucide-react';
+import { BookOpen, Clock3, Download, Eye, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import { RatingSummary } from '@/components/ui/RatingSummary';
 import {
   useCreateLearningNote,
   useDeleteLearningNote,
-  useCreateLessonDiscussion,
   useLearningNotes,
   useLearningResources,
-  useLessonDiscussions,
   useUpdateLearningNote,
 } from '@/hooks/useLearningInteractions';
 import { useCourseReviews, useMyCourseReview, useUpsertCourseReview } from '@/hooks/useCourseReviews';
@@ -40,6 +38,7 @@ import type { ICourse, ILearningNote, ILesson } from '@/services/courseApi';
 import { downloadDocument, type IDocumentAsset } from '@/services/mediaApi';
 import { ProtectedPdfViewer } from './ProtectedPdfViewer';
 import { ImageDocumentViewer } from './ImageDocumentViewer';
+import { DiscussionPanel } from './DiscussionPanel';
 import { toast } from 'sonner';
 
 export type LearningTabId = 'overview' | 'resources' | 'notes' | 'discussions' | 'reviews';
@@ -147,7 +146,7 @@ export function InteractiveTabs({
           />
         )}
         {activeTab === 'discussions' && (
-          <DiscussionsPanel courseId={course._id || ''} lessonId={lesson._id || ''} playbackTime={playbackTime} />
+          <DiscussionPanel courseId={course._id || ''} lessonId={lesson._id || ''} />
         )}
         {activeTab === 'reviews' && <ReviewsPanel course={course} />}
       </div>
@@ -532,97 +531,6 @@ function NotesPanel({
   );
 }
 
-function DiscussionsPanel({ courseId, lessonId, playbackTime }: { courseId: string; lessonId: string; playbackTime: number }) {
-  const discussions = useLessonDiscussions(courseId, lessonId);
-  const createDiscussion = useCreateLessonDiscussion(courseId, lessonId);
-  const [content, setContent] = useState('');
-
-  const submit = () => {
-    if (!content.trim()) return;
-    createDiscussion.mutate({ content, timestampSec: playbackTime }, { onSuccess: () => setContent('') });
-  };
-
-  return (
-    <div className="max-w-4xl space-y-5">
-      <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Trao đổi & Hỏi đáp</p>
-        <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Thảo luận cùng giảng viên và học viên</h3>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Bạn có thắc mắc về bài học? Hãy để lại câu hỏi tại đây để giảng viên hoặc các bạn khác hỗ trợ giải đáp nhé.
-        </p>
-      </div>
-
-      <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-        <textarea
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-          rows={3}
-          maxLength={2_000}
-          placeholder="Trao đổi với học viên và giảng viên về bài học..."
-          className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
-        />
-        <div className="mt-3 flex items-center justify-between border-t border-zinc-100 pt-3 dark:border-zinc-800 gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            <Clock3 className="h-3.5 w-3.5" />
-            Mốc {formatTime(playbackTime)}
-          </span>
-          <Button
-            type="button"
-            onClick={submit}
-            disabled={!content.trim() || createDiscussion.isPending}
-            variant="udemy_dark"
-            className="h-10 gap-2 rounded-2xl px-4 text-sm"
-          >
-            {createDiscussion.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Đăng thảo luận
-          </Button>
-        </div>
-      </div>
-
-      {discussions.isLoading ? (
-        <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700">
-          <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
-        </div>
-      ) : discussions.data?.length ? (
-        <div className="space-y-4">
-          {discussions.data.map((item) => (
-            <article key={item._id} className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-              <div className="flex gap-3">
-                <UserAvatar
-                  user={{ fullName: item.authorName }}
-                  className="h-9 w-9 text-xs"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-zinc-900 dark:text-white">{item.authorName || 'Người học'}</span>
-                      {item.authorRole === 'INSTRUCTOR' && (
-                        <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                          Giảng viên
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-                        <Clock3 className="h-3 w-3" />
-                        {formatTime(item.timestampSec)}
-                      </span>
-                      <span className="text-xs text-zinc-400">{new Date(item.createdAt).toLocaleString('vi-VN')}</span>
-                    </div>
-                  </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-700 dark:text-zinc-300">{item.content}</p>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <EmptyState icon={MessageSquare} message="Chưa có thảo luận nào cho bài học này." />
-      )}
-    </div>
-  );
-}
-
 function ReviewsPanel({ course }: { course: ICourse }) {
   const user = useAppSelector((state) => state.auth.user);
   const [selectedRating, setSelectedRating] = useState(5);
@@ -760,5 +668,7 @@ function EmptyState({ icon: Icon, message }: { icon: typeof FileText; message: s
     </div>
   );
 }
+
+
 
 

@@ -1,4 +1,4 @@
-// [GIAO DIỆN HỌC TẬP CHÍNH - BƯỚC 1]
+﻿// [GIAO DIỆN HỌC TẬP CHÍNH - BƯỚC 1]
 // Component cha điều phối màn hình học tập của học viên.
 // Vai trò chính:
 // 1. Quản lý trạng thái giao diện học tập: chọn bài học (selectedLessonId), ẩn/hiện sidebar giáo trình, đồng bộ theme sáng/tối.
@@ -177,6 +177,11 @@ export function LearningInterface() {
   // [BẢO MẬT ĐỊNH TUYẾN - BƯỚC 1]
   // Lấy lessonId được yêu cầu từ URL query (?lessonId=xxx)
   const requestedLessonId = searchParams.get('lessonId') || '';
+  const requestedDiscussionId = searchParams.get('discussionId') || '';
+
+  useEffect(() => {
+    if (requestedDiscussionId) setActiveInteractionTab('discussions');
+  }, [requestedDiscussionId]);
   const accessByLessonId = useMemo(() => accessQuery.data?.lessons || {}, [accessQuery.data?.lessons]);
   
   // Xác định ID bài học mục tiêu: Ưu tiên state hiện tại -> URL query -> Bài học học dở lần trước -> Bài học đầu tiên
@@ -457,4 +462,5 @@ export function LearningInterface() {
     </div>
   );
 }
+
 

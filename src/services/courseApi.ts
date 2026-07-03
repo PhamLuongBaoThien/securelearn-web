@@ -124,12 +124,33 @@ export interface ILearningNote {
 
 export interface ILessonDiscussion {
   _id: string;
+  courseId: string;
+  lessonId: string;
+  parentId: string | null;
+  replyToId?: string;
+  replyToAuthorName?: string;
   authorId: string;
   authorName: string;
   authorRole: 'STUDENT' | 'INSTRUCTOR';
   content: string;
-  timestampSec: number;
+  replyCount: number;
+  editedAt?: string;
+  deletedAt?: string;
+  hiddenAt?: string;
+  hiddenBy?: string;
+  hiddenForViewer?: boolean;
+  focusReplyId?: string;
+  canEdit: boolean;
+  canDelete: boolean;
+  canModerate: boolean;
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface IDiscussionPage {
+  items: ILessonDiscussion[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 export interface ICourseReview {
@@ -614,9 +635,27 @@ export const deleteLearningNote = async (
   return data;
 };
 
-export const getLessonDiscussions = async (courseId: string, lessonId: string) => {
-  const { data } = await apiClient.get<ApiResponse<ILessonDiscussion[]>>(
-    `/api/courses/${courseId}/lessons/${lessonId}/discussions`,
+export const getLessonDiscussions = async (
+  courseId: string,
+  lessonId: string,
+  params: { cursor?: string; limit?: number; focusId?: string } = {},
+) => {
+  const { data } = await apiClient.get<ApiResponse<IDiscussionPage>>(
+    '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions',
+    { params },
+  );
+  return data;
+};
+
+export const getLessonDiscussionReplies = async (
+  courseId: string,
+  lessonId: string,
+  discussionId: string,
+  params: { cursor?: string; limit?: number; focusId?: string } = {},
+) => {
+  const { data } = await apiClient.get<ApiResponse<IDiscussionPage>>(
+    '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions/' + discussionId + '/replies',
+    { params },
   );
   return data;
 };
@@ -624,15 +663,58 @@ export const getLessonDiscussions = async (courseId: string, lessonId: string) =
 export const createLessonDiscussion = async (
   courseId: string,
   lessonId: string,
-  payload: { content: string; timestampSec: number },
+  payload: { content: string; parentId?: string; replyToId?: string },
 ) => {
   const { data } = await apiClient.post<ApiResponse<ILessonDiscussion>>(
-    `/api/courses/${courseId}/lessons/${lessonId}/discussions`,
+    '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions',
     payload,
   );
   return data;
 };
 
+export const updateLessonDiscussion = async (
+  courseId: string,
+  lessonId: string,
+  discussionId: string,
+  content: string,
+) => {
+  const { data } = await apiClient.patch<ApiResponse<ILessonDiscussion>>(
+    '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions/' + discussionId,
+    { content },
+  );
+  return data;
+};
+
+export const deleteLessonDiscussion = async (courseId: string, lessonId: string, discussionId: string) => {
+  const { data } = await apiClient.delete<ApiResponse<ILessonDiscussion>>(
+    '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions/' + discussionId,
+  );
+  return data;
+};
+
+export const moderateLessonDiscussion = async (
+  courseId: string,
+  lessonId: string,
+  discussionId: string,
+  hidden: boolean,
+) => {
+  const { data } = await apiClient.patch<ApiResponse<ILessonDiscussion>>(
+    '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions/' + discussionId + '/moderation',
+    { hidden },
+  );
+  return data;
+};
+
+export const getCourseDiscussionsForInstructor = async (
+  courseId: string,
+  params: { cursor?: string; limit?: number; lessonId?: string; search?: string; hidden?: string } = {},
+) => {
+  const { data } = await apiClient.get<ApiResponse<IDiscussionPage>>(
+    '/api/courses/' + courseId + '/discussions/manage',
+    { params },
+  );
+  return data;
+};
 export const getSubscriptionCatalog = async () => {
   const { data } = await apiClient.get<ApiResponse<ICourse[]>>('/api/courses/subscription-catalog');
   return data;
@@ -722,5 +804,8 @@ export const removeAttachmentFromLesson = async (courseId: string, lessonId: str
   );
   return data;
 };
+
+
+
 
 

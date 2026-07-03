@@ -1,4 +1,4 @@
-// ========================
+﻿// ========================
 // TypeScript Types: Định nghĩa kiểu dữ liệu cho Admin Management
 // Phủ toàn bộ 6 nhóm chức năng quản trị.
 // ========================
@@ -521,6 +521,8 @@ export type TemplateEvent =
   | 'COURSE_REJECTED'
   | 'COURSE_SUBMITTED_FOR_REVIEW'
   | 'ENROLLMENT_CREATED'
+  | 'DISCUSSION_CREATED'
+  | 'DISCUSSION_REPLIED'
   | 'REPORT_CREATED'
   | 'SUPPORT_REQUEST_CREATED'
   | 'FEEDBACK_CREATED'
@@ -564,6 +566,8 @@ export interface ILearningProgress {
   enrolledAt: string;
   completedAt?: string;
 }
+
+
 
 
 
