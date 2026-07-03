@@ -1,15 +1,17 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useCourseLearning } from '@/hooks/useCourseLearning';
-import { Eye, EyeOff, Loader2, MessageSquare, Search } from 'lucide-react';
+import { Eye, EyeOff, Loader2, MessageSquare, Pin, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { toast } from 'sonner';
 import {
   getCourseDiscussionsForInstructor,
   moderateLessonDiscussion,
+  pinLessonDiscussion,
   type ILessonDiscussion,
 } from '@/services/courseApi';
 import {
@@ -81,6 +83,15 @@ export function InstructorDiscussions() {
     return () => window.clearInterval(timer);
   }, [connected, courseId, queryClient]);
 
+  const togglePin = async (item: ILessonDiscussion) => {
+    try {
+      await pinLessonDiscussion(courseId, item.lessonId, item._id, !item.pinnedAt);
+      await queryClient.invalidateQueries({ queryKey: ['instructor', 'course-discussions', courseId] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể cập nhật ghim.');
+    }
+  };
+
   const toggleHidden = async (item: ILessonDiscussion) => {
     await moderateLessonDiscussion(courseId, item.lessonId, item._id, !item.hiddenAt);
     await queryClient.invalidateQueries({ queryKey: ['instructor', 'course-discussions', courseId] });
@@ -128,6 +139,7 @@ export function InstructorDiscussions() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <span className="font-semibold">{item.authorName || 'Người học'}</span>
+                      {item.pinnedAt && <span className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-primary"><Pin className="h-3 w-3 fill-current" />Đã ghim</span>}
                       <span className="ml-2 text-xs text-muted-foreground">Bài học: {lessonNames.get(item.lessonId) || item.lessonId}</span>
                     </div>
                     <span className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString('vi-VN')}</span>
@@ -136,6 +148,12 @@ export function InstructorDiscussions() {
                   <div className="mt-3 flex items-center gap-2">
                     {item.parentId && <span className="text-xs text-muted-foreground">Phản hồi</span>}
                     {item.replyCount > 0 && <span className="text-xs text-muted-foreground">{item.replyCount} phản hồi</span>}
+                    {!item.parentId && !item.deletedAt && !item.hiddenAt && (
+                      <Button size="sm" variant="ghost" onClick={() => void togglePin(item)}>
+                        <Pin className={`mr-1 h-4 w-4 ${item.pinnedAt ? 'fill-current' : ''}`} />
+                        {item.pinnedAt ? 'Bỏ ghim' : 'Ghim'}
+                      </Button>
+                    )}
                     {!item.deletedAt && (
                       <Button size="sm" variant="ghost" onClick={() => void toggleHidden(item)}>
                         {item.hiddenAt ? <Eye className="mr-1 h-4 w-4" /> : <EyeOff className="mr-1 h-4 w-4" />}

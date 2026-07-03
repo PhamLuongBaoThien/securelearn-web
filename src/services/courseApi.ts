@@ -134,6 +134,8 @@ export interface ILessonDiscussion {
   authorRole: 'STUDENT' | 'INSTRUCTOR';
   content: string;
   replyCount: number;
+  pinnedAt?: string;
+  pinnedBy?: string;
   editedAt?: string;
   deletedAt?: string;
   hiddenAt?: string;
@@ -701,6 +703,19 @@ export const moderateLessonDiscussion = async (
   const { data } = await apiClient.patch<ApiResponse<ILessonDiscussion>>(
     '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions/' + discussionId + '/moderation',
     { hidden },
+  );
+  return data;
+};
+
+export const pinLessonDiscussion = async (
+  courseId: string,
+  lessonId: string,
+  discussionId: string,
+  pinned: boolean,
+) => {
+  const { data } = await apiClient.patch<ApiResponse<ILessonDiscussion>>(
+    '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions/' + discussionId + '/pin',
+    { pinned },
   );
   return data;
 };

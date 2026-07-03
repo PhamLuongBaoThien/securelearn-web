@@ -14,6 +14,7 @@ import {
   getLessonDiscussionReplies,
   getLessonDiscussions,
   moderateLessonDiscussion,
+  pinLessonDiscussion,
   updateLearningNote,
   updateLessonDiscussion,
 } from '@/services/courseApi';
@@ -136,6 +137,15 @@ export function useDeleteLessonDiscussion(courseId: string, lessonId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (discussionId: string) => deleteLessonDiscussion(courseId, lessonId, discussionId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: learningInteractionKeys.discussions(courseId, lessonId) }),
+  });
+}
+
+export function usePinLessonDiscussion(courseId: string, lessonId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ discussionId, pinned }: { discussionId: string; pinned: boolean }) =>
+      pinLessonDiscussion(courseId, lessonId, discussionId, pinned),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: learningInteractionKeys.discussions(courseId, lessonId) }),
   });
 }

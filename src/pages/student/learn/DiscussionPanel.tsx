@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Eye, EyeOff, Loader2, MessageSquare, Pencil, Send, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Eye, EyeOff, Loader2, MessageSquare, Pencil, Pin, Send, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import {
   useLessonDiscussionReplies,
   useLessonDiscussions,
   useModerateLessonDiscussion,
+  usePinLessonDiscussion,
   useUpdateLessonDiscussion,
 } from '@/hooks/useLearningInteractions';
 import {
@@ -43,6 +44,18 @@ export function DiscussionPanel({
   const [content, setContent] = useState('');
   const [connected, setConnected] = useState(isDiscussionConnected());
   const [now, setNow] = useState(() => Date.now());
+  const focusedScrollRef = useRef('');
+
+  const scrollToFocusedItem = useCallback((discussionId: string) => {
+    if (!discussionId || focusedScrollRef.current === discussionId) return;
+    window.requestAnimationFrame(() => {
+      if (focusedScrollRef.current === discussionId) return;
+      const element = document.getElementById('discussion-' + discussionId);
+      if (!element) return;
+      focusedScrollRef.current = discussionId;
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
@@ -51,10 +64,8 @@ export function DiscussionPanel({
 
   useEffect(() => {
     if (!focusedId || !discussions.data) return;
-    window.requestAnimationFrame(() => {
-      document.getElementById('discussion-' + focusedId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
-  }, [focusedId, discussions.data]);
+    scrollToFocusedItem(focusedId);
+  }, [focusedId, discussions.data, scrollToFocusedItem]);
   const items = useMemo(
     () => dedupe(discussions.data?.pages.flatMap(page => page.items) || []),
     [discussions.data],
@@ -126,7 +137,7 @@ export function DiscussionPanel({
       ) : items.length ? (
         <div className="space-y-4">
           {items.map(item => (
-            <DiscussionItem key={item._id} item={item} courseId={courseId} lessonId={lessonId} now={now} />
+            <DiscussionItem key={item._id} item={item} courseId={courseId} lessonId={lessonId} now={now} scrollToFocusedItem={scrollToFocusedItem} />
           ))}
           {discussions.hasNextPage && (
             <Button
@@ -156,11 +167,13 @@ function DiscussionItem({
   courseId,
   lessonId,
   now,
+  scrollToFocusedItem,
 }: {
   item: ILessonDiscussion;
   courseId: string;
   lessonId: string;
   now: number;
+  scrollToFocusedItem: (discussionId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(Boolean(item.focusReplyId));
   const [reply, setReply] = useState('');
@@ -172,14 +185,13 @@ function DiscussionItem({
   const update = useUpdateLessonDiscussion(courseId, lessonId);
   const remove = useDeleteLessonDiscussion(courseId, lessonId);
   const moderate = useModerateLessonDiscussion(courseId, lessonId);
+  const pin = usePinLessonDiscussion(courseId, lessonId);
   const replyItems = dedupe(replies.data?.pages.flatMap(page => page.items) || []);
 
   useEffect(() => {
     if (!item.focusReplyId || !replyItems.length) return;
-    window.requestAnimationFrame(() => {
-      document.getElementById('discussion-' + item.focusReplyId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
-  }, [item.focusReplyId, replyItems]);
+    scrollToFocusedItem(item.focusReplyId);
+  }, [item.focusReplyId, replyItems, scrollToFocusedItem]);
 
   const submitReply = () => {
     if (!reply.trim()) return;
@@ -216,6 +228,7 @@ function DiscussionItem({
               )}
               {item.editedAt && <span className="text-[10px] text-zinc-400">Đã chỉnh sửa</span>}
               {item.hiddenAt && <span className="text-[10px] font-semibold text-amber-600">Đã ẩn</span>}
+              {item.pinnedAt && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary"><Pin className="h-3 w-3 fill-current" />Đã ghim</span>}
             </div>
             <div className="flex items-center gap-2 text-xs text-zinc-400">
 
@@ -263,6 +276,21 @@ function DiscussionItem({
             )}
             {item.canEdit && <Button size="sm" variant="ghost" className="h-8 rounded-xl text-xs" onClick={() => setEditing(true)}><Pencil className="mr-1 h-3.5 w-3.5" />Sửa</Button>}
             {item.canDelete && <Button size="sm" variant="ghost" className="h-8 rounded-xl text-xs text-destructive" onClick={() => remove.mutate(item._id)}><Trash2 className="mr-1 h-3.5 w-3.5" />Xóa</Button>}
+            {item.canModerate && !item.parentId && !item.deletedAt && !item.hiddenAt && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 rounded-xl text-xs"
+                disabled={pin.isPending}
+                onClick={() => pin.mutate(
+                  { discussionId: item._id, pinned: !item.pinnedAt },
+                  { onError: error => toast.error(error instanceof Error ? error.message : 'Không thể cập nhật ghim.') },
+                )}
+              >
+                <Pin className={`mr-1 h-3.5 w-3.5 ${item.pinnedAt ? 'fill-current' : ''}`} />
+                {item.pinnedAt ? 'Bỏ ghim' : 'Ghim'}
+              </Button>
+            )}
             {item.canModerate && !item.deletedAt && (
               <Button size="sm" variant="ghost" className="h-8 rounded-xl text-xs" onClick={() => moderate.mutate({ discussionId: item._id, hidden: !item.hiddenAt })}>
                 {item.hiddenAt ? <Eye className="mr-1 h-3.5 w-3.5" /> : <EyeOff className="mr-1 h-3.5 w-3.5" />}
@@ -277,7 +305,7 @@ function DiscussionItem({
               {!isReply && (
                 <>
                   {replies.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-zinc-400" /> : replyItems.map(replyItem => (
-                    <DiscussionItem key={replyItem._id} item={replyItem} courseId={courseId} lessonId={lessonId} now={now} />
+                    <DiscussionItem key={replyItem._id} item={replyItem} courseId={courseId} lessonId={lessonId} now={now} scrollToFocusedItem={scrollToFocusedItem} />
                   ))}
                   {replies.hasNextPage && (
                     <Button size="sm" variant="ghost" disabled={replies.isFetchingNextPage} onClick={() => void replies.fetchNextPage()}>
