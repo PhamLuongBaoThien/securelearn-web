@@ -8,7 +8,8 @@ import { ReportDialog } from '@/components/inbox/ReportDialog';
 // 5. Đánh giá (Reviews): Đánh giá, xếp hạng sao và cảm nhận của học viên về khóa học.
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Clock3, Download, Eye, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Star, Trash2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Bell, BookOpen, Clock3, Download, Eye, FileText, Loader2, MessageSquare, NotebookPen, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import { RatingSummary } from '@/components/ui/RatingSummary';
 import {
   useCreateLearningNote,
@@ -39,15 +40,19 @@ import { downloadDocument, type IDocumentAsset } from '@/services/mediaApi';
 import { ProtectedPdfViewer } from './ProtectedPdfViewer';
 import { ImageDocumentViewer } from './ImageDocumentViewer';
 import { DiscussionPanel } from './DiscussionPanel';
+import { AnnouncementPanel } from './AnnouncementPanel';
+import { announcementKeys, useAnnouncementUnread } from '@/hooks/useCourseAnnouncements';
+import { DISCUSSION_REALTIME_EVENT, isDiscussionConnected, retainDiscussionSocket, subscribeDiscussionLesson, type DiscussionRealtimeDetail } from '@/services/discussionSocket';
 import { toast } from 'sonner';
 
-export type LearningTabId = 'overview' | 'resources' | 'notes' | 'discussions' | 'reviews';
+export type LearningTabId = 'overview' | 'resources' | 'notes' | 'discussions' | 'announcements' | 'reviews';
 
 const TABS = [
   { id: 'overview' as const, label: 'Tổng quan', icon: BookOpen },
   { id: 'resources' as const, label: 'Tài liệu', icon: FileText },
   { id: 'notes' as const, label: 'Ghi chú', icon: NotebookPen },
   { id: 'discussions' as const, label: 'Thảo luận', icon: MessageSquare },
+  { id: 'announcements' as const, label: 'Thông báo khóa học', icon: Bell },
   { id: 'reviews' as const, label: 'Đánh giá', icon: Star },
 ];
 
@@ -91,6 +96,40 @@ export function InteractiveTabs({
 }) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const notesTabRef = useRef<HTMLButtonElement | null>(null);
+  const courseId = course._id || '';
+  const lessonId = lesson._id || '';
+  const queryClient = useQueryClient();
+  const announcementUnread = useAnnouncementUnread(courseId);
+  const [courseSocketConnected, setCourseSocketConnected] = useState(isDiscussionConnected());
+
+  useEffect(() => {
+    if (!courseId || !lessonId) return;
+    const release = retainDiscussionSocket();
+    const unsubscribe = subscribeDiscussionLesson(courseId, lessonId);
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<DiscussionRealtimeDetail>).detail;
+      if (detail.type === 'status') setCourseSocketConnected(detail.connected);
+      if (detail.type === 'reconcile' || detail.type === 'announcement') {
+        void queryClient.invalidateQueries({ queryKey: announcementKeys.list(courseId) });
+        void queryClient.invalidateQueries({ queryKey: announcementKeys.unread(courseId) });
+      }
+    };
+    window.addEventListener(DISCUSSION_REALTIME_EVENT, handler);
+    return () => {
+      window.removeEventListener(DISCUSSION_REALTIME_EVENT, handler);
+      unsubscribe();
+      release();
+    };
+  }, [courseId, lessonId, queryClient]);
+
+  useEffect(() => {
+    if (courseSocketConnected || document.hidden || !courseId) return;
+    const timer = window.setInterval(() => {
+      void queryClient.invalidateQueries({ queryKey: announcementKeys.list(courseId) });
+      void queryClient.invalidateQueries({ queryKey: announcementKeys.unread(courseId) });
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [courseSocketConnected, courseId, queryClient]);
 
   useEffect(() => {
     if (!openNotesSignal) return;
@@ -120,6 +159,9 @@ export function InteractiveTabs({
             >
               <Icon className="h-4 w-4" />
               {tab.label}
+              {tab.id === 'announcements' && Boolean(announcementUnread.data) && (
+                <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">{announcementUnread.data}</span>
+              )}
               {active && (
                 <motion.div
                   layoutId="learning-tabs-underline"
@@ -148,6 +190,7 @@ export function InteractiveTabs({
         {activeTab === 'discussions' && (
           <DiscussionPanel courseId={course._id || ''} lessonId={lesson._id || ''} />
         )}
+        {activeTab === 'announcements' && <AnnouncementPanel courseId={course._id || ''} lessonId={lesson._id || ''} />}
         {activeTab === 'reviews' && <ReviewsPanel course={course} />}
       </div>
     </section>

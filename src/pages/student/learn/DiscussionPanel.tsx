@@ -77,7 +77,7 @@ export function DiscussionPanel({
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<DiscussionRealtimeDetail>).detail;
       if (detail.type === 'status') setConnected(detail.connected);
-      if (detail.type === 'reconcile' || ('item' in detail && detail.item.courseId === courseId && detail.item.lessonId === lessonId)) {
+      if (detail.type === 'reconcile' || (detail.type !== 'status' && detail.type !== 'announcement' && detail.item.courseId === courseId && detail.item.lessonId === lessonId)) {
         void queryClient.invalidateQueries({ queryKey: learningInteractionKeys.discussions(courseId, lessonId) });
       }
     };

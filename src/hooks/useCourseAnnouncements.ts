@@ -1,0 +1,6 @@
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getAnnouncementUnread, listCourseAnnouncements, readAnnouncement } from '@/services/announcementApi';
+export const announcementKeys={list:(courseId:string)=>['course-announcements',courseId] as const,unread:(courseId:string)=>['course-announcements',courseId,'unread'] as const};
+export const useCourseAnnouncements=(courseId:string,focusId='')=>useInfiniteQuery({queryKey:[...announcementKeys.list(courseId),focusId],queryFn:({pageParam})=>listCourseAnnouncements(courseId,{cursor:pageParam||undefined,limit:20,focusId:focusId||undefined}),initialPageParam:'',getNextPageParam:p=>p.hasMore?p.nextCursor||undefined:undefined,enabled:Boolean(courseId)});
+export const useAnnouncementUnread=(courseId:string)=>useQuery({queryKey:announcementKeys.unread(courseId),queryFn:()=>getAnnouncementUnread(courseId),enabled:Boolean(courseId)});
+export const useReadAnnouncement=(courseId:string)=>{const q=useQueryClient();return useMutation({mutationFn:(id:string)=>readAnnouncement(courseId,id),onSuccess:()=>Promise.all([q.invalidateQueries({queryKey:announcementKeys.list(courseId)}),q.invalidateQueries({queryKey:announcementKeys.unread(courseId)})])})};

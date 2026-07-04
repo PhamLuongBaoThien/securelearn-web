@@ -1,23 +1,26 @@
-﻿import { io, type Socket } from 'socket.io-client';
+import { io, type Socket } from 'socket.io-client';
 import { getAccessToken, getApiBaseUrl } from './apiClient';
 import type { ILessonDiscussion } from './courseApi';
+import type { CourseAnnouncement } from './announcementApi';
 
 export const DISCUSSION_REALTIME_EVENT = 'course:discussion:realtime';
 export type DiscussionRealtimeDetail =
   | { type: 'status'; connected: boolean }
   | { type: 'reconcile' }
-  | { type: 'created' | 'updated' | 'deleted' | 'hidden'; item: ILessonDiscussion };
+  | { type: 'created' | 'updated' | 'deleted' | 'hidden'; item: ILessonDiscussion }
+  | { type: 'announcement'; action: 'published' | 'updated' | 'hidden' | 'pinned' | 'read' | 'unread-count'; item: CourseAnnouncement | Record<string, unknown> };
 
 let socket: Socket | null = null;
 let consumers = 0;
-let activeSubscription: { courseId: string; lessonId: string } | null = null;
+const activeSubscriptions = new Map<string, { courseId: string; lessonId: string; consumers: number }>();
 
 const dispatch = (detail: DiscussionRealtimeDetail) =>
   window.dispatchEvent(new CustomEvent<DiscussionRealtimeDetail>(DISCUSSION_REALTIME_EVENT, { detail }));
 
 const subscribeActive = () => {
-  if (socket?.connected && activeSubscription) {
-    socket.emit('discussion:subscribe', activeSubscription);
+  if (!socket?.connected) return;
+  for (const { courseId, lessonId } of activeSubscriptions.values()) {
+    socket.emit('discussion:subscribe', { courseId, lessonId });
   }
 };
 
@@ -33,6 +36,9 @@ const bind = (client: Socket) => {
   client.on('discussion:updated', (item: ILessonDiscussion) => dispatch({ type: 'updated', item }));
   client.on('discussion:deleted', (item: ILessonDiscussion) => dispatch({ type: 'deleted', item }));
   client.on('discussion:hidden', (item: ILessonDiscussion) => dispatch({ type: 'hidden', item }));
+  for (const action of ['published', 'updated', 'hidden', 'pinned', 'read', 'unread-count'] as const) {
+    client.on(`announcement:${action}`, (item: CourseAnnouncement | Record<string, unknown>) => dispatch({ type: 'announcement', action, item }));
+  }
 };
 
 const connect = () => {
@@ -63,14 +69,18 @@ export const retainDiscussionSocket = () => {
 };
 
 export const subscribeDiscussionLesson = (courseId: string, lessonId: string) => {
-  if (activeSubscription) socket?.emit('discussion:unsubscribe', activeSubscription);
-  activeSubscription = { courseId, lessonId };
-  subscribeActive();
+  const key = `${courseId}:${lessonId}`;
+  const current = activeSubscriptions.get(key);
+  if (current) current.consumers += 1;
+  else activeSubscriptions.set(key, { courseId, lessonId, consumers: 1 });
+  if (socket?.connected && !current) socket.emit('discussion:subscribe', { courseId, lessonId });
   return () => {
+    const active = activeSubscriptions.get(key);
+    if (!active) return;
+    active.consumers -= 1;
+    if (active.consumers > 0) return;
+    activeSubscriptions.delete(key);
     socket?.emit('discussion:unsubscribe', { courseId, lessonId });
-    if (activeSubscription?.courseId === courseId && activeSubscription.lessonId === lessonId) {
-      activeSubscription = null;
-    }
   };
 };
 

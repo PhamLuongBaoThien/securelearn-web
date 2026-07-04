@@ -73,7 +73,7 @@ export const InstructorLayout: React.FC = () => {
       label: {
         labelName: 'Giao tiếp',
         items: [
-          { name: 'Hỏi đáp & Tin nhắn', path: '/instructor/communication', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
+          { name: 'Giao tiếp', path: '/instructor/communication', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
           { name: unreadNotifications ? 'Thông báo (' + unreadNotifications + ')' : 'Thông báo', path: '/instructor/notifications', icon: <Bell className="w-5 h-5 shrink-0" /> },
 { name: inboxUnread ? 'Hỗ trợ & góp ý (' + inboxUnread + ')' : 'Hỗ trợ & góp ý', path: '/support', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
         ],

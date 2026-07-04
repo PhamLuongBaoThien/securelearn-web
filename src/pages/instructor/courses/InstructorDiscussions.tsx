@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useCourseLearning } from '@/hooks/useCourseLearning';
-import { Eye, EyeOff, FilterX, Loader2, MessageSquare, Pin, Search } from 'lucide-react';
+import { Eye, EyeOff, FilterX, Loader2, MessageSquare, Pin, Search, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -11,7 +11,9 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { toast } from 'sonner';
 import { formatExactDateTime, formatRelativeTime } from '@/lib/dateTime';
 import {
+  createLessonDiscussion,
   getCourseDiscussionsForInstructor,
+  getInstructorDiscussions,
   getLessonDiscussionReplies,
   moderateLessonDiscussion,
   pinLessonDiscussion,
@@ -31,31 +33,60 @@ const cardClass = 'rounded-lg border border-zinc-200 bg-white shadow-sm dark:bor
 const dedupe = (items: ILessonDiscussion[]) =>
   Array.from(new Map(items.map(item => [item._id, item])).values());
 
-export function InstructorDiscussions() {
-  const { courseId = '' } = useParams();
+/* ================================================================
+   DiscussionManager – Component dùng chung
+   - lockedCourseId: nếu có, khóa cứng 1 course (trang riêng)
+   - courses: danh sách khóa cho chế độ tổng hợp (Communication Hub)
+   ================================================================ */
+export function DiscussionManager({
+  lockedCourseId,
+  courses = [],
+}: {
+  lockedCourseId?: string;
+  courses?: Array<{ _id?: string; title: string }>;
+}) {
   const queryClient = useQueryClient();
-  const courseQuery = useCourseLearning(courseId);
+  const isSingleCourse = Boolean(lockedCourseId);
+
+  // Load course detail for lesson filter (single-course mode)
+  const courseQuery = useCourseLearning(lockedCourseId || '');
+
+  // Filter state
   const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
   const [hidden, setHidden] = useState('');
   const [lessonId, setLessonId] = useState('');
+  const [courseId, setCourseId] = useState('');
   const [connected, setConnected] = useState(isDiscussionConnected());
   const [now, setNow] = useState(() => Date.now());
 
+  const queryKey = isSingleCourse
+    ? ['instructor', 'course-discussions', lockedCourseId!, search, hidden, lessonId]
+    : ['communication', 'discussions', courseId, search, hidden];
+
   const query = useInfiniteQuery({
-    queryKey: ['instructor', 'course-discussions', courseId, search, hidden, lessonId],
-    queryFn: async ({ pageParam }) => (
-      await getCourseDiscussionsForInstructor(courseId, {
+    queryKey,
+    queryFn: async ({ pageParam }) => {
+      if (isSingleCourse) {
+        return (await getCourseDiscussionsForInstructor(lockedCourseId!, {
+          cursor: pageParam || undefined,
+          limit: 20,
+          search: search || undefined,
+          hidden: hidden || undefined,
+          lessonId: lessonId || undefined,
+        })).data!;
+      }
+      return (await getInstructorDiscussions({
         cursor: pageParam || undefined,
         limit: 20,
+        courseId: courseId || undefined,
         search: search || undefined,
         hidden: hidden || undefined,
-        lessonId: lessonId || undefined,
-      })
-    ).data!,
+      })).data!;
+    },
     initialPageParam: '',
     getNextPageParam: page => page.hasMore ? page.nextCursor || undefined : undefined,
-    enabled: Boolean(courseId),
+    enabled: isSingleCourse ? Boolean(lockedCourseId) : true,
   });
 
   const lessons = useMemo(() => (courseQuery.data?.sections || []).flatMap(section => section.lessons), [courseQuery.data?.sections]);
@@ -71,14 +102,16 @@ export function InstructorDiscussions() {
     return () => window.clearInterval(timer);
   }, []);
 
+  // Realtime: subscribe to course-level events for single-course mode
   useEffect(() => {
+    if (!isSingleCourse) return;
     const release = retainDiscussionSocket();
-    const unsubscribe = subscribeDiscussionCourse(courseId);
+    const unsubscribe = subscribeDiscussionCourse(lockedCourseId!);
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<DiscussionRealtimeDetail>).detail;
       if (detail.type === 'status') setConnected(detail.connected);
-      if (detail.type === 'reconcile' || ('item' in detail && detail.item.courseId === courseId)) {
-        void queryClient.invalidateQueries({ queryKey: ['instructor', 'course-discussions', courseId] });
+      if (detail.type === 'reconcile' || ('item' in detail && detail.item.courseId === lockedCourseId)) {
+        void queryClient.invalidateQueries({ queryKey: ['instructor', 'course-discussions', lockedCourseId] });
       }
     };
     window.addEventListener(DISCUSSION_REALTIME_EVENT, handler);
@@ -87,49 +120,63 @@ export function InstructorDiscussions() {
       unsubscribe();
       release();
     };
-  }, [courseId, queryClient]);
+  }, [isSingleCourse, lockedCourseId, queryClient]);
 
+  // Polling fallback when disconnected (single-course mode)
   useEffect(() => {
-    if (connected || document.hidden) return;
+    if (!isSingleCourse || connected || document.hidden) return;
     const timer = window.setInterval(
-      () => void queryClient.invalidateQueries({ queryKey: ['instructor', 'course-discussions', courseId] }),
+      () => void queryClient.invalidateQueries({ queryKey: ['instructor', 'course-discussions', lockedCourseId] }),
       15_000,
     );
     return () => window.clearInterval(timer);
-  }, [connected, courseId, queryClient]);
+  }, [isSingleCourse, connected, lockedCourseId, queryClient]);
+
+  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKey.slice(0, 3) });
 
   const togglePin = async (item: ILessonDiscussion) => {
     try {
-      await pinLessonDiscussion(courseId, item.lessonId, item._id, !item.pinnedAt);
-      await queryClient.invalidateQueries({ queryKey: ['instructor', 'course-discussions', courseId] });
+      await pinLessonDiscussion(item.courseId, item.lessonId, item._id, !item.pinnedAt);
+      await refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Không thể cập nhật ghim.');
     }
   };
 
   const toggleHidden = async (item: ILessonDiscussion) => {
-    await moderateLessonDiscussion(courseId, item.lessonId, item._id, !item.hiddenAt);
-    await queryClient.invalidateQueries({ queryKey: ['instructor', 'course-discussions', courseId] });
+    try {
+      await moderateLessonDiscussion(item.courseId, item.lessonId, item._id, !item.hiddenAt);
+      await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái.');
+    }
   };
+
+  const hasActiveFilter = isSingleCourse
+    ? Boolean(search || hidden || lessonId)
+    : Boolean(courseId || search || hidden);
 
   const resetFilters = () => {
     setSearchDraft('');
     setSearch('');
     setLessonId('');
     setHidden('');
+    setCourseId('');
   };
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="max-w-4xl space-y-5">
-        {/* Header */}
-        <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Quản lý thảo luận</p>
-          <h1 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Thảo luận khóa học</h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Theo dõi, phản hồi và kiểm duyệt bình luận trên toàn bộ bài học.
-          </p>
-        </div>
+      <div className="space-y-5">
+        {/* Header (single-course mode only) */}
+        {isSingleCourse && (
+          <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Quản lý thảo luận</p>
+            <h1 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Thảo luận khóa học</h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Theo dõi, phản hồi và kiểm duyệt bình luận trên toàn bộ bài học.
+            </p>
+          </div>
+        )}
 
         {/* Filters */}
         <div className={`${cardClass} p-5`}>
@@ -140,20 +187,28 @@ export function InstructorDiscussions() {
                 value={searchDraft}
                 onChange={event => setSearchDraft(event.target.value)}
                 onKeyDown={event => event.key === 'Enter' && setSearch(searchDraft.trim())}
-                placeholder="Tìm nội dung bình luận..."
+                onBlur={() => setSearch(searchDraft.trim())}
+                placeholder="Tìm nội dung thảo luận..."
                 className="h-11 rounded-xl pl-10"
               />
             </div>
-            <Select value={lessonId} onChange={event => setLessonId(event.target.value)} className="h-11 rounded-xl">
-              <option value="">Tất cả bài học</option>
-              {lessons.map(lesson => <option key={lesson._id} value={lesson._id}>{lesson.title}</option>)}
-            </Select>
+            {isSingleCourse ? (
+              <Select value={lessonId} onChange={event => setLessonId(event.target.value)} className="h-11 rounded-xl">
+                <option value="">Tất cả bài học</option>
+                {lessons.map(lesson => <option key={lesson._id} value={lesson._id}>{lesson.title}</option>)}
+              </Select>
+            ) : (
+              <Select value={courseId} onChange={event => setCourseId(event.target.value)} className="h-11 rounded-xl">
+                <option value="">Tất cả khóa học</option>
+                {courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
+              </Select>
+            )}
             <Select value={hidden} onChange={event => setHidden(event.target.value)} className="h-11 rounded-xl">
-              <option value="">Tất cả trạng thái</option>
+              <option value="">Mọi trạng thái</option>
               <option value="false">Đang hiển thị</option>
               <option value="true">Đã ẩn</option>
             </Select>
-            <Button type="button" variant="ghost" className="h-11 gap-2" onClick={resetFilters}>
+            <Button type="button" variant="ghost" className="h-11 gap-2" onClick={resetFilters} disabled={!hasActiveFilter}>
               <FilterX className="h-4 w-4" />
               Xóa lọc
             </Button>
@@ -171,8 +226,9 @@ export function InstructorDiscussions() {
               <DiscussionItem
                 key={item._id}
                 item={item}
-                courseId={courseId}
+                courseId={item.courseId}
                 lessonName={lessonNames.get(item.lessonId) || item.lessonId}
+                showCourseName={!isSingleCourse}
                 now={now}
                 onTogglePin={() => void togglePin(item)}
                 onToggleHidden={() => void toggleHidden(item)}
@@ -201,12 +257,69 @@ export function InstructorDiscussions() {
   );
 }
 
+/* ─── Reply Composer ─── */
+
+function ReplyComposer({
+  courseId,
+  lessonId,
+  parentId,
+  replyToId,
+  onSuccess,
+}: {
+  courseId: string;
+  lessonId: string;
+  parentId: string;
+  replyToId: string;
+  onSuccess?: () => void;
+}) {
+  const [content, setContent] = useState('');
+  const [pending, setPending] = useState(false);
+  const queryClient = useQueryClient();
+
+  const submit = async () => {
+    const text = content.trim();
+    if (!text) return;
+    setPending(true);
+    try {
+      await createLessonDiscussion(courseId, lessonId, { content: text, parentId, replyToId });
+      setContent('');
+      await queryClient.invalidateQueries({ queryKey: ['instructor', 'course-discussions'] });
+      await queryClient.invalidateQueries({ queryKey: ['communication', 'discussions'] });
+      onSuccess?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Không thể gửi phản hồi.');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border p-3">
+      <textarea
+        value={content}
+        onChange={event => setContent(event.target.value)}
+        rows={2}
+        maxLength={2000}
+        placeholder="Viết phản hồi..."
+        className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-zinc-400"
+        onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void submit(); } }}
+      />
+      <div className="mt-2 flex items-center justify-end gap-3 border-t pt-2">
+        <Button size="sm" onClick={() => void submit()} disabled={!content.trim() || pending} className="rounded-xl">
+          {pending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}Trả lời
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Discussion Item ─── */
 
 function DiscussionItem({
   item,
   courseId,
   lessonName,
+  showCourseName = false,
   now,
   onTogglePin,
   onToggleHidden,
@@ -214,11 +327,13 @@ function DiscussionItem({
   item: ILessonDiscussion;
   courseId: string;
   lessonName: string;
+  showCourseName?: boolean;
   now: number;
   onTogglePin: () => void;
   onToggleHidden: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [replying, setReplying] = useState(false);
 
   return (
     <article className={`rounded-3xl border bg-white p-5 shadow-sm dark:bg-zinc-950 ${item.hiddenAt ? 'border-amber-300 dark:border-amber-800' : 'border-zinc-200 dark:border-zinc-800'}`}>
@@ -236,7 +351,12 @@ function DiscussionItem({
               {item.pinnedAt && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary"><Pin className="h-3 w-3 fill-current" />Đã ghim</span>}
             </div>
             <div className="flex items-center gap-2 text-xs text-zinc-400">
-              <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">{lessonName}</span>
+              {showCourseName && item.courseTitle && (
+                <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">{item.courseTitle}</span>
+              )}
+              {lessonName && (
+                <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">{lessonName}</span>
+              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <time dateTime={item.createdAt} className="cursor-help transition-colors hover:text-zinc-600 dark:hover:text-zinc-300">
@@ -260,13 +380,17 @@ function DiscussionItem({
 
           {/* Actions */}
           <div className="mt-3 flex flex-wrap items-center gap-2">
+            {!item.deletedAt && !item.hiddenAt && (
+              <Button size="sm" variant="ghost" className="h-8 rounded-xl text-xs" onClick={() => { setReplying(v => !v); if (!expanded && !item.parentId) setExpanded(true); }}>
+                Trả lời
+              </Button>
+            )}
             {item.replyCount > 0 && (
               <Button size="sm" variant="ghost" className="h-8 rounded-xl text-xs" onClick={() => setExpanded(value => !value)}>
                 <MessageSquare className="mr-1 h-3.5 w-3.5" />
                 {expanded ? 'Ẩn phản hồi' : `Xem ${item.replyCount} phản hồi`}
               </Button>
             )}
-            {item.parentId && <span className="text-xs text-zinc-400">Phản hồi</span>}
             {!item.parentId && !item.deletedAt && !item.hiddenAt && (
               <Button size="sm" variant="ghost" className="h-8 rounded-xl text-xs" onClick={onTogglePin}>
                 <Pin className={`mr-1 h-3.5 w-3.5 ${item.pinnedAt ? 'fill-current' : ''}`} />
@@ -283,7 +407,27 @@ function DiscussionItem({
 
           {/* Replies */}
           {expanded && !item.parentId && (
-            <ReplyList courseId={courseId} lessonId={item.lessonId} discussionId={item._id} now={now} />
+            <ReplyList
+              courseId={courseId}
+              lessonId={item.lessonId}
+              discussionId={item._id}
+              now={now}
+              showComposer={replying}
+              onComposerDone={() => setReplying(false)}
+            />
+          )}
+
+          {/* Inline reply composer for reply items (parentId exists) */}
+          {replying && item.parentId && (
+            <div className="mt-3">
+              <ReplyComposer
+                courseId={courseId}
+                lessonId={item.lessonId}
+                parentId={item.parentId}
+                replyToId={item._id}
+                onSuccess={() => setReplying(false)}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -298,11 +442,15 @@ function ReplyList({
   lessonId,
   discussionId,
   now,
+  showComposer = false,
+  onComposerDone,
 }: {
   courseId: string;
   lessonId: string;
   discussionId: string;
   now: number;
+  showComposer?: boolean;
+  onComposerDone?: () => void;
 }) {
   const replies = useInfiniteQuery({
     queryKey: ['instructor', 'course-discussions', courseId, 'replies', discussionId],
@@ -328,37 +476,17 @@ function ReplyList({
 
   return (
     <div className="mt-4 space-y-3 border-l-2 border-zinc-100 pl-4 dark:border-zinc-800">
+      {showComposer && (
+        <ReplyComposer
+          courseId={courseId}
+          lessonId={lessonId}
+          parentId={discussionId}
+          replyToId={discussionId}
+          onSuccess={onComposerDone}
+        />
+      )}
       {replyItems.map(reply => (
-        <article key={reply._id} className={`rounded-2xl border bg-zinc-50 p-4 dark:bg-zinc-900 ${reply.hiddenAt ? 'border-amber-300 dark:border-amber-800' : 'border-zinc-200 dark:border-zinc-800'}`}>
-          <div className="flex gap-3">
-            <UserAvatar user={{ fullName: reply.authorName }} className="h-8 w-8 text-[10px]" />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-zinc-900 dark:text-white">{reply.authorName || 'Người học'}</span>
-                  {reply.authorRole === 'INSTRUCTOR' && (
-                    <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">Giảng viên</span>
-                  )}
-                  {reply.hiddenAt && <span className="text-[10px] font-semibold text-amber-600">Đã ẩn</span>}
-                </div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <time dateTime={reply.createdAt} className="cursor-help text-xs text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300">
-                      {formatRelativeTime(reply.createdAt, now)}
-                    </time>
-                  </TooltipTrigger>
-                  <TooltipContent>{formatExactDateTime(reply.createdAt)}</TooltipContent>
-                </Tooltip>
-              </div>
-              {reply.replyToAuthorName && (
-                <p className="mt-1 text-xs text-zinc-500">
-                  Trả lời <span className="font-semibold text-primary">{reply.replyToAuthorName}</span>
-                </p>
-              )}
-              <p className={`mt-2 whitespace-pre-wrap text-sm leading-6 ${reply.deletedAt ? 'italic text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`}>{reply.content}</p>
-            </div>
-          </div>
-        </article>
+        <ReplyItem key={reply._id} reply={reply} courseId={courseId} lessonId={lessonId} parentId={discussionId} now={now} />
       ))}
       {replies.hasNextPage && (
         <Button size="sm" variant="ghost" disabled={replies.isFetchingNextPage} onClick={() => void replies.fetchNextPage()}>
@@ -366,6 +494,87 @@ function ReplyList({
           Xem thêm phản hồi
         </Button>
       )}
+    </div>
+  );
+}
+
+/* ─── Reply Item ─── */
+
+function ReplyItem({
+  reply,
+  courseId,
+  lessonId,
+  parentId,
+  now,
+}: {
+  reply: ILessonDiscussion;
+  courseId: string;
+  lessonId: string;
+  parentId: string;
+  now: number;
+}) {
+  const [replying, setReplying] = useState(false);
+
+  return (
+    <article className={`rounded-2xl border bg-zinc-50 p-4 dark:bg-zinc-900 ${reply.hiddenAt ? 'border-amber-300 dark:border-amber-800' : 'border-zinc-200 dark:border-zinc-800'}`}>
+      <div className="flex gap-3">
+        <UserAvatar user={{ fullName: reply.authorName }} className="h-8 w-8 text-[10px]" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-zinc-900 dark:text-white">{reply.authorName || 'Người học'}</span>
+              {reply.authorRole === 'INSTRUCTOR' && (
+                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">Giảng viên</span>
+              )}
+              {reply.hiddenAt && <span className="text-[10px] font-semibold text-amber-600">Đã ẩn</span>}
+            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <time dateTime={reply.createdAt} className="cursor-help text-xs text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300">
+                  {formatRelativeTime(reply.createdAt, now)}
+                </time>
+              </TooltipTrigger>
+              <TooltipContent>{formatExactDateTime(reply.createdAt)}</TooltipContent>
+            </Tooltip>
+          </div>
+          {reply.replyToAuthorName && (
+            <p className="mt-1 text-xs text-zinc-500">
+              Trả lời <span className="font-semibold text-primary">{reply.replyToAuthorName}</span>
+            </p>
+          )}
+          <p className={`mt-2 whitespace-pre-wrap text-sm leading-6 ${reply.deletedAt ? 'italic text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`}>{reply.content}</p>
+          {!reply.deletedAt && !reply.hiddenAt && (
+            <div className="mt-2">
+              <Button size="sm" variant="ghost" className="h-7 rounded-xl text-xs" onClick={() => setReplying(v => !v)}>
+                Trả lời
+              </Button>
+            </div>
+          )}
+          {replying && (
+            <div className="mt-2">
+              <ReplyComposer
+                courseId={courseId}
+                lessonId={lessonId}
+                parentId={parentId}
+                replyToId={reply._id}
+                onSuccess={() => setReplying(false)}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/* ================================================================
+   InstructorDiscussions – Page wrapper (route: courses/:courseId/discussions)
+   ================================================================ */
+export function InstructorDiscussions() {
+  const { courseId = '' } = useParams();
+  return (
+    <div className="max-w-4xl">
+      <DiscussionManager lockedCourseId={courseId} />
     </div>
   );
 }

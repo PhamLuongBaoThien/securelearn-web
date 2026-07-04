@@ -125,6 +125,7 @@ export interface ILearningNote {
 export interface ILessonDiscussion {
   _id: string;
   courseId: string;
+  courseTitle?: string;
   lessonId: string;
   parentId: string | null;
   replyToId?: string;
@@ -718,6 +719,13 @@ export const pinLessonDiscussion = async (
     '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions/' + discussionId + '/pin',
     { pinned },
   );
+  return data;
+};
+
+export const getInstructorDiscussions = async (
+  params: { cursor?: string; limit?: number; courseId?: string; lessonId?: string; search?: string; hidden?: string } = {},
+) => {
+  const { data } = await apiClient.get<ApiResponse<IDiscussionPage>>('/api/courses/instructor/discussions', { params });
   return data;
 };
 

@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // TypeScript Types: Định nghĩa kiểu dữ liệu cho Admin Management
 // Phủ toàn bộ 6 nhóm chức năng quản trị.
 // ========================
@@ -523,6 +523,7 @@ export type TemplateEvent =
   | 'ENROLLMENT_CREATED'
   | 'DISCUSSION_CREATED'
   | 'DISCUSSION_REPLIED'
+  | 'COURSE_ANNOUNCEMENT_PUBLISHED'
   | 'REPORT_CREATED'
   | 'SUPPORT_REQUEST_CREATED'
   | 'FEEDBACK_CREATED'
