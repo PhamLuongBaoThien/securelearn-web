@@ -31,6 +31,7 @@ import { CurriculumSidebar } from './CurriculumSidebar';
 import { VideoPlayer } from './VideoPlayer';
 import { InteractiveTabs, type LearningTabId } from './InteractiveTabs';
 import { QuizPlayer } from './QuizPlayer';
+import { isBlockedProtectionKey, shouldIgnoreProtectionShortcut } from '@/lib/contentProtection';
 
 // Tạo hình tròn để hiển thị tiến độ học tập: 
 // PROGRESS_RING_SIZE: Kích thước của hình tròn
@@ -145,6 +146,26 @@ export function LearningInterface() {
   const user = useAppSelector((state) => state.auth.user);
   const dispatch = useAppDispatch();
   const theme = useAppSelector((state) => state.ui.theme);
+
+  useEffect(() => {
+    const blockContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    const blockProtectedShortcut = (event: KeyboardEvent) => {
+      if (shouldIgnoreProtectionShortcut() || !isBlockedProtectionKey(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    };
+
+    document.addEventListener('contextmenu', blockContextMenu, true);
+    document.addEventListener('keydown', blockProtectedShortcut, true);
+    return () => {
+      document.removeEventListener('contextmenu', blockContextMenu, true);
+      document.removeEventListener('keydown', blockProtectedShortcut, true);
+    };
+  }, []);
   
   // [ĐỒNG BỘ DỮ LIỆU - BƯỚC 1]
   // Gọi đồng thời các API qua React Query để tải: thông tin giáo trình, tiến độ thực tế,
@@ -263,7 +284,7 @@ export function LearningInterface() {
   const course = courseQuery.data;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-zinc-50 text-zinc-900 dark:bg-[#0A0A0A] dark:text-zinc-100">
+    <div className="securelearn-learn-protected fixed inset-0 z-50 flex flex-col bg-zinc-50 text-zinc-900 dark:bg-[#0A0A0A] dark:text-zinc-100">
       <header className="z-10 flex h-14 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white/90 px-4 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90">
         <Button
           onClick={() => navigate('/student/dashboard')}

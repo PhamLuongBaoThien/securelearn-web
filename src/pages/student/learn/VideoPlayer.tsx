@@ -31,7 +31,6 @@ import { acquireLearningSession, releaseLearningSession, type LearningSessionCon
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   formatWatermarkText,
-  isBlockedProtectionKey,
   shouldIgnoreProtectionShortcut,
   type WatermarkIdentity,
   watermarkPositions,
@@ -1058,18 +1057,6 @@ export function VideoPlayer({
     player?.destroy();
   }, []);
 
-  useEffect(() => {
-    // [BƯỚC 2.1: BẢO VỆ PHÍA CLIENT - CHẶN PHÍM TẮT F12/INSPECT/PRINT]
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (shouldIgnoreProtectionShortcut()) return;
-      if (isBlockedProtectionKey(event)) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, []);
   useEffect(() => {
     const handlePlaybackShortcut = (event: KeyboardEvent) => {
       if (!learningSession || learningRevoked || learningConflict || hasEnded) return;

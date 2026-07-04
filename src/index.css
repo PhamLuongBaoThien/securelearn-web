@@ -346,3 +346,18 @@ input[type="password"]::-ms-clear {
   contain: layout paint;
 }
 
+
+/* Nội dung học không được đưa vào bản in từ menu hoặc phím tắt của trình duyệt. */
+@media print {
+  .securelearn-learn-protected {
+    display: none !important;
+  }
+
+  body::after {
+    display: block;
+    padding: 2rem;
+    color: #18181b;
+    font: 600 16px/1.5 sans-serif;
+    content: 'Nội dung khóa học không hỗ trợ in.';
+  }
+}
