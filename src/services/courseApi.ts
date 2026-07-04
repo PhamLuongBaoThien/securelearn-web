@@ -136,6 +136,8 @@ export interface ILessonDiscussion {
   authorRole: 'STUDENT' | 'INSTRUCTOR';
   content: string;
   replyCount: number;
+  likeCount: number;
+  likedByViewer: boolean;
   pinnedAt?: string;
   pinnedBy?: string;
   editedAt?: string;
@@ -642,7 +644,7 @@ export const deleteLearningNote = async (
 export const getLessonDiscussions = async (
   courseId: string,
   lessonId: string,
-  params: { cursor?: string; limit?: number; focusId?: string } = {},
+  params: { cursor?: string; limit?: number; focusId?: string; sort?: 'latest' | 'popular' } = {},
 ) => {
   const { data } = await apiClient.get<ApiResponse<IDiscussionPage>>(
     '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions',
@@ -672,6 +674,19 @@ export const createLessonDiscussion = async (
   const { data } = await apiClient.post<ApiResponse<ILessonDiscussion>>(
     '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions',
     payload,
+  );
+  return data;
+};
+
+export const setLessonDiscussionReaction = async (
+  courseId: string,
+  lessonId: string,
+  discussionId: string,
+  liked: boolean,
+) => {
+  const { data } = await apiClient.patch<ApiResponse<ILessonDiscussion>>(
+    '/api/courses/' + courseId + '/lessons/' + lessonId + '/discussions/' + discussionId + '/reaction',
+    { liked },
   );
   return data;
 };

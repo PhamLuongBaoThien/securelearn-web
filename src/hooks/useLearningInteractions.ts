@@ -4,6 +4,7 @@
 // - tải tài liệu, ghi chú cá nhân và thảo luận của bài học
 // - gom mutation tương tác để learning page chỉ giữ state giao diện
 // ========================
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createLearningNote,
@@ -15,6 +16,7 @@ import {
   getLessonDiscussions,
   moderateLessonDiscussion,
   pinLessonDiscussion,
+  setLessonDiscussionReaction,
   updateLearningNote,
   updateLessonDiscussion,
 } from '@/services/courseApi';
@@ -91,11 +93,11 @@ export function useDeleteLearningNote(courseId: string, lessonId: string) {
   });
 }
 
-export function useLessonDiscussions(courseId: string, lessonId: string, focusId = '') {
+export function useLessonDiscussions(courseId: string, lessonId: string, focusId = '', sort: 'latest' | 'popular' = 'latest') {
   return useInfiniteQuery({
-    queryKey: [...learningInteractionKeys.discussions(courseId, lessonId), focusId],
+    queryKey: [...learningInteractionKeys.discussions(courseId, lessonId), focusId, sort],
     queryFn: async ({ pageParam }) => (
-      await getLessonDiscussions(courseId, lessonId, { cursor: pageParam || undefined, limit: 20, focusId: focusId || undefined })
+      await getLessonDiscussions(courseId, lessonId, { cursor: pageParam || undefined, limit: 20, focusId: focusId || undefined, sort })
     ).data!,
     initialPageParam: '',
     getNextPageParam: lastPage => lastPage.hasMore ? lastPage.nextCursor || undefined : undefined,
@@ -124,6 +126,96 @@ export function useCreateLessonDiscussion(courseId: string, lessonId: string) {
   });
 }
 
+export function useLessonDiscussionReaction(courseId: string, lessonId: string) {
+  const queryClient = useQueryClient();
+  const desiredStates = useRef(new Map<string, boolean>());
+  const runningIds = useRef(new Set<string>());
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const errorHandlers = useRef(new Map<string, (error: unknown) => void>());
+  const mounted = useRef(true);
+  const [pendingCount, setPendingCount] = useState(0);
+  const queryKey = learningInteractionKeys.discussions(courseId, lessonId);
+
+  const updateCache = useCallback((discussionId: string, liked: boolean) => {
+    queryClient.setQueriesData<any>({ queryKey }, (old: any) => {
+      if (!old?.pages) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page: any) => ({
+          ...page,
+          items: page.items.map((item: any) => {
+            if (item._id !== discussionId || item.likedByViewer === liked) return item;
+            return {
+              ...item,
+              likedByViewer: liked,
+              likeCount: Math.max(0, (Number(item.likeCount) || 0) + (liked ? 1 : -1)),
+            };
+          }),
+        })),
+      };
+    });
+  }, [queryClient, queryKey]);
+
+  const sync = useCallback(async (discussionId: string) => {
+    if (runningIds.current.has(discussionId)) return;
+    const desired = desiredStates.current.get(discussionId);
+    if (desired === undefined) return;
+
+    runningIds.current.add(discussionId);
+    if (mounted.current) setPendingCount(runningIds.current.size + timers.current.size);
+    const sentState = desired;
+    let failed: unknown;
+    try {
+      await setLessonDiscussionReaction(courseId, lessonId, discussionId, sentState);
+    } catch (error) {
+      failed = error;
+    } finally {
+      runningIds.current.delete(discussionId);
+    }
+
+    const latestDesired = desiredStates.current.get(discussionId);
+    if (latestDesired !== undefined && latestDesired !== sentState) {
+      updateCache(discussionId, latestDesired);
+      void sync(discussionId);
+      return;
+    }
+
+    desiredStates.current.delete(discussionId);
+    if (failed) errorHandlers.current.get(discussionId)?.(failed);
+    errorHandlers.current.delete(discussionId);
+    if (mounted.current) setPendingCount(runningIds.current.size + timers.current.size);
+    await queryClient.invalidateQueries({ queryKey });
+  }, [courseId, lessonId, queryClient, queryKey, updateCache]);
+
+  const mutate = useCallback((
+    variables: { discussionId: string; liked: boolean },
+    options?: { onError?: (error: unknown) => void },
+  ) => {
+    const { discussionId, liked } = variables;
+    void queryClient.cancelQueries({ queryKey });
+    desiredStates.current.set(discussionId, liked);
+    if (options?.onError) errorHandlers.current.set(discussionId, options.onError);
+    updateCache(discussionId, liked);
+
+    const currentTimer = timers.current.get(discussionId);
+    if (currentTimer) clearTimeout(currentTimer);
+    const timer = setTimeout(() => {
+      timers.current.delete(discussionId);
+      if (mounted.current) setPendingCount(runningIds.current.size + timers.current.size);
+      void sync(discussionId);
+    }, 200);
+    timers.current.set(discussionId, timer);
+    if (mounted.current) setPendingCount(runningIds.current.size + timers.current.size);
+  }, [queryClient, queryKey, sync, updateCache]);
+
+  useEffect(() => () => {
+    mounted.current = false;
+    timers.current.forEach(timer => clearTimeout(timer));
+    timers.current.clear();
+  }, []);
+
+  return { mutate, isPending: pendingCount > 0 };
+}
 export function useUpdateLessonDiscussion(courseId: string, lessonId: string) {
   const queryClient = useQueryClient();
   return useMutation({

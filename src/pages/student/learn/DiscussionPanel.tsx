@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, EyeOff, Loader2, MessageSquare, Pencil, Pin, Send, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Heart, Loader2, MessageSquare, Pencil, Pin, Send, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import {
@@ -10,6 +11,7 @@ import {
   useCreateLessonDiscussion,
   useDeleteLessonDiscussion,
   useLessonDiscussionReplies,
+  useLessonDiscussionReaction,
   useLessonDiscussions,
   useModerateLessonDiscussion,
   usePinLessonDiscussion,
@@ -39,7 +41,8 @@ export function DiscussionPanel({
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const focusedId = searchParams.get('discussionId') || '';
-  const discussions = useLessonDiscussions(courseId, lessonId, focusedId);
+  const [sort, setSort] = useState<'latest' | 'popular'>('latest');
+  const discussions = useLessonDiscussions(courseId, lessonId, focusedId, sort);
   const createDiscussion = useCreateLessonDiscussion(courseId, lessonId);
   const [content, setContent] = useState('');
   const [connected, setConnected] = useState(isDiscussionConnected());
@@ -130,6 +133,15 @@ export function DiscussionPanel({
           submitLabel="Đăng thảo luận"
         />
 
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">Danh sách thảo luận</p>
+          <div className="w-44">
+            <Select aria-label="Sắp xếp thảo luận" value={sort} onChange={event => setSort(event.target.value as 'latest' | 'popular')}>
+              <option value="latest">Mới nhất</option>
+              <option value="popular">Nổi bật nhất</option>
+            </Select>
+          </div>
+        </div>
         {discussions.isLoading ? (
           <div className="flex min-h-40 items-center justify-center rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-700">
             <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
@@ -147,14 +159,14 @@ export function DiscussionPanel({
                 onClick={() => void discussions.fetchNextPage()}
               >
                 {discussions.isFetchingNextPage && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Xem thêm bình luận
+                Xem thêm thảo luận
               </Button>
             )}
           </div>
         ) : (
           <div className="flex min-h-40 flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 text-center text-sm text-zinc-500 dark:border-zinc-700">
             <MessageSquare className="mb-3 h-8 w-8 opacity-40" />
-            Chưa có bình luận nào cho bài học này.
+            Chưa có thảo luận nào cho bài học này.
           </div>
         )}
       </div>
@@ -186,6 +198,7 @@ function DiscussionItem({
   const remove = useDeleteLessonDiscussion(courseId, lessonId);
   const moderate = useModerateLessonDiscussion(courseId, lessonId);
   const pin = usePinLessonDiscussion(courseId, lessonId);
+  const reaction = useLessonDiscussionReaction(courseId, lessonId);
   const replyItems = dedupe(replies.data?.pages.flatMap(page => page.items) || []);
 
   useEffect(() => {
@@ -266,6 +279,22 @@ function DiscussionItem({
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
+            {!item.deletedAt && !item.hiddenForViewer && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className={`h-8 rounded-xl text-xs select-none ${item.likedByViewer ? 'text-rose-600 hover:text-rose-700' : ''}`}
+                disabled={reaction.isPending}
+                aria-pressed={item.likedByViewer}
+                onClick={() => reaction.mutate(
+                  { discussionId: item._id, liked: !item.likedByViewer },
+                  { onError: error => toast.error(error instanceof Error ? error.message : 'Không thể cập nhật lượt tim.') },
+                )}
+              >
+                <Heart className={`mr-1 h-3.5 w-3.5 ${item.likedByViewer ? 'fill-current' : ''}`} />
+                {item.likeCount || 0}
+              </Button>
+            )}
             {!item.deletedAt && (
               <Button size="sm" variant="ghost" className="h-8 rounded-xl text-xs" onClick={() => setExpanded(true)}>Trả lời</Button>
             )}
