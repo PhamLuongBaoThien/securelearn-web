@@ -288,6 +288,8 @@ export interface IEnrollment {
     categoryId?: string | ICourseCategory | null;
   });
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  source: 'PURCHASE' | 'SUBSCRIPTION';
+  accessEndsAt?: string | null;
   enrolledAt: string;
   createdAt?: string;
   updatedAt?: string;

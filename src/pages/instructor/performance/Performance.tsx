@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Instructor Performance Page
 // Mục đích:
 // - hiển thị báo cáo doanh thu, học viên và đánh giá cho instructor
@@ -37,6 +37,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { type InstructorRevenueParams, useInstructorRevenueStats, useInstructorSubscriptionFinance } from '@/hooks/useInstructorFinance';
@@ -49,6 +50,7 @@ import type { IInstructorRatingStats } from '@/services/courseApi';
 
 type PerfTab = 'revenue' | 'students' | 'reviews';
 type RevenueRange = '7d' | '30d' | '90d' | 'year' | 'custom';
+type RevenueSourceTab = 'course' | 'subscription';
 
 const PERF_TABS: { id: PerfTab; label: string; icon: React.ReactNode }[] = [
   { id: 'revenue',  label: 'Doanh thu',  icon: <DollarSign className="w-4 h-4" /> },
@@ -77,6 +79,9 @@ const StatCard: React.FC<{ label: string; value: string; sub?: string; icon: Rea
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value);
+
+const formatMinutes = (seconds: number) =>
+  `${(seconds / 60).toLocaleString('vi-VN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} phút`;
 
 const compactCurrency = (value: number) => {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
@@ -137,7 +142,7 @@ const lessonCompletionChartConfig = {
 
 const lessonDropOffChartConfig = {
   dropOffRate: {
-    label: 'Drop-off',
+    label: 'Bỏ dở',
     color: 'var(--chart-4)',
   },
 } satisfies ChartConfig;
@@ -222,21 +227,19 @@ const RevenueTitleWithTooltip: React.FC<{ title: string; content: string }> = ({
 );
 
 /* ─── Tab: Doanh thu ─── */
-const RevenueTab = ({ range, revenue, subscription }: {
+const RevenueTab = ({ range, customDates, revenue, subscription, activeSource, onSourceChange, onRangeChange, onCustomDatesChange }: {
   range: RevenueRange;
+  customDates: InstructorRevenueParams;
   revenue: InstructorRevenueBreakdown | undefined;
   subscription: InstructorSubscriptionFinance | undefined;
+  activeSource: RevenueSourceTab;
+  onSourceChange: (source: RevenueSourceTab) => void;
+  onRangeChange: (range: RevenueRange) => void;
+  onCustomDatesChange: (dates: InstructorRevenueParams) => void;
 }) => {
   const providerBreakdown = revenue?.providerBreakdown ?? [];
   const topCourses = revenue?.courseBreakdown ?? [];
 
-  const subscriptionRevenueByMonth = useMemo(() => {
-    const map = new Map<string, number>();
-    (subscription?.settlements ?? []).forEach((settlement) => {
-      map.set(settlement.period, (map.get(settlement.period) || 0) + (settlement.amount || 0));
-    });
-    return map;
-  }, [subscription]);
 
   const monthlyRevenueChartData = useMemo(() => {
     const useDailyData = range !== 'year';
@@ -245,16 +248,13 @@ const RevenueTab = ({ range, revenue, subscription }: {
     return source.map((entry) => {
       const bucketKey = 'date' in entry ? entry.date : entry.month;
       const courseRevenue = entry.instructorRevenue || 0;
-      const subscriptionRevenue = subscriptionRevenueByMonth.get(bucketKey) || 0;
-
       return {
         label: bucketKey,
         courseRevenue,
-        subscriptionRevenue,
-        totalRevenue: courseRevenue + subscriptionRevenue,
+        totalRevenue: courseRevenue,
       };
     });
-  }, [range, revenue, subscriptionRevenueByMonth]);
+  }, [range, revenue]);
 
   const topRevenueCourseChartData = topCourses.slice(0, 5).map((course) => ({
     ...course,
@@ -270,35 +270,93 @@ const RevenueTab = ({ range, revenue, subscription }: {
 
   return (
     <TooltipProvider delayDuration={250}>
-      <div className="space-y-6">
-        <div>
-          <RevenueTitleWithTooltip
-            title="Doanh thu thuê bao"
-            content="Doanh thu từ gói học được chia theo mức độ học thực tế của học viên trong các khóa học của bạn. Khi học viên học nhiều hơn và thời gian học hợp lệ nhiều hơn, phần doanh thu bạn được ghi nhận cũng tăng theo."
-          />
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard label="Tạm tính" value={formatCurrency(subscription?.estimated ?? 0)} sub="hệ thống đang tiếp tục cộng dồn" icon={<Clock className="h-4 w-4" />} />
-            <StatCard label="Chờ ghi nhận" value={formatCurrency(subscription?.pending ?? 0)} sub="đã chốt kỳ, đang chờ chuyển sang khả dụng" icon={<Award className="h-4 w-4" />} />
-            <StatCard label="Có thể nhận" value={formatCurrency(subscription?.available ?? 0)} sub="số tiền hiện hệ thống đang ghi nhận cho bạn" icon={<DollarSign className="h-4 w-4" />} />
-            <StatCard label="Phút học hợp lệ" value={Math.floor((subscription?.qualifiedSeconds ?? 0) / 60).toLocaleString('vi-VN')} sub="căn cứ để chia doanh thu từ gói học" icon={<Percent className="h-4 w-4" />} />
-          </div>
-        </div>
+      <Tabs value={activeSource} onValueChange={(value) => onSourceChange(value as RevenueSourceTab)} className="space-y-6">
+        <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl border border-zinc-200 bg-zinc-100 p-1 dark:border-zinc-800 dark:bg-zinc-900 sm:w-fit sm:min-w-[430px]">
+          <TabsTrigger value="course" className="gap-2 rounded-lg px-4 py-2.5"><DollarSign className="h-4 w-4" />Doanh thu mua đứt</TabsTrigger>
+          <TabsTrigger value="subscription" className="gap-2 rounded-lg px-4 py-2.5"><Clock className="h-4 w-4" />Doanh thu thuê bao</TabsTrigger>
+        </TabsList>
 
-        <RevenueTitleWithTooltip
-          title="Doanh thu mua đứt"
+        <TabsContent value="subscription" className="mt-0 space-y-6">
+          <div>
+            <RevenueTitleWithTooltip
+              title="Doanh thu thuê bao"
+            content="Sau khi kỳ được chốt, quỹ của từng học viên được chia cho các khóa họ đã xem theo tỷ lệ phút hợp lệ. Xem nhiều hơn so với các khóa khác sẽ làm tăng phần doanh thu từ khóa của bạn."
+          />
+          <div className="grid gap-4 md:grid-cols-3">
+            <StatCard label="Phút hợp lệ tháng này" value={formatMinutes(subscription?.currentQualifiedSeconds ?? 0)} sub="cập nhật khoảng mỗi 30 giây, chưa quy đổi thành tiền" icon={<Clock className="h-4 w-4" />} />
+            <StatCard label="Chờ ghi nhận" value={formatCurrency(subscription?.pending ?? 0)} sub="đã tự động chốt tháng, chờ quản trị viên duyệt" icon={<Award className="h-4 w-4" />} />
+            <StatCard label="Có thể nhận" value={formatCurrency(subscription?.available ?? 0)} sub="đã được quản trị viên xác nhận; tính năng rút tiền đang phát triển" icon={<DollarSign className="h-4 w-4" />} />
+          </div>
+          <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50/60 p-3 text-sm text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-200">
+            Chốt tự động lúc <strong>02:00 ngày 1</strong> theo giờ Việt Nam. Chỉ các đoạn video mới và hợp lệ trong kỳ được tính; tháng hiện tại chỉ hiển thị phút, chưa quy đổi thành tiền.
+          </div>
+          <div className="mt-5 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <div className="border-b p-3 dark:border-zinc-800">
+              <h3 className="font-semibold text-zinc-900 dark:text-white">Tiến độ hợp lệ tháng này</h3>
+              <p className="mt-0.5 text-xs text-zinc-500">Số phút mới được ghi nhận theo từng khóa, không tính lại đoạn đã xem trong cùng kỳ.</p>
+            </div>
+            <table className="w-full min-w-[520px] text-sm">
+              <thead className="bg-zinc-50 text-left text-zinc-500 dark:bg-zinc-900">
+                <tr><th className="p-3">Khóa học</th><th className="p-3 text-right">Học viên</th><th className="p-3 text-right">Phút hợp lệ</th></tr>
+              </thead>
+              <tbody>
+                {(subscription?.currentUsage ?? []).map((row) => (
+                  <tr key={row.courseId} className="border-t border-zinc-200 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/70">
+                    <td className="p-3 font-medium text-zinc-900 dark:text-white">{row.courseTitle || row.courseId}</td>
+                    <td className="p-3 text-right text-zinc-600 dark:text-zinc-400">{Number(row.learnerCount || 0).toLocaleString('vi-VN')}</td>
+                    <td className="p-3 text-right font-semibold">{formatMinutes(row.qualifiedSeconds)}</td>
+                  </tr>
+                ))}
+                {!(subscription?.currentUsage?.length) && <tr><td colSpan={3} className="p-8 text-center text-zinc-500">Chưa có phút xem hợp lệ trong tháng này.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-5 overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+            <div className="border-b p-3 dark:border-zinc-800">
+              <h3 className="font-semibold text-zinc-900 dark:text-white">Doanh thu các tháng đã chốt</h3>
+              <p className="mt-0.5 text-xs text-zinc-500">Hiển thị kết quả phân bổ cuối cùng sau khi quỹ của từng học viên đã được tính riêng và tổng hợp.</p>
+            </div>
+            <table className="w-full min-w-[900px] text-sm">
+              <thead className="bg-zinc-50 text-left text-zinc-500 dark:bg-zinc-900">
+                <tr><th className="p-3">Kỳ</th><th className="p-3">Khóa học</th><th className="p-3 text-right">Học viên</th><th className="p-3 text-right">Kỳ góp quỹ</th><th className="p-3 text-right">Phút hợp lệ</th><th className="p-3 text-right">Tỷ lệ chia</th><th className="p-3">Trạng thái</th><th className="p-3 text-right">Doanh thu</th></tr>
+              </thead>
+              <tbody>
+                {(subscription?.settlements ?? []).map((row, index) => (
+                  <tr key={`${row.period}-${row.courseId}-${index}`} className="border-t border-zinc-200 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900/70">
+                    <td className="p-3 font-medium">{row.period}</td>
+                    <td className="p-3 font-medium text-zinc-900 dark:text-white">{row.courseTitle || row.courseId}</td>
+                    <td className="p-3 text-right">{Number(row.learnerCount || 0).toLocaleString('vi-VN')}</td>
+                    <td className="p-3 text-right">{Number(row.termCount || 0).toLocaleString('vi-VN')}</td>
+                    <td className="p-3 text-right">{formatMinutes(row.qualifiedSeconds)}</td>
+                    <td className="p-3 text-right">{Number(row.sharePercent || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}%</td>
+                    <td className="p-3"><Badge variant={row.status === 'AVAILABLE' ? 'default' : 'secondary'}>{row.status === 'AVAILABLE' ? 'Có thể nhận' : 'Chờ ghi nhận'}</Badge></td>
+                    <td className="p-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(row.amount)}</td>
+                  </tr>
+                ))}
+                {!(subscription?.settlements?.length) && <tr><td colSpan={8} className="p-8 text-center text-zinc-500">Chưa có doanh thu thuê bao đã chốt.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="course" className="mt-0 space-y-6">
+          <RevenueFilter range={range} customDates={customDates} onRangeChange={onRangeChange} onCustomDatesChange={onCustomDatesChange} />
+          <RevenueTitleWithTooltip
+            title="Doanh thu mua đứt"
           content="Đây là doanh thu từ các khóa học được học viên mua riêng từng khóa. Số tiền bạn nhận được sẽ bám theo tỷ lệ chia doanh thu tại đúng thời điểm học viên thanh toán."
         />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard label="Tổng doanh thu" value={formatCurrency(revenue?.totalGrossRevenue ?? 0)} sub="trước chia" icon={<DollarSign className="w-4 h-4" />} />
           <StatCard label="Doanh thu thực nhận" value={formatCurrency(revenue?.totalInstructorRevenue ?? 0)} sub="số tiền bạn nhận được" icon={<Award className="w-4 h-4" />} />
           <StatCard label="Giao dịch thành công" value={`${(revenue?.totalTransactions ?? 0).toLocaleString('vi-VN')}`} sub="số lượt thanh toán hoàn tất trong kỳ đã chọn" icon={<Users className="w-4 h-4" />} />
-          <StatCard label="Tỷ lệ chia" value={`${revenue?.instructorPercent ?? 0}%`} sub={`QTV nhận ${revenue?.adminPercent ?? 0}%`} icon={<Percent className="w-4 h-4" />} />
+          <StatCard label="Tỷ lệ chia" value={`${revenue?.instructorPercent ?? 0}%`} sub={`Nền tảng nhận ${revenue?.adminPercent ?? 0}%`} icon={<Percent className="w-4 h-4" />} />
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.9fr)]">
           <div className={`${cardClass} p-5`}>
             <h3 className="mb-1 font-bold text-zinc-900 dark:text-white">Doanh thu theo tháng</h3>
-            <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Tổng doanh thu là xu hướng chính; mua đứt và thuê bao là hai nguồn thành phần.</p>
+            <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Xu hướng doanh thu thực nhận từ các giao dịch mua khóa học.</p>
             {monthlyRevenueChartData.length > 0 ? (
               <ChartContainer config={monthlyRevenueChartConfig} className="h-80 w-full">
                 <ComposedChart data={monthlyRevenueChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
@@ -315,7 +373,6 @@ const RevenueTab = ({ range, revenue, subscription }: {
                   <ChartLegend content={<ChartLegendContent />} />
                   <Area type="monotone" dataKey="totalRevenue" stroke="var(--color-totalRevenue)" strokeWidth={3} fill="url(#performanceTotalRevenue)" />
                   <Line type="monotone" dataKey="courseRevenue" stroke="var(--color-courseRevenue)" strokeWidth={1.75} dot={false} activeDot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="subscriptionRevenue" stroke="var(--color-subscriptionRevenue)" strokeWidth={1.75} dot={false} activeDot={{ r: 4 }} />
                 </ComposedChart>
               </ChartContainer>
             ) : (
@@ -345,7 +402,7 @@ const RevenueTab = ({ range, revenue, subscription }: {
         {providerRevenueChartData.length > 0 && (
           <div className={`${cardClass} p-5`}>
             <h3 className="mb-1 font-bold text-zinc-900 dark:text-white">Doanh thu theo cổng thanh toán</h3>
-            <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">So sánh doanh thu thực nhận và số giao dịch theo từng provider.</p>
+            <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">So sánh doanh thu thực nhận và số giao dịch theo từng cổng thanh toán.</p>
             <ChartContainer config={providerRevenueChartConfig} className="h-[240px] w-full">
               <BarChart data={providerRevenueChartData} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
                 <CartesianGrid horizontal={false} />
@@ -383,8 +440,9 @@ const RevenueTab = ({ range, revenue, subscription }: {
             </table>
             {(revenue?.courseBreakdown ?? []).length === 0 && <p className="mt-4 text-sm text-zinc-500">Chưa có dữ liệu doanh thu.</p>}
           </div>
-        </div>
-      </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </TooltipProvider>
   );
 };
@@ -480,7 +538,7 @@ const StudentsTab = ({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Phân tích học tập theo khóa học</h3>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Theo dõi tỷ lệ hoàn thành, tiến độ xem video và kết quả quiz từ Progress Service.</p>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Theo dõi tỷ lệ hoàn thành, tiến độ xem video và kết quả bài kiểm tra.</p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row">
             <Select value={selectedCourseId} onChange={(event) => onSelectCourse(event.target.value)} className="h-11 rounded-xl border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
@@ -520,9 +578,9 @@ const StudentsTab = ({
             <StatCard label="Đã hoàn thành" value={analytics.completedLearners.toLocaleString('vi-VN')} sub="học viên đã hoàn thành toàn bộ nội dung khóa học" icon={<Award className="w-4 h-4" />} />
             <StatCard label="Tỷ lệ hoàn thành" value={`${analytics.completionRate.toFixed(0)}%`} sub="tỷ lệ học viên hoàn thành trọn khóa trong tổng số đã bắt đầu" icon={<Percent className="w-4 h-4" />} />
             <StatCard
-              label="Drop-off cao nhất"
+              label="Bỏ dở cao nhất"
               value={topDropOffLesson ? `${topDropOffLesson.dropOffRate.toFixed(0)}%` : '—'}
-              sub={topDropOffLesson ? topDropOffLesson.positionLabel : 'chưa có bài học có tỷ lệ rời bỏ đáng chú ý'}
+              sub={topDropOffLesson ? topDropOffLesson.positionLabel : 'chưa có bài học có tỷ lệ bỏ dở đáng chú ý'}
               icon={<Clock className="w-4 h-4" />}
             />
           </div>
@@ -558,8 +616,8 @@ const StudentsTab = ({
             </div>
 
             <div className={`${cardClass} p-5`}>
-              <h3 className="mb-1 text-lg font-bold text-zinc-900 dark:text-white">Điểm rơi rụng cao</h3>
-              <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Chỉ hiện những bài có học viên bắt đầu nhưng chưa hoàn thành.</p>
+              <h3 className="mb-1 text-lg font-bold text-zinc-900 dark:text-white">Bài có tỷ lệ bỏ dở cao</h3>
+              <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">Những bài có nhiều học viên bắt đầu nhưng chưa hoàn thành.</p>
               {lessonDropOffChartData.length > 0 ? (
                 <ChartContainer config={lessonDropOffChartConfig} className="h-[240px] w-full">
                   <BarChart data={lessonDropOffChartData} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
@@ -582,7 +640,7 @@ const StudentsTab = ({
                   </BarChart>
                 </ChartContainer>
               ) : (
-                <EmptyChartState icon={<Clock className="h-8 w-8" />} message="Chưa có bài học có tỷ lệ rời bỏ đáng chú ý." />
+                <EmptyChartState icon={<Clock className="h-8 w-8" />} message="Chưa có bài học có tỷ lệ bỏ dở đáng chú ý." />
               )}
             </div>
           </div>
@@ -652,17 +710,17 @@ const StudentsTab = ({
 
             <div className="space-y-6">
               <div className={`${cardClass} p-5`}>
-                <h3 className="mb-4 text-lg font-bold text-zinc-900 dark:text-white">Điểm rơi rụng cao</h3>
+                <h3 className="mb-4 text-lg font-bold text-zinc-900 dark:text-white">Bài có tỷ lệ bỏ dở cao</h3>
                 <div className="space-y-3">
                   {dropOffLessons.length > 0 ? dropOffLessons.map((lesson) => (
                     <div key={lesson.lessonId} className="rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800/60">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{lesson.positionLabel}</p>
                       <p className="mt-1 text-sm font-semibold text-zinc-900 dark:text-white">{lesson.title}</p>
                       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{lesson.startedCount} bắt đầu · {lesson.completedCount} hoàn thành</p>
-                      <p className="mt-2 text-sm font-medium text-rose-600 dark:text-rose-400">Drop-off {lesson.dropOffRate.toFixed(0)}%</p>
+                      <p className="mt-2 text-sm font-medium text-rose-600 dark:text-rose-400">Bỏ dở {lesson.dropOffRate.toFixed(0)}%</p>
                     </div>
                   )) : (
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Chưa có đủ dữ liệu để xác định bài học có nhiều học viên bỏ dở.</p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Chưa có đủ dữ liệu để xác định bài có nhiều học viên bỏ dở.</p>
                   )}
                 </div>
               </div>
@@ -770,7 +828,7 @@ const ReviewsTab = ({ stats }: { stats: IInstructorRatingStats | undefined }) =>
               </BarChart>
             </ChartContainer>
           ) : (
-            <EmptyChartState icon={<Star className="h-8 w-8" />} message="Chưa có khóa học đã xuất bản để vẽ rating." />
+            <EmptyChartState icon={<Star className="h-8 w-8" />} message="Chưa có khóa học đã xuất bản để hiển thị xếp hạng." />
           )}
         </div>
 
@@ -808,7 +866,7 @@ const ReviewsTab = ({ stats }: { stats: IInstructorRatingStats | undefined }) =>
         <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h3 className="font-bold text-zinc-900 dark:text-white">Đánh giá theo khóa học</h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Ưu tiên khóa chưa có review, rating thấp hoặc có nhiều học viên.</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Ưu tiên khóa chưa có đánh giá, điểm thấp hoặc có nhiều học viên.</p>
           </div>
         </div>
         {sortedCourses.length ? (
@@ -821,7 +879,7 @@ const ReviewsTab = ({ stats }: { stats: IInstructorRatingStats | undefined }) =>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   {course.reviews === 0 && (
-                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">Chưa có review</Badge>
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">Chưa có đánh giá</Badge>
                   )}
                   {course.reviews > 0 && course.rating < 4 && (
                     <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">Cần cải thiện</Badge>
@@ -884,7 +942,7 @@ const RevenueFilter: React.FC<{
         </div>
         <div>
           <p className="text-sm font-bold text-zinc-900 dark:text-white">Khoảng thời gian doanh thu</p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Áp dụng cho doanh thu mua lẻ, chart và breakdown.</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Áp dụng cho doanh thu mua lẻ, biểu đồ và phân tích chi tiết.</p>
         </div>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -928,6 +986,7 @@ const RevenueFilter: React.FC<{
 
 export const InstructorPerformance: React.FC = () => {
   const [activeTab, setActiveTab] = useState<PerfTab>('revenue');
+  const [revenueSource, setRevenueSource] = useState<RevenueSourceTab>('course');
   const [revenueRange, setRevenueRange] = useState<RevenueRange>('90d');
   const [customRevenueDates, setCustomRevenueDates] = useState<InstructorRevenueParams>({ startDate: '', endDate: '' });
   const { data: instructorCourses = [] } = useGetMyCourses();
@@ -981,20 +1040,11 @@ export const InstructorPerformance: React.FC = () => {
         ))}
       </div>
 
-      {activeTab === 'revenue' && (
-        <RevenueFilter
-          range={revenueRange}
-          customDates={customRevenueDates}
-          onRangeChange={setRevenueRange}
-          onCustomDatesChange={setCustomRevenueDates}
-        />
-      )}
-
-      {isLoading && activeTab === 'revenue' ? (
+      {isLoading && activeTab === 'revenue' && revenueSource === 'course' ? (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 text-sm text-zinc-500">Đang tải dữ liệu doanh thu...</div>
       ) : (
         <>
-          {activeTab === 'revenue' && <RevenueTab range={revenueRange} revenue={revenue} subscription={subscriptionFinance} />}
+          {activeTab === 'revenue' && <RevenueTab range={revenueRange} customDates={customRevenueDates} revenue={revenue} subscription={subscriptionFinance} activeSource={revenueSource} onSourceChange={setRevenueSource} onRangeChange={setRevenueRange} onCustomDatesChange={setCustomRevenueDates} />}
           {activeTab === 'students' && (
             <StudentsTab
               courses={publishedCourses}
@@ -1008,7 +1058,7 @@ export const InstructorPerformance: React.FC = () => {
         </>
       )}
 
-      {activeTab === 'revenue' && monthlyTrend.length > 0 && (
+      {activeTab === 'revenue' && revenueSource === 'course' && monthlyTrend.length > 0 && (
         <div className="text-xs text-zinc-400">
           Tháng gần nhất: {formatCurrency(latestRevenue)} thực nhận.
         </div>

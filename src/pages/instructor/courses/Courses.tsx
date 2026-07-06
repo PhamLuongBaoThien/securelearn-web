@@ -6,7 +6,7 @@
 // ========================
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, Edit, Trash2, Upload, Loader2, Clock, AlertCircle, ArrowRightLeft, WalletCards, MessageSquare, BookOpen } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Upload, Loader2, Clock, AlertCircle, ArrowRightLeft, WalletCards, MessageSquare, BookOpen, CircleDollarSign, PlayCircle, ShoppingCart, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,6 +27,14 @@ import {
 } from '@/hooks/useInstructorCourses';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -61,6 +69,10 @@ export const InstructorCourses: React.FC = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [subscriptionTarget, setSubscriptionTarget] = useState<{ id: string; title: string } | null>(null);
+  const [hasAcceptedSubscriptionTerms, setHasAcceptedSubscriptionTerms] = useState(false);
+  const [withdrawTarget, setWithdrawTarget] = useState<{ id: string; title: string } | null>(null);
+  const [withdrawReason, setWithdrawReason] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null); // state dùng để lưu thông tin course cần xóa (tên và id) và mở dialog confirm xóa.
 
   // React Query Hooks
@@ -110,6 +122,41 @@ export const InstructorCourses: React.FC = () => {
     });
   };
 
+  const handleSubscriptionDialogChange = (open: boolean) => {
+    if (!open && !subscriptionMutation.isPending) {
+      setSubscriptionTarget(null);
+      setHasAcceptedSubscriptionTerms(false);
+    }
+  };
+  const handleOptInSubscription = () => {
+    if (!subscriptionTarget || !hasAcceptedSubscriptionTerms) return;
+    subscriptionMutation.mutate(subscriptionTarget.id, {
+      onSuccess: () => {
+        setSubscriptionTarget(null);
+        setHasAcceptedSubscriptionTerms(false);
+      },
+    });
+  };
+  const handleWithdrawDialogChange = (open: boolean) => {
+    if (!open && !withdrawSubscriptionMutation.isPending) {
+      setWithdrawTarget(null);
+      setWithdrawReason('');
+    }
+  };
+
+  const handleWithdrawSubscription = () => {
+    if (!withdrawTarget) return;
+
+    withdrawSubscriptionMutation.mutate(
+      { courseId: withdrawTarget.id, reason: withdrawReason },
+      {
+        onSuccess: () => {
+          setWithdrawTarget(null);
+          setWithdrawReason('');
+        },
+      },
+    );
+  };
   const handleSubmitReview = (courseId: string) => {
     submitReviewMutation.mutate(courseId, {
       onSuccess: () => {
@@ -334,7 +381,10 @@ export const InstructorCourses: React.FC = () => {
                       {course.status === 'PUBLISHED' && ['NOT_OPTED_IN', 'REJECTED', 'REMOVED', undefined].includes(course.subscriptionStatus) && (
                         <DropdownMenuItem
                           className="gap-2 cursor-pointer"
-                          onClick={() => subscriptionMutation.mutate(course._id)}
+                          onClick={() => {
+                            setHasAcceptedSubscriptionTerms(false);
+                            setSubscriptionTarget({ id: course._id, title: course.title });
+                          }}
                         >
                           <Upload className="w-4 h-4" /> Đưa vào gói thuê bao
                         </DropdownMenuItem>
@@ -342,7 +392,10 @@ export const InstructorCourses: React.FC = () => {
                       {course.status === 'PUBLISHED' && ['APPROVED', 'PENDING'].includes(course.subscriptionStatus || '') && (
                         <DropdownMenuItem
                           className="gap-2 cursor-pointer text-amber-600 focus:text-amber-600"
-                          onClick={() => withdrawSubscriptionMutation.mutate(course._id)}
+                          onClick={() => {
+                            setWithdrawReason('');
+                            setWithdrawTarget({ id: course._id, title: course.title });
+                          }}
                         >
                           <ArrowRightLeft className="w-4 h-4" /> Rút khỏi gói thuê bao
                         </DropdownMenuItem>
@@ -459,6 +512,165 @@ export const InstructorCourses: React.FC = () => {
         onConfirm={handleDeleteCourse}
         variant="destructive"
       />
+      <Dialog open={!!subscriptionTarget} onOpenChange={handleSubscriptionDialogChange}>
+        <DialogContent
+          className="max-h-[90vh] max-w-2xl overflow-y-auto p-0"
+          onEscapeKeyDown={(event) => subscriptionMutation.isPending && event.preventDefault()}
+          onPointerDownOutside={(event) => subscriptionMutation.isPending && event.preventDefault()}
+        >
+          <DialogHeader className="border-b border-zinc-200 px-6 pb-5 pt-6 dark:border-zinc-800">
+            <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <WalletCards className="h-5 w-5" />
+            </div>
+            <DialogTitle>Đưa khóa học vào gói thuê bao?</DialogTitle>
+            <DialogDescription>
+              Bạn đang gửi <span className="font-semibold text-zinc-700 dark:text-zinc-200">“{subscriptionTarget?.title}”</span> để quản trị viên duyệt. Hãy đọc cách quyền truy cập và doanh thu được xử lý trước khi xác nhận.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 px-6 py-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+                <div className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
+                  <CircleDollarSign className="h-4 w-4 text-primary" />
+                  Doanh thu được chia thế nào?
+                </div>
+                <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                  Phần dành cho giảng viên trong kỳ thuê bao của từng học viên được chia cho các khóa họ thực sự xem, theo tỷ lệ thời lượng video hợp lệ. Doanh thu không cố định theo lượt ghi danh hay giá bán lẻ của khóa học.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+                <div className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
+                  <PlayCircle className="h-4 w-4 text-primary" />
+                  Lượt xem nào được tính?
+                </div>
+                <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                  Chỉ thời lượng video được xem bằng quyền thuê bao trong phiên học hợp lệ mới được tính. Đoạn đã xem lại không cộng hai lần; quiz, preview và lượt xem bằng quyền mua đứt không tham gia chia tiền thuê bao.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+                <div className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
+                  <ShoppingCart className="h-4 w-4 text-primary" />
+                  Nếu học viên mua đứt
+                </div>
+                <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                  Thời lượng hợp lệ trước lúc thanh toán vẫn được ghi nhận cho thuê bao. Từ thời điểm mua thành công, khóa học chuyển sang quyền mua đứt và không nhận thêm tiền từ gói thuê bao.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+                <div className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  Duyệt, đối soát và rút khóa học
+                </div>
+                <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                  Khóa học chỉ vào gói sau khi được duyệt. Tiền lần lượt ở trạng thái ước tính, chờ duyệt và khả dụng; không được cộng khả dụng ngay khi có lượt xem. Bạn có thể rút khóa học, nhưng học viên đã bắt đầu vẫn được học đến hết kỳ hiện tại.
+                </p>
+              </div>
+            </div>
+
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-zinc-100 p-4 transition-colors hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-800">
+              <input
+                type="checkbox"
+                checked={hasAcceptedSubscriptionTerms}
+                onChange={(event) => setHasAcceptedSubscriptionTerms(event.target.checked)}
+                disabled={subscriptionMutation.isPending}
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-zinc-300 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed"
+              />
+              <span className="text-sm font-medium leading-6 text-zinc-700 dark:text-zinc-200">
+                Tôi đã đọc, hiểu cách chia doanh thu thuê bao và đồng ý gửi khóa học này để quản trị viên xét duyệt.
+              </span>
+            </label>
+          </div>
+
+          <DialogFooter className="border-t border-zinc-200 px-6 pb-6 pt-4 dark:border-zinc-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleSubscriptionDialogChange(false)}
+              disabled={subscriptionMutation.isPending}
+            >
+              Chưa đồng ý
+            </Button>
+            <Button
+              type="button"
+              onClick={handleOptInSubscription}
+              disabled={!hasAcceptedSubscriptionTerms || subscriptionMutation.isPending}
+            >
+              {subscriptionMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Đồng ý và gửi duyệt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!withdrawTarget} onOpenChange={handleWithdrawDialogChange}>
+        <DialogContent
+          className="max-w-lg p-0"
+          onEscapeKeyDown={(event) => withdrawSubscriptionMutation.isPending && event.preventDefault()}
+          onPointerDownOutside={(event) => withdrawSubscriptionMutation.isPending && event.preventDefault()}
+        >
+          <DialogHeader className="border-b border-zinc-200 px-6 pb-5 pt-6 dark:border-zinc-800">
+            <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <AlertCircle className="h-5 w-5" />
+            </div>
+            <DialogTitle>Rút khóa học khỏi gói thuê bao?</DialogTitle>
+            <DialogDescription>
+              Bạn sắp rút <span className="font-semibold text-zinc-700 dark:text-zinc-200">“{withdrawTarget?.title}”</span> khỏi gói thuê bao. Thao tác chỉ được thực hiện sau khi bạn xác nhận.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 px-6 py-5">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+              <p className="font-semibold">Điều gì xảy ra sau khi rút?</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                <li>Học viên thuê bao mới sẽ không thể mở khóa học này.</li>
+                <li>Học viên đã bắt đầu vẫn được học đến hết kỳ thuê bao hiện tại.</li>
+                <li>Thời lượng xem hợp lệ đã ghi nhận vẫn được giữ để đối soát và chia doanh thu.</li>
+                <li>Doanh thu đã khóa hoặc đã khả dụng không bị thay đổi.</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="withdraw-subscription-reason" className="text-sm font-semibold text-zinc-900 dark:text-white">
+                Lý do rút khóa học <span className="font-normal text-zinc-500">(không bắt buộc)</span>
+              </label>
+              <textarea
+                id="withdraw-subscription-reason"
+                value={withdrawReason}
+                onChange={(event) => setWithdrawReason(event.target.value)}
+                maxLength={500}
+                rows={4}
+                disabled={withdrawSubscriptionMutation.isPending}
+                placeholder="Ví dụ: Tôi cần cập nhật lại nội dung khóa học..."
+                className="flex w-full resize-none rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+              />
+              <p className="text-right text-xs text-zinc-500">{withdrawReason.length}/500</p>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t border-zinc-200 px-6 pb-6 pt-4 dark:border-zinc-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleWithdrawDialogChange(false)}
+              disabled={withdrawSubscriptionMutation.isPending}
+            >
+              Giữ khóa học trong gói
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleWithdrawSubscription}
+              disabled={withdrawSubscriptionMutation.isPending}
+            >
+              {withdrawSubscriptionMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Xác nhận rút khỏi gói
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

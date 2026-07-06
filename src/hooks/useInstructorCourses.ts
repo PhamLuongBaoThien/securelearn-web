@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // File này chứa React Query hooks cấp course cho instructor.
 // Lưu ý:
 // - file này bọc toàn bộ course-level và curriculum-level operations cho instructor
@@ -214,10 +214,8 @@ export function useWithdrawCourseSubscription() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (courseId: string) => {
-      const reason = window.prompt('Lý do rút khóa học khỏi gói học theo thuê bao (không bắt buộc):') || '';
-      return withdrawCourseSubscription(courseId, reason);
-    },
+    mutationFn: ({ courseId, reason }: { courseId: string; reason?: string }) =>
+      withdrawCourseSubscription(courseId, reason?.trim() || ''),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: instructorKeys.myCourses });
       toast.success('Khóa học đã được rút khỏi gói học theo thuê bao.');

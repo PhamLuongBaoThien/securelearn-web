@@ -24,6 +24,10 @@ export function SubscriptionCatalog() {
       return response.data || [];
     },
   });
+  const renewedUntil = (subscription?.scheduled || []).reduce<string | null>((latest, term) => {
+    if (!latest || new Date(term.endsAt).getTime() > new Date(latest).getTime()) return term.endsAt;
+    return latest;
+  }, null);
 
   return (
     <div className="max-w-[1340px] mx-auto px-4 md:px-6 py-8">
@@ -31,11 +35,20 @@ export function SubscriptionCatalog() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-primary">Khóa học trong gói</p>
           <h1 className="mt-2 text-3xl md:text-4xl font-bold font-serif">Toàn bộ khóa học bạn có thể học bằng thuê bao</h1>
-          <p className="mt-2 text-muted-foreground">
-            {subscription?.current
-              ? `Gói của bạn còn hiệu lực đến ngày ${new Date(subscription.current.endsAt).toLocaleDateString('vi-VN')}.`
-              : 'Mua gói để học tất cả các khóa học đang có trong danh sách này.'}
-          </p>
+          {subscription?.current ? (
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              <p className="text-muted-foreground">
+                Kỳ hiện tại kết thúc: <strong className="text-foreground">{new Date(subscription.current.endsAt).toLocaleDateString('vi-VN')}</strong>
+              </p>
+              {renewedUntil && (
+                <p className="text-muted-foreground">
+                  Đã gia hạn đến: <strong className="text-emerald-600 dark:text-emerald-400">{new Date(renewedUntil).toLocaleDateString('vi-VN')}</strong>
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="mt-2 text-muted-foreground">Mua gói để học tất cả các khóa học đang có trong danh sách này.</p>
+          )}
         </div>
         {!subscription?.current && (
           <Link to="/pricing" className={buttonVariants({ variant: 'outline', className: 'rounded-sm font-bold' })}>

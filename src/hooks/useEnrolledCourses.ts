@@ -20,6 +20,8 @@ export interface EnrolledCourseItem {
   totalLessons: number;
   totalDuration: number; // giây
   enrolledAt: string;
+  source: 'PURCHASE' | 'SUBSCRIPTION';
+  accessEndsAt?: string | null;
   progressPercent: number;
   completedLessons: number;
   progressTotalLessons: number;
@@ -71,6 +73,8 @@ export function useEnrolledCourses() {
             totalLessons: course.totalLessons,
             totalDuration: course.totalDuration,
             enrolledAt: e.enrolledAt,
+            source: e.source,
+            accessEndsAt: e.accessEndsAt,
             progressPercent: 0,
             completedLessons: 0,
             progressTotalLessons: course.totalLessons,

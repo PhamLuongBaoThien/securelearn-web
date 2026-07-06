@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Payment API Client
 // Mục đích:
 // - gọi payment-service cho checkout, transaction, finance và subscription
@@ -287,16 +287,28 @@ export interface AdminSubscriptionTerm extends SubscriptionTerm {
 export interface SubscriptionSettlement {
   _id: string;
   period: string;
-  status: 'OPEN' | 'CALCULATED' | 'LOCKED' | 'AVAILABLE';
+  status: 'LOCKED' | 'AVAILABLE';
   recognizedGross: number;
   adminRevenue: number;
   instructorPool: number;
-  refundGrossAdjustment: number;
-  refundAdminAdjustment: number;
-  refundInstructorPoolAdjustment: number;
   carriedIn: number;
   carriedOut: number;
+  expiredToAdmin: number;
+  allocatedAmount: number;
+  reconciliationDifference: number;
   totalQualifiedSeconds: number;
+  allocations: Array<{ instructorId: string; courseId: string; courseTitle: string; qualifiedSeconds: number; amount: number; termCount: number; learnerCount: number; sharePercent: number }>;
+  termLedgers: Array<{
+    termId: string;
+    userId: string;
+    recognizedPool: number;
+    carryIn: number;
+    allocatedAmount: number;
+    carryOut: number;
+    expiredToAdmin: number;
+    totalQualifiedSeconds: number;
+    allocations: Array<{ instructorId: string; courseId: string; courseTitle: string; qualifiedSeconds: number; amount: number }>;
+  }>;
   calculatedAt?: string;
 }
 
@@ -305,20 +317,12 @@ export const getAdminSubscriptionTerms = async () => {
   return data;
 };
 
-export const refundAdminSubscriptionTerm = async (termId: string, reason: string) => {
-  const { data } = await apiClient.post<ApiResponse<AdminSubscriptionTerm>>(`/api/payments/admin/subscriptions/terms/${termId}/refund`, { reason });
-  return data;
-};
 
 export const getSubscriptionSettlements = async () => {
   const { data } = await apiClient.get<ApiResponse<SubscriptionSettlement[]>>('/api/payments/admin/subscriptions/settlements');
   return data;
 };
 
-export const calculateSubscriptionSettlement = async (period: string) => {
-  const { data } = await apiClient.post<ApiResponse<SubscriptionSettlement>>(`/api/payments/admin/subscriptions/settlements/${period}/calculate`);
-  return data;
-};
 
 export const updateSubscriptionSettlementStatus = async (
   period: string,
@@ -329,14 +333,23 @@ export const updateSubscriptionSettlementStatus = async (
 };
 
 export interface InstructorSubscriptionFinance {
-  estimated: number;
   pending: number;
   available: number;
-  qualifiedSeconds: number;
+  currentQualifiedSeconds: number;
+  currentUsage: Array<{
+    courseId: string;
+    courseTitle: string;
+    qualifiedSeconds: number;
+    learnerCount: number;
+  }>;
   settlements: Array<{
     period: string;
-    status: 'OPEN' | 'CALCULATED' | 'LOCKED' | 'AVAILABLE';
+    status: 'LOCKED' | 'AVAILABLE';
     courseId: string;
+    courseTitle: string;
+    termCount: number;
+    learnerCount: number;
+    sharePercent: number;
     qualifiedSeconds: number;
     amount: number;
   }>;

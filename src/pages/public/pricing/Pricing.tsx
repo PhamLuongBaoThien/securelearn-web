@@ -66,15 +66,34 @@ export const Pricing = () => {
   if (!isAuthenticated) return <Navigate to="/auth/login" state={{ from: location }} replace />;
 
   const current = subscriptionQuery.data?.current;
+  const scheduledTerms = subscriptionQuery.data?.scheduled || [];
+  const renewedUntil = scheduledTerms.reduce<string | null>((latest, term) => {
+    if (!latest || new Date(term.endsAt).getTime() > new Date(latest).getTime()) return term.endsAt;
+    return latest;
+  }, null);
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 md:px-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Gói học theo thuê bao</h1>
         <p className="mt-2 text-zinc-500">Thanh toán trước, dùng theo thời hạn của gói. Nếu mua thêm khi gói cũ còn hạn, thời gian mới sẽ được cộng nối tiếp.</p>
         {current && (
-          <p className="mt-3 border-l-4 border-emerald-500 pl-3 text-sm">
-            Bạn đang dùng <strong>{current.planName}</strong>, có hiệu lực đến ngày {new Date(current.endsAt).toLocaleDateString('vi-VN')}.
-          </p>
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+            <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+              Gói đang hoạt động: {current.planName}
+            </p>
+            <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <p className="text-zinc-500 dark:text-zinc-400">Kỳ hiện tại kết thúc</p>
+                <p className="mt-1 font-bold text-zinc-900 dark:text-white">{new Date(current.endsAt).toLocaleDateString('vi-VN')}</p>
+              </div>
+              {renewedUntil && (
+                <div>
+                  <p className="text-zinc-500 dark:text-zinc-400">Đã gia hạn đến</p>
+                  <p className="mt-1 font-bold text-emerald-700 dark:text-emerald-300">{new Date(renewedUntil).toLocaleDateString('vi-VN')}</p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
 

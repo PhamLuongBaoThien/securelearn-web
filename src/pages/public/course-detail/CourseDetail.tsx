@@ -86,10 +86,11 @@ export function CourseDetail() {
   // Danh sách khóa học đã ghi danh của user — chỉ fetch khi đã đăng nhập
   const { data: enrolledCourses = [] } = useEnrolledCourses();
 
-  // Kiểm tra khóa học hiện tại có nằm trong danh sách đã ghi danh không
-  const isEnrolled = isAuthenticated && Boolean(
-    course && enrolledCourses.some((e) => e.courseId === course._id)
-  );
+  // Giữ cả nguồn quyền truy cập để phân biệt mua đứt với enrollment thuê bao.
+  const currentEnrollment = course
+    ? enrolledCourses.find((enrollment) => enrollment.courseId === course._id)
+    : undefined;
+  const isEnrolled = isAuthenticated && Boolean(currentEnrollment);
 
   // Trạng thái đang tải: hiển thị skeleton
   if (isLoading) {
@@ -199,6 +200,8 @@ export function CourseDetail() {
         <CoursePurchaseCard 
           course={course} 
           isEnrolled={isEnrolled} 
+          accessSource={currentEnrollment?.source}
+          accessEndsAt={currentEnrollment?.accessEndsAt}
           reportButton={isAuthenticated ? <ReportDialog targetType="COURSE" targetId={course._id} label="Báo cáo khóa học" /> : null}
         />
 

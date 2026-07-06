@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Hook: useAdminFinance
 // Mục đích:
 // - gom React Query hooks cho báo cáo tài chính và vận hành thuê bao của Admin
@@ -14,7 +14,6 @@ import {
 } from '@/services/adminApi';
 import type { IRevenueSplitConfig, IRevenueStats } from '@/types/admin.types';
 import {
-  calculateSubscriptionSettlement,
   createAdminCoupon,
   deleteAdminCoupon,
   getAdminCoupons,
@@ -24,7 +23,6 @@ import {
   getAdminSubscriptionPlans,
   getAdminSubscriptionTerms,
   getSubscriptionSettlements,
-  refundAdminSubscriptionTerm,
   updateAdminCoupon,
   updateAdminCouponStatus,
   saveAdminSubscriptionPlan,
@@ -35,7 +33,7 @@ import {
 } from '@/services/paymentApi';
 
 export const adminFinanceKeys = {
-  splitConfig: ['admin', 'finance', 'split-config'] as const,
+  splitConfig: (productType: 'COURSE' | 'SUBSCRIPTION') => ['admin', 'finance', 'split-config', productType] as const,
   revenue: ['admin', 'finance', 'revenue'] as const,
   transactions: (params: {
     search?: string;
@@ -43,6 +41,7 @@ export const adminFinanceKeys = {
     statusFilter?: string;
     page: number;
     limit: number;
+    productType: 'COURSE' | 'SUBSCRIPTION';
   }) => ['admin', 'finance', 'transactions', params] as const,
   subscriptionPlans: ['admin', 'subscription-plans'] as const,
   subscriptionTerms: ['admin', 'subscription-terms'] as const,
@@ -53,11 +52,11 @@ export const adminFinanceKeys = {
   couponDetailRedemptions: (id: string, page: number, limit: number) => ['admin', 'coupons', id, 'redemptions', page, limit] as const,
 };
 
-export function useAdminRevenueSplitConfig() {
+export function useAdminRevenueSplitConfig(productType: 'COURSE' | 'SUBSCRIPTION' = 'COURSE') {
   return useQuery({
-    queryKey: adminFinanceKeys.splitConfig,
+    queryKey: adminFinanceKeys.splitConfig(productType),
     queryFn: async () => {
-      const response = await getRevenueSplitConfig();
+      const response = await getRevenueSplitConfig(productType);
       if (response.status === 'ERR' || !response.data) {
         throw new Error(response.message || 'Không thể tải cấu hình chia doanh thu.');
       }
@@ -85,6 +84,7 @@ export function useAdminTransactions(params: {
   statusFilter?: string;
   page: number;
   limit: number;
+  productType: 'COURSE' | 'SUBSCRIPTION';
 }) {
   return useQuery({
     queryKey: adminFinanceKeys.transactions(params),
@@ -95,6 +95,7 @@ export function useAdminTransactions(params: {
         status: params.statusFilter || undefined,
         page: params.page,
         limit: params.limit,
+        productType: params.productType,
       });
       if (response.status === 'ERR' || !response.data) {
         throw new Error(response.message || 'Không thể tải danh sách giao dịch.');
@@ -105,19 +106,19 @@ export function useAdminTransactions(params: {
   });
 }
 
-export function useUpdateRevenueSplitConfig() {
+export function useUpdateRevenueSplitConfig(productType: 'COURSE' | 'SUBSCRIPTION' = 'COURSE') {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (config: IRevenueSplitConfig) => {
-      const response = await updateRevenueSplitConfig(config);
+      const response = await updateRevenueSplitConfig(config, productType);
       if (response.status === 'ERR' || !response.data) {
         throw new Error(response.message || 'Không thể cập nhật cấu hình chia doanh thu.');
       }
       return response.data;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: adminFinanceKeys.splitConfig });
+      await queryClient.invalidateQueries({ queryKey: adminFinanceKeys.splitConfig(productType) });
       await queryClient.invalidateQueries({ queryKey: adminFinanceKeys.revenue });
       await queryClient.invalidateQueries({ queryKey: ['admin', 'finance', 'transactions'] });
       toast.success('Đã cập nhật tỷ lệ chia doanh thu.');
@@ -164,7 +165,16 @@ export function useSaveAdminSubscriptionPlan() {
 
   return useMutation({
     mutationFn: async (plan: SubscriptionPlan) => {
-      const { _id: _ignored, ...payload } = plan;
+      const payload: Omit<SubscriptionPlan, '_id'> = {
+        type: plan.type,
+        name: plan.name,
+        description: plan.description,
+        price: plan.price,
+        durationDays: plan.durationDays,
+        features: plan.features,
+        sortOrder: plan.sortOrder,
+        isActive: plan.isActive,
+      };
       const response = await saveAdminSubscriptionPlan(payload);
       if (!response.data) throw new Error(response.message || 'Không thể lưu gói.');
       return response.data;
@@ -174,22 +184,6 @@ export function useSaveAdminSubscriptionPlan() {
       toast.success('Đã cập nhật gói thuê bao.');
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể lưu gói.'),
-  });
-}
-
-export function useCalculateSubscriptionSettlement() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (period: string) => {
-      const response = await calculateSubscriptionSettlement(period);
-      if (!response.data) throw new Error(response.message || 'Không thể cập nhật settlement.');
-      return response.data;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: adminFinanceKeys.subscriptionSettlements });
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể cập nhật settlement.'),
   });
 }
 
@@ -206,28 +200,6 @@ export function useUpdateSubscriptionSettlement() {
       await queryClient.invalidateQueries({ queryKey: adminFinanceKeys.subscriptionSettlements });
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể cập nhật settlement.'),
-  });
-}
-
-export function useRefundAdminSubscriptionTerm() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (termId: string) => {
-      const reason = window.prompt('Lý do hoàn tiền đã thực hiện tại VNPay/MoMo:');
-      if (!reason) throw new Error('Đã hủy thao tác hoàn tiền.');
-      const response = await refundAdminSubscriptionTerm(termId, reason);
-      if (!response.data) throw new Error(response.message || 'Không thể ghi nhận hoàn tiền.');
-      return response.data;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: adminFinanceKeys.subscriptionTerms });
-      toast.success('Đã thu hồi kỳ thuê bao.');
-    },
-    onError: (error) => {
-      if (error instanceof Error && error.message === 'Đã hủy thao tác hoàn tiền.') return;
-      toast.error(error instanceof Error ? error.message : 'Không thể hoàn tiền.');
-    },
   });
 }
 

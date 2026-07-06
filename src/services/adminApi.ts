@@ -360,18 +360,19 @@ export const getTransactions = async (params?: {
   endDate?: string;
   page?: number;
   limit?: number;
-}): Promise<AdminApiResponse<{ transactions: ITransaction[]; total: number; totalAmount: number }>> => {
+  productType?: 'COURSE' | 'SUBSCRIPTION';
+}): Promise<AdminApiResponse<{ transactions: ITransaction[]; total: number; totalAmount: number; summary?: IRevenueStats }>> => {
   const res = await apiClient.get(`${ADMIN_FINANCE}/transactions`, { params });
   return res.data;
 };
 
-export const getRevenueSplitConfig = async (): Promise<AdminApiResponse<IRevenueSplitConfig>> => {
-  const res = await apiClient.get<AdminApiResponse<IRevenueSplitConfig>>(`${ADMIN_FINANCE}/split-config`);
+export const getRevenueSplitConfig = async (productType: 'COURSE' | 'SUBSCRIPTION' = 'COURSE'): Promise<AdminApiResponse<IRevenueSplitConfig>> => {
+  const res = await apiClient.get<AdminApiResponse<IRevenueSplitConfig>>(`${ADMIN_FINANCE}/split-config`, { params: { productType } });
   return res.data;
 };
 
-export const updateRevenueSplitConfig = async (data: IRevenueSplitConfig): Promise<AdminApiResponse<IRevenueSplitConfig>> => {
-  const res = await apiClient.put<AdminApiResponse<IRevenueSplitConfig>>(`${ADMIN_FINANCE}/split-config`, data);
+export const updateRevenueSplitConfig = async (data: IRevenueSplitConfig, productType: 'COURSE' | 'SUBSCRIPTION' = 'COURSE'): Promise<AdminApiResponse<IRevenueSplitConfig>> => {
+  const res = await apiClient.put<AdminApiResponse<IRevenueSplitConfig>>(`${ADMIN_FINANCE}/split-config`, data, { params: { productType } });
   return res.data;
 };
 

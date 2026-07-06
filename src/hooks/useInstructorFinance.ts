@@ -30,6 +30,8 @@ export function useInstructorRevenueStats(params?: InstructorRevenueParams) {
       }
       return response.data;
     },
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 }
 

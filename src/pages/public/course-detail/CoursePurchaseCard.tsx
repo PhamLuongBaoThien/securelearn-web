@@ -19,15 +19,17 @@ import { enrollWithSubscription, type ICourse } from '@/services/courseApi';
 import { getBestCourseCouponPreview } from '@/services/paymentApi';
 import { enrolledKeys } from '@/hooks/useEnrolledCourses';
 import { useMySubscription } from '@/hooks/useMySubscription';
-import { BadgePercent, CheckCircle2, CreditCard, Heart, GraduationCap, Share2 } from 'lucide-react';
+import { BadgePercent, CheckCircle2, CreditCard, Heart, GraduationCap, Share2, CalendarClock } from 'lucide-react';
 
 interface Props {
   course: ICourse;     // Dữ liệu khóa học cần hiển thị
   isEnrolled: boolean; // Người dùng đã ghi danh khóa này chưa (kiểm tra từ useEnrolledCourses)
+  accessSource?: 'PURCHASE' | 'SUBSCRIPTION';
+  accessEndsAt?: string | null;
   reportButton?: React.ReactNode;
 }
 
-export function CoursePurchaseCard({ course, isEnrolled, reportButton }: Props) {
+export function CoursePurchaseCard({ course, isEnrolled, accessSource, accessEndsAt, reportButton }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addItem, isAdding } = useCartActions();
@@ -41,9 +43,10 @@ export function CoursePurchaseCard({ course, isEnrolled, reportButton }: Props) 
   const { data: subscription } = useMySubscription();
   const hasActiveSubscription = Boolean(subscription?.current);
   const isSubscriptionCourse = course.subscriptionStatus === 'APPROVED';
+  const isSubscriptionEnrollment = isEnrolled && accessSource === 'SUBSCRIPTION';
   const couponPreviewQuery = useQuery({
     queryKey: ['course-coupon-preview', user?._id ?? 'guest', course._id, course.price],
-    enabled: !isEnrolled && !isOwnCourse && course.price > 0,
+    enabled: (!isEnrolled || isSubscriptionEnrollment) && !isOwnCourse && course.price > 0,
     queryFn: async () => {
       const response = await getBestCourseCouponPreview(course.price);
       if (!response.data) throw new Error(response.message || 'Không thể tải coupon cho khóa học.');
@@ -177,6 +180,66 @@ export function CoursePurchaseCard({ course, isEnrolled, reportButton }: Props) 
                 >
                   Xem nội dung khóa học
                 </Button>
+              </div>
+            ) : isSubscriptionEnrollment ? (
+              // Enrollment thuê bao chỉ là quyền có thời hạn; vẫn cho phép học viên mua đứt.
+              <div>
+                <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                  <div className="flex items-start gap-3">
+                    <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                    <div>
+                      <p className="font-semibold text-foreground">Bạn đang học bằng gói thuê bao</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {accessEndsAt
+                          ? 'Quyền học hiện tại đến ngày ' + new Date(accessEndsAt).toLocaleDateString('vi-VN') + '.'
+                          : 'Quyền học phụ thuộc vào thời hạn của kỳ thuê bao hiện tại.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full py-6 text-base font-bold rounded-lg"
+                  onClick={() => navigate('/student/dashboard')}
+                >
+                  Vào học ngay
+                </Button>
+
+                <div className="my-4 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  <span>hoặc sở hữu trọn đời</span>
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+
+                <div className="rounded-xl border border-border p-4">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-xl font-extrabold tracking-tight">
+                      {hasCouponPreview ? couponFinalPrice.toLocaleString('vi-VN') : course.price.toLocaleString('vi-VN')} ₫
+                    </span>
+                    {hasCouponPreview && (
+                      <span className="text-sm font-semibold text-muted-foreground line-through">
+                        {course.price.toLocaleString('vi-VN')} ₫
+                      </span>
+                    )}
+                  </div>
+                  {hasCouponPreview && (
+                    <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      Áp dụng mã {bestCoupon?.code}, giảm {couponDiscount.toLocaleString('vi-VN')} ₫
+                    </p>
+                  )}
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Mua đứt để giữ quyền truy cập trọn đời. Tiến độ học hiện tại được giữ nguyên.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="mt-4 w-full py-6 font-bold rounded-lg"
+                    onClick={() => isInCart ? navigate('/cart') : handleBuyNow()}
+                    disabled={isAdding}
+                  >
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    {isInCart ? 'Xem giỏ hàng' : isAdding ? 'Đang thêm...' : 'Mua đứt khóa học'}
+                  </Button>
+                </div>
               </div>
             ) : isEnrolled ? (
               // Trường hợp đã ghi danh: hiện thông báo và nút vào học
