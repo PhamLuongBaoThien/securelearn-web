@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Frontend Routes
 // Mục đích:
 // - khai báo router chính cho public, student, instructor và admin
@@ -78,13 +78,18 @@ import { InstructorCommunication } from '../pages/instructor/communication';
 import { NotificationCenter } from '../pages/shared/notifications';
 import { SupportCenter } from '../pages/shared/support';
 
+// Page Transition (hiệu ứng chuyển trang kiểu cửa đóng/mở)
+import { PageTransitionProvider } from '../components/animations/PageTransition';
+
 // Tạo một RootLayout chung bọc bên ngoài toàn bộ các route
 // Nhờ đó, ScrollToTop luôn tồn tại trong App và hoạt động mỗi lần chuyển Route
 function RootLayout() {
   return (
     <AuthInitializer>
-      <ScrollToTop />
-      <Outlet />
+      <PageTransitionProvider>
+        <ScrollToTop />
+        <Outlet />
+      </PageTransitionProvider>
     </AuthInitializer>
   );
 }

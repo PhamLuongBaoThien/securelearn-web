@@ -22,6 +22,8 @@ import { Sidebar } from './Sidebar';
 import type { SidebarEntry } from './Sidebar';
 import { instructorTextVariants } from '@/components/animations/sidebar';
 
+import { usePageTransition } from '@/components/animations/PageTransition';
+
 export const InstructorLayout: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -29,6 +31,7 @@ export const InstructorLayout: React.FC = () => {
   const { theme } = useAppSelector((state) => state.ui);
   const [collapsed, setCollapsed] = useState(false);
   const { count: unreadNotifications } = useUnreadNotifications();
+  const { navigateWithTransition } = usePageTransition();
 
   const logoutMutation = useLogout();
 
@@ -42,7 +45,7 @@ export const InstructorLayout: React.FC = () => {
   };
 
   const handleBackToStudent = () => {
-    navigate('/student/dashboard');
+    navigateWithTransition('/student/dashboard');
   };
 
   const inboxUnread = useInboxUnread();
