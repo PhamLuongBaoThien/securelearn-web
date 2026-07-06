@@ -434,7 +434,7 @@ export const Transactions: React.FC = () => {
               <p className="text-xl font-bold text-zinc-900 dark:text-white mt-1">{fmt(summary?.totalAdminRevenue ?? 0)}</p>
             </div>
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4">
-              <p className="text-xs text-zinc-500">Doanh thu Giảng viên</p>
+              <p className="text-xs text-zinc-500">{productType === 'SUBSCRIPTION' ? 'Tổng quỹ giảng viên' : 'Doanh thu Giảng viên'}</p>
               <p className="text-xl font-bold text-zinc-900 dark:text-white mt-1">{fmt(summary?.totalInstructorRevenue ?? 0)}</p>
             </div>
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4">
