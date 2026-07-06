@@ -6,7 +6,7 @@
 // ========================
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, Edit, Trash2, Upload, Loader2, Clock, AlertCircle, ArrowRightLeft, WalletCards, MessageSquare, BookOpen, CircleDollarSign, PlayCircle, ShoppingCart, ShieldCheck } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Upload, Loader2, RefreshCw, Clock, AlertCircle, ArrowRightLeft, WalletCards, MessageSquare, BookOpen, CircleDollarSign, PlayCircle, ShoppingCart, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -76,7 +76,7 @@ export const InstructorCourses: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null); // state dùng để lưu thông tin course cần xóa (tên và id) và mở dialog confirm xóa.
 
   // React Query Hooks
-  const { data: courses = [], isLoading, error } = useGetMyCourses();
+  const { data: courses = [], isLoading, isFetching, error, refetch } = useGetMyCourses();
   const createCourseMutation = useCreateCourse();
   const deleteCourseMutation = useDeleteCourse();
   const submitReviewMutation = useSubmitCourseForReview();
@@ -196,14 +196,15 @@ export const InstructorCourses: React.FC = () => {
           <p className="text-muted-foreground mt-2">Quản lý các khóa học đang có và tạo khóa học mới.</p>
         </div>
         
-        <Button 
-          onClick={handleCreateCourse}
-          disabled={createCourseMutation.isPending}
-          className="shrink-0 h-11 px-6 rounded-xl font-medium gap-2"
-        >
-          {createCourseMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
-          Tạo khóa học mới
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => void refetch()} disabled={isFetching} className="h-11 gap-2" title="Làm mới danh sách khóa học">
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Làm mới
+          </Button>
+          <Button onClick={handleCreateCourse} disabled={createCourseMutation.isPending} className="shrink-0 h-11 px-6 rounded-xl font-medium gap-2">
+            {createCourseMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+            Tạo khóa học mới
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr_1fr]">

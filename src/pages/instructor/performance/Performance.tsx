@@ -8,7 +8,7 @@ import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   DollarSign, Users, Star,
-  BookOpen, Clock, Award, Percent, MessageSquare, GraduationCap, CircleHelp, Calendar, TrendingUp,
+  BookOpen, Clock, Award, Percent, MessageSquare, GraduationCap, CircleHelp, Calendar, TrendingUp, RefreshCw,
 } from 'lucide-react';
 import {
   Area,
@@ -989,7 +989,8 @@ export const InstructorPerformance: React.FC = () => {
   const [revenueSource, setRevenueSource] = useState<RevenueSourceTab>('course');
   const [revenueRange, setRevenueRange] = useState<RevenueRange>('90d');
   const [customRevenueDates, setCustomRevenueDates] = useState<InstructorRevenueParams>({ startDate: '', endDate: '' });
-  const { data: instructorCourses = [] } = useGetMyCourses();
+  const coursesQuery = useGetMyCourses();
+  const { data: instructorCourses = [] } = coursesQuery;
   const publishedCourses = useMemo(
     () => instructorCourses.filter((course) => course.status === 'PUBLISHED'),
     [instructorCourses],
@@ -997,9 +998,12 @@ export const InstructorPerformance: React.FC = () => {
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const { user } = useAppSelector((state) => state.auth);
   const revenueParams = useMemo(() => getRevenueRangeParams(revenueRange, customRevenueDates), [revenueRange, customRevenueDates]);
-  const { data: revenue, isLoading } = useInstructorRevenueStats(revenueParams);
-  const { data: subscriptionFinance } = useInstructorSubscriptionFinance();
-  const { data: ratingStats, isLoading: ratingLoading } = useInstructorRatingStats(user?._id || '', Boolean(user?._id));
+  const revenueQuery = useInstructorRevenueStats(revenueParams);
+  const { data: revenue, isLoading } = revenueQuery;
+  const subscriptionQuery = useInstructorSubscriptionFinance();
+  const { data: subscriptionFinance } = subscriptionQuery;
+  const ratingQuery = useInstructorRatingStats(user?._id || '', Boolean(user?._id));
+  const { data: ratingStats, isLoading: ratingLoading } = ratingQuery;
 
   React.useEffect(() => {
     if (publishedCourses.length === 0) {
@@ -1018,9 +1022,12 @@ export const InstructorPerformance: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Phân tích</h1>
-        <p className="text-muted-foreground mt-1">Theo dõi doanh thu, học viên và đánh giá các khóa học của bạn.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div><h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Phân tích</h1>
+        <p className="text-muted-foreground mt-1">Theo dõi doanh thu, học viên và đánh giá các khóa học của bạn.</p></div>
+        <Button variant="outline" onClick={() => void Promise.all([coursesQuery.refetch(), revenueQuery.refetch(), subscriptionQuery.refetch(), ratingQuery.refetch()])} disabled={coursesQuery.isFetching || revenueQuery.isFetching || subscriptionQuery.isFetching || ratingQuery.isFetching} className="gap-2" title="Làm mới dữ liệu phân tích">
+          <RefreshCw className={`h-4 w-4 ${coursesQuery.isFetching || revenueQuery.isFetching || subscriptionQuery.isFetching || ratingQuery.isFetching ? 'animate-spin' : ''}`} /> Làm mới
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-1 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">

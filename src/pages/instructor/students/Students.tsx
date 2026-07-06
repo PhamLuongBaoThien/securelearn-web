@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Instructor Students Page
 // Mục đích:
 // - quản lý danh sách học viên đã ghi danh vào các khóa của instructor
@@ -6,7 +6,7 @@
 // ========================
 import React, { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { BookOpen, GraduationCap, Search, Users, WalletCards, CalendarClock, FilterX } from 'lucide-react';
+import { BookOpen, GraduationCap, Search, Users, WalletCards, CalendarClock, FilterX, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,7 +74,7 @@ export const InstructorStudents: React.FC = () => {
   const [courseFilter, setCourseFilter] = useState(initialCourseId);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
-  const { data, isLoading, isError, error } = useInstructorStudents();
+  const { data, isLoading, isFetching, isError, error, refetch } = useInstructorStudents();
 
   const enrollments = data?.enrollments ?? [];
   const courses = data?.courses ?? [];
@@ -121,13 +121,18 @@ export const InstructorStudents: React.FC = () => {
             Theo dõi học viên đã ghi danh vào các khóa học của bạn, nguồn truy cập và ngày bắt đầu học.
           </p>
         </div>
-        <Link
-          to="/instructor/performance"
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-bold shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground lg:w-auto"
-        >
-          <BookOpen className="h-4 w-4" />
-          Xem phân tích học tập
-        </Link>
+        <div className="flex w-full items-center gap-2 lg:w-auto">
+          <Button variant="outline" onClick={() => void refetch()} disabled={isFetching} className="gap-2" title="Làm mới danh sách học viên">
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Làm mới
+          </Button>
+          <Link
+            to="/instructor/performance"
+            className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-bold shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground lg:w-auto"
+          >
+            <BookOpen className="h-4 w-4" />
+            Xem phân tích học tập
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">

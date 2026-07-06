@@ -7,7 +7,7 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BarChart3, CheckCircle2, Edit, History, Loader2, Plus, Search, Trash2, ToggleLeft, ToggleRight, X, Calendar as CalendarIcon } from 'lucide-react';
+import { BarChart3, CheckCircle2, Edit, History, Loader2, Plus, RefreshCw, Search, Trash2, ToggleLeft, ToggleRight, X, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -204,7 +204,7 @@ export const CouponManager = () => {
             <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">Coupon</h1>
             <p className="mt-1 text-sm text-zinc-500">Quản lý mã giảm giá cho checkout mua khóa học.</p>
           </div>
-          <Button onClick={resetForm} className="gap-2"><Plus className="h-4 w-4" /> Coupon mới</Button>
+          <div className="flex items-center gap-2"><Button variant="outline" onClick={() => void Promise.all([couponsQuery.refetch(), statsQuery.refetch()])} disabled={couponsQuery.isFetching || statsQuery.isFetching} className="gap-2" title="Làm mới danh sách và thống kê coupon"><RefreshCw className={`h-4 w-4 ${couponsQuery.isFetching || statsQuery.isFetching ? 'animate-spin' : ''}`} /> Làm mới</Button><Button onClick={resetForm} className="gap-2"><Plus className="h-4 w-4" /> Coupon mới</Button></div>
         </div>
 
         <section className="grid gap-3 md:grid-cols-4">

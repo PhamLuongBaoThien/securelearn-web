@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarDays, Check, Loader2, Save, ToggleLeft, ToggleRight } from 'lucide-react';
+import { CalendarDays, Check, Loader2, RefreshCw, Save, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { SubscriptionPlan } from '@/services/paymentApi';
@@ -18,9 +18,12 @@ export const PlanManager = () => {
     setDrafts((current) => ({ ...current, [plan._id]: { ...draftFor(plan), ...values } }));
 
   return <div className="space-y-6">
-    <div>
-      <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">Gói thuê bao</h1>
-      <p className="mt-1 text-sm text-zinc-500">Quản lý nội dung, giá và trạng thái bán. Kỳ thuê bao và đối soát nằm tại Giao dịch → Thuê bao.</p>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div><h1 className="text-3xl font-bold text-zinc-900 dark:text-white">Gói thuê bao</h1>
+      <p className="mt-1 text-sm text-zinc-500">Quản lý nội dung, giá và trạng thái bán. Kỳ thuê bao và đối soát nằm tại Giao dịch → Thuê bao.</p></div>
+      <Button variant="outline" onClick={() => void plansQuery.refetch()} disabled={plansQuery.isFetching} className="gap-2" title="Làm mới danh sách gói thuê bao">
+        <RefreshCw className={`h-4 w-4 ${plansQuery.isFetching ? 'animate-spin' : ''}`} /> Làm mới
+      </Button>
     </div>
     {plansQuery.isLoading ? <div className="flex h-40 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div> :
       <div className="grid gap-5 lg:grid-cols-2">{plans.map((plan) => {

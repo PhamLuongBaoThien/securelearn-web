@@ -3,7 +3,7 @@
 // Giữ phần điều phối state, query, và luồng thao tác phân quyền tại đây.
 // ========================
 import React, { useState } from 'react';
-import { Info, Loader2, Plus, Save } from 'lucide-react';
+import { Info, Loader2, Plus, RefreshCw, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAdminRoles } from '@/hooks/useAdminRoles';
 import type { IRolePermission } from '@/types/admin.types';
@@ -16,7 +16,7 @@ import { RoleFormDialog } from './RoleFormDialog';
 import { RoleListItem } from './RoleListItem';
 
 export const RbacManager: React.FC = () => {
-  const { roles, isLoading, invalidate, updateMut, deleteMut } = useAdminRoles();
+  const { roles, isLoading, isFetching, invalidate, updateMut, deleteMut } = useAdminRoles();
   const [selectedKey, setSelectedKey] = useState('CONTENT_MANAGER');
   const [localPerms, setLocalPerms] = useState<Record<string, string[]>>({});
   const [dirtyRoles, setDirtyRoles] = useState<Set<string>>(new Set());
@@ -110,6 +110,9 @@ export const RbacManager: React.FC = () => {
           <p className="text-zinc-500 dark:text-zinc-400">Tạo và thiết lập quyền hạn cho từng vai trò Admin.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button onClick={() => void invalidate()} disabled={isFetching} variant="outline" className="gap-2" title="Làm mới danh sách vai trò và quyền">
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Làm mới
+          </Button>
           <Button
             onClick={() => setCreateOpen(true)}
             id="btn-create-role"

@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { CannedReplyManager } from '@/components/inbox/CannedReplyManager';
 import { TicketPagination } from '@/components/inbox/TicketPagination';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, HelpCircle, MessageSquare, Send, User, Shield, BookOpen, Play, Star, FileText, Loader2, ChevronRight, Paperclip, FileIcon, X, History } from 'lucide-react';
+import { AlertTriangle, HelpCircle, MessageSquare, Send, User, Shield, BookOpen, Play, Star, FileText, Loader2, ChevronRight, Paperclip, FileIcon, X, History, RefreshCw } from 'lucide-react';
 
 const label: Record<string, string> = {
     REPORT: 'Báo cáo',
@@ -301,13 +301,14 @@ export const Inbox = () => {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div><h1 className="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
                     Hỗ trợ & Báo cáo
                 </h1>
                 <p className="text-muted-foreground mt-1 text-sm">
                     Quản lý báo cáo vi phạm, yêu cầu hỗ trợ và góp ý từ người dùng trên toàn hệ thống.
-                </p>
+                </p></div>
+                <Button variant="outline" onClick={() => { void queryClient.invalidateQueries({ queryKey: ['adminInboxList'] }); if (selected) void queryClient.invalidateQueries({ queryKey: ['adminInboxDetail', selected] }); }} disabled={isFetchingList || isFetchingDetail} className="gap-2" title="Làm mới danh sách hỗ trợ và báo cáo"><RefreshCw className={`h-4 w-4 ${isFetchingList || isFetchingDetail ? 'animate-spin' : ''}`} /> Làm mới</Button>
             </div>
 
             <div className="grid min-h-[680px] gap-6 xl:grid-cols-[380px_1fr]">

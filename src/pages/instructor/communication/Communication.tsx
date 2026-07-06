@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, Eye, EyeOff, FilterX, Loader2, MessageSquare, Pencil, Pin, Plus, Search } from 'lucide-react';
+import { Bell, Eye, EyeOff, FilterX, Loader2, MessageSquare, Pencil, Pin, Plus, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -200,9 +200,12 @@ export const InstructorCommunication = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight">Giao tiếp</h1>
-        <p className="mt-1 text-muted-foreground">Quản lý thảo luận và thông báo của các khóa học.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div><h1 className="text-3xl font-extrabold tracking-tight">Giao tiếp</h1>
+        <p className="mt-1 text-muted-foreground">Quản lý thảo luận và thông báo của các khóa học.</p></div>
+        <Button variant="outline" onClick={() => void Promise.all([coursesQuery.refetch(), qc.invalidateQueries({ queryKey: ['communication'] })])} disabled={coursesQuery.isFetching} className="gap-2" title="Làm mới dữ liệu giao tiếp">
+          <RefreshCw className={`h-4 w-4 ${coursesQuery.isFetching ? 'animate-spin' : ''}`} /> Làm mới
+        </Button>
       </div>
       <Tabs defaultValue="discussions">
         <TabsList>

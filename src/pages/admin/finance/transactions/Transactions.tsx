@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Search, Filter, CreditCard, Download, CheckCircle, XCircle, Clock, Percent, Save, Undo2, ChevronDown, ChevronUp, CircleDollarSign, Scale, Users } from 'lucide-react';
+import { Search, Filter, CreditCard, Download, RefreshCw, CheckCircle, XCircle, Clock, Percent, Save, Undo2, ChevronDown, ChevronUp, CircleDollarSign, Scale, Users } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import type { ITransaction, PaymentProvider, TransactionStatus, IRevenueSplitConfig, IRevenueStats } from '@/types/admin.types';
 import { Input } from '@/components/ui/input';
@@ -356,9 +356,9 @@ export const Transactions: React.FC = () => {
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Lịch sử Giao dịch</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Theo dõi thanh toán qua VNPay/MoMo và tỷ lệ chia doanh thu cho từng giao dịch.</p>
         </div>
-        <Button id="btn-export-transactions" variant="outline" onClick={exportCsv} disabled={isExporting} className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
+        <div className="flex items-center gap-2"><Button variant="outline" onClick={() => void Promise.all([transactionsQuery.refetch(), splitConfigQuery.refetch(), termsQuery.refetch(), settlementsQuery.refetch()])} disabled={transactionsQuery.isFetching || splitConfigQuery.isFetching || termsQuery.isFetching || settlementsQuery.isFetching} className="gap-2" title="Làm mới dữ liệu giao dịch"><RefreshCw className={`h-4 w-4 ${transactionsQuery.isFetching || splitConfigQuery.isFetching || termsQuery.isFetching || settlementsQuery.isFetching ? 'animate-spin' : ''}`} /> Làm mới</Button><Button id="btn-export-transactions" variant="outline" onClick={exportCsv} disabled={isExporting} className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
           <Download className="w-4 h-4" /> {isExporting ? 'Đang xuất...' : 'Xuất CSV'}
-        </Button>
+        </Button></div>
       </div>
 
       <div className="inline-flex rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">

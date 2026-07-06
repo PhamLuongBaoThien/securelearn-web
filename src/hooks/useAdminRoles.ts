@@ -39,6 +39,7 @@ export const useAdminRoles = () => {
   return {
     roles: query.data?.data || [],
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isError: query.isError,
     response: query.data,
     invalidate: () => queryClient.invalidateQueries({ queryKey: ['role_permissions'] }),
