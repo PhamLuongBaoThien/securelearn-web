@@ -1,10 +1,10 @@
-﻿import { Link } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { HorizontalStaggerContainer, HorizontalStaggerItem } from '@/components/animations/HorizontalStagger';
 import { SectionReveal, SectionSequence, SectionSequenceItem } from '@/components/animations/SectionReveal';
 import { CourseCarousel } from '@/components/ui/CourseCarousel';
 import { buttonVariants } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { HomeBannerSlider } from './HomeBannerSlider';
 
 const CopyrightIllustration = () => (
   <svg className="h-20 w-20 mb-4 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 text-zinc-400 dark:text-zinc-500 group-hover:text-primary" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -78,36 +78,6 @@ const TrustIllustration = () => (
   </svg>
 );
 
-const bannerSlides = [
-  {
-    id: '1',
-    image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000',
-    title: 'Học tập không giới hạn',
-    subtitle: 'Kỹ năng cho hiện tại và tương lai của bạn. Bắt đầu cùng chúng tôi.',
-    link: '/courses',
-  },
-  {
-    id: '2',
-    image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=2000',
-    title: 'Lập trình thực chiến',
-    subtitle: 'Hàng trăm khóa học từ cơ bản đến nâng cao, do chuyên gia hàng đầu giảng dạy.',
-    link: '/category/development',
-  },
-  {
-    id: '3',
-    image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2000',
-    title: 'An toàn thông tin',
-    subtitle: 'Nắm vững Cybersecurity với lộ trình bài bản và chứng chỉ quốc tế.',
-    link: '/category/it-software',
-  },
-  {
-    id: '4',
-    image: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&q=80&w=2000',
-    title: 'Công nghệ AI & Machine Learning',
-    subtitle: 'Khám phá trí tuệ nhân tạo và ứng dụng vào thực tế ngay hôm nay.',
-    link: '/category/development',
-  },
-];
 import type { ICourse } from '@/services/courseApi';
 
 const mockCourses: Partial<ICourse>[] = [
@@ -118,7 +88,6 @@ const mockCourses: Partial<ICourse>[] = [
   { _id: '5', slug: '5', title: 'Automate the Boring Stuff with Python', instructorName: 'Al Sweigart', rating: 4.6, reviews: 108000, price: 299000, originalPrice: 1290000, thumbnail: 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=500&q=80' },
 ];
 
-const SLIDE_INTERVAL = 5000; // 5 giây mỗi slide
 
 const PARTNER_LOGOS = [
   { id: 'ctu', node: <div className="text-2xl md:text-3xl font-black tracking-widest text-blue-700 select-none">CTU</div> },
@@ -190,111 +159,9 @@ const PartnerSlider = () => {
 };
 
 export const Home = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-
-  const nextSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev + 1) % bannerSlides.length);
-  }, []);
-
-  const prevSlide = useCallback(() => {
-    setCurrentSlide((prev) => (prev - 1 + bannerSlides.length) % bannerSlides.length);
-  }, []);
-
-  // Auto slide
-  useEffect(() => {
-    if (isPaused) return;
-    const timer = setInterval(nextSlide, SLIDE_INTERVAL);
-    return () => clearInterval(timer);
-  }, [isPaused, nextSlide]);
-
   return (
     <>
-      {/* Hero Banner Slider */}
-      <section
-        className="relative w-full h-screen -mt-[90px] z-0 overflow-hidden"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
-        <div className="relative w-full h-full">
-          {/* Slides */}
-          {bannerSlides.map((slide, index) => (
-            <div
-              key={slide.id}
-              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-                index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-              }`}
-            >
-              <img
-                src={slide.image}
-                alt={slide.title}
-                className={`w-full h-full object-cover transition-transform duration-[10000ms] ease-out ${
-                  index === currentSlide ? 'scale-110' : 'scale-100'
-                }`}
-              />
-              {/* Overlay gradient */}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
-              <div className="absolute inset-0 bg-black/20" />
-            </div>
-          ))}
-
-          {/* Text Content */}
-          <div className="absolute inset-0 z-20 flex flex-col justify-center px-6 md:px-16 lg:px-24 pt-[90px] max-w-[1440px] mx-auto w-full pointer-events-none">
-            <SectionSequence key={currentSlide} className="max-w-2xl pointer-events-auto">
-              <SectionSequenceItem>
-                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-xl">
-                  {bannerSlides[currentSlide].title}
-                </h1>
-              </SectionSequenceItem>
-              <SectionSequenceItem>
-                <p className="text-white/90 text-lg sm:text-xl md:text-2xl mb-8 drop-shadow-md">
-                  {bannerSlides[currentSlide].subtitle}
-                </p>
-              </SectionSequenceItem>
-              <SectionSequenceItem>
-                <Link
-                  to={bannerSlides[currentSlide].link}
-                  className="inline-flex items-center px-8 py-4 bg-primary text-primary-foreground font-bold text-lg rounded-full hover:bg-primary/90 transition-all shadow-[0_0_20px_rgba(var(--primary),0.4)] hover:shadow-[0_0_30px_rgba(var(--primary),0.6)] hover:scale-105"
-                >
-                  Khám phá ngay
-                </Link>
-              </SectionSequenceItem>
-            </SectionSequence>
-          </div>
-
-          {/* Navigation Arrows */}
-          <button
-            onClick={prevSlide}
-            className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 hidden md:inline-flex p-3 rounded-full bg-black/30 text-white hover:bg-black/60 backdrop-blur-md transition-all hover:scale-110"
-            aria-label="Slide trước"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <button
-            onClick={nextSlide}
-            className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 hidden md:inline-flex p-3 rounded-full bg-black/30 text-white hover:bg-black/60 backdrop-blur-md transition-all hover:scale-110"
-            aria-label="Slide tiếp"
-          >
-            <ChevronRight className="h-6 w-6" />
-          </button>
-
-          {/* Dot Indicators */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3">
-            {bannerSlides.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentSlide(index)}
-                className={`h-2.5 rounded-full transition-all duration-300 ${
-                  index === currentSlide
-                    ? 'w-8 bg-white'
-                    : 'w-2.5 bg-white/50 hover:bg-white/80'
-                }`}
-                aria-label={`Đi đến slide ${index + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
+      <HomeBannerSlider />
 
         {/* Dành cho bạn */}
         <section className="bg-secondary/10 px-6 overflow-hidden md:h-screen w-full flex items-center justify-center">

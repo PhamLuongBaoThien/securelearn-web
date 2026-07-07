@@ -8,7 +8,9 @@ import apiClient from './apiClient';
 import type { ICourse } from './courseApi';
 import type {
   IWebsiteConfig,
-  IBanner,
+  Banner,
+  BannerInput,
+  BannerReorderInput,
   ICategory,
   IAdminUser,
   ICourseReview,
@@ -60,18 +62,38 @@ export const updateWebsiteConfig = async (data: Partial<IWebsiteConfig>): Promis
   return res.data;
 };
 
-export const getBanners = async (): Promise<AdminApiResponse<IBanner[]>> => {
-  const res = await apiClient.get<AdminApiResponse<IBanner[]>>(`${ADMIN}/system/banners`);
+const toBannerFormData = (data: BannerInput) => {
+  const form = new FormData();
+  form.append('title', data.title);
+  form.append('subtitle', data.subtitle);
+  form.append('linkUrl', data.linkUrl || '');
+  if (data.image) form.append('image', data.image);
+  else if (data.imageUrl) form.append('imageUrl', data.imageUrl);
+  return form;
+};
+
+export const getBanners = async (): Promise<AdminApiResponse<Banner[]>> => {
+  const res = await apiClient.get<AdminApiResponse<Banner[]>>(`${ADMIN}/system/banners`);
   return res.data;
 };
 
-export const createBanner = async (data: Partial<IBanner>): Promise<AdminApiResponse<IBanner>> => {
-  const res = await apiClient.post<AdminApiResponse<IBanner>>(`${ADMIN}/system/banners`, data);
+export const createBanner = async (data: BannerInput): Promise<AdminApiResponse<Banner>> => {
+  const res = await apiClient.post<AdminApiResponse<Banner>>(`${ADMIN}/system/banners`, toBannerFormData(data));
   return res.data;
 };
 
-export const updateBanner = async (id: string, data: Partial<IBanner>): Promise<AdminApiResponse> => {
-  const res = await apiClient.put<AdminApiResponse>(`${ADMIN}/system/banners/${id}`, data);
+export const updateBanner = async (id: string, data: BannerInput): Promise<AdminApiResponse<Banner>> => {
+  const res = await apiClient.put<AdminApiResponse<Banner>>(`${ADMIN}/system/banners/${id}`, toBannerFormData(data));
+  return res.data;
+};
+
+export const setBannerStatus = async (id: string, isActive: boolean): Promise<AdminApiResponse<Banner>> => {
+  const res = await apiClient.patch<AdminApiResponse<Banner>>(`${ADMIN}/system/banners/${id}/status`, { isActive });
+  return res.data;
+};
+
+export const reorderBanners = async (data: BannerReorderInput): Promise<AdminApiResponse<Banner[]>> => {
+  const res = await apiClient.patch<AdminApiResponse<Banner[]>>(`${ADMIN}/system/banners/reorder`, data);
   return res.data;
 };
 
@@ -79,7 +101,6 @@ export const deleteBanner = async (id: string): Promise<AdminApiResponse> => {
   const res = await apiClient.delete<AdminApiResponse>(`${ADMIN}/system/banners/${id}`);
   return res.data;
 };
-
 export const getCategories = async (): Promise<AdminApiResponse<ICategory[]>> => {
   const res = await apiClient.get<{ status: 'OK' | 'ERR'; message?: string; data?: CategoryNodeResponse[] }>('/api/categories/admin/all');
 

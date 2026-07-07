@@ -28,7 +28,7 @@ export interface IWebsiteConfig {
   youtubeUrl?: string;
 }
 
-export interface IBanner {
+export interface Banner {
   _id: string;
   title: string;
   subtitle: string;
@@ -39,6 +39,21 @@ export interface IBanner {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface BannerInput {
+  title: string;
+  subtitle: string;
+  imageUrl?: string;
+  linkUrl?: string;
+  image?: File;
+}
+
+export interface BannerReorderInput {
+  ids: string[];
+}
+
+/** @deprecated Dùng Banner cho code mới. */
+export type IBanner = Banner;
 
 export interface ICategory {
   _id: string;
