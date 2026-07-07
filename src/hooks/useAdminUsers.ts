@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getUsers, lockUser, unlockUser } from '@/services/adminApi';
+import { getUsers, lockUser, unlockUser, multiLockUsers, multiUnlockUsers } from '@/services/adminApi';
 import { getEffectiveUserStatus } from '@/pages/admin/users/user-list/constants';
 
 export interface UserFilters {
@@ -39,6 +39,24 @@ export const useAdminUsers = (filters: UserFilters = {}) => {
     onError: (e: unknown) => toast.error((e as Error).message || 'Lỗi mở khóa tài khoản'),
   });
 
+  const multiLockMut = useMutation({
+    mutationFn: ({ ids, reason }: { ids: string[]; reason: string }) => multiLockUsers(ids, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin_users'] });
+      toast.success('Đã khóa các tài khoản.');
+    },
+    onError: (e: unknown) => toast.error((e as Error).message || 'Lỗi khóa các tài khoản'),
+  });
+
+  const multiUnlockMut = useMutation({
+    mutationFn: ({ ids, reason }: { ids: string[]; reason?: string }) => multiUnlockUsers(ids, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin_users'] });
+      toast.success('Đã mở khóa các tài khoản.');
+    },
+    onError: (e: unknown) => toast.error((e as Error).message || 'Lỗi mở khóa các tài khoản'),
+  });
+
   const users = (query.data?.data?.users ?? []).map((user) => ({
     ...user,
     status: getEffectiveUserStatus(user),
@@ -55,5 +73,7 @@ export const useAdminUsers = (filters: UserFilters = {}) => {
     invalidate: () => queryClient.invalidateQueries({ queryKey: ['admin_users'] }),
     lockMut,
     unlockMut,
+    multiLockMut,
+    multiUnlockMut,
   };
 };

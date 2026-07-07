@@ -47,6 +47,13 @@ interface UserTableProps {
   onLock: (user: IAdminUser) => void;
   onUnlock: (user: IAdminUser) => void;
   onPageChange: (page: number) => void;
+  selectedIds: string[];
+  onToggleSelect: (id: string) => void;
+  onToggleSelectAll: () => void;
+  isAllSelected: boolean;
+  isSomeSelected: boolean;
+  onExecuteMultiAction?: (action: string) => void;
+  onClearSelection?: () => void;
 }
 
 const COLS = ['Người dùng', 'Vai trò', 'Trạng thái', 'Thông tin', 'Đăng nhập gần nhất', 'Hành động'];
@@ -66,31 +73,91 @@ export const UserTable: React.FC<UserTableProps> = ({
   onLock,
   onUnlock,
   onPageChange,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+  isAllSelected,
+  isSomeSelected,
+  onExecuteMultiAction,
+  onClearSelection,
 }) => {
   const visiblePages = useMemo(() => getVisiblePages(page, totalPages), [page, totalPages]);
-
+  const hasSelection = selectedIds.length > 0;
   return (
     <div className={`bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-zinc-100 dark:border-zinc-800">
-              {COLS.map((h) => (
-                <th
-                  key={h}
-                  className="px-4 py-3.5 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider"
-                >
-                  {h}
+            <tr className={`border-b border-zinc-100 dark:border-zinc-800 transition-colors ${hasSelection ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : ''}`}>
+              <th className="w-10 px-4 py-3.5 align-middle">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  ref={(input) => {
+                    if (input) {
+                      input.indeterminate = isSomeSelected;
+                    }
+                  }}
+                  onChange={onToggleSelectAll}
+                  className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+                />
+              </th>
+              {hasSelection ? (
+                <th colSpan={COLS.length} className="px-4 py-2.5 align-middle text-left">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                      Đã chọn {selectedIds.length} tài khoản
+                    </span>
+                    <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onExecuteMultiAction?.('lock')}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 transition"
+                      >
+                        Khóa tài khoản
+                      </button>
+                      <button
+                        onClick={() => onExecuteMultiAction?.('unlock')}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 transition"
+                      >
+                        Mở khóa
+                      </button>
+                      <button
+                        onClick={onClearSelection}
+                        className="px-2.5 py-1 rounded-xl text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition"
+                      >
+                        Hủy chọn
+                      </button>
+                    </div>
+                  </div>
                 </th>
-              ))}
+              ) : (
+                COLS.map((header) => (
+                  <th
+                    key={header}
+                    className="px-4 py-3.5 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider"
+                  >
+                    {header}
+                  </th>
+                ))
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {users.map((user) => (
               <tr
                 key={user._id}
-                className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group"
+                data-state={selectedIds.includes(user._id) ? 'selected' : undefined}
+                className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group data-[state=selected]:bg-zinc-50 dark:data-[state=selected]:bg-zinc-800/20"
               >
+                <td className="w-10 px-4 py-3.5 align-middle">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(user._id)}
+                    onChange={() => onToggleSelect(user._id)}
+                    className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+                  />
+                </td>
                 {/* User info */}
                 <td className="px-4 py-3.5">
                   <div className="flex items-center gap-3">

@@ -36,8 +36,6 @@ import {
   buildMobileSidebarEntries,
 } from './navbar.utils';
 
-import { usePageTransition } from '@/components/animations/PageTransition';
-
 export const Navbar = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -56,12 +54,6 @@ export const Navbar = () => {
   const currentTheme = resolveTheme(theme);
   const teachBtnProps = getTeachButtonProps(resolvedUser, isInstructorView, isInstructor);
   const navCategories = categories;
-  const { navigateWithTransition } = usePageTransition();
-
-  // Kiểm tra xem nút teach có cần chuyển layout (Student ↔ Instructor) không
-  const isTeachBtnLayoutSwitch =
-    teachBtnProps.to === '/instructor/dashboard' || 
-    (teachBtnProps.to === '/student/dashboard' && isInstructorView);
 
   // ─── State ───────────────────────────────────────────────────
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -335,19 +327,9 @@ export const Navbar = () => {
 
               {/* Desktop Links */}
               <div className="hidden xl:flex items-center gap-1 shrink-0">
-                {isTeachBtnLayoutSwitch ? (
-                  <button
-                    type="button"
-                    onClick={() => navigateWithTransition(teachBtnProps.to)}
-                    className={desktopNavLinkClass(isInstructorView)}
-                  >
-                    {teachBtnProps.text}
-                  </button>
-                ) : (
-                  <Link to={teachBtnProps.to} className={desktopNavLinkClass(isInstructorView)}>
-                    {teachBtnProps.text}
-                  </Link>
-                )}
+                <Link to={teachBtnProps.to} className={desktopNavLinkClass(isInstructorView)}>
+                  {teachBtnProps.text}
+                </Link>
                 {showAuthenticatedUI && (
                   <Link to="/student/dashboard" className={desktopNavLinkClass(isStudentView)}>
                     Học tập

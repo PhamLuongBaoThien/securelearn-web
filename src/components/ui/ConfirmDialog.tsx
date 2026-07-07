@@ -1,4 +1,5 @@
 import React from "react";
+import { Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +29,8 @@ interface ConfirmDialogProps {
   /** Hiển thị nút xác nhận kiểu nguy hiểm (đỏ) */
   isDestructive?: boolean; // isDestructive là true thì nút xác nhận sẽ có màu đỏ
   variant?: "default" | "destructive"; // variant là kiểu dialog
+  /** Trạng thái đang xử lý */
+  isPending?: boolean;
 }
 
 export function ConfirmDialog({
@@ -43,6 +46,7 @@ export function ConfirmDialog({
   triggerButtonVariant = "default", // triggerButtonVariant là kiểu nút bấm để mở dialog
   isDestructive = false,
   variant,
+  isPending = false,
 }: ConfirmDialogProps) {
   const isControlled = open !== undefined;
   const destructive = variant === "destructive" || isDestructive;
@@ -65,11 +69,19 @@ export function ConfirmDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>{cancelText}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={(e) => {
+              if (isPending) {
+                e.preventDefault();
+                return;
+              }
+              onConfirm();
+            }}
+            disabled={isPending}
             className={destructive ? "bg-red-600 hover:bg-red-700 text-white" : ""}
           >
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {confirmText}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -77,3 +89,4 @@ export function ConfirmDialog({
     </AlertDialog>
   );
 }
+

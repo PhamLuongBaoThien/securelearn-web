@@ -16,6 +16,8 @@ import type { IRevenueSplitConfig, IRevenueStats } from '@/types/admin.types';
 import {
   createAdminCoupon,
   deleteAdminCoupon,
+  multiDeleteAdminCoupons,
+  multiUpdateAdminCouponStatus,
   getAdminCoupons,
   getAdminCouponStats,
   getAdminCouponRedemptions,
@@ -303,5 +305,41 @@ export function useDeleteAdminCoupon() {
       toast.success('Đã xóa coupon.');
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể xóa coupon.'),
+  });
+}
+
+export function useMultiDeleteAdminCoupons() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const response = await multiDeleteAdminCoupons(ids);
+      if (response.status === 'ERR') throw new Error(response.message || 'Không thể xóa các coupon.');
+      return response;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'coupons'] });
+      await queryClient.invalidateQueries({ queryKey: adminFinanceKeys.couponStats });
+      toast.success('Đã xóa các coupon được chọn.');
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể xóa các coupon.'),
+  });
+}
+
+export function useMultiUpdateAdminCouponStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ids, isActive }: { ids: string[]; isActive: boolean }) => {
+      const response = await multiUpdateAdminCouponStatus(ids, isActive);
+      if (response.status === 'ERR') throw new Error(response.message || 'Không thể cập nhật trạng thái các coupon.');
+      return response;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'coupons'] });
+      await queryClient.invalidateQueries({ queryKey: adminFinanceKeys.couponStats });
+      toast.success('Đã cập nhật trạng thái các coupon.');
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái các coupon.'),
   });
 }

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import {
   createAdminStaff,
   deleteAdminStaff,
+  multiDeleteStaff,
   getAdminStaff,
   updateAdminStaff,
   type AdminStaffPayload,
@@ -86,5 +87,21 @@ export function useDeleteAdminStaff() {
       toast.success('Đã xóa tài khoản nhân viên.');
     },
     onError: (error: unknown) => toast.error((error as Error).message || 'Lỗi khi xóa nhân viên'),
+  });
+}
+
+export function useMultiDeleteAdminStaff() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const response = await multiDeleteStaff(ids);
+      ensureOk(response);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminStaffKeys.all });
+      toast.success('Đã xóa các tài khoản nhân viên được chọn.');
+    },
+    onError: (error: unknown) => toast.error((error as Error).message || 'Lỗi khi xóa nhân viên hàng loạt'),
   });
 }

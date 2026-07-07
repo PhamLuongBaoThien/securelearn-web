@@ -13,6 +13,9 @@ interface StaffTableRowProps {
   now: number;
   onEdit: (staff: IAdminStaff) => void;
   onDelete: (staff: IAdminStaff) => void;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+  currentAdminId?: string;
 }
 
 export const StaffTableRow: React.FC<StaffTableRowProps> = ({
@@ -21,13 +24,32 @@ export const StaffTableRow: React.FC<StaffTableRowProps> = ({
   now,
   onEdit,
   onDelete,
+  isSelected,
+  onToggleSelect,
+  currentAdminId,
 }) => {
   const statusConfig = STATUS_CONFIG[staff.status];
   const isSuperAdmin = staff.adminRole === 'SUPER_ADMIN';
   const { label, badgeClass } = getRoleMeta(staff.adminRole, rolesData);
+  const canSelect = !isSuperAdmin && staff._id !== currentAdminId;
 
   return (
-    <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group">
+    <tr
+      data-state={isSelected ? 'selected' : undefined}
+      className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group data-[state=selected]:bg-zinc-50 dark:data-[state=selected]:bg-zinc-800/20"
+    >
+      <td className="w-10 px-4 py-3.5 align-middle">
+        {canSelect ? (
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect(staff._id)}
+            className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+          />
+        ) : (
+          <div className="w-4 h-4" />
+        )}
+      </td>
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-3">
           <UserAvatar

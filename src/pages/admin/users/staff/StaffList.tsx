@@ -12,6 +12,7 @@ import {
   useCreateAdminStaff,
   useDeleteAdminStaff,
   useUpdateAdminStaff,
+  useMultiDeleteAdminStaff,
 } from '@/hooks/useAdminStaff';
 import { useAdminRoles } from '@/hooks/useAdminRoles';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -23,6 +24,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { StaffFormDialog } from './StaffFormDialog';
 import { StaffTableRow } from './StaffTableRow';
 import type { StaffFormValues } from './staff.utils';
+import { useAppSelector } from '@/app/hooks';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 
 const cardClass = 'rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900';
 
@@ -54,11 +57,14 @@ export const StaffList: React.FC = () => {
   const roleVal = searchParams.get('role') || '';
   const page = Math.max(Number(searchParams.get('page') || '1'), 1);
 
+  const currentUser = useAppSelector((state) => state.adminAuth.user);
+
   const { staff, isLoading, isFetching, invalidate } = useAdminStaff();
   const { roles: rolesData } = useAdminRoles();
   const createMutation = useCreateAdminStaff();
   const updateMutation = useUpdateAdminStaff();
   const deleteMutation = useDeleteAdminStaff();
+  const multiDeleteMutation = useMultiDeleteAdminStaff();
 
   const availableRoles = rolesData.filter((role) => role.roleKey !== 'SUPER_ADMIN');
 
@@ -68,6 +74,18 @@ export const StaffList: React.FC = () => {
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<IAdminStaff | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<IAdminStaff | null>(null);
+  const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
+
+  // ── Multi-select ──
+  const {
+    selectedIds,
+    toggle,
+    toggleAllOnPage,
+    isAllSelectedOnPage,
+    isSomeSelectedOnPage,
+    clear,
+    count,
+  } = useMultiSelect();
 
   const filteredStaff = useMemo(() => {
     return staff.filter((item) => {
@@ -80,6 +98,26 @@ export const StaffList: React.FC = () => {
       return matchSearch && matchRole;
     });
   }, [staff, debouncedSearch, roleVal]);
+
+  const eligibleStaffIds = useMemo(() => {
+    return filteredStaff
+      .filter((s) => s.adminRole !== 'SUPER_ADMIN' && s._id !== currentUser?._id)
+      .map((s) => s._id);
+  }, [filteredStaff, currentUser]);
+
+  const isAllSelected = isAllSelectedOnPage(eligibleStaffIds);
+  const isSomeSelected = isSomeSelectedOnPage(eligibleStaffIds);
+
+
+
+  const handleConfirmMultiDelete = () => {
+    multiDeleteMutation.mutate(selectedIds, {
+      onSuccess: () => {
+        setMultiDeleteOpen(false);
+        clear();
+      },
+    });
+  };
 
   const hasActiveFilters = useMemo(() => {
     return Boolean(searchVal.trim() || roleVal || page > 1);
@@ -100,36 +138,23 @@ export const StaffList: React.FC = () => {
           },
         }
       );
-      return;
+    } else {
+      createMutation.mutate(data, {
+        onSuccess: () => {
+          setFormOpen(false);
+        },
+      });
     }
+  };
 
-    createMutation.mutate(data, {
-      onSuccess: () => {
-        setFormOpen(false);
-      },
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(deleteTarget._id, {
+      onSuccess: () => setDeleteTarget(null),
     });
   };
 
-  const handleDelete = () => {
-    if (!deleteTarget) return;
-    if (deleteTarget.adminRole === 'SUPER_ADMIN') {
-      toast.error('Không thể xóa tài khoản Super Admin.');
-      setDeleteTarget(null);
-      return;
-    }
-
-    deleteMutation.mutate(deleteTarget._id, { onSuccess: () => setDeleteTarget(null) });
-  };
-
-  const roleStats = useMemo(() => {
-    return rolesData.length > 0
-      ? rolesData
-      : Array.from(new Set(staff.map((item) => item.adminRole))).map((roleKey) => ({
-          roleKey,
-          label: roleKey,
-        }));
-  }, [rolesData, staff]);
-
+  // ── Render ──
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -140,7 +165,8 @@ export const StaffList: React.FC = () => {
 
   return (
     <TooltipProvider>
-      <div className="w-full space-y-6">
+      <div className="w-full space-y-6 pb-20">
+        {/* Dialogs */}
         <StaffFormDialog
           key={editTarget?._id ?? (formOpen ? 'create-open' : 'create-closed')}
           open={formOpen}
@@ -149,72 +175,78 @@ export const StaffList: React.FC = () => {
             if (!open) setEditTarget(null);
           }}
           initial={editTarget}
-          onSave={handleSave}
           availableRoles={availableRoles}
+          onSave={handleSave}
         />
+
         <ConfirmDialog
           open={deleteTarget !== null}
-          onOpenChange={(open) => {
-            if (!open) setDeleteTarget(null);
+          onOpenChange={(o) => {
+            if (!o) setDeleteTarget(null);
           }}
           title="Xóa tài khoản nhân viên?"
-          description={`Tài khoản ${deleteTarget?.email} sẽ bị xóa vĩnh viễn khỏi hệ thống. Hành động này không thể hoàn tác.`}
-          confirmText="Xóa tài khoản"
-          isDestructive
-          onConfirm={handleDelete}
+          description={`Tài khoản của nhân viên ${deleteTarget?.fullName || deleteTarget?.email} sẽ bị xóa vĩnh viễn khỏi cơ sở dữ liệu.`}
+          onConfirm={handleConfirmDelete}
+          isPending={deleteMutation.isPending}
+        />
+
+        <ConfirmDialog
+          open={multiDeleteOpen}
+          onOpenChange={setMultiDeleteOpen}
+          title="Xóa hàng loạt nhân viên?"
+          description={`Xóa vĩnh viễn ${selectedIds.length} tài khoản nhân viên được chọn khỏi cơ sở dữ liệu.`}
+          onConfirm={handleConfirmMultiDelete}
+          isPending={multiDeleteMutation.isPending}
         />
 
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">Danh sách nhân viên</h1>
-            <p className="mt-1 text-zinc-500 dark:text-zinc-400">Quản lý tài khoản Admin — thêm, sửa, xóa và phân vai trò nhân viên.</p>
+            <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">Quản lý Nhân sự</h1>
+            <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+              Phân quyền Admin, quản trị viên và điều hành hệ thống.
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  onClick={() => invalidate()}
-                  disabled={isFetching}
-                  className="gap-2"
-                >
+                <Button variant="outline" onClick={() => invalidate()} disabled={isFetching} className="gap-2">
                   <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
                   Làm mới
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Làm mới danh sách nhân viên</p>
+                <p>Làm mới danh sách nhân sự</p>
               </TooltipContent>
             </Tooltip>
-            <Button
-              onClick={() => {
-                setEditTarget(null);
-                setFormOpen(true);
-              }}
-              className="gap-2"
-            >
-              <Plus className="w-4 h-4" /> Thêm nhân viên
+            <Button onClick={() => setFormOpen(true)} className="gap-2 rounded-xl">
+              <Plus className="w-4 h-4" />
+              Thêm nhân viên
             </Button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {roleStats.map((role) => (
-            <KpiCard
-              key={role.roleKey}
-              label={role.label}
-              value={staff.filter((item) => item.adminRole === role.roleKey).length}
-              sub="Nhân viên"
-              icon={<Shield className="h-5 w-5 text-zinc-400" />}
-            />
-          ))}
+        {/* KPI Cards */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <KpiCard
+            label="Tổng nhân viên"
+            value={staff.length}
+            icon={<UserCog className="h-5 w-5 text-indigo-500" />}
+          />
+          <KpiCard
+            label="Super Admin"
+            value={staff.filter((item) => item.adminRole === 'SUPER_ADMIN').length}
+            icon={<Shield className="h-5 w-5 text-red-500" />}
+          />
+          <KpiCard
+            label="Lần đăng nhập gần nhất"
+            value={staff.length > 0 ? 'Hôm nay' : '—'}
+            icon={<RefreshCw className="h-5 w-5 text-emerald-500" />}
+          />
         </div>
 
-        {/* Filters */}
+        {/* Search & Filters */}
         <div className={`${cardClass} p-4 space-y-3`}>
-          {/* Search */}
           <div className="flex items-center gap-2 w-full">
             <div className="flex items-center gap-2 flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-lg">
               <Search className="h-4 w-4 shrink-0 text-zinc-400" />
@@ -231,7 +263,7 @@ export const StaffList: React.FC = () => {
                   nextParams.delete('page');
                   setSearchParams(nextParams, { replace: true });
                 }}
-                placeholder="Tìm theo tên, email..."
+                placeholder="Tìm nhân viên theo tên hoặc email..."
                 className="border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
               />
             </div>
@@ -247,7 +279,6 @@ export const StaffList: React.FC = () => {
             )}
           </div>
 
-          {/* Filters dropdowns */}
           <div className="flex flex-wrap items-center gap-3">
             <Filter className="h-4 w-4 text-zinc-400 shrink-0" />
             <div className="w-48">
@@ -281,15 +312,53 @@ export const StaffList: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                  {['Nhân viên', 'Vai trò Admin', 'Trạng thái', 'Phòng ban', 'Đăng nhập gần nhất', 'Hành động'].map(
-                    (header) => (
-                      <th
-                        key={header}
-                        className="px-4 py-3.5 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider"
-                      >
-                        {header}
-                      </th>
+                <tr className={`border-b border-zinc-100 dark:border-zinc-800 transition-colors ${selectedIds.length > 0 ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : ''}`}>
+                  <th className="w-10 px-4 py-3.5 align-middle">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      ref={(input) => {
+                        if (input) {
+                          input.indeterminate = isSomeSelected;
+                        }
+                      }}
+                      onChange={() => toggleAllOnPage(eligibleStaffIds)}
+                      className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+                    />
+                  </th>
+                  {selectedIds.length > 0 ? (
+                    <th colSpan={6} className="px-4 py-2.5 align-middle text-left">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                          Đã chọn {selectedIds.length} nhân viên
+                        </span>
+                        <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setMultiDeleteOpen(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 transition"
+                          >
+                            Xóa nhân viên
+                          </button>
+                          <button
+                            onClick={clear}
+                            className="px-2.5 py-1 rounded-xl text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition"
+                          >
+                            Hủy chọn
+                          </button>
+                        </div>
+                      </div>
+                    </th>
+                  ) : (
+                    ['Nhân viên', 'Vai trò Admin', 'Trạng thái', 'Phòng ban', 'Đăng nhập gần nhất', 'Hành động'].map(
+                      (header) => (
+                        <th
+                          key={header}
+                          className="px-4 py-3.5 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider"
+                        >
+                          {header}
+                        </th>
+                      )
                     )
                   )}
                 </tr>
@@ -306,6 +375,9 @@ export const StaffList: React.FC = () => {
                       setFormOpen(true);
                     }}
                     onDelete={setDeleteTarget}
+                    isSelected={selectedIds.includes(item._id)}
+                    onToggleSelect={toggle}
+                    currentAdminId={currentUser?._id}
                   />
                 ))}
               </tbody>
@@ -321,6 +393,7 @@ export const StaffList: React.FC = () => {
             Hiển thị {filteredStaff.length} / {staff.length} nhân viên
           </div>
         </div>
+
       </div>
     </TooltipProvider>
   );

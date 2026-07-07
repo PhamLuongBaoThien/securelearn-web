@@ -26,6 +26,18 @@ import { toast } from 'sonner';
 import { getCategories, getLearningProgress } from '@/services/adminApi';
 import { useAdminCourses } from '@/hooks/useAdminCourses';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useMultiReviewCourseSubscription } from '@/hooks/useAdminCourseReview';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type {
   CourseLevel,
   IAdminCourseListItem,
@@ -688,6 +700,70 @@ export const ResourceManager: React.FC = () => {
 
   const visiblePages = useMemo(() => getVisiblePages(page, totalPages), [page, totalPages]);
 
+  const multiReviewMutation = useMultiReviewCourseSubscription();
+
+  // ── Multi-select ──
+  const {
+    selectedIds,
+    toggle,
+    toggleAllOnPage,
+    isAllSelectedOnPage,
+    isSomeSelectedOnPage,
+    clear,
+    count,
+  } = useMultiSelect();
+
+  const currentPageCourseIds = useMemo(() => courses.map((c) => c._id), [courses]);
+  const isAllSelected = isAllSelectedOnPage(currentPageCourseIds);
+  const isSomeSelected = isSomeSelectedOnPage(currentPageCourseIds);
+
+  React.useEffect(() => {
+    clear();
+  }, [debouncedSearch, subscriptionStatus, level, categoryId, clear]);
+
+  const [multiReviewTargetIds, setMultiReviewTargetIds] = useState<string[] | null>(null);
+  const [multiReviewAction, setMultiReviewAction] = useState<'APPROVE' | 'REJECT' | 'REMOVE'>('APPROVE');
+  const [multiReviewReason, setMultiReviewReason] = useState('');
+
+  const handleConfirmMultiReview = () => {
+    if (!multiReviewTargetIds) return;
+    multiReviewMutation.mutate(
+      {
+        ids: multiReviewTargetIds,
+        action: multiReviewAction,
+        reason: multiReviewReason.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          setMultiReviewTargetIds(null);
+          setMultiReviewReason('');
+          clear();
+          coursesQuery.refetch();
+        },
+      }
+    );
+  };
+
+  const handleExecuteMultiReview = (action: string) => {
+    const act = action as 'APPROVE' | 'REJECT' | 'REMOVE';
+    if (act === 'APPROVE') {
+      if (window.confirm(`Bạn có chắc chắn muốn duyệt đưa ${selectedIds.length} khóa học đã chọn vào gói thuê bao?`)) {
+        multiReviewMutation.mutate(
+          { ids: selectedIds, action: 'APPROVE' },
+          {
+            onSuccess: () => {
+              clear();
+              coursesQuery.refetch();
+            },
+          }
+        );
+      }
+    } else {
+      setMultiReviewAction(act);
+      setMultiReviewReason('');
+      setMultiReviewTargetIds(selectedIds);
+    }
+  };
 
   const updateFilter = (key: string) => (value: string) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -860,15 +936,79 @@ export const ResourceManager: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1100px]">
             <thead>
-              <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                {['Khóa học', 'Giảng viên', 'Danh mục', 'Thuê bao', 'Giá', 'Học viên', 'Rating', 'Cập nhật', 'Hành động'].map((heading) => (
-                  <th key={heading} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</th>
-                ))}
+              <tr className={`border-b border-zinc-100 dark:border-zinc-800 transition-colors ${selectedIds.length > 0 ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : ''}`}>
+                <th className="w-10 px-4 py-3 align-middle">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={(input) => {
+                      if (input) {
+                        input.indeterminate = isSomeSelected;
+                      }
+                    }}
+                    onChange={() => toggleAllOnPage(currentPageCourseIds)}
+                    className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+                  />
+                </th>
+                {selectedIds.length > 0 ? (
+                  <th colSpan={9} className="px-4 py-2 align-middle text-left">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                        Đã chọn {selectedIds.length} khóa học
+                      </span>
+                      <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleExecuteMultiReview('APPROVE')}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 transition"
+                        >
+                          Duyệt đưa vào gói
+                        </button>
+                        <button
+                          onClick={() => handleExecuteMultiReview('REJECT')}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 transition"
+                        >
+                          Từ chối đưa vào gói
+                        </button>
+                        <button
+                          onClick={() => handleExecuteMultiReview('REMOVE')}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 transition"
+                        >
+                          Rút khỏi gói
+                        </button>
+                        <button
+                          onClick={clear}
+                          className="px-2.5 py-1 rounded-xl text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition"
+                        >
+                          Hủy chọn
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                ) : (
+                  ['Khóa học', 'Giảng viên', 'Danh mục', 'Thuê bao', 'Giá', 'Học viên', 'Rating', 'Cập nhật', 'Hành động'].map((heading) => (
+                    <th key={heading} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</th>
+                  ))
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {courses.map((course) => (
-                <tr key={course._id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+              {courses.map((course) => {
+                const isRowSelected = selectedIds.includes(course._id);
+                return (
+                  <tr
+                    key={course._id}
+                    data-state={isRowSelected ? 'selected' : undefined}
+                    className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 data-[state=selected]:bg-zinc-50 dark:data-[state=selected]:bg-zinc-800/20"
+                  >
+                    <td className="w-10 px-4 py-3.5 align-middle">
+                      <input
+                        type="checkbox"
+                        checked={isRowSelected}
+                        onChange={() => toggle(course._id)}
+                        className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+                      />
+                    </td>
                   <td className="px-4 py-3.5">
                     <div className="flex min-w-72 items-center gap-3">
                       <div className="h-12 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
@@ -969,7 +1109,8 @@ export const ResourceManager: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1050,6 +1191,43 @@ export const ResourceManager: React.FC = () => {
             </PaginationContent>
           </Pagination>
         </div>
+        {/* Multi Subscription Review Reason Dialog */}
+        <AlertDialog open={multiReviewTargetIds !== null} onOpenChange={(o) => { if (!o) setMultiReviewTargetIds(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {multiReviewAction === 'REJECT' ? 'Từ chối đưa vào gói thuê bao?' : 'Rút khỏi gói thuê bao?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Nhập lý do áp dụng cho {multiReviewTargetIds?.length} khóa học được chọn. Lý do này sẽ được hiển thị cho giảng viên.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                Lý do thực hiện
+              </label>
+              <textarea
+                value={multiReviewReason}
+                onChange={(event) => setMultiReviewReason(event.target.value)}
+                rows={4}
+                placeholder="Nhập lý do cụ thể..."
+                className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              />
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={multiReviewMutation.isPending}>Hủy</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={multiReviewMutation.isPending || !multiReviewReason.trim()}
+                onClick={handleConfirmMultiReview}
+                className="bg-red-600 text-white hover:bg-rose-700"
+              >
+                Xác nhận
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   </TooltipProvider>

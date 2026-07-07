@@ -31,6 +31,7 @@ import type { IAdminUser } from '@/types/admin.types';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
 import { useDebounce } from '@/hooks/useDebounce';
 import { UserTable } from './UserTable';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 
 const cardClass = 'rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900';
 
@@ -71,14 +72,77 @@ export const UserList: React.FC = () => {
   const PAGE_SIZE = 10;
 
   // ── Hook ──
-  const { users, total, totalPages, isLoading, isFetching, invalidate, lockMut, unlockMut } =
-    useAdminUsers({
-      search: debouncedSearch || undefined,
-      role: roleVal || undefined,
-      status: statusVal || undefined,
-      page,
-      limit: PAGE_SIZE,
-    });
+  const {
+    users,
+    total,
+    totalPages,
+    isLoading,
+    isFetching,
+    invalidate,
+    lockMut,
+    unlockMut,
+    multiLockMut,
+    multiUnlockMut,
+  } = useAdminUsers({
+    search: debouncedSearch || undefined,
+    role: roleVal || undefined,
+    status: statusVal || undefined,
+    page,
+    limit: PAGE_SIZE,
+  });
+
+  // ── Multi-select ──
+  const {
+    selectedIds,
+    toggle,
+    toggleAllOnPage,
+    isAllSelectedOnPage,
+    isSomeSelectedOnPage,
+    clear,
+    count,
+  } = useMultiSelect();
+
+  const currentPageUserIds = useMemo(() => users.map((u) => u._id), [users]);
+  const isAllSelected = isAllSelectedOnPage(currentPageUserIds);
+  const isSomeSelected = isSomeSelectedOnPage(currentPageUserIds);
+
+  React.useEffect(() => {
+    clear();
+  }, [debouncedSearch, roleVal, statusVal, clear]);
+
+  const [multiLockTargetIds, setMultiLockTargetIds] = useState<string[] | null>(null);
+  const [multiActionType, setMultiActionType] = useState<'lock' | 'unlock'>('lock');
+
+  const handleConfirmMultiAction = () => {
+    if (!multiLockTargetIds) return;
+    if (multiActionType === 'lock') {
+      multiLockMut.mutate(
+        { ids: multiLockTargetIds, reason: lockReason.trim() },
+        {
+          onSuccess: () => {
+            setMultiLockTargetIds(null);
+            clear();
+          },
+        }
+      );
+    } else {
+      multiUnlockMut.mutate(
+        { ids: multiLockTargetIds, reason: lockReason.trim() || undefined },
+        {
+          onSuccess: () => {
+            setMultiLockTargetIds(null);
+            clear();
+          },
+        }
+      );
+    }
+  };
+
+  const handleExecuteMultiAction = (action: string) => {
+    setLockReason('');
+    setMultiActionType(action as 'lock' | 'unlock');
+    setMultiLockTargetIds(selectedIds);
+  };
 
   const hasActiveFilters = useMemo(() => {
     return Boolean(searchVal.trim() || roleVal || statusVal || page > 1);
@@ -118,7 +182,11 @@ export const UserList: React.FC = () => {
 
   const isUnlocking = lockTarget?.status === 'LOCKED';
   const isLockReasonMissing = !isUnlocking && !lockReason.trim();
-  const isSubmittingLockChange = lockMut.isPending || unlockMut.isPending;
+  const isSubmittingLockChange =
+    lockMut.isPending ||
+    unlockMut.isPending ||
+    multiLockMut.isPending ||
+    multiUnlockMut.isPending;
 
   // ── Render ──
   if (isLoading) {
@@ -131,7 +199,7 @@ export const UserList: React.FC = () => {
 
   return (
     <TooltipProvider>
-      <div className="w-full space-y-6">
+      <div className="w-full space-y-6 pb-20">
         {/* Dialogs */}
         <AlertDialog open={lockTarget !== null} onOpenChange={(o) => { if (!o) setLockTarget(null); }}>
           <AlertDialogContent>
@@ -181,6 +249,53 @@ export const UserList: React.FC = () => {
                 }
               >
                 {isUnlocking ? 'Mở khóa' : 'Khóa tài khoản'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Multi Lock/Unlock Dialog */}
+        <AlertDialog open={multiLockTargetIds !== null} onOpenChange={(o) => { if (!o) setMultiLockTargetIds(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {multiActionType === 'lock' ? 'Khóa các tài khoản được chọn?' : 'Mở khóa các tài khoản được chọn?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {multiActionType === 'lock'
+                  ? `Đang chọn ${multiLockTargetIds?.length} tài khoản để khóa. Người dùng sẽ bị đình chỉ và không thể đăng nhập.`
+                  : `Đang chọn ${multiLockTargetIds?.length} tài khoản để mở khóa.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                {multiActionType === 'unlock' ? 'Lý do mở khóa (tùy chọn)' : 'Lý do khóa tài khoản'}
+              </label>
+              <textarea
+                value={lockReason}
+                onChange={(event) => setLockReason(event.target.value)}
+                rows={4}
+                placeholder={multiActionType === 'unlock' ? 'Ví dụ: Đã xác minh lại tài khoản' : 'Ví dụ: Spam nội dung không phù hợp'}
+                className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              />
+              {multiActionType === 'lock' && (
+                <p className="text-xs text-zinc-500">Bắt buộc nhập lý do khóa.</p>
+              )}
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isSubmittingLockChange}>Hủy</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={isSubmittingLockChange || (multiActionType === 'lock' && !lockReason.trim())}
+                onClick={handleConfirmMultiAction}
+                className={
+                  multiActionType === 'unlock'
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                }
+              >
+                {multiActionType === 'unlock' ? 'Mở khóa' : 'Khóa các tài khoản'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -324,9 +439,15 @@ export const UserList: React.FC = () => {
           onLock={handleOpenLockDialog}
           onUnlock={handleOpenLockDialog}
           onPageChange={handlePageChange}
+          selectedIds={selectedIds}
+          onToggleSelect={toggle}
+          onToggleSelectAll={() => toggleAllOnPage(currentPageUserIds)}
+          isAllSelected={isAllSelected}
+          isSomeSelected={isSomeSelected}
+          onExecuteMultiAction={handleExecuteMultiAction}
+          onClearSelection={clear}
         />
       </div>
     </TooltipProvider>
   );
 };
-

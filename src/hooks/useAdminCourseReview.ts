@@ -14,6 +14,7 @@ import {
   getSubscriptionCoursesForReview,
   rejectCourse,
   reviewCourseSubscription,
+  multiReviewCourseSubscription,
 } from '@/services/adminApi';
 import type { SubscriptionCatalogStatus } from '@/types/admin.types';
 
@@ -130,5 +131,31 @@ export function useReviewCourseSubscription() {
       toast.success(message);
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái thuê bao.'),
+  });
+}
+
+export function useMultiReviewCourseSubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      ids,
+      action,
+      reason,
+    }: {
+      ids: string[];
+      action: 'APPROVE' | 'REJECT' | 'REMOVE';
+      reason?: string;
+    }) => multiReviewCourseSubscription(ids, action, reason),
+    onSuccess: async (_response, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'courses', 'subscription-review'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin_courses'] });
+      const message = variables.action === 'APPROVE'
+        ? 'Đã đưa các khóa học được chọn vào gói thuê bao.'
+        : variables.action === 'REJECT'
+          ? 'Đã từ chối các khóa học đăng ký.'
+          : 'Đã rút các khóa học được chọn khỏi gói thuê bao.';
+      toast.success(message);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái thuê bao hàng loạt.'),
   });
 }

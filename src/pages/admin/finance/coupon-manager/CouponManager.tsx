@@ -4,7 +4,7 @@
 // - cung cấp màn hình quản trị coupon cho nhóm Admin Finance
 // - hỗ trợ tạo/sửa/bật tắt/xóa coupon, xem thống kê, badge trạng thái và lịch sử sử dụng
 // ========================
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BarChart3, CheckCircle2, Edit, History, Loader2, Plus, RefreshCw, Search, Trash2, ToggleLeft, ToggleRight, X, Calendar as CalendarIcon } from 'lucide-react';
@@ -18,6 +18,8 @@ import {
   useDeleteAdminCoupon,
   useSaveAdminCoupon,
   useUpdateAdminCouponStatus,
+  useMultiDeleteAdminCoupons,
+  useMultiUpdateAdminCouponStatus,
 } from '@/hooks/useAdminFinance';
 import type { Coupon, CouponComputedStatus, CouponPayload, CouponType } from '@/services/paymentApi';
 import { Calendar } from '@/components/ui/calendar';
@@ -26,6 +28,8 @@ import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 import {
   Pagination,
   PaginationContent,
@@ -115,6 +119,8 @@ export const CouponManager = () => {
   const [editing, setEditing] = useState<Coupon | null>(null);
   const [historyCoupon, setHistoryCoupon] = useState<Coupon | null>(null);
   const [form, setForm] = useState<CouponPayload>(emptyForm);
+  const [deleteTarget, setDeleteTarget] = useState<Coupon | null>(null);
+  const [multiDeleteOpen, setMultiDeleteOpen] = useState(false);
 
   const debouncedSearch = useDebounce(searchVal.trim(), 300);
   const PAGE_SIZE = 10;
@@ -130,14 +136,64 @@ export const CouponManager = () => {
   const saveMutation = useSaveAdminCoupon();
   const statusMutation = useUpdateAdminCouponStatus();
   const deleteMutation = useDeleteAdminCoupon();
+  const multiDeleteMutation = useMultiDeleteAdminCoupons();
+  const multiStatusMutation = useMultiUpdateAdminCouponStatus();
+
+  // ── Multi-select ──
+  const {
+    selectedIds,
+    toggle,
+    toggleAllOnPage,
+    isAllSelectedOnPage,
+    isSomeSelectedOnPage,
+    clear,
+    count,
+  } = useMultiSelect();
 
   const coupons = couponsQuery.data?.coupons ?? [];
+  const currentPageCouponIds = useMemo(() => coupons.map((c) => c._id), [coupons]);
+  const isAllSelected = isAllSelectedOnPage(currentPageCouponIds);
+  const isSomeSelected = isSomeSelectedOnPage(currentPageCouponIds);
+
+  useEffect(() => {
+    clear();
+  }, [debouncedSearch, statusVal, clear]);
+
+  const handleConfirmMultiDelete = () => {
+    multiDeleteMutation.mutate(selectedIds, {
+      onSuccess: () => {
+        setMultiDeleteOpen(false);
+        clear();
+      },
+    });
+  };
+
+  const handleExecuteMultiAction = (action: string) => {
+    if (action === 'delete') {
+      setMultiDeleteOpen(true);
+    } else if (action === 'activate') {
+      multiStatusMutation.mutate(
+        { ids: selectedIds, isActive: true },
+        {
+          onSuccess: () => clear(),
+        }
+      );
+    } else if (action === 'deactivate') {
+      multiStatusMutation.mutate(
+        { ids: selectedIds, isActive: false },
+        {
+          onSuccess: () => clear(),
+        }
+      );
+    }
+  };
+
   const total = couponsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const visiblePages = useMemo(() => getVisiblePages(page, totalPages), [page, totalPages]);
   const stats = statsQuery.data;
   const isSaving = saveMutation.isPending;
-  const isUpdatingStatus = statusMutation.isPending;
+  const isUpdatingStatus = statusMutation.isPending || multiStatusMutation.isPending || multiDeleteMutation.isPending;
   const formTitle = editing ? `Sửa ${editing.code}` : 'Tạo coupon';
 
   const preview = useMemo(() => {
@@ -199,6 +255,31 @@ export const CouponManager = () => {
   return (
     <TooltipProvider>
       <div className="space-y-6">
+        <ConfirmDialog
+          open={deleteTarget !== null}
+          onOpenChange={(o) => {
+            if (!o) setDeleteTarget(null);
+          }}
+          title="Xóa coupon?"
+          description={`Coupon ${deleteTarget?.code} sẽ bị xóa vĩnh viễn khỏi hệ thống. Thao tác này không thể hoàn tác.`}
+          onConfirm={() => {
+            if (deleteTarget) {
+              deleteMutation.mutate(deleteTarget._id, {
+                onSuccess: () => setDeleteTarget(null),
+              });
+            }
+          }}
+          isPending={deleteMutation.isPending}
+        />
+
+        <ConfirmDialog
+          open={multiDeleteOpen}
+          onOpenChange={setMultiDeleteOpen}
+          title="Xóa hàng loạt coupon?"
+          description={`Xóa vĩnh viễn ${selectedIds.length} coupon đã chọn khỏi hệ thống.`}
+          onConfirm={handleConfirmMultiDelete}
+          isPending={multiDeleteMutation.isPending}
+        />
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">Coupon</h1>
@@ -308,13 +389,94 @@ export const CouponManager = () => {
           {couponsQuery.isLoading ? <div className="flex h-40 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="border-b text-left text-zinc-500"><th className="py-2">Mã</th><th>Tên</th><th>Giảm</th><th>Điều kiện</th><th>Lượt dùng</th><th>Người tạo</th><th>Hiệu lực</th><th>Trạng thái</th><th /></tr></thead>
+                <thead>
+                  <tr className={`border-b text-left text-zinc-500 transition-colors ${selectedIds.length > 0 ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : ''}`}>
+                    <th className="w-10 px-4 py-2 align-middle">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        ref={(input) => {
+                          if (input) {
+                            input.indeterminate = isSomeSelected;
+                          }
+                        }}
+                        onChange={() => toggleAllOnPage(currentPageCouponIds)}
+                        className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+                      />
+                    </th>
+                    {selectedIds.length > 0 ? (
+                      <th colSpan={9} className="px-4 py-2 align-middle text-left">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                            Đã chọn {selectedIds.length} coupon
+                          </span>
+                          <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleExecuteMultiAction('activate')}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400 transition"
+                            >
+                              Kích hoạt
+                            </button>
+                            <button
+                              onClick={() => handleExecuteMultiAction('deactivate')}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 transition"
+                            >
+                              Tạm tắt
+                            </button>
+                            <button
+                              onClick={() => handleExecuteMultiAction('delete')}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 transition"
+                            >
+                              Xóa coupon
+                            </button>
+                            <button
+                              onClick={clear}
+                              className="px-2.5 py-1 rounded-xl text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition"
+                            >
+                              Hủy chọn
+                            </button>
+                          </div>
+                        </div>
+                      </th>
+                    ) : (
+                      <>
+                        <th className="py-2">Mã</th>
+                        <th>Tên</th>
+                        <th>Giảm</th>
+                        <th>Điều kiện</th>
+                        <th>Lượt dùng</th>
+                        <th>Người tạo</th>
+                        <th>Hiệu lực</th>
+                        <th>Trạng thái</th>
+                        <th />
+                      </>
+                    )}
+                  </tr>
+                </thead>
                 <tbody>
                   {coupons.map((coupon) => {
                     const computedStatus = getCouponStatus(coupon);
+                    const isRowSelected = selectedIds.includes(coupon._id);
                     return (
-                      <tr key={coupon._id} className="border-b border-zinc-100 dark:border-zinc-800">
-                        <td className="py-3 font-bold">{coupon.code}</td><td>{coupon.name}</td><td>{coupon.type === 'PERCENT' ? `${coupon.value}%` : money(coupon.value)}</td><td>{coupon.minOrderAmount ? `Từ ${money(coupon.minOrderAmount)}` : 'Không'}</td><td>{coupon.usedCount}/{coupon.usageLimit ?? '∞'} · {coupon.perUserLimit}/user</td>
+                      <tr
+                        key={coupon._id}
+                        data-state={isRowSelected ? 'selected' : undefined}
+                        className="border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/10 data-[state=selected]:bg-zinc-50 dark:data-[state=selected]:bg-zinc-800/20"
+                      >
+                        <td className="w-10 px-4 py-3 align-middle">
+                          <input
+                            type="checkbox"
+                            checked={isRowSelected}
+                            onChange={() => toggle(coupon._id)}
+                            className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+                          />
+                        </td>
+                        <td className="py-3 font-bold">{coupon.code}</td>
+                        <td>{coupon.name}</td>
+                        <td>{coupon.type === 'PERCENT' ? `${coupon.value}%` : money(coupon.value)}</td>
+                        <td>{coupon.minOrderAmount ? `Từ ${money(coupon.minOrderAmount)}` : 'Không'}</td>
+                        <td>{coupon.usedCount}/{coupon.usageLimit ?? '∞'} · {coupon.perUserLimit}/user</td>
                         <td className="max-w-36">
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -374,7 +536,7 @@ export const CouponManager = () => {
 
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(coupon._id)}>
+                              <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(coupon)}>
                                 <Trash2 className="h-4 w-4 text-red-600" />
                               </Button>
                             </TooltipTrigger>

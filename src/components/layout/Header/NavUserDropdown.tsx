@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { NavbarUser } from './navbar.utils';
 import { useInboxUnread } from '@/hooks/useInboxUnread';
-import { usePageTransition } from '@/components/animations/PageTransition';
 
 interface NavUserDropdownProps {
   user: NavbarUser;
@@ -28,7 +27,6 @@ export const NavUserDropdown = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const inboxUnread = useInboxUnread();
-  const { navigateWithTransition } = usePageTransition();
 
   // Đóng dropdown khi click bên ngoài
   useEffect(() => {
@@ -88,26 +86,15 @@ export const NavUserDropdown = ({
             ].map((item, idx) => (
               <div key={item.to}>
                 {idx > 0 && <div className="mx-6 border-b border-border/40" />}
-                {item.isInstructor ? (
-                  <button
-                    type="button"
-                    className="flex items-center w-full px-6 py-2.5 text-sm hover:bg-secondary transition-colors text-primary font-semibold text-left"
-                    onClick={() => {
-                      onClose();
-                      navigateWithTransition(item.to);
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                ) : (
-                  <Link
-                    to={item.to}
-                    className={`flex items-center px-6 py-2.5 text-sm hover:bg-secondary transition-colors text-foreground/85`}
-                    onClick={onClose}
-                  >
-                    {item.label}
-                  </Link>
-                )}
+                <Link
+                  to={item.to}
+                  className={`flex items-center px-6 py-2.5 text-sm hover:bg-secondary transition-colors ${
+                    item.isInstructor ? 'text-primary font-semibold' : 'text-foreground/85'
+                  }`}
+                  onClick={onClose}
+                >
+                  {item.label}
+                </Link>
               </div>
             ))}
           </div>
@@ -129,4 +116,3 @@ export const NavUserDropdown = ({
     </div>
   );
 };
-

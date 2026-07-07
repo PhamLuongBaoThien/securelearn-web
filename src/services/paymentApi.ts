@@ -449,6 +449,16 @@ export const deleteAdminCoupon = async (id: string) => {
   const { data } = await apiClient.delete<ApiResponse>(`/api/payments/admin/coupons/${id}`);
   return data;
 };
+
+export const multiDeleteAdminCoupons = async (ids: string[]) => {
+  const { data } = await apiClient.post<ApiResponse>('/api/payments/admin/coupons/multi-delete', { ids });
+  return data;
+};
+
+export const multiUpdateAdminCouponStatus = async (ids: string[], isActive: boolean) => {
+  const { data } = await apiClient.patch<ApiResponse>('/api/payments/admin/coupons/multi-status', { ids, isActive });
+  return data;
+};
 export const getAdminCouponStats = async () => {
   const { data } = await apiClient.get<ApiResponse<CouponStats>>('/api/payments/admin/coupons/stats');
   return data;

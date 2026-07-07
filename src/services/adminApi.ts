@@ -427,3 +427,27 @@ export const getLearningProgress = async (params?: {
   const res = await apiClient.get(`${ADMIN}/notifications/learning-progress`, { params });
   return res.data;
 };
+
+export const multiLockUsers = async (ids: string[], reason: string): Promise<AdminApiResponse> => {
+  const res = await apiClient.patch(`${ADMIN}/auth/users/multi-lock`, { ids, reason });
+  return res.data;
+};
+
+export const multiUnlockUsers = async (ids: string[], reason?: string): Promise<AdminApiResponse> => {
+  const res = await apiClient.patch(`${ADMIN}/auth/users/multi-unlock`, { ids, reason });
+  return res.data;
+};
+
+export const multiDeleteStaff = async (ids: string[]): Promise<AdminApiResponse> => {
+  const res = await apiClient.delete(`${ADMIN}/auth/staff/multi`, { data: { ids } });
+  return res.data;
+};
+
+export const multiReviewCourseSubscription = async (
+  ids: string[],
+  action: 'APPROVE' | 'REJECT' | 'REMOVE',
+  reason?: string
+): Promise<AdminApiResponse> => {
+  const res = await apiClient.patch<AdminApiResponse>(`${ADMIN}/courses/subscription-review/multi`, { ids, action, reason });
+  return res.data;
+};
