@@ -19,18 +19,18 @@ import {
 import type { SubscriptionCatalogStatus } from '@/types/admin.types';
 
 export const adminCourseReviewKeys = {
-  published: (status: string, search: string) => ['admin', 'courses', 'review', status, search] as const,
+  published: (status: string, search: string, sort: string) => ['admin', 'courses', 'review', status, search, sort] as const,
   publishedDetail: (courseId: string) => ['admin', 'courses', 'review-detail', courseId] as const,
-  subscription: (status: SubscriptionCatalogStatus, search: string) =>
-    ['admin', 'courses', 'subscription-review', status, search] as const,
+  subscription: (status: SubscriptionCatalogStatus, search: string, sort: string) =>
+    ['admin', 'courses', 'subscription-review', status, search, sort] as const,
   subscriptionDetail: (courseId: string) => ['admin', 'courses', 'subscription-review-detail', courseId] as const,
 };
 
-export function usePublishedCourseReviews(status: string, search: string, enabled = true) {
+export function usePublishedCourseReviews(status: string, search: string, sort: string, enabled = true) {
   return useQuery({
-    queryKey: adminCourseReviewKeys.published(status, search),
+    queryKey: adminCourseReviewKeys.published(status, search, sort),
     queryFn: async () => {
-      const response = await getCoursesForReview({ status, search: search || undefined, page: 1, limit: 50 });
+      const response = await getCoursesForReview({ status, search: search || undefined, page: 1, limit: 50, sort });
       if (response.status === 'ERR' || !response.data) {
         throw new Error(response.message || 'Không tải được danh sách khóa học.');
       }
@@ -54,11 +54,11 @@ export function usePublishedCourseReviewDetail(courseId: string, enabled = true)
   });
 }
 
-export function useSubscriptionCourseReviews(status: SubscriptionCatalogStatus, search: string, enabled = true) {
+export function useSubscriptionCourseReviews(status: SubscriptionCatalogStatus, search: string, sort: string, enabled = true) {
   return useQuery({
-    queryKey: adminCourseReviewKeys.subscription(status, search),
+    queryKey: adminCourseReviewKeys.subscription(status, search, sort),
     queryFn: async () => {
-      const response = await getSubscriptionCoursesForReview({ status, search: search || undefined, page: 1, limit: 50 });
+      const response = await getSubscriptionCoursesForReview({ status, search: search || undefined, page: 1, limit: 50, sort });
       if (response.status === 'ERR' || !response.data) {
         throw new Error(response.message || 'Không tải được danh sách khóa học đăng ký gói thuê bao.');
       }

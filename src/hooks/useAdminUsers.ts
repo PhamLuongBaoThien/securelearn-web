@@ -9,6 +9,7 @@ export interface UserFilters {
   search?: string;
   page?: number;
   limit?: number;
+  sort?: string;
 }
 
 export const useAdminUsers = (filters: UserFilters = {}) => {

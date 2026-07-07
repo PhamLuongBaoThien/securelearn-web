@@ -5,7 +5,6 @@
 import React, { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, UserCog, RefreshCw, Search, Shield, Filter, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 import type { IAdminStaff } from '@/types/admin.types';
 import {
   useAdminStaff,
@@ -55,6 +54,7 @@ export const StaffList: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchVal = searchParams.get('search') || '';
   const roleVal = searchParams.get('role') || '';
+  const sortVal = searchParams.get('sort') || 'newest';
   const page = Math.max(Number(searchParams.get('page') || '1'), 1);
 
   const currentUser = useAppSelector((state) => state.adminAuth.user);
@@ -84,11 +84,10 @@ export const StaffList: React.FC = () => {
     isAllSelectedOnPage,
     isSomeSelectedOnPage,
     clear,
-    count,
   } = useMultiSelect();
 
   const filteredStaff = useMemo(() => {
-    return staff.filter((item) => {
+    const filtered = staff.filter((item) => {
       const searchLower = debouncedSearch.toLowerCase();
       const matchSearch =
         !debouncedSearch ||
@@ -97,7 +96,13 @@ export const StaffList: React.FC = () => {
       const matchRole = !roleVal || item.adminRole === roleVal;
       return matchSearch && matchRole;
     });
-  }, [staff, debouncedSearch, roleVal]);
+    return [...filtered].sort((a, b) => {
+      if (sortVal === 'name_asc') return a.fullName.localeCompare(b.fullName, 'vi', { sensitivity: 'base', numeric: true });
+      if (sortVal === 'name_desc') return b.fullName.localeCompare(a.fullName, 'vi', { sensitivity: 'base', numeric: true });
+      const difference = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return sortVal === 'oldest' ? difference : -difference;
+    });
+  }, [staff, debouncedSearch, roleVal, sortVal]);
 
   const eligibleStaffIds = useMemo(() => {
     return filteredStaff
@@ -120,8 +125,8 @@ export const StaffList: React.FC = () => {
   };
 
   const hasActiveFilters = useMemo(() => {
-    return Boolean(searchVal.trim() || roleVal || page > 1);
-  }, [searchVal, roleVal, page]);
+    return Boolean(searchVal.trim() || roleVal || sortVal !== 'newest' || page > 1);
+  }, [searchVal, roleVal, sortVal, page]);
 
   const clearFilters = () => {
     setSearchParams(new URLSearchParams(), { replace: true });
@@ -302,6 +307,20 @@ export const StaffList: React.FC = () => {
                     {role.label}
                   </option>
                 ))}
+              </Select>
+            </div>
+            <div className="w-48">
+              <Select aria-label="Sắp xếp" value={sortVal} onChange={(event) => {
+                const nextParams = new URLSearchParams(searchParams);
+                if (event.target.value === 'newest') nextParams.delete('sort');
+                else nextParams.set('sort', event.target.value);
+                nextParams.delete('page');
+                setSearchParams(nextParams, { replace: true });
+              }}>
+                <option value="newest">Mới nhất</option>
+                <option value="oldest">Cũ nhất</option>
+                <option value="name_asc">Tên A → Z</option>
+                <option value="name_desc">Tên Z → A</option>
               </Select>
             </div>
           </div>

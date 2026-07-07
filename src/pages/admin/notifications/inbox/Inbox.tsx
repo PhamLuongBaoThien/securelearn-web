@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+﻿import { useEffect, useState, useRef } from 'react';
 import type { ElementType } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
@@ -78,6 +78,7 @@ export const Inbox = () => {
     const [search, setSearch] = useState('');
     const [type, setType] = useState('');
     const [status, setStatus] = useState('');
+    const sortVal = params.get('sort') || 'activity_desc';
     const [listPage, setListPage] = useState(1);
     const [reply, setReply] = useState('');
     const [internal, setInternal] = useState(false);
@@ -116,12 +117,10 @@ export const Inbox = () => {
     useEffect(() => { if (socketConnected || document.hidden) return; const timer = setInterval(() => { void queryClient.invalidateQueries({ queryKey: ['adminInboxList'] }); if (selected) void queryClient.invalidateQueries({ queryKey: ['adminInboxDetail', selected] }); }, 15000); return () => clearInterval(timer); }, [socketConnected, selected, queryClient]);
     // Đồng bộ ID được chọn lên URL search params
     useEffect(() => {
-        if (selected) {
-            setParams({ id: selected });
-        } else {
-            params.delete('id');
-            setParams(params);
-        }
+        const nextParams = new URLSearchParams(params);
+        if (selected) nextParams.set('id', selected);
+        else nextParams.delete('id');
+        setParams(nextParams, { replace: true });
     }, [selected]);
 
     const prevSelectedRef = useRef(selected);
@@ -136,12 +135,12 @@ export const Inbox = () => {
 
     useEffect(() => {
         setListPage(1);
-    }, [search, type, status]);
+    }, [search, type, status, sortVal]);
 
     // Query: Danh sách ticket
     const { data: listData, isLoading: isLoadingList, isFetching: isFetchingList } = useQuery({
-        queryKey: ['adminInboxList', search, type, status, listPage],
-        queryFn: () => inboxApi.list({ search, type, status, page: listPage, limit: 20 }, true),
+        queryKey: ['adminInboxList', search, type, status, sortVal, listPage],
+        queryFn: () => inboxApi.list({ search, type, status, sort: sortVal, page: listPage, limit: 20 }, true),
         placeholderData: keepPreviousData,
     });
 
@@ -343,8 +342,34 @@ export const Inbox = () => {
                                 ))}
                             </Select>
                         </div>
+                        <Select
+                            aria-label="Sắp xếp"
+                            value={sortVal}
+                            onChange={(event) => {
+                                const nextParams = new URLSearchParams(params);
+                                if (event.target.value === 'activity_desc') nextParams.delete('sort');
+                                else nextParams.set('sort', event.target.value);
+                                nextParams.delete('page');
+                                setListPage(1);
+                                setParams(nextParams, { replace: true });
+                            }}
+                        >
+                            <option value="activity_desc">Hoạt động gần nhất</option>
+                            <option value="activity_asc">Hoạt động cũ nhất</option>
+                            <option value="created_desc">Tạo mới nhất</option>
+                            <option value="created_asc">Tạo cũ nhất</option>
+                        </Select>
                     </div>
 
+                    <div className="flex items-center justify-between border-b px-4 py-3 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                            <History className="h-4 w-4" />
+                            {listData ? `${listData.total.toLocaleString('vi-VN')} yêu cầu` : 'Đang tải dữ liệu'}
+                        </div>
+                        <div className="h-4 w-4">
+                            {isFetchingList && !isLoadingList && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                        </div>
+                    </div>
                     <div className="flex-1 overflow-y-auto overflow-x-hidden max-h-[580px] divide-y divide-border/40">
                         {isLoadingList ? (
                             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">

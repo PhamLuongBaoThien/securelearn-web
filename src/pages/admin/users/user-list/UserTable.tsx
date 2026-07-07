@@ -2,7 +2,7 @@
 // UserTable: Component bảng danh sách người dùng và thao tác từng dòng trong module user list.
 // ========================
 import React, { useMemo } from 'react';
-import { Lock, Unlock, Mail, Phone, ShoppingBag, BookOpen, Search } from 'lucide-react';
+import { Lock, Unlock, Mail, Phone, ShoppingBag, BookOpen, Search, Loader2, Filter } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { IAdminUser } from '@/types/admin.types';
 import { ROLE_COLORS, STATUS_COLORS, ROLE_LABEL, STATUS_LABEL, timeAgo } from './constants';
@@ -84,8 +84,17 @@ export const UserTable: React.FC<UserTableProps> = ({
   const visiblePages = useMemo(() => getVisiblePages(page, totalPages), [page, totalPages]);
   const hasSelection = selectedIds.length > 0;
   return (
-    <div className={`bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
-      <div className="overflow-x-auto">
+    <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+      <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+        <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <Filter className="h-4 w-4" />
+          {total.toLocaleString('vi-VN')} kết quả
+        </div>
+        <div className="h-4 w-4">
+          {isFetching && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+        </div>
+      </div>
+      <div className={`overflow-x-auto transition-opacity duration-150 ${isFetching ? 'opacity-70' : 'opacity-100'}`}>
         <table className="w-full">
           <thead>
             <tr className={`border-b border-zinc-100 dark:border-zinc-800 transition-colors ${hasSelection ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : ''}`}>
@@ -195,7 +204,7 @@ export const UserTable: React.FC<UserTableProps> = ({
                         <p>
                           Bị khóa bởi {getAdminLabel(user.lockedByAdmin, user.lockedBy)}
                         </p>
-                        <p>  
+                        <p>
                           {user.lockedAt ? ` ${timeAgo(user.lockedAt)}` : ''}
                         </p>
                         {user.lockReason && (
@@ -248,11 +257,10 @@ export const UserTable: React.FC<UserTableProps> = ({
                       id={`btn-toggle-lock-${user._id}`}
                       onClick={() => user.status === 'LOCKED' ? onUnlock(user) : onLock(user)}
                       title={user.status === 'LOCKED' ? 'Mở khóa' : 'Khóa tài khoản'}
-                      className={`p-1.5 rounded-lg transition-colors ${
-                        user.status === 'LOCKED'
+                      className={`p-1.5 rounded-lg transition-colors ${user.status === 'LOCKED'
                           ? 'hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-emerald-500'
                           : 'hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500'
-                      }`}
+                        }`}
                     >
                       {user.status === 'LOCKED' ? (
                         <Unlock className="w-4 h-4" />

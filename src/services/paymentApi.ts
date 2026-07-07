@@ -425,7 +425,7 @@ export const getBestCourseCouponPreviews = async (items: Array<{ courseId: strin
   const { data } = await apiClient.post<ApiResponse<BestCouponPreviewsResponse>>('/api/payments/coupons/best-previews', { items });
   return data;
 };
-export const getAdminCoupons = async (params?: { search?: string; status?: string; page?: number; limit?: number }) => {
+export const getAdminCoupons = async (params?: { search?: string; status?: string; sort?: string; page?: number; limit?: number }) => {
   const { data } = await apiClient.get<ApiResponse<AdminCouponsResponse>>('/api/payments/admin/coupons', { params });
   return data;
 };

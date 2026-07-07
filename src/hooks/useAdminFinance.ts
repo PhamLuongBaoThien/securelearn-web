@@ -41,6 +41,7 @@ export const adminFinanceKeys = {
     search?: string;
     providerFilter?: string;
     statusFilter?: string;
+    sort?: string;
     page: number;
     limit: number;
     productType: 'COURSE' | 'SUBSCRIPTION';
@@ -48,7 +49,7 @@ export const adminFinanceKeys = {
   subscriptionPlans: ['admin', 'subscription-plans'] as const,
   subscriptionTerms: ['admin', 'subscription-terms'] as const,
   subscriptionSettlements: ['admin', 'subscription-settlements'] as const,
-  coupons: (params: { search?: string; status?: string; page: number; limit: number }) => ['admin', 'coupons', params] as const,
+  coupons: (params: { search?: string; status?: string; sort?: string; page: number; limit: number }) => ['admin', 'coupons', params] as const,
   couponStats: ['admin', 'coupons', 'stats'] as const,
   couponRedemptions: (params: { code?: string; user?: string; page: number; limit: number }) => ['admin', 'coupon-redemptions', params] as const,
   couponDetailRedemptions: (id: string, page: number, limit: number) => ['admin', 'coupons', id, 'redemptions', page, limit] as const,
@@ -84,6 +85,7 @@ export function useAdminTransactions(params: {
   search?: string;
   providerFilter?: string;
   statusFilter?: string;
+  sort?: string;
   page: number;
   limit: number;
   productType: 'COURSE' | 'SUBSCRIPTION';
@@ -95,6 +97,7 @@ export function useAdminTransactions(params: {
         search: params.search || undefined,
         provider: params.providerFilter || undefined,
         status: params.statusFilter || undefined,
+        sort: params.sort || undefined,
         page: params.page,
         limit: params.limit,
         productType: params.productType,
@@ -205,7 +208,7 @@ export function useUpdateSubscriptionSettlement() {
   });
 }
 
-export function useAdminCoupons(params: { search?: string; status?: string; page: number; limit: number }) {
+export function useAdminCoupons(params: { search?: string; status?: string; sort?: string; page: number; limit: number }) {
   return useQuery({
     queryKey: adminFinanceKeys.coupons(params),
     queryFn: async () => {

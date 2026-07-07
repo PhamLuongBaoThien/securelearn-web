@@ -4,10 +4,10 @@
 // - cung cấp màn hình quản trị coupon cho nhóm Admin Finance
 // - hỗ trợ tạo/sửa/bật tắt/xóa coupon, xem thống kê, badge trạng thái và lịch sử sử dụng
 // ========================
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BarChart3, CheckCircle2, Edit, History, Loader2, Plus, RefreshCw, Search, Trash2, ToggleLeft, ToggleRight, X, Calendar as CalendarIcon } from 'lucide-react';
+import { BarChart3, CheckCircle2, Edit, Filter, History, Loader2, Plus, RefreshCw, Search, Trash2, ToggleLeft, ToggleRight, X, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -114,6 +114,7 @@ export const CouponManager = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchVal = searchParams.get('search') || '';
   const statusVal = searchParams.get('status') || '';
+  const sortVal = searchParams.get('sort') || 'newest';
   const page = Math.max(Number(searchParams.get('page') || '1'), 1);
 
   const [editing, setEditing] = useState<Coupon | null>(null);
@@ -128,6 +129,7 @@ export const CouponManager = () => {
   const couponsQuery = useAdminCoupons({
     search: debouncedSearch || undefined,
     status: statusVal || undefined,
+    sort: sortVal,
     page,
     limit: PAGE_SIZE,
   });
@@ -147,7 +149,6 @@ export const CouponManager = () => {
     isAllSelectedOnPage,
     isSomeSelectedOnPage,
     clear,
-    count,
   } = useMultiSelect();
 
   const coupons = couponsQuery.data?.coupons ?? [];
@@ -157,7 +158,7 @@ export const CouponManager = () => {
 
   useEffect(() => {
     clear();
-  }, [debouncedSearch, statusVal, clear]);
+  }, [debouncedSearch, statusVal, sortVal, clear]);
 
   const handleConfirmMultiDelete = () => {
     multiDeleteMutation.mutate(selectedIds, {
@@ -384,11 +385,36 @@ export const CouponManager = () => {
                 <option value="USED_UP">Hết lượt</option>
               </Select>
             </div>
+            <div className="w-full sm:w-52">
+              <Select aria-label="Sắp xếp" value={sortVal} onChange={(event) => {
+                const nextParams = new URLSearchParams(searchParams);
+                if (event.target.value === 'newest') nextParams.delete('sort');
+                else nextParams.set('sort', event.target.value);
+                nextParams.delete('page');
+                setSearchParams(nextParams, { replace: true });
+              }}>
+                <option value="newest">Mới nhất</option>
+                <option value="oldest">Cũ nhất</option>
+                <option value="code_asc">Mã A → Z</option>
+                <option value="code_desc">Mã Z → A</option>
+                <option value="expires_soon">Sắp hết hạn</option>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between border-y border-zinc-100 px-1 py-3 dark:border-zinc-800">
+            <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+              <Filter className="h-4 w-4" />
+              {total.toLocaleString('vi-VN')} coupon
+            </div>
+            <div className="h-4 w-4">
+              {couponsQuery.isFetching && !couponsQuery.isLoading && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+            </div>
           </div>
 
           {couponsQuery.isLoading ? <div className="flex h-40 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div> : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className={`w-full text-sm transition-opacity duration-150 ${couponsQuery.isFetching ? 'opacity-70' : 'opacity-100'}`}>
                 <thead>
                   <tr className={`border-b text-left text-zinc-500 transition-colors ${selectedIds.length > 0 ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : ''}`}>
                     <th className="w-10 px-4 py-2 align-middle">
@@ -630,6 +656,3 @@ export const CouponManager = () => {
     </TooltipProvider>
   );
 };
-
-
-

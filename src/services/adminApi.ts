@@ -211,6 +211,7 @@ export const getUsers = async (params?: {
   search?: string;
   page?: number;
   limit?: number;
+  sort?: string;
 }): Promise<AdminApiResponse<{ users: IAdminUser[]; total: number; page: number; totalPages: number }>> => {
   const res = await apiClient.get(`${ADMIN}/auth/users`, { params });
   return res.data;
@@ -254,6 +255,7 @@ export const getCoursesForReview = async (params?: {
   search?: string;
   page?: number;
   limit?: number;
+  sort?: string;
 }): Promise<AdminApiResponse<{ courses: ICourseReview[]; total: number; page: number; totalPages: number }>> => {
   const res = await apiClient.get(`${ADMIN}/courses/review`, { params });
   return res.data;
@@ -274,6 +276,7 @@ export const getSubscriptionCoursesForReview = async (params?: {
   search?: string;
   page?: number;
   limit?: number;
+  sort?: string;
 }): Promise<AdminApiResponse<{ courses: ISubscriptionCourseReview[]; total: number; page: number; totalPages: number }>> => {
   const res = await apiClient.get(`${ADMIN}/courses/subscription-review`, { params });
   return res.data;
@@ -356,6 +359,7 @@ export const getTransactions = async (params?: {
   search?: string;
   provider?: string;
   status?: string;
+  sort?: string;
   startDate?: string;
   endDate?: string;
   page?: number;

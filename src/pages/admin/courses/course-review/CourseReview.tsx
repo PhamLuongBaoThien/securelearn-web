@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
   Search,
@@ -15,6 +15,7 @@ import {
   Folder,
   Tag,
   DollarSign,
+  Filter,
   Layers,
   Loader2,
   GitBranch,
@@ -924,6 +925,8 @@ const SubscriptionCourseReviewPage: React.FC<{
   onChangeMode: (mode: "PUBLISH" | "SUBSCRIPTION") => void;
   initialSearch?: string;
 }> = ({ onChangeMode, initialSearch = "" }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sortVal = searchParams.get("sort") || "submitted_desc";
   const [status, setStatus] =
     useState<Exclude<SubscriptionCatalogStatus, "NOT_OPTED_IN">>("PENDING");
   const [search, setSearch] = useState(initialSearch);
@@ -933,7 +936,7 @@ const SubscriptionCourseReviewPage: React.FC<{
     action: "REJECT" | "REMOVE";
   } | null>(null);
   const [reason, setReason] = useState("");
-  const reviewQuery = useSubscriptionCourseReviews(status, search);
+  const reviewQuery = useSubscriptionCourseReviews(status, search, sortVal);
   const reviewMutation = useReviewCourseSubscription();
   const courses = reviewQuery.data?.courses || [];
 
@@ -1032,6 +1035,20 @@ const SubscriptionCourseReviewPage: React.FC<{
             className="bg-transparent text-sm flex-1 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
           />
         </div>
+        <div className="w-full sm:w-48">
+          <Select aria-label="Sắp xếp" value={sortVal} onChange={(event) => {
+            const nextParams = new URLSearchParams(searchParams);
+            if (event.target.value === "submitted_desc") nextParams.delete("sort");
+            else nextParams.set("sort", event.target.value);
+            nextParams.delete("page");
+            setSearchParams(nextParams, { replace: true });
+          }}>
+            <option value="submitted_desc">Gửi mới nhất</option>
+            <option value="submitted_asc">Gửi cũ nhất</option>
+            <option value="title_asc">Tên A → Z</option>
+            <option value="title_desc">Tên Z → A</option>
+          </Select>
+        </div>
         <div className="flex gap-2 flex-wrap">
           {(["PENDING", "APPROVED", "REJECTED", "REMOVED"] as const).map(
             (item) => (
@@ -1048,6 +1065,16 @@ const SubscriptionCourseReviewPage: React.FC<{
         </div>
       </div>
 
+      <div className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+        <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <Filter className="h-4 w-4" />
+          {(reviewQuery.data?.total ?? courses.length).toLocaleString('vi-VN')} kết quả
+        </div>
+        <div className="h-4 w-4">
+          {reviewQuery.isFetching && !reviewQuery.isLoading && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+        </div>
+      </div>
+
       {reviewQuery.isLoading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1057,7 +1084,7 @@ const SubscriptionCourseReviewPage: React.FC<{
           {(reviewQuery.error as Error).message}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className={`space-y-4 transition-opacity duration-150 ${reviewQuery.isFetching ? "opacity-70" : "opacity-100"}`}>
           {courses.map((course: ISubscriptionCourseReview) => {
             const isExpanded = expandedId === course._id;
             const config =
@@ -1237,7 +1264,8 @@ const SubscriptionCourseReviewPage: React.FC<{
 
 export const CourseReview: React.FC = () => {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sortVal = searchParams.get("sort") || "submitted_desc";
   const initialState = (location.state || {}) as {
     mode?: "PUBLISH" | "SUBSCRIPTION";
     search?: string;
@@ -1257,6 +1285,7 @@ export const CourseReview: React.FC = () => {
   const reviewQuery = usePublishedCourseReviews(
     statusFilter,
     search,
+    sortVal,
     reviewMode === "PUBLISH",
   );
   const approveMutation = useApprovePublishedCourse();
@@ -1364,7 +1393,21 @@ export const CourseReview: React.FC = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="w-full sm:w-48">
+          <Select aria-label="Sắp xếp" value={sortVal} onChange={(event) => {
+            const nextParams = new URLSearchParams(searchParams);
+            if (event.target.value === "submitted_desc") nextParams.delete("sort");
+            else nextParams.set("sort", event.target.value);
+            nextParams.delete("page");
+            setSearchParams(nextParams, { replace: true });
+          }}>
+            <option value="submitted_desc">Gửi mới nhất</option>
+            <option value="submitted_asc">Gửi cũ nhất</option>
+            <option value="title_asc">Tên A → Z</option>
+            <option value="title_desc">Tên Z → A</option>
+          </Select>
+        </div>
+        <div className="flex flex-wrap gap-2">
           {(["PENDING", "PUBLISHED", "REJECTED", "ARCHIVED"] as const).map(
             (s) => (
               <Button
@@ -1380,6 +1423,16 @@ export const CourseReview: React.FC = () => {
         </div>
       </div>
 
+      <div className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+        <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <Filter className="h-4 w-4" />
+          {(reviewQuery.data?.total ?? courses.length).toLocaleString('vi-VN')} kết quả
+        </div>
+        <div className="h-4 w-4">
+          {reviewQuery.isFetching && !reviewQuery.isLoading && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+        </div>
+      </div>
+
       {reviewQuery.isLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1389,7 +1442,7 @@ export const CourseReview: React.FC = () => {
           {(reviewQuery.error as Error).message}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className={`space-y-4 transition-opacity duration-150 ${reviewQuery.isFetching ? "opacity-70" : "opacity-100"}`}>
           {courses.map((course: ICourseReview) => {
             const sc = statusConfig[course.status];
             const isExpanded = expandedId === course._id;
@@ -1548,9 +1601,3 @@ export const CourseReview: React.FC = () => {
     </div>
   );
 };
-
-
-
-
-
-

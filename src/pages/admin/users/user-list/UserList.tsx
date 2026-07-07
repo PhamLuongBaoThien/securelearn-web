@@ -62,6 +62,7 @@ export const UserList: React.FC = () => {
   const searchVal = searchParams.get('search') || '';
   const roleVal = searchParams.get('role') || '';
   const statusVal = searchParams.get('status') || '';
+  const sortVal = searchParams.get('sort') || 'newest';
   const page = Math.max(Number(searchParams.get('page') || '1'), 1);
 
   // ── Dialog state ──
@@ -87,6 +88,7 @@ export const UserList: React.FC = () => {
     search: debouncedSearch || undefined,
     role: roleVal || undefined,
     status: statusVal || undefined,
+    sort: sortVal,
     page,
     limit: PAGE_SIZE,
   });
@@ -99,7 +101,6 @@ export const UserList: React.FC = () => {
     isAllSelectedOnPage,
     isSomeSelectedOnPage,
     clear,
-    count,
   } = useMultiSelect();
 
   const currentPageUserIds = useMemo(() => users.map((u) => u._id), [users]);
@@ -108,7 +109,7 @@ export const UserList: React.FC = () => {
 
   React.useEffect(() => {
     clear();
-  }, [debouncedSearch, roleVal, statusVal, clear]);
+  }, [debouncedSearch, roleVal, statusVal, sortVal, clear]);
 
   const [multiLockTargetIds, setMultiLockTargetIds] = useState<string[] | null>(null);
   const [multiActionType, setMultiActionType] = useState<'lock' | 'unlock'>('lock');
@@ -145,8 +146,8 @@ export const UserList: React.FC = () => {
   };
 
   const hasActiveFilters = useMemo(() => {
-    return Boolean(searchVal.trim() || roleVal || statusVal || page > 1);
-  }, [searchVal, roleVal, statusVal, page]);
+    return Boolean(searchVal.trim() || roleVal || statusVal || sortVal !== 'newest' || page > 1);
+  }, [searchVal, roleVal, statusVal, sortVal, page]);
 
   const clearFilters = () => {
     setSearchParams(new URLSearchParams(), { replace: true });
@@ -424,6 +425,20 @@ export const UserList: React.FC = () => {
                 <option value="">Tất cả trạng thái</option>
                 <option value="ACTIVE">Hoạt động</option>
                 <option value="LOCKED">Đã khóa</option>
+              </Select>
+            </div>
+            <div className="w-48">
+              <Select aria-label="Sắp xếp" value={sortVal} onChange={(event) => {
+                const nextParams = new URLSearchParams(searchParams);
+                if (event.target.value === 'newest') nextParams.delete('sort');
+                else nextParams.set('sort', event.target.value);
+                nextParams.delete('page');
+                setSearchParams(nextParams, { replace: true });
+              }}>
+                <option value="newest">Mới nhất</option>
+                <option value="oldest">Cũ nhất</option>
+                <option value="name_asc">Tên A → Z</option>
+                <option value="name_desc">Tên Z → A</option>
               </Select>
             </div>
           </div>

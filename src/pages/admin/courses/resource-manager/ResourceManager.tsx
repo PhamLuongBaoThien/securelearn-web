@@ -710,7 +710,6 @@ export const ResourceManager: React.FC = () => {
     isAllSelectedOnPage,
     isSomeSelectedOnPage,
     clear,
-    count,
   } = useMultiSelect();
 
   const currentPageCourseIds = useMemo(() => courses.map((c) => c._id), [courses]);
@@ -930,11 +929,13 @@ export const ResourceManager: React.FC = () => {
             <Filter className="h-4 w-4" />
             {data ? `${data.total.toLocaleString('vi-VN')} kết quả` : 'Đang tải dữ liệu'}
           </div>
-          {coursesQuery.isFetching && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+          <div className="h-4 w-4">
+            {coursesQuery.isFetching && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+          </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px]">
+          <table className={`w-full min-w-[1100px] transition-opacity duration-150 ${coursesQuery.isFetching ? 'opacity-70' : 'opacity-100'}`}>
             <thead>
               <tr className={`border-b border-zinc-100 dark:border-zinc-800 transition-colors ${selectedIds.length > 0 ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : ''}`}>
                 <th className="w-10 px-4 py-3 align-middle">

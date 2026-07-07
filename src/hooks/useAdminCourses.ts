@@ -27,5 +27,6 @@ export function useAdminCourses(params: AdminCourseListParams) {
       }
       return response.data;
     },
+    placeholderData: (previousData) => previousData,
   });
 }
