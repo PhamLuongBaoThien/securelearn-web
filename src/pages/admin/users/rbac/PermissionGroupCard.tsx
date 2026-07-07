@@ -2,7 +2,7 @@
 // PermissionGroupCard: Component con cho từng nhóm quyền trong module RBAC đã tách nhỏ.
 // ========================
 import React from 'react';
-import { Check } from 'lucide-react';
+import { Check, LockKeyhole } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ALL_PERMISSIONS } from './rbac.constants';
 
@@ -12,6 +12,7 @@ interface PermissionGroupCardProps {
   icon: React.ReactNode;
   currentPerms: string[];
   isSystem: boolean;
+  lockedPermissionIds?: readonly string[];
   onSelectAll: (resource: string) => void;
   onToggle: (permissionId: string) => void;
 }
@@ -22,12 +23,17 @@ export const PermissionGroupCard: React.FC<PermissionGroupCardProps> = ({
   icon,
   currentPerms,
   isSystem,
+  lockedPermissionIds = [],
   onSelectAll,
   onToggle,
 }) => {
   const permissions = ALL_PERMISSIONS.filter((permission) => permission.resource === resourceKey);
   const grantedCount = permissions.filter((permission) => currentPerms.includes(permission.id)).length;
+  const selectablePermissions = isSystem
+    ? permissions
+    : permissions.filter((permission) => !lockedPermissionIds.includes(permission.id));
   const allGranted = grantedCount === permissions.length;
+  const allSelectableGranted = selectablePermissions.length > 0 && selectablePermissions.every((permission) => currentPerms.includes(permission.id));
 
   return (
     <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
@@ -52,7 +58,7 @@ export const PermissionGroupCard: React.FC<PermissionGroupCardProps> = ({
               variant="ghost"
               className="text-xs text-primary hover:underline h-auto p-0"
             >
-              {allGranted ? 'Bỏ tất cả' : 'Chọn tất cả'}
+              {allSelectableGranted ? 'Bỏ tất cả' : 'Chọn tất cả'}
             </Button>
           )}
         </div>
@@ -60,13 +66,16 @@ export const PermissionGroupCard: React.FC<PermissionGroupCardProps> = ({
       <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
         {permissions.map((permission) => {
           const granted = currentPerms.includes(permission.id);
+          const locked = !isSystem && lockedPermissionIds.includes(permission.id);
 
           return (
             <div
               key={permission.id}
-              onClick={() => onToggle(permission.id)}
+              onClick={() => {
+                if (!locked) onToggle(permission.id);
+              }}
               className={`flex items-center gap-4 px-4 py-3 transition-colors ${
-                isSystem
+                isSystem || locked
                   ? 'cursor-not-allowed opacity-60'
                   : 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
               }`}
@@ -88,6 +97,12 @@ export const PermissionGroupCard: React.FC<PermissionGroupCardProps> = ({
                 </p>
                 <p className="text-xs text-zinc-400 mt-0.5">{permission.desc}</p>
               </div>
+              {locked && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 dark:bg-red-500/10 dark:text-red-300">
+                  <LockKeyhole className="h-3 w-3" />
+                  Chỉ Super Admin
+                </span>
+              )}
               <code className="text-xs text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg font-mono shrink-0">
                 {permission.id}
               </code>

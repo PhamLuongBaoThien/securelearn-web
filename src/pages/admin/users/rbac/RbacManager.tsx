@@ -6,17 +6,22 @@ import React, { useState } from 'react';
 import { Info, Loader2, Plus, RefreshCw, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAdminRoles } from '@/hooks/useAdminRoles';
+import { useAppDispatch, useAppSelector } from '@/app/hooks';
+import { setAdminUser } from '@/features/auth/adminAuthSlice';
+import { refreshSessionAccessToken } from '@/services/apiClient';
 import type { IRolePermission } from '@/types/admin.types';
 import { getRoleBadgeClass } from '@/types/admin.types';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PermissionGroupCard } from './PermissionGroupCard';
-import { ALL_PERMISSIONS, RESOURCE_GROUPS } from './rbac.constants';
+import { ALL_PERMISSIONS, RESOURCE_GROUPS, SYSTEM_ONLY_PERMISSIONS } from './rbac.constants';
 import { RoleFormDialog } from './RoleFormDialog';
 import { RoleListItem } from './RoleListItem';
 
 export const RbacManager: React.FC = () => {
   const { roles, isLoading, isFetching, invalidate, updateMut, deleteMut } = useAdminRoles();
+  const dispatch = useAppDispatch();
+  const currentAdmin = useAppSelector((state) => state.adminAuth.user);
   const [selectedKey, setSelectedKey] = useState('CONTENT_MANAGER');
   const [localPerms, setLocalPerms] = useState<Record<string, string[]>>({});
   const [dirtyRoles, setDirtyRoles] = useState<Set<string>>(new Set());
@@ -27,15 +32,24 @@ export const RbacManager: React.FC = () => {
   const selected = roles.find((role) => role.roleKey === selectedKey);
   const isSystem = selected?.isSystem ?? false;
   const isDirty = dirtyRoles.has(selectedKey);
-  const currentPerms = isDirty
+  const rawCurrentPerms = isDirty
     ? localPerms[selectedKey] ?? selected?.permissions ?? []
     : selected?.permissions ?? [];
+  const currentPerms = isSystem
+    ? rawCurrentPerms
+    : rawCurrentPerms.filter((permissionId) => !SYSTEM_ONLY_PERMISSIONS.includes(permissionId as (typeof SYSTEM_ONLY_PERMISSIONS)[number]));
 
   const handleSavePerms = () => {
     updateMut.mutate(
       { roleKey: selectedKey, data: { permissions: currentPerms } },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
+          if (currentAdmin?.adminRole === selectedKey) {
+            await refreshSessionAccessToken('admin');
+            const { getAdminMe } = await import('@/services/adminAuthApi');
+            const profileRes = await getAdminMe();
+            if (profileRes.data) dispatch(setAdminUser({ user: profileRes.data }));
+          }
           toast.success('Đã lưu phân quyền.');
           setDirtyRoles((prev) => {
             const next = new Set(prev);
@@ -54,6 +68,11 @@ export const RbacManager: React.FC = () => {
       return;
     }
 
+    if (SYSTEM_ONLY_PERMISSIONS.includes(permissionId as (typeof SYSTEM_ONLY_PERMISSIONS)[number])) {
+      toast.error('Quyền này chỉ dành cho Super Admin.');
+      return;
+    }
+
     setLocalPerms((prev) => {
       return {
         ...prev,
@@ -68,7 +87,7 @@ export const RbacManager: React.FC = () => {
   const handleSelectAllForResource = (resource: string) => {
     if (isSystem) return;
     const permissionIds = ALL_PERMISSIONS
-      .filter((permission) => permission.resource === resource)
+      .filter((permission) => permission.resource === resource && !SYSTEM_ONLY_PERMISSIONS.includes(permission.id as (typeof SYSTEM_ONLY_PERMISSIONS)[number]))
       .map((permission) => permission.id);
     const allSelected = permissionIds.every((permissionId) => currentPerms.includes(permissionId));
 
@@ -106,8 +125,8 @@ export const RbacManager: React.FC = () => {
     <div className="w-full space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Phân quyền RBAC</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">Tạo và thiết lập quyền hạn cho từng vai trò Admin.</p>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Vai trò & Quyền hạn</h1>
+          <p className="text-zinc-500 dark:text-zinc-400">Tạo và thiết lập quyền hạn cho từng vai trò trong hệ thống.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button onClick={() => void invalidate()} disabled={isFetching} variant="outline" className="gap-2" title="Làm mới danh sách vai trò và quyền">
@@ -178,6 +197,7 @@ export const RbacManager: React.FC = () => {
               icon={group.icon}
               currentPerms={currentPerms}
               isSystem={isSystem}
+              lockedPermissionIds={SYSTEM_ONLY_PERMISSIONS}
               onSelectAll={handleSelectAllForResource}
               onToggle={handleToggle}
             />

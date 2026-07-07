@@ -16,8 +16,10 @@ export const ALL_PERMISSIONS = [
   { id: 'notif:manage', resource: 'notif', label: 'Quản lý thông báo', desc: 'Tạo và gửi thông báo cho học viên/giảng viên' },
   { id: 'inbox:manage', resource: 'inbox', label: 'Quản lý hộp thư', desc: 'Xem và xử lý báo cáo, hỗ trợ và góp ý nhạy cảm' },
   { id: 'system:config', resource: 'system', label: 'Cấu hình hệ thống', desc: 'Thay đổi cài đặt toàn hệ thống' },
-  { id: 'system:rbac', resource: 'system', label: 'Quản lý phân quyền', desc: 'Thiết lập RBAC và quản lý nhân viên' },
+  { id: 'system:rbac', resource: 'system', label: 'Vai trò & Quyền hạn', desc: 'Thiết lập vai trò, quyền hạn và quản lý nhân viên' },
 ] as const;
+
+export const SYSTEM_ONLY_PERMISSIONS = ['system:rbac'] as const;
 
 export const RESOURCE_GROUPS = [
   { label: 'Nội dung đào tạo', key: 'course', icon: <BookOpen className="w-3.5 h-3.5" /> },

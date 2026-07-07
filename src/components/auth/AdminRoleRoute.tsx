@@ -1,6 +1,6 @@
 // ========================
 // Guard Component: AdminRoleRoute
-// Bảo vệ route theo adminRole — hiển thị trang 403 inline nếu thiếu quyền.
+// Bảo vệ route theo adminRole cố định hoặc permission động — hiển thị trang 403 inline nếu thiếu quyền.
 // Không redirect để tránh UX xấu và lộ thông tin route.
 // ========================
 import React from 'react';
@@ -10,11 +10,12 @@ import { useAppSelector } from '@/app/hooks';
 import type { AdminRole } from '@/types/admin.types';
 
 interface AdminRoleRouteProps {
-  allowedRoles: AdminRole[];
+  allowedRoles?: AdminRole[];
+  requiredPermission?: string;
   children: React.ReactNode;
 }
 
-export const AdminRoleRoute: React.FC<AdminRoleRouteProps> = ({ allowedRoles, children }) => {
+export const AdminRoleRoute: React.FC<AdminRoleRouteProps> = ({ allowedRoles, requiredPermission, children }) => {
   const { user, isAuthenticated } = useAppSelector((state) => state.adminAuth);
 
   // Chưa đăng nhập — AdminProtectedRoute đã xử lý, nhưng check thêm cho an toàn
@@ -22,8 +23,11 @@ export const AdminRoleRoute: React.FC<AdminRoleRouteProps> = ({ allowedRoles, ch
     return null;
   }
 
-  // Kiểm tra role
-  if (!allowedRoles.includes(user.adminRole)) {
+  const isSuperAdmin = user.adminRole === 'SUPER_ADMIN';
+  const hasAllowedRole = !allowedRoles || allowedRoles.includes(user.adminRole);
+  const hasRequiredPermission = !requiredPermission || isSuperAdmin || user.permissions.includes(requiredPermission);
+
+  if (!hasAllowedRole || !hasRequiredPermission) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
         <div className="w-20 h-20 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center mb-6">
@@ -31,7 +35,7 @@ export const AdminRoleRoute: React.FC<AdminRoleRouteProps> = ({ allowedRoles, ch
         </div>
         <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">Không có quyền truy cập</h1>
         <p className="text-zinc-500 dark:text-zinc-400 max-w-md mb-8">
-          Tài khoản của bạn không có đủ quyền để truy cập.
+          Tài khoản của bạn không có đủ quyền để truy cập trang này.
         </p>
         <Link
           to="/admin/dashboard"

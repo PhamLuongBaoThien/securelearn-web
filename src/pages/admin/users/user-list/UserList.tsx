@@ -32,6 +32,7 @@ import { useAdminUsers } from '@/hooks/useAdminUsers';
 import { useDebounce } from '@/hooks/useDebounce';
 import { UserTable } from './UserTable';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
+import { useAppSelector } from '@/app/hooks';
 
 const cardClass = 'rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900';
 
@@ -111,6 +112,9 @@ export const UserList: React.FC = () => {
     clear();
   }, [debouncedSearch, roleVal, statusVal, sortVal, clear]);
 
+  const currentAdmin = useAppSelector((state) => state.adminAuth.user);
+  const canManageLocks = currentAdmin?.adminRole === 'SUPER_ADMIN' || currentAdmin?.permissions.includes('user:lock') || false;
+
   const [multiLockTargetIds, setMultiLockTargetIds] = useState<string[] | null>(null);
   const [multiActionType, setMultiActionType] = useState<'lock' | 'unlock'>('lock');
 
@@ -140,6 +144,7 @@ export const UserList: React.FC = () => {
   };
 
   const handleExecuteMultiAction = (action: string) => {
+    if (!canManageLocks) return;
     setLockReason('');
     setMultiActionType(action as 'lock' | 'unlock');
     setMultiLockTargetIds(selectedIds);
@@ -160,6 +165,7 @@ export const UserList: React.FC = () => {
   };
 
   const handleOpenLockDialog = (user: IAdminUser) => {
+    if (!canManageLocks) return;
     setLockReason('');
     setLockTarget(user);
   };
@@ -461,6 +467,7 @@ export const UserList: React.FC = () => {
           isSomeSelected={isSomeSelected}
           onExecuteMultiAction={handleExecuteMultiAction}
           onClearSelection={clear}
+          canManageLocks={canManageLocks}
         />
       </div>
     </TooltipProvider>

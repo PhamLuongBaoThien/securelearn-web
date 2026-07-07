@@ -54,6 +54,7 @@ interface UserTableProps {
   isSomeSelected: boolean;
   onExecuteMultiAction?: (action: string) => void;
   onClearSelection?: () => void;
+  canManageLocks?: boolean;
 }
 
 const COLS = ['Người dùng', 'Vai trò', 'Trạng thái', 'Thông tin', 'Đăng nhập gần nhất', 'Hành động'];
@@ -80,9 +81,12 @@ export const UserTable: React.FC<UserTableProps> = ({
   isSomeSelected,
   onExecuteMultiAction,
   onClearSelection,
+  canManageLocks = true,
 }) => {
   const visiblePages = useMemo(() => getVisiblePages(page, totalPages), [page, totalPages]);
-  const hasSelection = selectedIds.length > 0;
+  const hasSelection = canManageLocks && selectedIds.length > 0;
+  const visibleCols = canManageLocks ? COLS : COLS.filter((header) => header !== 'Hành động');
+
   return (
     <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
       <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
@@ -98,21 +102,23 @@ export const UserTable: React.FC<UserTableProps> = ({
         <table className="w-full">
           <thead>
             <tr className={`border-b border-zinc-100 dark:border-zinc-800 transition-colors ${hasSelection ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : ''}`}>
-              <th className="w-10 px-4 py-3.5 align-middle">
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  ref={(input) => {
-                    if (input) {
-                      input.indeterminate = isSomeSelected;
-                    }
-                  }}
-                  onChange={onToggleSelectAll}
-                  className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
-                />
-              </th>
+              {canManageLocks && (
+                <th className="w-10 px-4 py-3.5 align-middle">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={(input) => {
+                      if (input) {
+                        input.indeterminate = isSomeSelected;
+                      }
+                    }}
+                    onChange={onToggleSelectAll}
+                    className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+                  />
+                </th>
+              )}
               {hasSelection ? (
-                <th colSpan={COLS.length} className="px-4 py-2.5 align-middle text-left">
+                <th colSpan={visibleCols.length} className="px-4 py-2.5 align-middle text-left">
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
                       Đã chọn {selectedIds.length} tài khoản
@@ -141,7 +147,7 @@ export const UserTable: React.FC<UserTableProps> = ({
                   </div>
                 </th>
               ) : (
-                COLS.map((header) => (
+                visibleCols.map((header) => (
                   <th
                     key={header}
                     className="px-4 py-3.5 text-left text-xs font-semibold text-zinc-500 uppercase tracking-wider"
@@ -159,25 +165,22 @@ export const UserTable: React.FC<UserTableProps> = ({
                 data-state={selectedIds.includes(user._id) ? 'selected' : undefined}
                 className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors group data-[state=selected]:bg-zinc-50 dark:data-[state=selected]:bg-zinc-800/20"
               >
-                <td className="w-10 px-4 py-3.5 align-middle">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(user._id)}
-                    onChange={() => onToggleSelect(user._id)}
-                    className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
-                  />
-                </td>
-                {/* User info */}
+                {canManageLocks && (
+                  <td className="w-10 px-4 py-3.5 align-middle">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(user._id)}
+                      onChange={() => onToggleSelect(user._id)}
+                      className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+                    />
+                  </td>
+                )}
+
                 <td className="px-4 py-3.5">
                   <div className="flex items-center gap-3">
-                    <UserAvatar
-                      user={user}
-                      className="w-9 h-9 text-sm"
-                    />
+                    <UserAvatar user={user} className="w-9 h-9 text-sm" />
                     <div>
-                      <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">
-                        {user.fullName}
-                      </p>
+                      <p className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{user.fullName}</p>
                       <p className="text-xs text-zinc-400 flex items-center gap-1">
                         <Mail className="w-3 h-3" />
                         {user.email}
@@ -186,14 +189,12 @@ export const UserTable: React.FC<UserTableProps> = ({
                   </div>
                 </td>
 
-                {/* Role */}
                 <td className="px-4 py-3.5">
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${ROLE_COLORS[user.role]}`}>
                     {ROLE_LABEL[user.role]}
                   </span>
                 </td>
 
-                {/* Status */}
                 <td className="px-4 py-3.5">
                   <div className="space-y-1.5">
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[user.status]}`}>
@@ -201,12 +202,8 @@ export const UserTable: React.FC<UserTableProps> = ({
                     </span>
                     {user.status === 'LOCKED' && (
                       <div className="max-w-[220px] text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-                        <p>
-                          Bị khóa bởi {getAdminLabel(user.lockedByAdmin, user.lockedBy)}
-                        </p>
-                        <p>
-                          {user.lockedAt ? ` ${timeAgo(user.lockedAt)}` : ''}
-                        </p>
+                        <p>Bị khóa bởi {getAdminLabel(user.lockedByAdmin, user.lockedBy)}</p>
+                        <p>{user.lockedAt ? ` ${timeAgo(user.lockedAt)}` : ''}</p>
                         {user.lockReason && (
                           <p className="mt-0.5 truncate" title={user.lockReason}>
                             Lý do: {user.lockReason}
@@ -222,7 +219,6 @@ export const UserTable: React.FC<UserTableProps> = ({
                   </div>
                 </td>
 
-                {/* Info */}
                 <td className="px-4 py-3.5 text-xs text-zinc-500">
                   {user.phone && (
                     <div className="flex items-center gap-1">
@@ -244,38 +240,30 @@ export const UserTable: React.FC<UserTableProps> = ({
                   )}
                 </td>
 
-                {/* Last login */}
-                <td className="px-4 py-3.5 text-xs text-zinc-500">
-                  {timeAgo(user.lastLoginAt)}
-                </td>
+                <td className="px-4 py-3.5 text-xs text-zinc-500">{timeAgo(user.lastLoginAt)}</td>
 
-                {/* Actions */}
-                <td className="px-4 py-3.5">
-                  <div className="flex items-center gap-1">
-                    {/* Lock / Unlock */}
-                    <button
-                      id={`btn-toggle-lock-${user._id}`}
-                      onClick={() => user.status === 'LOCKED' ? onUnlock(user) : onLock(user)}
-                      title={user.status === 'LOCKED' ? 'Mở khóa' : 'Khóa tài khoản'}
-                      className={`p-1.5 rounded-lg transition-colors ${user.status === 'LOCKED'
+                {canManageLocks && (
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-1">
+                      <button
+                        id={`btn-toggle-lock-${user._id}`}
+                        onClick={() => user.status === 'LOCKED' ? onUnlock(user) : onLock(user)}
+                        title={user.status === 'LOCKED' ? 'Mở khóa' : 'Khóa tài khoản'}
+                        className={`p-1.5 rounded-lg transition-colors ${user.status === 'LOCKED'
                           ? 'hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-emerald-500'
                           : 'hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500'
                         }`}
-                    >
-                      {user.status === 'LOCKED' ? (
-                        <Unlock className="w-4 h-4" />
-                      ) : (
-                        <Lock className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </td>
+                      >
+                        {user.status === 'LOCKED' ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* Empty state */}
         {users.length === 0 && !isFetching && (
           <div className="flex flex-col items-center justify-center py-16 text-zinc-400">
             <Search className="w-10 h-10 mb-3 opacity-30" />
@@ -284,7 +272,6 @@ export const UserTable: React.FC<UserTableProps> = ({
         )}
       </div>
 
-      {/* Footer: count + pagination */}
       <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <span className="text-sm text-zinc-500">
           Hiển thị {users.length} / {total} tài khoản

@@ -54,8 +54,8 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[], inbox
       groupIcon: <Users className="w-5 h-5 shrink-0" />,
       items: [
         { name: 'Danh sách người dùng', path: '/admin/users/list', icon: <UserCheck className="w-4 h-4 shrink-0" />, req: 'user:read' },
-        { name: 'Danh sách nhân viên', path: '/admin/users/staff', icon: <UserCog className="w-4 h-4 shrink-0" />, req: 'system:rbac' },
-        { name: 'Phân quyền RBAC', path: '/admin/users/rbac', icon: <ShieldCheck className="w-4 h-4 shrink-0" />, req: 'system:rbac' },
+        { name: 'Danh sách nhân viên', path: '/admin/users/staff', icon: <UserCog className="w-4 h-4 shrink-0" />, req: 'system:rbac', superOnly: true },
+        { name: 'Vai trò & Quyền hạn', path: '/admin/users/rbac', icon: <ShieldCheck className="w-4 h-4 shrink-0" />, req: 'system:rbac', superOnly: true },
       ],
     },
     {
@@ -97,7 +97,7 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[], inbox
   ];
 
   for (const g of rawGroups) {
-    const validItems = g.items.filter(item => hasPerm(item.req)).map(item => ({
+    const validItems = g.items.filter(item => item.superOnly ? isSuperAdmin : hasPerm(item.req)).map(item => ({
       name: item.name,
       path: item.path,
       icon: item.icon,
@@ -183,4 +183,3 @@ export const AdminLayout: React.FC = () => {
     </div>
   );
 };
-

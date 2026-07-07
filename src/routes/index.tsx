@@ -202,11 +202,11 @@ const router = createBrowserRouter([
         children: [
           { path: 'dashboard', element: <AdminDashboard /> },
           // ===== System & CMS =====
-          { path: 'system/config', element: <WebsiteConfig /> },
-          { path: 'system/banners', element: <BannerManager /> },
-          { path: 'system/categories', element: <CategoryManager /> },
+          { path: 'system/config', element: <AdminRoleRoute requiredPermission="system:config"><WebsiteConfig /></AdminRoleRoute> },
+          { path: 'system/banners', element: <AdminRoleRoute requiredPermission="system:config"><BannerManager /></AdminRoleRoute> },
+          { path: 'system/categories', element: <AdminRoleRoute requiredPermission="system:config"><CategoryManager /></AdminRoleRoute> },
           // ===== Users & RBAC =====
-          { path: 'users/list', element: <UserList /> },
+          { path: 'users/list', element: <AdminRoleRoute requiredPermission="user:read"><UserList /></AdminRoleRoute> },
           {
             path: 'users/staff',
             element: (
@@ -224,17 +224,17 @@ const router = createBrowserRouter([
             ),
           },
           // ===== Courses =====
-          { path: 'courses/review', element: <CourseReview /> },
-          { path: 'courses/resources', element: <ResourceManager /> },
+          { path: 'courses/review', element: <AdminRoleRoute requiredPermission="course:approve"><CourseReview /></AdminRoleRoute> },
+          { path: 'courses/resources', element: <AdminRoleRoute requiredPermission="course:read"><ResourceManager /></AdminRoleRoute> },
           // ===== Finance =====
-          { path: 'finance/transactions', element: <Transactions /> },
-          { path: 'finance/plans', element: <PlanManager /> },
-          { path: 'finance/coupons', element: <CouponManager /> },
+          { path: 'finance/transactions', element: <AdminRoleRoute requiredPermission="finance:read"><Transactions /></AdminRoleRoute> },
+          { path: 'finance/plans', element: <AdminRoleRoute requiredPermission="finance:manage"><PlanManager /></AdminRoleRoute> },
+          { path: 'finance/coupons', element: <AdminRoleRoute requiredPermission="finance:manage"><CouponManager /></AdminRoleRoute> },
           // ===== Notifications & Progress =====
-          { path: 'notifications/send', element: <SendNotification /> },
-          { path: 'notifications/system', element: <NotificationCenter /> },
-          { path: 'notifications/inbox', element: <Inbox /> },
-          { path: 'notifications/config', element: <NotificationConfig /> },
+          { path: 'notifications/send', element: <AdminRoleRoute requiredPermission="notif:manage"><SendNotification /></AdminRoleRoute> },
+          { path: 'notifications/system', element: <AdminRoleRoute requiredPermission="notif:read"><NotificationCenter /></AdminRoleRoute> },
+          { path: 'notifications/inbox', element: <AdminRoleRoute requiredPermission="inbox:manage"><Inbox /></AdminRoleRoute> },
+          { path: 'notifications/config', element: <AdminRoleRoute requiredPermission="notif:manage"><NotificationConfig /></AdminRoleRoute> },
           // ===== Profile =====
           { path: 'profile', element: <AdminProfile /> },
         ],
@@ -250,7 +250,3 @@ const router = createBrowserRouter([
 export function AppRouter() {
   return <RouterProvider router={router} />;
 }
-
-
-
-
