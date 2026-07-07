@@ -14,18 +14,36 @@ export type AdminApiResponse<T = undefined> = {
 // ===== System & CMS =====
 
 export interface IWebsiteConfig {
-  siteName: string;
+  _id?: string;
   siteUrl: string;
   logoUrl: string;
+  logoPublicId?: string;
   faviconUrl: string;
+  faviconPublicId?: string;
   contactEmail: string;
   contactPhone: string;
   address: string;
-  seoTitle: string;
-  seoDescription: string;
-  seoKeywords: string;
   facebookUrl?: string;
   youtubeUrl?: string;
+  githubUrl?: string;
+  linkedinUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface WebsiteConfigInput {
+  siteUrl?: string;
+  logoUrl?: string;
+  faviconUrl?: string;
+  logo?: File;
+  favicon?: File;
+  contactEmail?: string;
+  contactPhone?: string;
+  address?: string;
+  facebookUrl?: string;
+  youtubeUrl?: string;
+  githubUrl?: string;
+  linkedinUrl?: string;
 }
 
 export interface Banner {

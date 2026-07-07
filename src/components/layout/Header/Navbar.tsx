@@ -24,6 +24,7 @@ import { usePublicCourseCategories } from '@/hooks/usePublicCourseCategories';
 import { useCourseSearchSuggestions } from '@/hooks/useCourseSearchSuggestions';
 import { toast } from 'sonner';
 import brandLogo from '@/assets/logoweb.png';
+import { usePublicWebsiteConfig } from '@/hooks/useWebsiteConfig';
 
 import { MegaMenuColumn } from './MegaMenuColumn';
 import { NavUserDropdown } from './NavUserDropdown';
@@ -45,6 +46,8 @@ export const Navbar = () => {
   const wishlist = useAppSelector((state) => state.cart.wishlist);
   const { user, isAuthenticated } = useAppSelector((state) => state.auth);
   const { data: categories = [], isLoading: isCategoriesLoading } = usePublicCourseCategories();
+  const { data: websiteConfig } = usePublicWebsiteConfig();
+  const publicLogo = websiteConfig?.logoUrl || brandLogo;
   const showAuthenticatedUI = isAuthenticated && !!user;
   const resolvedUser = user;
 
@@ -314,7 +317,7 @@ export const Navbar = () => {
           {/* CENTER: Logo */}
           <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 px-2 lg:px-4">
             <Link to="/" className="flex items-center pointer-events-auto whitespace-nowrap">
-              <img src={brandLogo} alt="SecureLearn logo" className="h-9 w-9 object-contain" />
+              <img src={publicLogo} alt="SecureLearn logo" className="h-9 w-9 object-contain" />
               <span className="hidden text-xl font-bold tracking-tight text-foreground transition-opacity hover:opacity-70 sm:inline">
                 SecureLearn
               </span>
@@ -514,7 +517,7 @@ export const Navbar = () => {
         currentTheme={currentTheme}
         onThemeChange={handleThemeToggle}
         onLogout={handleLogout}
-        logoSrc={brandLogo}
+        logoSrc={publicLogo}
       />
     </>
   );

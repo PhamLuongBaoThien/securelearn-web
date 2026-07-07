@@ -8,6 +8,7 @@ import apiClient from './apiClient';
 import type { ICourse } from './courseApi';
 import type {
   IWebsiteConfig,
+  WebsiteConfigInput,
   Banner,
   BannerInput,
   BannerReorderInput,
@@ -57,8 +58,25 @@ export const getWebsiteConfig = async (): Promise<AdminApiResponse<IWebsiteConfi
   return res.data;
 };
 
-export const updateWebsiteConfig = async (data: Partial<IWebsiteConfig>): Promise<AdminApiResponse> => {
-  const res = await apiClient.put<AdminApiResponse>(`${ADMIN}/system/config`, data);
+const toWebsiteConfigFormData = (data: WebsiteConfigInput) => {
+  const form = new FormData();
+  if (data.siteUrl !== undefined) form.append('siteUrl', data.siteUrl);
+  if (data.logoUrl !== undefined) form.append('logoUrl', data.logoUrl);
+  if (data.faviconUrl !== undefined) form.append('faviconUrl', data.faviconUrl);
+  if (data.contactEmail !== undefined) form.append('contactEmail', data.contactEmail);
+  if (data.contactPhone !== undefined) form.append('contactPhone', data.contactPhone);
+  if (data.address !== undefined) form.append('address', data.address);
+  if (data.facebookUrl !== undefined) form.append('facebookUrl', data.facebookUrl);
+  if (data.youtubeUrl !== undefined) form.append('youtubeUrl', data.youtubeUrl);
+  if (data.githubUrl !== undefined) form.append('githubUrl', data.githubUrl);
+  if (data.linkedinUrl !== undefined) form.append('linkedinUrl', data.linkedinUrl);
+  if (data.logo) form.append('logo', data.logo);
+  if (data.favicon) form.append('favicon', data.favicon);
+  return form;
+};
+
+export const updateWebsiteConfig = async (data: WebsiteConfigInput): Promise<AdminApiResponse<IWebsiteConfig>> => {
+  const res = await apiClient.put<AdminApiResponse<IWebsiteConfig>>(`${ADMIN}/system/config`, toWebsiteConfigFormData(data));
   return res.data;
 };
 
