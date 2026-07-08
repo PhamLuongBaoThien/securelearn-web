@@ -1,6 +1,6 @@
 import { Outlet, Link } from 'react-router-dom';
 import { FadeIn } from '@/components/animations/FadeIn';
-import brandLogo from '@/assets/logoweb.png';
+import { BrandLogo } from '@/components/branding/BrandLogo';
 
 export function AuthLayout() {
   return (
@@ -24,9 +24,7 @@ export function AuthLayout() {
         <Link to="/" className="relative z-10 flex flex-col items-center group cursor-pointer">
           <div className="relative flex items-center justify-center w-40 h-40 mb-8 transition-all duration-500 group-hover:scale-110  group-hover:shadow-primary/20">
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 to-transparent rounded-[2.5rem] opacity-50"></div>
-            <img 
-              src={brandLogo} 
-              alt="SecureLearn Logo" 
+            <BrandLogo alt="SecureLearn Logo"
               className="w-28 h-28 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] transition-transform duration-500 group-hover:rotate-6 group-hover:scale-105"
             />
           </div>
@@ -46,9 +44,7 @@ export function AuthLayout() {
         <div className="md:hidden flex flex-col items-center w-full max-w-md mb-8">
           <Link to="/" className="flex items-center gap-3 group">
             <div className="p-2 bg-primary/10 rounded-xl">
-              <img 
-                src={brandLogo} 
-                alt="SecureLearn Logo" 
+              <BrandLogo alt="SecureLearn Logo"
                 className="w-8 h-8 object-contain transition-transform duration-300 group-hover:scale-110"
               />
             </div>

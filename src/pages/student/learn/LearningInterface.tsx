@@ -26,7 +26,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { StreakGoalWidget } from '@/components/student/StreakGoalWidget';
 import type { ILesson } from '@/services/courseApi';
 import type { LessonProgressSummary } from '@/services/progressApi';
-import logoWeb from '@/assets/logoweb.png';
+import { BrandLogo } from '@/components/branding/BrandLogo';
 import { CurriculumSidebar } from './CurriculumSidebar';
 import { VideoPlayer } from './VideoPlayer';
 import { InteractiveTabs, type LearningTabId } from './InteractiveTabs';
@@ -293,7 +293,7 @@ export function LearningInterface() {
           className="h-9 gap-2 px-2 text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
-          <img src={logoWeb} alt="SecureLearn" className="h-8 w-auto object-contain" />
+          <BrandLogo alt="SecureLearn" className="h-8 w-auto object-contain" />
         </Button>
         <div className="h-5 w-px bg-zinc-200 dark:bg-zinc-700" />
         <div className="min-w-0 flex-1">
@@ -485,5 +485,3 @@ export function LearningInterface() {
     </div>
   );
 }
-
-

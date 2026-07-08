@@ -1,4 +1,4 @@
-﻿import brandLogo from '@/assets/logoweb.png';
+import { BrandLogo } from '@/components/branding/BrandLogo';
 
 interface AuthLoadingScreenProps {
   message?: string;
@@ -35,8 +35,7 @@ export function AuthLoadingScreen({
                 : 'border-border bg-card shadow-primary/10'
             }`}
           >
-            <img
-              src={brandLogo}
+            <BrandLogo
               alt=""
               className="h-10 w-10 object-contain"
               aria-hidden="true"

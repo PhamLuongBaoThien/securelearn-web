@@ -16,7 +16,6 @@ import {
 import { toast } from 'sonner';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
-import sidebarLogo from '@/assets/logoweb.png';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { Sidebar } from './Sidebar';
 import type { SidebarEntry } from './Sidebar';
@@ -108,7 +107,6 @@ export const InstructorLayout: React.FC = () => {
         theme={theme}
         onThemeChange={handleThemeChange}
         onLogout={handleLogout}
-        logoSrc={sidebarLogo}
       />
 
       {/* Main Content */}
@@ -141,6 +139,3 @@ export const InstructorLayout: React.FC = () => {
     </div>
   );
 };
-
-
-

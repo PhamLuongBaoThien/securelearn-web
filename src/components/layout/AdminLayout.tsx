@@ -26,7 +26,6 @@ import {
   TicketPercent,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import sidebarLogo from '@/assets/logoweb.png';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useInboxUnread } from '@/hooks/useInboxUnread';
@@ -169,7 +168,6 @@ export const AdminLayout: React.FC = () => {
         theme={theme}
         onThemeChange={handleThemeChange}
         onLogout={handleLogout}
-        logoSrc={sidebarLogo}
       />
 
       {/* Main Content */}

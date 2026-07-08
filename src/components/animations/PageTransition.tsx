@@ -5,7 +5,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useBlocker } from 'react-router-dom';
-import logoSrc from '@/assets/logoweb.png';
+import { useBrandLogoSrc } from '@/components/branding/useBrandLogoSrc';
 
 // ── Context ──────────────────────────────────────────────
 interface PageTransitionContextType {
@@ -25,6 +25,7 @@ const OPEN_DURATION = 0.5;    // thời gian 2 cửa mở ra
 
 // ── Provider + Overlay ───────────────────────────────────
 export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const logoSrc = useBrandLogoSrc();
   const navigate = useNavigate();
   const [phase, setPhase] = useState<'closing' | 'holding' | 'opening' | 'idle'>('idle');
   

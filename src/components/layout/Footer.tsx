@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Facebook, Github, Linkedin, Mail, MapPin, Phone, Youtube } from 'lucide-react';
-import logo from '../../assets/logoweb.png';
 import { usePublicWebsiteConfig, WEBSITE_CONFIG_FALLBACK } from '@/hooks/useWebsiteConfig';
+import { BrandLogo } from '@/components/branding/BrandLogo';
 
 const socialClass = 'p-2.5 bg-zinc-900 rounded-full hover:bg-primary hover:text-primary-foreground transition-colors border border-zinc-800 hover:border-primary';
 const safeExternal = (url?: string) => url && url.startsWith('https://') ? url : undefined;
@@ -9,7 +9,6 @@ const safeExternal = (url?: string) => url && url.startsWith('https://') ? url :
 export const Footer = () => {
   const { data } = usePublicWebsiteConfig();
   const config = data || WEBSITE_CONFIG_FALLBACK;
-  const logoSrc = config.logoUrl || logo;
   const phone = config.contactPhone || WEBSITE_CONFIG_FALLBACK.contactPhone;
   const email = config.contactEmail || WEBSITE_CONFIG_FALLBACK.contactEmail;
   const address = config.address;
@@ -24,7 +23,7 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-12 mb-16">
           <div className="lg:col-span-2 flex flex-col items-center gap-6">
              <Link to="/" className="inline-block">
-               <img src={logoSrc} alt="SecureLearn Logo" className="h-24 w-auto object-contain" />
+               <BrandLogo className="h-24 w-auto object-contain" />
              </Link>
              <div className="flex items-center gap-4 mt-2">
                <a href={facebookUrl || '#'} target={facebookUrl ? '_blank' : undefined} rel={facebookUrl ? 'noopener noreferrer' : undefined} aria-label="Facebook" className={`${socialClass} ${!facebookUrl ? 'pointer-events-none opacity-50' : ''}`}><Facebook className="h-5 w-5" /></a>

@@ -15,7 +15,6 @@ interface NavMobileDrawerProps {
   currentTheme: 'light' | 'dark';
   onThemeChange: () => void;
   onLogout?: () => void;
-  logoSrc: string;
 }
 
 export const NavMobileDrawer = ({
@@ -27,7 +26,6 @@ export const NavMobileDrawer = ({
   currentTheme,
   onThemeChange,
   onLogout,
-  logoSrc,
 }: NavMobileDrawerProps) => {
   return (
     <>
@@ -63,7 +61,6 @@ export const NavMobileDrawer = ({
             theme={currentTheme}
             onThemeChange={onThemeChange}
             onLogout={isAuthenticated ? onLogout : undefined}
-            logoSrc={logoSrc}
           />
         </div>
       </div>

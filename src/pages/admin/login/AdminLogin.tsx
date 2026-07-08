@@ -4,7 +4,7 @@ import { useAppSelector } from '@/app/hooks';
 import { useAdminLogin } from '@/hooks/useAdminAuth';
 import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import brandLogo from '@/assets/logoweb.png';
+import { BrandLogo } from '@/components/branding/BrandLogo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -78,7 +78,7 @@ export const AdminLogin: React.FC = () => {
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl mb-6 shadow-xl dark:shadow-2xl transition-colors">
-            <img src={brandLogo} alt="SecureLearn Admin" className="w-10 h-10 object-contain drop-shadow-md" />
+            <BrandLogo alt="SecureLearn Admin" className="w-10 h-10 object-contain drop-shadow-md" />
           </div>
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2 tracking-tight transition-colors">Cổng Quản Trị Hệ Thống</h1>
           <p className="text-zinc-500 dark:text-zinc-400 transition-colors">Chỉ dành cho nhân sự được cấp phép</p>

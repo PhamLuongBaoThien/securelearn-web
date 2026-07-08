@@ -13,6 +13,7 @@ import {
   Monitor,
 } from 'lucide-react';
 import { sidebarSubMenuVariants, sidebarTextVariants } from '@/components/animations/sidebar';
+import { BrandLogo } from '@/components/branding/BrandLogo';
 
 export interface MenuItem {
   name: string;
@@ -56,8 +57,6 @@ export interface SidebarProps {
   
   // Actions
   onLogout?: () => void;
-
-  logoSrc: string;
 
   // Custom animations configuration
   subMenuVariants?: Variants;
@@ -312,7 +311,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   theme,
   onThemeChange,
   onLogout,
-  logoSrc,
   subMenuVariants = sidebarSubMenuVariants,
   textVariants = sidebarTextVariants,
 }) => {
@@ -348,7 +346,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className={`flex items-center gap-3 text-primary overflow-hidden transition-[width,opacity] duration-200 ease-out ${collapsed ? 'opacity-0 w-0' : 'w-[calc(100%-3.5rem)] opacity-100'}`}
           >
             <div className="bg-primary/10 p-2 rounded-xl shrink-0">
-              <img src={logoSrc} alt="SecureLearn logo" className="w-6 h-6 object-contain" />
+              <BrandLogo className="w-6 h-6 object-contain" />
             </div>
             <div className="min-w-0">
               <h1 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white whitespace-nowrap">Secure Learn</h1>
