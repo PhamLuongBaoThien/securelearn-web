@@ -14,7 +14,9 @@ type QueuedRequest = {
 };
 type ApiErrorBody = { message?: string };
 
-const API_BASE_URL = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.DEV
+  ? ''
+  : (window.__SECURELEARN_CONFIG__?.apiBaseUrl ?? import.meta.env.VITE_API_BASE_URL ?? '');
 const SESSION_EXPIRED_EVENT = 'auth:session-expired';
 const SESSION_EXPIRED_MESSAGE = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
 const ACCOUNT_LOCKED_MESSAGE = 'Tài khoản đã bị khóa';
