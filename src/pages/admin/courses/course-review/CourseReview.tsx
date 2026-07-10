@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
   Search,
@@ -22,6 +22,7 @@ import {
   Video,
   HelpCircle,
   Paperclip,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
@@ -41,6 +42,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useDebounce } from "@/hooks/useDebounce";
 import { usePublicCourseCategories } from "@/hooks/usePublicCourseCategories";
 import { useCreateAdminCategory } from "@/hooks/useAdminCategories";
 import type {
@@ -57,6 +66,67 @@ import {
   useSubscriptionCourseReviewDetail,
   useSubscriptionCourseReviews,
 } from "@/hooks/useAdminCourseReview";
+
+const cardClass = "rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900";
+
+function FilterDropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  const selected = options.find((option) => option.value === value)?.label ?? label;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 w-full justify-between rounded-lg border-zinc-200 bg-zinc-50 px-3 text-sm font-medium text-zinc-700 shadow-none hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          <span className="truncate">{selected}</span>
+          <ChevronDown className="h-4 w-4 text-zinc-400 shrink-0" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56 max-h-60 overflow-y-auto">
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          {options.map((option) => (
+            <DropdownMenuRadioItem key={option.value || "all"} value={option.value} className="cursor-pointer">
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const subscriptionStatusOptions = [
+  { value: "PENDING", label: "Chờ duyệt" },
+  { value: "APPROVED", label: "Đang trong gói" },
+  { value: "REJECTED", label: "Đã từ chối" },
+  { value: "REMOVED", label: "Đã rút khỏi gói" },
+];
+
+const publishStatusOptions = [
+  { value: "PENDING", label: "Chờ duyệt" },
+  { value: "PUBLISHED", label: "Đã xuất bản" },
+  { value: "REJECTED", label: "Cần chỉnh sửa" },
+  { value: "ARCHIVED", label: "Lưu trữ" },
+];
+
+const sortOptions = [
+  { value: "submitted_desc", label: "Gửi mới nhất" },
+  { value: "submitted_asc", label: "Gửi cũ nhất" },
+  { value: "title_asc", label: "Tên A → Z" },
+  { value: "title_desc", label: "Tên Z → A" },
+];
 
 type CategoryOption = {
   value: string;
@@ -936,9 +1006,23 @@ const SubscriptionCourseReviewPage: React.FC<{
     action: "REJECT" | "REMOVE";
   } | null>(null);
   const [reason, setReason] = useState("");
-  const reviewQuery = useSubscriptionCourseReviews(status, search, sortVal);
+  const debouncedSearch = useDebounce(search.trim(), 300);
+  const reviewQuery = useSubscriptionCourseReviews(status, debouncedSearch, sortVal);
   const reviewMutation = useReviewCourseSubscription();
   const courses = reviewQuery.data?.courses || [];
+
+  const hasActiveFilters = React.useMemo(() => {
+    return Boolean(search.trim() || status !== "PENDING" || sortVal !== "submitted_desc");
+  }, [search, status, sortVal]);
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatus("PENDING");
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("sort");
+    nextParams.delete("page");
+    setSearchParams(nextParams, { replace: true });
+  };
 
   const submitReasonAction = () => {
     if (!reasonAction || !reason.trim()) {
@@ -1025,43 +1109,54 @@ const SubscriptionCourseReviewPage: React.FC<{
 
       <ReviewModeTabs mode="SUBSCRIPTION" onChange={onChangeMode} />
 
-      <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-2 flex-1 min-w-48 px-3 py-2 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
-          <Search className="h-4 w-4 shrink-0 text-zinc-400" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Tìm khóa học hoặc giảng viên..."
-            className="bg-transparent text-sm flex-1 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
-          />
-        </div>
-        <div className="w-full sm:w-48">
-          <Select aria-label="Sắp xếp" value={sortVal} onChange={(event) => {
-            const nextParams = new URLSearchParams(searchParams);
-            if (event.target.value === "submitted_desc") nextParams.delete("sort");
-            else nextParams.set("sort", event.target.value);
-            nextParams.delete("page");
-            setSearchParams(nextParams, { replace: true });
-          }}>
-            <option value="submitted_desc">Gửi mới nhất</option>
-            <option value="submitted_asc">Gửi cũ nhất</option>
-            <option value="title_asc">Tên A → Z</option>
-            <option value="title_desc">Tên Z → A</option>
-          </Select>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {(["PENDING", "APPROVED", "REJECTED", "REMOVED"] as const).map(
-            (item) => (
-              <Button
-                key={item}
-                onClick={() => setStatus(item)}
-                variant="outline"
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${status === item ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-primary/30"}`}
-              >
-                {subscriptionStatusConfig[item].label}
-              </Button>
-            ),
+      <div className={`${cardClass} p-4 space-y-3`}>
+        {/* Search */}
+        <div className="flex items-center gap-2 w-full">
+          <div className="flex items-center gap-2 flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+            <Search className="h-4 w-4 shrink-0 text-zinc-400" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Tìm khóa học hoặc giảng viên..."
+              className="border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
+            />
+          </div>
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={clearFilters}
+              className="h-10 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 gap-1.5 rounded-lg border-red-200/50 dark:border-red-900/50 px-3 transition-colors shrink-0"
+            >
+              <X className="h-3.5 w-3.5" />
+              Xóa bộ lọc
+            </Button>
           )}
+        </div>
+
+        {/* Filters */}
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+          <Filter className="h-4 w-4 text-zinc-400 shrink-0 hidden sm:block" />
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 flex-1">
+            <FilterDropdown
+              label="Tất cả trạng thái"
+              value={status}
+              options={subscriptionStatusOptions}
+              onChange={(val) => setStatus(val as any)}
+            />
+            <FilterDropdown
+              label="Sắp xếp khóa học"
+              value={sortVal}
+              options={sortOptions}
+              onChange={(val) => {
+                const nextParams = new URLSearchParams(searchParams);
+                if (val === "submitted_desc") nextParams.delete("sort");
+                else nextParams.set("sort", val);
+                nextParams.delete("page");
+                setSearchParams(nextParams, { replace: true });
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -1089,10 +1184,10 @@ const SubscriptionCourseReviewPage: React.FC<{
             const isExpanded = expandedId === course._id;
             const config =
               subscriptionStatusConfig[
-                course.subscriptionStatus as Exclude<
-                  SubscriptionCatalogStatus,
-                  "NOT_OPTED_IN"
-                >
+              course.subscriptionStatus as Exclude<
+                SubscriptionCatalogStatus,
+                "NOT_OPTED_IN"
+              >
               ];
             return (
               <div
@@ -1204,49 +1299,49 @@ const SubscriptionCourseReviewPage: React.FC<{
 
                 {(course.subscriptionStatus === "PENDING" ||
                   course.subscriptionStatus === "APPROVED") && (
-                  <div className="px-5 pb-5 flex gap-3">
-                    {course.subscriptionStatus === "PENDING" && (
-                      <>
-                        <Button
-                          onClick={() =>
-                            reviewMutation.mutate({
-                              courseId: course._id,
-                              action: "APPROVE",
-                            })
-                          }
-                          disabled={reviewMutation.isPending}
-                          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20"
-                        >
-                          <CheckCircle className="w-4 h-4" /> Phê duyệt
-                        </Button>
+                    <div className="px-5 pb-5 flex gap-3">
+                      {course.subscriptionStatus === "PENDING" && (
+                        <>
+                          <Button
+                            onClick={() =>
+                              reviewMutation.mutate({
+                                courseId: course._id,
+                                action: "APPROVE",
+                              })
+                            }
+                            disabled={reviewMutation.isPending}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20"
+                          >
+                            <CheckCircle className="w-4 h-4" /> Phê duyệt
+                          </Button>
+                          <Button
+                            onClick={() =>
+                              setReasonAction({
+                                courseId: course._id,
+                                action: "REJECT",
+                              })
+                            }
+                            className="flex items-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors"
+                          >
+                            <XCircle className="w-4 h-4" /> Từ chối
+                          </Button>
+                        </>
+                      )}
+                      {course.subscriptionStatus === "APPROVED" && (
                         <Button
                           onClick={() =>
                             setReasonAction({
                               courseId: course._id,
-                              action: "REJECT",
+                              action: "REMOVE",
                             })
                           }
                           className="flex items-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors"
                         >
-                          <XCircle className="w-4 h-4" /> Từ chối
+                          <XCircle className="w-4 h-4" /> Rút khỏi gói
                         </Button>
-                      </>
-                    )}
-                    {course.subscriptionStatus === "APPROVED" && (
-                      <Button
-                        onClick={() =>
-                          setReasonAction({
-                            courseId: course._id,
-                            action: "REMOVE",
-                          })
-                        }
-                        className="flex items-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition-colors"
-                      >
-                        <XCircle className="w-4 h-4" /> Rút khỏi gói
-                      </Button>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
               </div>
             );
           })}
@@ -1282,12 +1377,27 @@ export const CourseReview: React.FC = () => {
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
 
+  const debouncedSearch = useDebounce(search.trim(), 300);
+
   const reviewQuery = usePublishedCourseReviews(
     statusFilter,
-    search,
+    debouncedSearch,
     sortVal,
     reviewMode === "PUBLISH",
   );
+
+  const hasActiveFilters = React.useMemo(() => {
+    return Boolean(search.trim() || statusFilter !== "PENDING" || sortVal !== "submitted_desc");
+  }, [search, statusFilter, sortVal]);
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("PENDING");
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("sort");
+    nextParams.delete("page");
+    setSearchParams(nextParams, { replace: true });
+  };
   const approveMutation = useApprovePublishedCourse();
   const rejectMutation = useRejectPublishedCourse();
 
@@ -1383,43 +1493,54 @@ export const CourseReview: React.FC = () => {
 
       <ReviewModeTabs mode="PUBLISH" onChange={setReviewMode} />
 
-      <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-2 flex-1 min-w-48 px-3 py-2 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
-          <Search className="w-4 h-4 text-zinc-400 shrink-0" />
-          <Input
-            className="bg-transparent text-sm flex-1 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
-            placeholder="Tìm khóa học, giảng viên..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div className="w-full sm:w-48">
-          <Select aria-label="Sắp xếp" value={sortVal} onChange={(event) => {
-            const nextParams = new URLSearchParams(searchParams);
-            if (event.target.value === "submitted_desc") nextParams.delete("sort");
-            else nextParams.set("sort", event.target.value);
-            nextParams.delete("page");
-            setSearchParams(nextParams, { replace: true });
-          }}>
-            <option value="submitted_desc">Gửi mới nhất</option>
-            <option value="submitted_asc">Gửi cũ nhất</option>
-            <option value="title_asc">Tên A → Z</option>
-            <option value="title_desc">Tên Z → A</option>
-          </Select>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(["PENDING", "PUBLISHED", "REJECTED", "ARCHIVED"] as const).map(
-            (s) => (
-              <Button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                variant="outline"
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${statusFilter === s ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-primary/30"}`}
-              >
-                {statusConfig[s as CourseStatus]?.label || s}
-              </Button>
-            ),
+      <div className={`${cardClass} p-4 space-y-3`}>
+        {/* Search */}
+        <div className="flex items-center gap-2 w-full">
+          <div className="flex items-center gap-2 flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+            <Search className="h-4 w-4 shrink-0 text-zinc-400" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Tìm khóa học, giảng viên..."
+              className="border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
+            />
+          </div>
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={clearFilters}
+              className="h-10 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 gap-1.5 rounded-lg border-red-200/50 dark:border-red-900/50 px-3 transition-colors shrink-0"
+            >
+              <X className="h-3.5 w-3.5" />
+              Xóa bộ lọc
+            </Button>
           )}
+        </div>
+
+        {/* Filters */}
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+          <Filter className="h-4 w-4 text-zinc-400 shrink-0 hidden sm:block" />
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 flex-1">
+            <FilterDropdown
+              label="Tất cả trạng thái"
+              value={statusFilter}
+              options={publishStatusOptions}
+              onChange={(val) => setStatusFilter(val)}
+            />
+            <FilterDropdown
+              label="Sắp xếp khóa học"
+              value={sortVal}
+              options={sortOptions}
+              onChange={(val) => {
+                const nextParams = new URLSearchParams(searchParams);
+                if (val === "submitted_desc") nextParams.delete("sort");
+                else nextParams.set("sort", val);
+                nextParams.delete("page");
+                setSearchParams(nextParams, { replace: true });
+              }}
+            />
+          </div>
         </div>
       </div>
 
