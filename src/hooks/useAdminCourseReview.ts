@@ -15,6 +15,7 @@ import {
   rejectCourse,
   reviewCourseSubscription,
   multiReviewCourseSubscription,
+  multiReviewPublishedCourses,
 } from '@/services/adminApi';
 import type { SubscriptionCatalogStatus } from '@/types/admin.types';
 
@@ -109,6 +110,32 @@ export function useRejectPublishedCourse() {
   });
 }
 
+export function useMultiReviewPublishedCourses() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      ids,
+      action,
+      reason,
+    }: {
+      ids: string[];
+      action: 'APPROVE' | 'REJECT';
+      reason?: string;
+    }) => multiReviewPublishedCourses(ids, action, reason),
+    onSuccess: async (response, variables) => {
+      if (response.status === 'ERR') throw new Error(response.message);
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'courses', 'review'] });
+      const result = response.data;
+      const actionLabel = variables.action === 'APPROVE' ? 'phê duyệt' : 'gửi yêu cầu chỉnh sửa';
+      if (result?.failed) {
+        toast.warning(`Đã ${actionLabel} ${result.success}/${result.total} khóa học. ${result.failed} khóa học chưa xử lý được.`);
+      } else {
+        toast.success(response.message || `Đã ${actionLabel} các khóa học được chọn.`);
+      }
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể kiểm duyệt hàng loạt.'),
+  });
+}
 export function useReviewCourseSubscription() {
   const queryClient = useQueryClient();
   return useMutation({

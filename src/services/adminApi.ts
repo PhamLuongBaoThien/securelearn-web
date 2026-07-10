@@ -492,6 +492,22 @@ export const multiDeleteStaff = async (ids: string[]): Promise<AdminApiResponse>
   return res.data;
 };
 
+export interface MultiReviewCoursesResult {
+  total: number;
+  success: number;
+  failed: number;
+  successIds: string[];
+  failures: Array<{ id: string; message: string }>;
+}
+
+export const multiReviewPublishedCourses = async (
+  ids: string[],
+  action: 'APPROVE' | 'REJECT',
+  reason?: string
+): Promise<AdminApiResponse<MultiReviewCoursesResult>> => {
+  const res = await apiClient.patch<AdminApiResponse<MultiReviewCoursesResult>>(`${ADMIN}/courses/review/multi`, { ids, action, reason });
+  return res.data;
+};
 export const multiReviewCourseSubscription = async (
   ids: string[],
   action: 'APPROVE' | 'REJECT' | 'REMOVE',

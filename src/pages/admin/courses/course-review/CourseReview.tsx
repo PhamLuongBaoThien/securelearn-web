@@ -59,6 +59,8 @@ import type {
 } from "@/services/courseApi";
 import {
   useApprovePublishedCourse,
+  useMultiReviewCourseSubscription,
+  useMultiReviewPublishedCourses,
   usePublishedCourseReviewDetail,
   usePublishedCourseReviews,
   useRejectPublishedCourse,
@@ -107,6 +109,28 @@ function FilterDropdown({
   );
 }
 
+function SelectCheckbox({
+  checked,
+  onChange,
+  disabled = false,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  label: string;
+}) {
+  return (
+    <input
+      type="checkbox"
+      aria-label={label}
+      checked={checked}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.checked)}
+      className="h-4 w-4 shrink-0 rounded border-zinc-300 text-primary accent-primary disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700"
+    />
+  );
+}
 const subscriptionStatusOptions = [
   { value: "PENDING", label: "Chờ duyệt" },
   { value: "APPROVED", label: "Đang trong gói" },
@@ -1001,23 +1025,60 @@ const SubscriptionCourseReviewPage: React.FC<{
     useState<Exclude<SubscriptionCatalogStatus, "NOT_OPTED_IN">>("PENDING");
   const [search, setSearch] = useState(initialSearch);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [reasonAction, setReasonAction] = useState<{
-    courseId: string;
+    courseIds: string[];
     action: "REJECT" | "REMOVE";
   } | null>(null);
   const [reason, setReason] = useState("");
   const debouncedSearch = useDebounce(search.trim(), 300);
   const reviewQuery = useSubscriptionCourseReviews(status, debouncedSearch, sortVal);
   const reviewMutation = useReviewCourseSubscription();
-  const courses = reviewQuery.data?.courses || [];
+  const multiReviewMutation = useMultiReviewCourseSubscription();
+  const courses = React.useMemo(() => reviewQuery.data?.courses || [], [reviewQuery.data?.courses]);
+  const selectableIds = React.useMemo(
+    () => courses
+      .filter((course) => course.subscriptionStatus === "PENDING" || course.subscriptionStatus === "APPROVED")
+      .map((course) => course._id),
+    [courses],
+  );
+  const selectedSet = React.useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedPendingIds = React.useMemo(
+    () => courses
+      .filter((course) => selectedSet.has(course._id) && course.subscriptionStatus === "PENDING")
+      .map((course) => course._id),
+    [courses, selectedSet],
+  );
+  const selectedApprovedIds = React.useMemo(
+    () => courses
+      .filter((course) => selectedSet.has(course._id) && course.subscriptionStatus === "APPROVED")
+      .map((course) => course._id),
+    [courses, selectedSet],
+  );
+  const allSelectableSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedSet.has(id));
 
   const hasActiveFilters = React.useMemo(() => {
     return Boolean(search.trim() || status !== "PENDING" || sortVal !== "submitted_desc");
   }, [search, status, sortVal]);
 
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => selectableIds.includes(id)));
+  }, [selectableIds]);
+
+  const toggleSelected = (courseId: string, checked: boolean) => {
+    setSelectedIds((current) => checked
+      ? Array.from(new Set([...current, courseId]))
+      : current.filter((id) => id !== courseId),
+    );
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? selectableIds : []);
+  };
   const clearFilters = () => {
     setSearch("");
     setStatus("PENDING");
+    setSelectedIds([]);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("sort");
     nextParams.delete("page");
@@ -1029,14 +1090,33 @@ const SubscriptionCourseReviewPage: React.FC<{
       toast.error("Vui lòng nhập lý do để giảng viên biết cần xử lý gì.");
       return;
     }
-    reviewMutation.mutate(
-      { ...reasonAction, reason: reason.trim() },
-      {
-        onSuccess: () => {
-          setReasonAction(null);
-          setReason("");
-        },
-      },
+    const payload = {
+      ids: reasonAction.courseIds,
+      action: reasonAction.action,
+      reason: reason.trim(),
+    };
+    const onSuccess = () => {
+      setReasonAction(null);
+      setReason("");
+      setSelectedIds([]);
+    };
+
+    if (reasonAction.courseIds.length === 1) {
+      reviewMutation.mutate(
+        { courseId: reasonAction.courseIds[0], action: reasonAction.action, reason: reason.trim() },
+        { onSuccess },
+      );
+      return;
+    }
+
+    multiReviewMutation.mutate(payload, { onSuccess });
+  };
+
+  const handleBulkApproveSubscription = () => {
+    if (selectedPendingIds.length === 0) return;
+    multiReviewMutation.mutate(
+      { ids: selectedPendingIds, action: "APPROVE" },
+      { onSuccess: () => setSelectedIds([]) },
     );
   };
 
@@ -1075,7 +1155,7 @@ const SubscriptionCourseReviewPage: React.FC<{
             </Button>
             <Button
               onClick={submitReasonAction}
-              disabled={reviewMutation.isPending || !reason.trim()}
+              disabled={reviewMutation.isPending || multiReviewMutation.isPending || !reason.trim()}
               className="bg-red-500 text-white hover:bg-red-600"
             >
               Xác nhận
@@ -1160,13 +1240,43 @@ const SubscriptionCourseReviewPage: React.FC<{
         </div>
       </div>
 
-      <div className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
-        <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-          <Filter className="h-4 w-4" />
-          {(reviewQuery.data?.total ?? courses.length).toLocaleString('vi-VN')} kết quả
+      <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+          <span className="flex items-center gap-2">
+            <Filter className="h-4 w-4" />
+            {(reviewQuery.data?.total ?? courses.length).toLocaleString('vi-VN')} kết quả
+          </span>
+          <label className="flex items-center gap-2 font-medium text-zinc-600 dark:text-zinc-300">
+            <SelectCheckbox
+              checked={allSelectableSelected}
+              disabled={selectableIds.length === 0}
+              onChange={toggleSelectAll}
+              label="Chọn tất cả khóa học có thể thao tác"
+            />
+            Chọn tất cả
+          </label>
+          {selectedIds.length > 0 && <span>{selectedIds.length} đã chọn</span>}
         </div>
-        <div className="h-4 w-4">
-          {reviewQuery.isFetching && !reviewQuery.isLoading && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+        <div className="flex flex-wrap items-center gap-2">
+          {selectedPendingIds.length > 0 && (
+            <>
+              <Button size="sm" onClick={handleBulkApproveSubscription} disabled={multiReviewMutation.isPending} className="gap-2 bg-emerald-500 text-white hover:bg-emerald-600">
+                {multiReviewMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                Duyệt {selectedPendingIds.length}
+              </Button>
+              <Button size="sm" onClick={() => setReasonAction({ courseIds: selectedPendingIds, action: "REJECT" })} disabled={multiReviewMutation.isPending} className="gap-2 bg-red-500 text-white hover:bg-red-600">
+                <XCircle className="h-4 w-4" /> Từ chối {selectedPendingIds.length}
+              </Button>
+            </>
+          )}
+          {selectedApprovedIds.length > 0 && (
+            <Button size="sm" onClick={() => setReasonAction({ courseIds: selectedApprovedIds, action: "REMOVE" })} disabled={multiReviewMutation.isPending} className="gap-2 bg-red-500 text-white hover:bg-red-600">
+              <XCircle className="h-4 w-4" /> Rút {selectedApprovedIds.length}
+            </Button>
+          )}
+          <div className="h-4 w-4">
+            {reviewQuery.isFetching && !reviewQuery.isLoading && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+          </div>
         </div>
       </div>
 
@@ -1182,6 +1292,8 @@ const SubscriptionCourseReviewPage: React.FC<{
         <div className={`space-y-4 transition-opacity duration-150 ${reviewQuery.isFetching ? "opacity-70" : "opacity-100"}`}>
           {courses.map((course: ISubscriptionCourseReview) => {
             const isExpanded = expandedId === course._id;
+            const isSelectable = course.subscriptionStatus === "PENDING" || course.subscriptionStatus === "APPROVED";
+            const isSelected = selectedSet.has(course._id);
             const config =
               subscriptionStatusConfig[
               course.subscriptionStatus as Exclude<
@@ -1195,6 +1307,14 @@ const SubscriptionCourseReviewPage: React.FC<{
                 className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="p-5 flex gap-4">
+                  <div className="pt-1">
+                    <SelectCheckbox
+                      checked={isSelected}
+                      disabled={!isSelectable}
+                      onChange={(checked) => toggleSelected(course._id, checked)}
+                      label={`Chọn ${course.title}`}
+                    />
+                  </div>
                   <div className="w-28 h-20 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shrink-0 border border-zinc-200 dark:border-zinc-700">
                     {course.thumbnailUrl ? (
                       <img
@@ -1309,7 +1429,7 @@ const SubscriptionCourseReviewPage: React.FC<{
                                 action: "APPROVE",
                               })
                             }
-                            disabled={reviewMutation.isPending}
+                            disabled={reviewMutation.isPending || multiReviewMutation.isPending}
                             className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20"
                           >
                             <CheckCircle className="w-4 h-4" /> Phê duyệt
@@ -1317,7 +1437,7 @@ const SubscriptionCourseReviewPage: React.FC<{
                           <Button
                             onClick={() =>
                               setReasonAction({
-                                courseId: course._id,
+                                courseIds: [course._id],
                                 action: "REJECT",
                               })
                             }
@@ -1331,7 +1451,7 @@ const SubscriptionCourseReviewPage: React.FC<{
                         <Button
                           onClick={() =>
                             setReasonAction({
-                              courseId: course._id,
+                              courseIds: [course._id],
                               action: "REMOVE",
                             })
                           }
@@ -1373,8 +1493,10 @@ export const CourseReview: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>("PENDING");
   const [search, setSearch] = useState(initialState.search || "");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
+  const [bulkRejectIds, setBulkRejectIds] = useState<string[]>([]);
   const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(search.trim(), 300);
@@ -1393,6 +1515,7 @@ export const CourseReview: React.FC = () => {
   const clearFilters = () => {
     setSearch("");
     setStatusFilter("PENDING");
+    setSelectedIds([]);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("sort");
     nextParams.delete("page");
@@ -1400,12 +1523,47 @@ export const CourseReview: React.FC = () => {
   };
   const approveMutation = useApprovePublishedCourse();
   const rejectMutation = useRejectPublishedCourse();
+  const bulkReviewMutation = useMultiReviewPublishedCourses();
 
-  const courses = reviewQuery.data?.courses || [];
+  const courses = React.useMemo(() => reviewQuery.data?.courses || [], [reviewQuery.data?.courses]);
+  const selectableIds = React.useMemo(
+    () => courses.filter((course) => course.status === "PENDING").map((course) => course._id),
+    [courses],
+  );
+  const selectedSet = React.useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedPendingIds = React.useMemo(
+    () => courses
+      .filter((course) => selectedSet.has(course._id) && course.status === "PENDING")
+      .map((course) => course._id),
+    [courses, selectedSet],
+  );
+  const allSelectableSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedSet.has(id));
   useEffect(() => {
     const versionId = searchParams.get('versionId');
     if (versionId && courses.some(course => course._id === versionId)) setExpandedId(versionId);
   }, [courses, searchParams]);
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => selectableIds.includes(id)));
+  }, [selectableIds]);
+
+  const toggleSelected = (courseId: string, checked: boolean) => {
+    setSelectedIds((current) => checked
+      ? Array.from(new Set([...current, courseId]))
+      : current.filter((id) => id !== courseId),
+    );
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? selectableIds : []);
+  };
+
+  const handleBulkApprovePublished = () => {
+    if (selectedPendingIds.length === 0) return;
+    bulkReviewMutation.mutate(
+      { ids: selectedPendingIds, action: "APPROVE" },
+      { onSuccess: () => setSelectedIds([]) },
+    );
+  };
   const approveTarget =
     courses.find((course) => course._id === approveTargetId) || null;
   const pendingCount =
@@ -1430,21 +1588,39 @@ export const CourseReview: React.FC = () => {
         open={rejectDialogOpen}
         onOpenChange={(o) => {
           setRejectDialogOpen(o);
-          if (!o) setRejectTargetId(null);
+          if (!o) {
+            setRejectTargetId(null);
+            setBulkRejectIds([]);
+          }
         }}
-        onConfirm={(reason) =>
-          rejectTargetId &&
-          rejectMutation.mutate(
-            { courseId: rejectTargetId, reason },
-            {
-              onSuccess: () => {
-                setRejectTargetId(null);
-                setRejectDialogOpen(false);
+        onConfirm={(reason) => {
+          if (bulkRejectIds.length > 0) {
+            bulkReviewMutation.mutate(
+              { ids: bulkRejectIds, action: "REJECT", reason },
+              {
+                onSuccess: () => {
+                  setBulkRejectIds([]);
+                  setSelectedIds([]);
+                  setRejectDialogOpen(false);
+                },
               },
-            },
-          )
-        }
-        isPending={rejectMutation.isPending}
+            );
+            return;
+          }
+
+          if (rejectTargetId) {
+            rejectMutation.mutate(
+              { courseId: rejectTargetId, reason },
+              {
+                onSuccess: () => {
+                  setRejectTargetId(null);
+                  setRejectDialogOpen(false);
+                },
+              },
+            );
+          }
+        }}
+        isPending={rejectMutation.isPending || bulkReviewMutation.isPending}
       />
 
       <ApproveDialog
@@ -1544,13 +1720,38 @@ export const CourseReview: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
-        <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-          <Filter className="h-4 w-4" />
-          {(reviewQuery.data?.total ?? courses.length).toLocaleString('vi-VN')} kết quả
+      <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-500 dark:text-zinc-400">
+          <span className="flex items-center gap-2">
+            <Filter className="h-4 w-4" />
+            {(reviewQuery.data?.total ?? courses.length).toLocaleString('vi-VN')} kết quả
+          </span>
+          <label className="flex items-center gap-2 font-medium text-zinc-600 dark:text-zinc-300">
+            <SelectCheckbox
+              checked={allSelectableSelected}
+              disabled={selectableIds.length === 0}
+              onChange={toggleSelectAll}
+              label="Chọn tất cả khóa học chờ duyệt"
+            />
+            Chọn tất cả
+          </label>
+          {selectedIds.length > 0 && <span>{selectedIds.length} đã chọn</span>}
         </div>
-        <div className="h-4 w-4">
-          {reviewQuery.isFetching && !reviewQuery.isLoading && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+        <div className="flex flex-wrap items-center gap-2">
+          {selectedPendingIds.length > 0 && (
+            <>
+              <Button size="sm" onClick={handleBulkApprovePublished} disabled={bulkReviewMutation.isPending} className="gap-2 bg-emerald-500 text-white hover:bg-emerald-600">
+                {bulkReviewMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                Duyệt {selectedPendingIds.length}
+              </Button>
+              <Button size="sm" onClick={() => { setBulkRejectIds(selectedPendingIds); setRejectDialogOpen(true); }} disabled={bulkReviewMutation.isPending} className="gap-2 bg-red-500 text-white hover:bg-red-600">
+                <XCircle className="h-4 w-4" /> Yêu cầu chỉnh sửa {selectedPendingIds.length}
+              </Button>
+            </>
+          )}
+          <div className="h-4 w-4">
+            {reviewQuery.isFetching && !reviewQuery.isLoading && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+          </div>
         </div>
       </div>
 
@@ -1567,12 +1768,22 @@ export const CourseReview: React.FC = () => {
           {courses.map((course: ICourseReview) => {
             const sc = statusConfig[course.status];
             const isExpanded = expandedId === course._id;
+            const isSelectable = course.status === "PENDING";
+            const isSelected = selectedSet.has(course._id);
             return (
               <div
                 key={course._id}
                 className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="p-5 flex gap-4">
+                  <div className="pt-1">
+                    <SelectCheckbox
+                      checked={isSelected}
+                      disabled={!isSelectable}
+                      onChange={(checked) => toggleSelected(course._id, checked)}
+                      label={`Chọn ${course.title}`}
+                    />
+                  </div>
                   <div className="w-28 h-20 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 shrink-0 border border-zinc-200 dark:border-zinc-700">
                     {course.thumbnailUrl ? (
                       <img
