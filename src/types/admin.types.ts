@@ -217,6 +217,13 @@ export interface IAdminCourseListItem {
   level: CourseLevel;
   status: CourseStatus;
   subscriptionStatus: SubscriptionCatalogStatus;
+  adminWatch: {
+    isWatched: boolean;
+    watchedAt?: string | null;
+    watchedBy: string;
+    watchedByName: string;
+    watchedByEmail: string;
+  };
   price: number;
   totalLessons: number;
   totalSections: number;
@@ -234,6 +241,7 @@ export interface IAdminCourseListSummary {
   total: number;
   subscriptionApproved: number;
   subscriptionPending: number;
+  adminWatched: number;
   withDraft: number;
 }
 

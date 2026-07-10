@@ -275,6 +275,7 @@ export const getAdminCourses = async (params?: {
   categoryId?: string;
   level?: string;
   instructorId?: string;
+  adminWatched?: boolean;
   page?: number;
   limit?: number;
   sort?: string;
@@ -286,6 +287,11 @@ export const getAdminCourses = async (params?: {
   summary: IAdminCourseListSummary;
 }>> => {
   const res = await apiClient.get(`${ADMIN}/courses`, { params });
+  return res.data;
+};
+
+export const updateAdminCourseWatch = async (ids: string[], isWatched: boolean): Promise<AdminApiResponse<{ matched: number; modified: number }>> => {
+  const res = await apiClient.patch<AdminApiResponse<{ matched: number; modified: number }>>(`${ADMIN}/courses/watch`, { ids, isWatched });
   return res.data;
 };
 

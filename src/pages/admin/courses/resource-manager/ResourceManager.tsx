@@ -24,20 +24,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCategories, getLearningProgress } from '@/services/adminApi';
-import { useAdminCourses } from '@/hooks/useAdminCourses';
+import { useAdminCourses, useUpdateAdminCourseWatch } from '@/hooks/useAdminCourses';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useMultiReviewCourseSubscription } from '@/hooks/useAdminCourseReview';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+
 import type {
   CourseLevel,
   IAdminCourseListItem,
@@ -119,6 +109,12 @@ const subscriptionOptions = [
   { value: 'APPROVED', label: 'Trong gói' },
   { value: 'REJECTED', label: 'Từ chối' },
   { value: 'REMOVED', label: 'Đã rút' },
+];
+
+const watchOptions = [
+  { value: '', label: 'Tất cả theo dõi' },
+  { value: 'watched', label: 'Đang theo dõi' },
+  { value: 'unwatched', label: 'Không theo dõi' },
 ];
 
 const levelOptions = [
@@ -360,6 +356,11 @@ const CourseDetailDialog: React.FC<{
 }> = ({ course, open, onOpenChange }) => {
   const categoriesQuery = useQuery({
     queryKey: ['admin', 'categories', 'course-list-filter'],
+    queryFn: async () => {
+      const response = await getCategories();
+      if (response.status === 'ERR' || !response.data) throw new Error(response.message || 'Không tải được danh mục.');
+      return response.data;
+    },
     enabled: open, // chỉ chạy khi popup mở
   });
   const categories = (categoriesQuery.data || []) as ICategory[];
@@ -664,6 +665,7 @@ export const ResourceManager: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchVal = searchParams.get('search') || '';
   const subscriptionStatus = searchParams.get('status') || '';
+  const watchFilter = searchParams.get('watch') || '';
   const level = searchParams.get('level') || '';
   const categoryId = searchParams.get('category') || '';
   const sort = searchParams.get('sort') || 'updated';
@@ -677,12 +679,13 @@ export const ResourceManager: React.FC = () => {
   const params = useMemo(() => ({
     search: debouncedSearch || undefined,
     subscriptionStatus: subscriptionStatus || undefined,
+    adminWatched: watchFilter === 'watched' ? true : watchFilter === 'unwatched' ? false : undefined,
     categoryId: categoryId || undefined,
     level: level || undefined,
     sort,
     page,
     limit: PAGE_SIZE,
-  }), [categoryId, level, page, debouncedSearch, sort, subscriptionStatus]);
+  }), [categoryId, level, page, debouncedSearch, sort, subscriptionStatus, watchFilter]);
 
   const coursesQuery = useAdminCourses(params);
   const categoriesQuery = useQuery({
@@ -695,12 +698,11 @@ export const ResourceManager: React.FC = () => {
   });
   const data = coursesQuery.data;
   const courses = data?.courses || [];
-  const summary = data?.summary || { total: 0, subscriptionApproved: 0, subscriptionPending: 0, withDraft: 0 };
+  const summary = data?.summary || { total: 0, subscriptionApproved: 0, subscriptionPending: 0, adminWatched: 0, withDraft: 0 };
   const totalPages = Math.max(1, data?.totalPages || 1);
+  const updateWatchMutation = useUpdateAdminCourseWatch();
 
   const visiblePages = useMemo(() => getVisiblePages(page, totalPages), [page, totalPages]);
-
-  const multiReviewMutation = useMultiReviewCourseSubscription();
 
   // ── Multi-select ──
   const {
@@ -712,57 +714,14 @@ export const ResourceManager: React.FC = () => {
     clear,
   } = useMultiSelect();
 
-  const currentPageCourseIds = useMemo(() => courses.map((c) => c._id), [courses]);
+  const currentPageCourseIds = useMemo(() => courses.map((course) => course._id), [courses]);
+
   const isAllSelected = isAllSelectedOnPage(currentPageCourseIds);
   const isSomeSelected = isSomeSelectedOnPage(currentPageCourseIds);
 
   React.useEffect(() => {
     clear();
-  }, [debouncedSearch, subscriptionStatus, level, categoryId, clear]);
-
-  const [multiReviewTargetIds, setMultiReviewTargetIds] = useState<string[] | null>(null);
-  const [multiReviewAction, setMultiReviewAction] = useState<'APPROVE' | 'REJECT' | 'REMOVE'>('APPROVE');
-  const [multiReviewReason, setMultiReviewReason] = useState('');
-
-  const handleConfirmMultiReview = () => {
-    if (!multiReviewTargetIds) return;
-    multiReviewMutation.mutate(
-      {
-        ids: multiReviewTargetIds,
-        action: multiReviewAction,
-        reason: multiReviewReason.trim() || undefined,
-      },
-      {
-        onSuccess: () => {
-          setMultiReviewTargetIds(null);
-          setMultiReviewReason('');
-          clear();
-          coursesQuery.refetch();
-        },
-      }
-    );
-  };
-
-  const handleExecuteMultiReview = (action: string) => {
-    const act = action as 'APPROVE' | 'REJECT' | 'REMOVE';
-    if (act === 'APPROVE') {
-      if (window.confirm(`Bạn có chắc chắn muốn duyệt đưa ${selectedIds.length} khóa học đã chọn vào gói thuê bao?`)) {
-        multiReviewMutation.mutate(
-          { ids: selectedIds, action: 'APPROVE' },
-          {
-            onSuccess: () => {
-              clear();
-              coursesQuery.refetch();
-            },
-          }
-        );
-      }
-    } else {
-      setMultiReviewAction(act);
-      setMultiReviewReason('');
-      setMultiReviewTargetIds(selectedIds);
-    }
-  };
+  }, [debouncedSearch, subscriptionStatus, watchFilter, level, categoryId, page, clear]);
 
   const updateFilter = (key: string) => (value: string) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -776,8 +735,8 @@ export const ResourceManager: React.FC = () => {
   };
 
   const hasActiveFilters = useMemo(() => {
-    return Boolean(searchVal.trim() || subscriptionStatus || level || categoryId || sort !== 'updated' || page > 1);
-  }, [searchVal, subscriptionStatus, level, categoryId, sort, page]);
+    return Boolean(searchVal.trim() || subscriptionStatus || watchFilter || level || categoryId || sort !== 'updated' || page > 1);
+  }, [searchVal, subscriptionStatus, watchFilter, level, categoryId, sort, page]);
 
   const clearFilters = () => {
     setSearchParams(new URLSearchParams(), { replace: true });
@@ -791,6 +750,13 @@ export const ResourceManager: React.FC = () => {
     } catch {
       toast.error('Không thể sao chép tự động.');
     }
+  };
+
+  const updateSelectedWatch = (isWatched: boolean) => {
+    updateWatchMutation.mutate(
+      { ids: selectedIds, isWatched },
+      { onSuccess: () => clear() },
+    );
   };
 
   const goToReview = (course: IAdminCourseListItem, mode: 'PUBLISH' | 'SUBSCRIPTION' = 'PUBLISH') => {
@@ -829,7 +795,7 @@ export const ResourceManager: React.FC = () => {
         </Tooltip>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <KpiCard
           label="Khóa học public"
           value={summary.total}
@@ -847,6 +813,12 @@ export const ResourceManager: React.FC = () => {
           value={summary.subscriptionPending}
           sub="Yêu cầu tham gia gói thuê bao mới"
           icon={<PackageCheck className="h-5 w-5" />}
+        />
+        <KpiCard
+          label="Đang theo dõi"
+          value={summary.adminWatched}
+          sub="Khóa học được team admin đánh dấu"
+          icon={<ListChecks className="h-5 w-5" />}
         />
         <KpiCard
           label="Có bản cập nhật"
@@ -894,7 +866,7 @@ export const ResourceManager: React.FC = () => {
         {/* Filters */}
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
           <Filter className="h-4 w-4 text-zinc-400 shrink-0 hidden sm:block" />
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 flex-1">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 flex-1">
             <CategoryFilterDropdown
               label="Tất cả danh mục"
               value={categoryId}
@@ -906,6 +878,12 @@ export const ResourceManager: React.FC = () => {
               value={subscriptionStatus}
               options={subscriptionOptions}
               onChange={updateFilter('status')}
+            />
+            <FilterDropdown
+              label="Tất cả theo dõi"
+              value={watchFilter}
+              options={watchOptions}
+              onChange={updateFilter('watch')}
             />
             <FilterDropdown
               label="Tất cả trình độ"
@@ -947,8 +925,10 @@ export const ResourceManager: React.FC = () => {
                         input.indeterminate = isSomeSelected;
                       }
                     }}
+                    disabled={currentPageCourseIds.length === 0}
+                    title="Chọn tất cả khóa học trên trang hiện tại"
                     onChange={() => toggleAllOnPage(currentPageCourseIds)}
-                    className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+                    className="h-4 w-4 cursor-pointer rounded border-zinc-300 bg-transparent text-indigo-600 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700"
                   />
                 </th>
                 {selectedIds.length > 0 ? (
@@ -960,26 +940,23 @@ export const ResourceManager: React.FC = () => {
                       <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleExecuteMultiReview('APPROVE')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 transition"
+                          onClick={() => updateSelectedWatch(true)}
+                          disabled={updateWatchMutation.isPending}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-indigo-950/30 dark:text-indigo-300"
                         >
-                          Duyệt đưa vào gói
+                          Đánh dấu theo dõi
                         </button>
                         <button
-                          onClick={() => handleExecuteMultiReview('REJECT')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 transition"
+                          onClick={() => updateSelectedWatch(false)}
+                          disabled={updateWatchMutation.isPending}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-800 dark:text-zinc-300"
                         >
-                          Từ chối đưa vào gói
-                        </button>
-                        <button
-                          onClick={() => handleExecuteMultiReview('REMOVE')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 transition"
-                        >
-                          Rút khỏi gói
+                          Bỏ theo dõi
                         </button>
                         <button
                           onClick={clear}
-                          className="px-2.5 py-1 rounded-xl text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition"
+                          disabled={updateWatchMutation.isPending}
+                          className="px-2.5 py-1 rounded-xl text-xs text-zinc-500 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:text-zinc-200 transition"
                         >
                           Hủy chọn
                         </button>
@@ -1007,28 +984,59 @@ export const ResourceManager: React.FC = () => {
                         type="checkbox"
                         checked={isRowSelected}
                         onChange={() => toggle(course._id)}
-                        className="rounded border-zinc-300 dark:border-zinc-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4 bg-transparent"
+                        className="h-4 w-4 cursor-pointer rounded border-zinc-300 bg-transparent text-indigo-600 focus:ring-indigo-500 dark:border-zinc-700"
                       />
                     </td>
                   <td className="px-4 py-3.5">
                     <div className="flex min-w-72 items-center gap-3">
-                      <div className="h-12 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                      <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
                         {course.thumbnail ? (
                           <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full items-center justify-center text-zinc-400"><BookOpen className="h-5 w-5" /></div>
                         )}
+                        {course.adminWatch?.isWatched && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm dark:bg-indigo-500 transition-transform duration-200 hover:scale-110">
+                                <Eye className="h-2.5 w-2.5" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" align="center">
+                              <p>Đang theo dõi khóa học này</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">{course.title}</p>
+                        <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100" title={course.title}>
+                          {course.title}
+                        </p>
                         <p className="truncate text-xs text-zinc-500">/{course.slug}</p>
-                        <p className="mt-1 text-[11px] font-mono text-zinc-400 select-all" title="Mã khóa học">ID: {course._id}</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                          <p className="text-[11px] font-mono text-zinc-400 select-all" title="Mã khóa học">ID: {course._id}</p>
+                          {course.adminWatch?.isWatched && (
+                            <span className="inline-flex items-center gap-1 rounded bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-100/50 dark:border-indigo-500/20">
+                              <span className="h-1.5 w-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse" />
+                              Theo dõi
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300">{course.instructorName || 'Chưa có tên'}</td>
                   <td className="px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300">{course.category?.name || 'Chưa phân loại'}</td>
-                  <td className="px-4 py-3.5"><Badge className={subscriptionConfig[course.subscriptionStatus].cls}>{subscriptionConfig[course.subscriptionStatus].label}</Badge></td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex flex-col items-start gap-1.5">
+                      <Badge className={subscriptionConfig[course.subscriptionStatus].cls}>{subscriptionConfig[course.subscriptionStatus].label}</Badge>
+                      {course.adminWatch?.isWatched && (
+                        <span className="text-[11px] text-zinc-400" title={course.adminWatch.watchedAt ? `Theo dõi lúc ${new Date(course.adminWatch.watchedAt).toLocaleString('vi-VN')}` : undefined}>
+                          Theo dõi bởi {course.adminWatch.watchedByName || course.adminWatch.watchedByEmail || 'admin'}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3.5 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{fmtMoney(course.price)}</td>
                   <td className="px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300"><span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-zinc-400" />{course.enrollmentCount.toLocaleString('vi-VN')}</span></td>
                   <td className="px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300"><span className="inline-flex items-center gap-1.5"><Star className="h-3.5 w-3.5 text-amber-500" />{course.ratingAverage.toFixed(1)} <span className="text-xs text-zinc-400">({course.ratingCount})</span></span></td>
@@ -1192,43 +1200,7 @@ export const ResourceManager: React.FC = () => {
             </PaginationContent>
           </Pagination>
         </div>
-        {/* Multi Subscription Review Reason Dialog */}
-        <AlertDialog open={multiReviewTargetIds !== null} onOpenChange={(o) => { if (!o) setMultiReviewTargetIds(null); }}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {multiReviewAction === 'REJECT' ? 'Từ chối đưa vào gói thuê bao?' : 'Rút khỏi gói thuê bao?'}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                Nhập lý do áp dụng cho {multiReviewTargetIds?.length} khóa học được chọn. Lý do này sẽ được hiển thị cho giảng viên.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                Lý do thực hiện
-              </label>
-              <textarea
-                value={multiReviewReason}
-                onChange={(event) => setMultiReviewReason(event.target.value)}
-                rows={4}
-                placeholder="Nhập lý do cụ thể..."
-                className="w-full resize-none rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-              />
-            </div>
-
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={multiReviewMutation.isPending}>Hủy</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={multiReviewMutation.isPending || !multiReviewReason.trim()}
-                onClick={handleConfirmMultiReview}
-                className="bg-red-600 text-white hover:bg-rose-700"
-              >
-                Xác nhận
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </div>
   </TooltipProvider>
