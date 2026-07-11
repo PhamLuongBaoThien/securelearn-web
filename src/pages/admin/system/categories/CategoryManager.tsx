@@ -17,7 +17,7 @@ import {
 } from '@/hooks/useAdminCategories';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
-import { flattenCategories, findSiblingContext } from './category.utils';
+import { flattenCategories, findSiblingContext, getDescendantIds } from './category.utils';
 import type { FormState } from './category.utils';
 import { CategoryFormDialog } from './CategoryFormDialog';
 import { CategoryRow } from './CategoryRow';
@@ -94,14 +94,39 @@ export const CategoryManager: React.FC = () => {
     () => flatCategories.filter((category) => selectedIds.includes(category._id)),
     [flatCategories, selectedIds]
   );
-  const selectedActiveIds = useMemo(
-    () => selectedCategories.filter((category) => category.isActive).map((category) => category._id),
+  const selectedActiveCategories = useMemo(
+    () => selectedCategories.filter((category) => category.isActive),
     [selectedCategories]
+  );
+  const selectedInactiveCategories = useMemo(
+    () => selectedCategories.filter((category) => !category.isActive),
+    [selectedCategories]
+  );
+  const selectedActiveIds = useMemo(
+    () => selectedActiveCategories.map((category) => category._id),
+    [selectedActiveCategories]
   );
   const selectedInactiveIds = useMemo(
-    () => selectedCategories.filter((category) => !category.isActive).map((category) => category._id),
-    [selectedCategories]
+    () => selectedInactiveCategories.map((category) => category._id),
+    [selectedInactiveCategories]
   );
+  const disableAffectedCategories = useMemo(() => {
+    const selectedActiveSet = new Set(selectedActiveIds);
+    const affectedIds = new Set(selectedActiveIds);
+
+    for (const category of selectedActiveCategories) {
+      for (const descendantId of getDescendantIds(category)) {
+        affectedIds.add(descendantId);
+      }
+    }
+
+    return flatCategories
+      .filter((category) => affectedIds.has(category._id) && category.isActive)
+      .map((category) => ({
+        category,
+        source: selectedActiveSet.has(category._id) ? 'selected' as const : 'cascade' as const,
+      }));
+  }, [flatCategories, selectedActiveCategories, selectedActiveIds]);
   const deletableSelectedCategories = useMemo(
     () => selectedCategories
       .filter((category) => (category.children || []).length === 0 && (category.courseCount || 0) === 0),
@@ -393,7 +418,46 @@ export const CategoryManager: React.FC = () => {
           open={multiDisableOpen}
           onOpenChange={setMultiDisableOpen}
           title="Vô hiệu hóa nhiều danh mục?"
-          description={`Bạn đang chuẩn bị vô hiệu hóa ${selectedActiveIds.length} danh mục đang hoạt động. Nếu có danh mục cha, các danh mục con cũng sẽ bị vô hiệu hóa.`}
+          description={(
+            <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
+              <p>
+                Bạn đang chuẩn bị vô hiệu hóa {selectedActiveCategories.length} danh mục đang hoạt động. Nếu có danh mục cha, các danh mục con đang hoạt động cũng sẽ bị tắt theo.
+              </p>
+              <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+                <p className="font-semibold text-amber-800 dark:text-amber-200">Sẽ vô hiệu hóa</p>
+                {disableAffectedCategories.length > 0 ? (
+                  <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto pr-1 text-amber-800 dark:text-amber-100">
+                    {disableAffectedCategories.map(({ category, source }) => (
+                      <li key={category._id} className="flex items-center justify-between gap-3 rounded-md bg-white/70 px-2 py-1 dark:bg-zinc-950/30">
+                        <span className="truncate font-medium">{category.name}</span>
+                        <span className="shrink-0 text-xs text-amber-600 dark:text-amber-200">
+                          {source === 'selected' ? 'Đã chọn' : 'Theo danh mục cha'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-amber-700 dark:text-amber-100">Không có danh mục đang hoạt động nào để vô hiệu hóa.</p>
+                )}
+              </div>
+              {selectedInactiveCategories.length > 0 && (
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900/60">
+                  <p className="font-semibold text-zinc-700 dark:text-zinc-200">Bỏ qua</p>
+                  <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto pr-1 text-zinc-500 dark:text-zinc-400">
+                    {selectedInactiveCategories.map((category) => (
+                      <li key={category._id} className="flex items-center justify-between gap-3 rounded-md bg-white px-2 py-1 dark:bg-zinc-950/30">
+                        <span className="truncate font-medium">{category.name}</span>
+                        <span className="shrink-0 text-xs">Đã tắt sẵn</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Danh mục bị vô hiệu hóa sẽ không còn được chọn cho khóa học mới; các khóa học hiện tại vẫn tiếp tục hoạt động.
+              </p>
+            </div>
+          )}
           confirmText="Vô hiệu hóa"
           isDestructive
           isPending={multiStatusMutation.isPending}
