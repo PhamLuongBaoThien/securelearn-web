@@ -29,6 +29,7 @@ interface RichTextEditorProps {
   onBlur?: () => void;
   placeholder?: string;
   minHeight?: string;
+  maxHeight?: string;
   disabled?: boolean;
 }
 
@@ -78,6 +79,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onBlur,
   placeholder = 'Nhập nội dung...',
   minHeight = '200px',
+  maxHeight,
   disabled = false,
 }) => {
   // GHI CHÚ SỬA LỖI "CÓ THAY ĐỔI CHƯA LƯU" GIẢ KHI CHUYỂN TAB:
@@ -141,7 +143,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   return (
     <div className={`border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-background focus-within:ring-2 focus-within:ring-primary/40 transition-shadow ${disabled ? 'opacity-75' : ''}`}>
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
+      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 px-2 py-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
         {/* History */}
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
@@ -256,7 +258,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       </div>
 
       {/* Editor Content */}
-      <div style={{ minHeight }}>
+      <div className={maxHeight ? 'overflow-y-auto' : undefined} style={{ minHeight, maxHeight }}>
         <EditorContent editor={editor} />
       </div>
     </div>

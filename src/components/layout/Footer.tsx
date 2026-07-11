@@ -55,8 +55,7 @@ export const Footer = () => {
           <div className="flex flex-col gap-4">
             <h4 className="text-white font-bold text-base mb-2">Hỗ trợ</h4>
             <Link to="/help" className="hover:text-white transition-colors">Trung tâm trợ giúp</Link>
-            <Link to="/terms" className="hover:text-white transition-colors">Điều khoản sử dụng</Link>
-            <Link to="/privacy" className="hover:text-white transition-colors">Chính sách bảo mật</Link>
+            <Link to="/policies" className="hover:text-white transition-colors">Chính sách & Điều khoản</Link>
             <Link to="/sitemap" className="hover:text-white transition-colors">Sơ đồ trang web</Link>
           </div>
 
@@ -73,8 +72,8 @@ export const Footer = () => {
             © {new Date().getFullYear()} SecureLearn. Được phát triển bởi sinh viên CTU.
           </div>
           <div className="flex gap-6 text-xs text-zinc-500">
-             <Link to="/terms" className="hover:text-zinc-300 transition-colors">Điều khoản</Link>
-             <Link to="/privacy" className="hover:text-zinc-300 transition-colors">Bảo mật</Link>
+             <Link to="/policies" className="hover:text-zinc-300 transition-colors">Điều khoản</Link>
+             <Link to="/policies" className="hover:text-zinc-300 transition-colors">Bảo mật</Link>
              <Link to="/cookie-settings" className="hover:text-zinc-300 transition-colors">Cài đặt Cookie</Link>
           </div>
         </div>

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, type ElementType } from 'react';
+import { useEffect, useMemo, useState, type ElementType } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -66,13 +66,12 @@ const LEVEL_COLOR: Record<string, string> = {
   INTERMEDIATE: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300',
   ADVANCED: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300',
 };
-
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: 'progress', label: 'Theo dõi tiến độ' },
   { id: 'my-courses', label: 'Khóa học của tôi' },
   { id: 'wishlist', label: 'Khóa học mong muốn' },
   { id: 'payments', label: 'Lịch sử thanh toán' },
-  { id: 'certificates', label: 'Chứng chỉ' },
+  { id: 'certificates', label: 'Chứng nhận' },
 ];
 
 const TRANSACTION_STATUS_META: Record<PaymentTransaction['status'], { label: string; cls: string }> = {
@@ -1145,8 +1144,8 @@ export function StudentDashboard() {
               >
                 <EmptyState
                   illustration={CertificatesIllustration}
-                  title="Chưa có chứng chỉ nào"
-                  description="Chứng chỉ sẽ hiển thị ở đây sau khi bạn hoàn thành toàn bộ nội dung của một khóa học."
+                  title="Chưa có chứng nhận nào"
+                  description="Chứng nhận sẽ hiển thị ở đây sau khi bạn hoàn thành toàn bộ nội dung của một khóa học."
                 />
               </motion.div>
             )}

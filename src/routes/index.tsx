@@ -29,6 +29,7 @@ import { Pricing } from '../pages/public/pricing';
 import { SubscriptionCatalog } from '../pages/public/subscription-catalog';
 import { ScrollToTop } from '../components/layout/ScrollToTop';
 import { NotFound } from '../pages/public/not-found';
+import { Policies, PolicyDetail } from '../pages/public/policies';
 
 // Auth Components
 import { OAuthCallback } from '../pages/shared/auth/oauth-callback';
@@ -48,6 +49,7 @@ import { AdminProfile } from '../pages/admin/profile';
 import { WebsiteConfig } from '../pages/admin/system/website-config';
 import { BannerManager } from '../pages/admin/system/banner-manager';
 import { CategoryManager } from '../pages/admin/system/categories';
+import { PolicyManager } from '../pages/admin/system/policy-manager';
 
 // Admin — Users & RBAC (RBAC là viết tắt của Role Based Access Control có nghĩa là quản lý vai trò và quyền)
 import { UserList } from '../pages/admin/users/user-list';
@@ -112,6 +114,8 @@ const router = createBrowserRouter([
           { path: 'pricing', element: <Pricing /> },
           { path: 'subscription-catalog', element: <SubscriptionCatalog /> },
           { path: 'users/:slug', element: <PublicUserProfile /> },
+          { path: 'policies', element: <Policies /> },
+          { path: 'policies/:slug', element: <PolicyDetail /> },
           { path: 'profile', element: <ProtectedRoute><Navigate to="/account/settings/profile" replace /></ProtectedRoute> },
           { path: 'settings', element: <ProtectedRoute><Navigate to="/account/settings/profile" replace /></ProtectedRoute> },
           { path: 'account/settings', element: <ProtectedRoute><Navigate to="/account/settings/profile" replace /></ProtectedRoute> },
@@ -204,6 +208,7 @@ const router = createBrowserRouter([
           // ===== System & CMS =====
           { path: 'system/config', element: <AdminRoleRoute requiredPermission="system:config"><WebsiteConfig /></AdminRoleRoute> },
           { path: 'system/banners', element: <AdminRoleRoute requiredPermission="system:config"><BannerManager /></AdminRoleRoute> },
+          { path: 'system/policies', element: <AdminRoleRoute requiredPermission="system:config"><PolicyManager /></AdminRoleRoute> },
           { path: 'system/categories', element: <AdminRoleRoute requiredPermission="system:config"><CategoryManager /></AdminRoleRoute> },
           // ===== Users & RBAC =====
           { path: 'users/list', element: <AdminRoleRoute requiredPermission="user:read"><UserList /></AdminRoleRoute> },
@@ -250,3 +255,4 @@ const router = createBrowserRouter([
 export function AppRouter() {
   return <RouterProvider router={router} />;
 }
+

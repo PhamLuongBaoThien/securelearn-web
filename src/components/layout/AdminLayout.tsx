@@ -24,6 +24,7 @@ import {
   Send,
   Inbox,
   TicketPercent,
+  ScrollText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -45,6 +46,7 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[], inbox
       items: [
         { name: 'Cấu hình Website', path: '/admin/system/config', icon: <Globe className="w-4 h-4 shrink-0" />, req: 'system:config' },
         { name: 'Banner & Slider', path: '/admin/system/banners', icon: <Image className="w-4 h-4 shrink-0" />, req: 'system:config' },
+        { name: 'Chính sách', path: '/admin/system/policies', icon: <ScrollText className="w-4 h-4 shrink-0" />, req: 'system:config' },
         { name: 'Danh mục', path: '/admin/system/categories', icon: <Tag className="w-4 h-4 shrink-0" />, req: 'system:config' },
       ],
     },
@@ -181,3 +183,5 @@ export const AdminLayout: React.FC = () => {
     </div>
   );
 };
+
+

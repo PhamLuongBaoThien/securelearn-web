@@ -12,6 +12,8 @@ import type {
   Banner,
   BannerInput,
   BannerReorderInput,
+  Policy,
+  PolicyInput,
   ICategory,
   MultiCategoryResult,
   IAdminUser,
@@ -118,6 +120,30 @@ export const reorderBanners = async (data: BannerReorderInput): Promise<AdminApi
 
 export const deleteBanner = async (id: string): Promise<AdminApiResponse> => {
   const res = await apiClient.delete<AdminApiResponse>(`${ADMIN}/system/banners/${id}`);
+  return res.data;
+};
+export const getPolicies = async (): Promise<AdminApiResponse<Policy[]>> => {
+  const res = await apiClient.get<AdminApiResponse<Policy[]>>(`${ADMIN}/system/policies`);
+  return res.data;
+};
+
+export const createPolicy = async (data: PolicyInput): Promise<AdminApiResponse<Policy>> => {
+  const res = await apiClient.post<AdminApiResponse<Policy>>(`${ADMIN}/system/policies`, data);
+  return res.data;
+};
+
+export const updatePolicy = async (id: string, data: PolicyInput): Promise<AdminApiResponse<Policy>> => {
+  const res = await apiClient.put<AdminApiResponse<Policy>>(`${ADMIN}/system/policies/${id}`, data);
+  return res.data;
+};
+
+export const setPolicyStatus = async (id: string, isActive: boolean): Promise<AdminApiResponse<Policy>> => {
+  const res = await apiClient.patch<AdminApiResponse<Policy>>(`${ADMIN}/system/policies/${id}/status`, { isActive });
+  return res.data;
+};
+
+export const deletePolicy = async (id: string): Promise<AdminApiResponse> => {
+  const res = await apiClient.delete<AdminApiResponse>(`${ADMIN}/system/policies/${id}`);
   return res.data;
 };
 export const getCategories = async (): Promise<AdminApiResponse<ICategory[]>> => {
@@ -529,3 +555,6 @@ export const multiReviewCourseSubscription = async (
   const res = await apiClient.patch<AdminApiResponse>(`${ADMIN}/courses/subscription-review/multi`, { ids, action, reason });
   return res.data;
 };
+
+
+

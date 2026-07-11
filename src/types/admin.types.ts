@@ -69,6 +69,24 @@ export interface BannerInput {
 export interface BannerReorderInput {
   ids: string[];
 }
+export interface Policy {
+  _id: string;
+  title: string;
+  slug: string;
+  summary: string;
+  content: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PolicyInput {
+  title: string;
+  slug?: string;
+  summary?: string;
+  content: string;
+  isActive?: boolean;
+}
 
 /** @deprecated Dùng Banner cho code mới. */
 export type IBanner = Banner;
@@ -621,6 +639,8 @@ export interface ILearningProgress {
   enrolledAt: string;
   completedAt?: string;
 }
+
+
 
 
 
