@@ -13,6 +13,7 @@ import type {
   BannerInput,
   BannerReorderInput,
   ICategory,
+  MultiCategoryResult,
   IAdminUser,
   ICourseReview,
   IAdminCourseListItem,
@@ -172,6 +173,16 @@ export const setCategoryStatus = async (id: string, isActive: boolean): Promise<
 
 export const deleteCategory = async (id: string): Promise<AdminApiResponse> => {
   const res = await apiClient.delete<{ status: 'OK' | 'ERR'; message: string }>(`/api/categories/${id}`);
+  return res.data;
+};
+
+export const multiSetCategoryStatus = async (ids: string[], isActive: boolean): Promise<AdminApiResponse<MultiCategoryResult>> => {
+  const res = await apiClient.patch<AdminApiResponse<MultiCategoryResult>>('/api/categories/admin/multi-status', { ids, isActive });
+  return res.data;
+};
+
+export const multiDeleteCategories = async (ids: string[]): Promise<AdminApiResponse<MultiCategoryResult>> => {
+  const res = await apiClient.delete<AdminApiResponse<MultiCategoryResult>>('/api/categories/admin/multi', { data: { ids } });
   return res.data;
 };
 

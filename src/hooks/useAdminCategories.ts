@@ -5,9 +5,11 @@ import {
   updateCategory,
   setCategoryStatus,
   deleteCategory,
+  multiSetCategoryStatus,
+  multiDeleteCategories,
 } from '@/services/adminApi';
 import { categoryKeys } from '@/hooks/usePublicCourseCategories';
-import type { ICategory } from '@/types/admin.types';
+import type { MultiCategoryResult, ICategory } from '@/types/admin.types';
 
 export const adminCategoryKeys = {
   all: ['admin', 'categories'] as const,
@@ -104,6 +106,42 @@ export function useDeleteAdminCategory() {
       if (response.status === 'ERR') {
         throw new Error(response.message || 'Xóa danh mục thất bại');
       }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminCategoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all });
+    },
+  });
+}
+
+export function useMultiSetAdminCategoryStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ids, isActive }: { ids: string[]; isActive: boolean }) => {
+      const response = await multiSetCategoryStatus(ids, isActive);
+      if (response.status === 'ERR' && !response.data) {
+        throw new Error(response.message || 'Cập nhật trạng thái danh mục thất bại');
+      }
+      return response.data as MultiCategoryResult;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminCategoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all });
+    },
+  });
+}
+
+export function useMultiDeleteAdminCategories() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const response = await multiDeleteCategories(ids);
+      if (response.status === 'ERR' && !response.data) {
+        throw new Error(response.message || 'Xóa danh mục thất bại');
+      }
+      return response.data as MultiCategoryResult;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminCategoryKeys.all });

@@ -73,6 +73,14 @@ export interface BannerReorderInput {
 /** @deprecated Dùng Banner cho code mới. */
 export type IBanner = Banner;
 
+export interface MultiCategoryResult {
+  total: number;
+  success: number;
+  failed: number;
+  successIds: string[];
+  failures: Array<{ id: string; message: string }>;
+}
+
 export interface ICategory {
   _id: string;
   name: string;
