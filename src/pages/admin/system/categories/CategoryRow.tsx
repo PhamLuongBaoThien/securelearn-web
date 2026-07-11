@@ -47,15 +47,16 @@ export const CategoryRow: React.FC<CategoryRowProps> = ({
   const isExpanded = expandedIds.includes(cat._id);
   const isSelected = selectedIds.includes(cat._id);
   const hasChildren = (cat.children || []).length > 0;
-  const hasCourses = (cat.courseCount || 0) > 0;
-  const canDelete = !hasChildren && !hasCourses;
+  const publishedCourseCount = cat.publishedCourseCount ?? cat.courseCount ?? 0;
+  const hasPublishedCourses = publishedCourseCount > 0;
+  const canDelete = !hasChildren && !hasPublishedCourses;
   const canMoveUp = siblingIndex > 0;
   const canMoveDown = siblingIndex < siblingCount - 1;
   const deleteTooltip = canDelete
     ? 'Xóa danh mục này'
     : hasChildren
       ? 'Không thể xóa vì danh mục này có danh mục con.'
-      : 'Không thể xóa vì danh mục này đang có khóa học.';
+      : 'Không thể xóa vì danh mục này có khóa học đã xuất bản.';
 
   return (
     <>

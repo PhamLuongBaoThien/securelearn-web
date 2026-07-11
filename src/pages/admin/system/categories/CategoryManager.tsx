@@ -129,12 +129,12 @@ export const CategoryManager: React.FC = () => {
   }, [flatCategories, selectedActiveCategories, selectedActiveIds]);
   const deletableSelectedCategories = useMemo(
     () => selectedCategories
-      .filter((category) => (category.children || []).length === 0 && (category.courseCount || 0) === 0),
+      .filter((category) => (category.children || []).length === 0 && (category.publishedCourseCount ?? category.courseCount ?? 0) === 0),
     [selectedCategories]
   );
   const skippedDeleteCategories = useMemo(
     () => selectedCategories
-      .filter((category) => (category.children || []).length > 0 || (category.courseCount || 0) > 0),
+      .filter((category) => (category.children || []).length > 0 || (category.publishedCourseCount ?? category.courseCount ?? 0) > 0),
     [selectedCategories]
   );
   const deletableSelectedIds = useMemo(
@@ -495,7 +495,7 @@ export const CategoryManager: React.FC = () => {
                     {skippedDeleteCategories.map((category) => {
                       const reason = (category.children || []).length > 0
                         ? `Có ${(category.children || []).length} danh mục con`
-                        : `Có ${category.courseCount || 0} khóa học`;
+                        : `Có ${category.publishedCourseCount ?? category.courseCount ?? 0} khóa học đã xuất bản`;
 
                       return (
                         <li key={category._id} className="flex items-center justify-between gap-3 rounded-md bg-white px-2 py-1 dark:bg-zinc-950/30">
@@ -508,7 +508,7 @@ export const CategoryManager: React.FC = () => {
                 </div>
               )}
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Điều kiện xóa: danh mục không có danh mục con và chưa có khóa học.
+                Điều kiện xóa: danh mục không có danh mục con và không có khóa học đã xuất bản. Khóa học chưa xuất bản sẽ được tự gỡ danh mục.
               </p>
             </div>
           )}
@@ -648,14 +648,14 @@ export const CategoryManager: React.FC = () => {
                       </Button>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>Điều kiện xóa: danh mục không có danh mục con và chưa có khóa học</TooltipContent>
+                  <TooltipContent>Điều kiện xóa: không có danh mục con và không có khóa học đã xuất bản. Khóa học chưa xuất bản sẽ được gỡ danh mục.</TooltipContent>
                 </Tooltip>
                 {skippedDeleteCount > 0 && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="text-zinc-400 underline decoration-dotted underline-offset-2">Bỏ qua {skippedDeleteCount}</span>
                     </TooltipTrigger>
-                    <TooltipContent>{skippedDeleteCount} danh mục được chọn không thể xóa vì có danh mục con hoặc đang có khóa học</TooltipContent>
+                    <TooltipContent>{skippedDeleteCount} danh mục được chọn không thể xóa vì có danh mục con hoặc có khóa học đã xuất bản</TooltipContent>
                   </Tooltip>
                 )}
                 <Tooltip>

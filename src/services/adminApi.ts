@@ -195,6 +195,8 @@ const mapCategoryNode = (category: CategoryNodeResponse): ICategory => ({
   sortOrder: category.sortOrder ?? 0,
   isActive: category.isActive ?? true,
   courseCount: category.courseCount ?? 0,
+  publishedCourseCount: category.publishedCourseCount ?? category.courseCount ?? 0,
+  unpublishedCourseCount: category.unpublishedCourseCount ?? 0,
   children: (category.children || []).map(mapCategoryNode),
   createdAt: category.createdAt,
   updatedAt: category.updatedAt,

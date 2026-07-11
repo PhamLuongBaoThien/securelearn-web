@@ -91,6 +91,8 @@ export interface ICategory {
   sortOrder: number;
   isActive: boolean;
   courseCount: number;
+  publishedCourseCount?: number;
+  unpublishedCourseCount?: number;
   children?: ICategory[];
   createdAt: string;
   updatedAt?: string;
