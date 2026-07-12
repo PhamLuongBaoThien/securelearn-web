@@ -37,7 +37,7 @@ export function BackToTop() {
         'fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full',
         'shadow-lg shadow-black/15 ring-1 ring-black/5',
         'transition-all duration-300 hover:-translate-y-1',
-        isVisible ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-4 opacity-0 pointer-events-none',
+        isVisible ? 'translate-y-0 opacity-50 pointer-events-auto hover:opacity-100' : 'translate-y-4 opacity-0 pointer-events-none',
       ].join(' ')}
     >
       <ArrowUp className="h-5 w-5 " />
