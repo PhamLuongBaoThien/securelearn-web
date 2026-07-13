@@ -4,6 +4,7 @@ import { Navbar } from './Header';
 import { Footer } from './Footer';
 import { BackToTop } from './BackToTop';
 import { usePublicWebsiteConfig } from '@/hooks/useWebsiteConfig';
+import { ChatbotWidget } from '@/components/chatbot/ChatbotWidget';
 
 export function PublicLayout() {
   const { data: websiteConfig } = usePublicWebsiteConfig();
@@ -27,6 +28,8 @@ export function PublicLayout() {
       </main>
       <Footer />
       <BackToTop />
+      <ChatbotWidget />
     </div>
   );
 }
+
