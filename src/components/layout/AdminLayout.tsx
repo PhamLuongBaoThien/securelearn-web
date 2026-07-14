@@ -77,13 +77,19 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[], inbox
       ],
     },
     {
-      groupName: 'Thông báo & Hỗ trợ',
+      groupName: 'Thông báo',
       groupIcon: <Bell className="w-5 h-5 shrink-0" />,
       items: [
         { name: 'Gửi thông báo', path: '/admin/notifications/send', icon: <Send className="w-4 h-4 shrink-0" />, req: 'notif:manage' },
         { name: 'Lịch sử thông báo', path: '/admin/notifications/system', icon: <Bell className="w-4 h-4 shrink-0" />, req: 'notif:read' },
-{ name: inboxUnread ? 'Hỗ trợ & Báo cáo (' + inboxUnread + ')' : 'Hỗ trợ & Báo cáo', path: '/admin/notifications/inbox', icon: <Inbox className="w-4 h-4 shrink-0" />, req: 'inbox:manage' },
         { name: 'Mẫu thông báo', path: '/admin/notifications/config', icon: <FileText className="w-4 h-4 shrink-0" />, req: 'notif:manage' },
+      ],
+    },
+    {
+      groupName: 'Hỗ trợ',
+      groupIcon: <Inbox className="w-5 h-5 shrink-0" />,
+      items: [
+        { name: inboxUnread ? 'Hỗ trợ & Báo cáo (' + inboxUnread + ')' : 'Hỗ trợ & Báo cáo', path: '/admin/notifications/inbox', icon: <Inbox className="w-4 h-4 shrink-0" />, req: 'inbox:manage' },
       ],
     },
   ];
@@ -117,6 +123,26 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[], inbox
   }
 
   return entries;
+}
+
+// ===== Helper lấy nhãn và class hiển thị của Admin Role =====
+function getAdminRoleLabel(roleKey: string): { label: string; className: string } {
+  switch (roleKey) {
+    case 'SUPER_ADMIN':
+      return { label: 'Super Admin', className: 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20' };
+    case 'CONTENT_MANAGER':
+      return { label: 'Quản lý nội dung', className: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' };
+    case 'SUPPORT_AGENT':
+      return { label: 'Nhân viên hỗ trợ', className: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200 dark:border-blue-500/20' };
+    case 'FINANCE_MANAGER':
+      return { label: 'Quản lý tài chính', className: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20' };
+    default:
+      const formatted = roleKey
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+      return { label: formatted, className: 'bg-zinc-50 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700' };
+  }
 }
 
 // ===== Main AdminLayout =====
@@ -174,7 +200,14 @@ export const AdminLayout: React.FC = () => {
 
       {/* Main Content */}
       <main className={`flex-1 transition-[margin-left] duration-200 ease-out relative min-h-screen will-change-[margin-left] ${!sidebarOpen ? 'ml-20' : 'ml-72'}`}>
-        <div className="sticky top-0 z-20 flex h-14 items-center justify-end border-b bg-background/80 px-8 backdrop-blur"><NotificationBell allPath="/admin/notifications/system" /></div>
+        <div className="sticky top-0 z-20 flex h-14 items-center justify-end gap-3 border-b bg-background/80 px-8 backdrop-blur">
+          {user?.adminRole && (
+            <span className={`px-2.5 py-0.5 text-[11px] font-semibold border rounded-full ${getAdminRoleLabel(user.adminRole).className}`}>
+              {getAdminRoleLabel(user.adminRole).label}
+            </span>
+          )}
+          <NotificationBell allPath="/admin/notifications/system" />
+        </div>
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none -z-10" />
         <div className="p-8 pb-12 w-full max-w-7xl mx-auto h-full">
           <Outlet />
@@ -183,5 +216,3 @@ export const AdminLayout: React.FC = () => {
     </div>
   );
 };
-
-
