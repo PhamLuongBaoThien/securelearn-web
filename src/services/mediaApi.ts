@@ -21,7 +21,7 @@ export interface IVideoRendition {
 
 export interface IVideoAsset {
   _id: string;
-  status: 'INITIATED' | 'UPLOADING' | 'UPLOADED' | 'PROCESSING' | 'READY' | 'FAILED';
+  status: 'INITIATED' | 'UPLOADING' | 'UPLOADED' | 'QUEUED' | 'PROCESSING' | 'READY' | 'FAILED';
   processingProgress?: number;
   originalFileName?: string;
   mimeType?: string;

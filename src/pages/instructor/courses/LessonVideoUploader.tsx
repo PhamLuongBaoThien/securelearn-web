@@ -73,7 +73,7 @@ const formatQualityList = (qualities?: string[] | null) => {
 const mapAssetStatus = (s?: string): VideoProcessingStatus => {
   if (s === 'READY') return 'DONE';
   if (s === 'FAILED') return 'FAILED';
-  if (s === 'PROCESSING' || s === 'UPLOADED') return 'PROCESSING';
+  if (s === 'QUEUED' || s === 'PROCESSING' || s === 'UPLOADED') return 'PROCESSING';
   if (s === 'INITIATED' || s === 'UPLOADING') return 'PENDING';
   return 'NONE';
 };
@@ -93,7 +93,7 @@ const mapLessonStatus = (s?: string, assetId?: string | null): VideoProcessingSt
 const assetToLessonStatus = (s?: IVideoAsset['status']): LessonStatus | null => {
   if (s === 'READY') return 'READY';
   if (s === 'FAILED') return 'FAILED';
-  if (s === 'UPLOADED' || s === 'PROCESSING') return 'PROCESSING';
+  if (s === 'UPLOADED' || s === 'QUEUED' || s === 'PROCESSING') return 'PROCESSING';
   return null;
 };
 
@@ -239,14 +239,14 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   }, []);
 
   // EFFECT 3: BỘ ĐẾM THỜI GIAN XỬ LÝ (PROCESSING TIMER)
-  // Chỉ kích hoạt khi trạng thái là PROCESSING. Sau 1 phút, 3 phút, giao diện sẽ đổi text 
+  // Chỉ đếm thời gian FFmpeg thực sự PROCESSING, không tính thời gian chờ queue.
   // báo cho user biết hệ thống vẫn đang chạy, để user không bị hoang mang.
   useEffect(() => {
-    if (status !== 'PROCESSING') { setProcessingElapsed(0); return; }
+    if (assetMeta?.status !== 'PROCESSING') { setProcessingElapsed(0); return; }
     const t0 = Date.now();
     const id = setInterval(() => setProcessingElapsed(Math.floor((Date.now() - t0) / 1000)), 1000);
     return () => clearInterval(id);
-  }, [status, assetMeta?._id]);
+  }, [assetMeta?.status, assetMeta?._id]);
 
   // EFFECT 4: KÉO DỮ LIỆU CHI TIẾT KHI MỞ TRANG (HYDRATION)
   // Khi mở editor, DB (course-service) chỉ lưu mỗi cái ID của video (`lesson.videoAssetId`).
@@ -559,8 +559,9 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       confirmed = true;
       logTiming('confirm-upload');
 
+      const confirmedAsset = confirmRes.data;
       onUpdate('processingStatus', 'PROCESSING');
-      setAssetMeta((p) => p ? { ...p, status: 'UPLOADED', processingProgress: 5 } : p);
+      setAssetMeta((p) => p ? { ...p, status: confirmedAsset?.status ?? 'QUEUED', processingProgress: confirmedAsset?.processingProgress ?? 5 } : p);
       emitUploadSnapshot(uploadKey, null);
       updateVideoUploadQueueJob(queueJobId, { progress: 100, speedBps: 0, etaSec: null });
       startPolling(assetId, true);
@@ -681,6 +682,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   const uploadedAt = fmt.dateTime(assetMeta?.uploadCompletedAt);
   const progress = clamp(assetMeta?.processingProgress ?? lesson.processingProgress);
   const duration = assetMeta?.durationSec || lesson.videoDurationSec || lesson.duration || 0;
+  const isBackendQueued = assetMeta?.status === 'QUEUED';
   const helperText = processingElapsed >= 180
     ? 'Video đang xử lý lâu hơn bình thường. Bạn có thể quay lại sau.'
     : processingElapsed >= 60
@@ -787,8 +789,8 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-500" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium text-violet-700 dark:text-violet-300">Đang xử lý video</p>
-            {progress > 5 && <span className="text-sm font-semibold text-violet-600 dark:text-violet-400">{progress}%</span>}
+            <p className="text-sm font-medium text-violet-700 dark:text-violet-300">{isBackendQueued ? 'Đang chờ xử lý video' : 'Đang xử lý video'}</p>
+            {!isBackendQueued && progress > 5 && <span className="text-sm font-semibold text-violet-600 dark:text-violet-400">{progress}%</span>}
           </div>
           <p className="mt-0.5 truncate text-xs text-violet-500">{name}</p>
         </div>
@@ -799,7 +801,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
           ? <div className="h-full rounded-full bg-violet-500 transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
           : <div className="h-full w-full animate-pulse rounded-full bg-violet-400" />}
       </div>
-      <p className="mt-2 text-xs text-violet-400">{helperText}</p>
+      <p className="mt-2 text-xs text-violet-400">{isBackendQueued ? 'Video sẽ tự bắt đầu khi có lượt xử lý trống.' : helperText}</p>
     </div>
   );
 
