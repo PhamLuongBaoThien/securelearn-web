@@ -136,12 +136,13 @@ function getAdminRoleLabel(roleKey: string): { label: string; className: string 
       return { label: 'Nhân viên hỗ trợ', className: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200 dark:border-blue-500/20' };
     case 'FINANCE_MANAGER':
       return { label: 'Quản lý tài chính', className: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20' };
-    default:
+    default: {
       const formatted = roleKey
         .split('_')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ');
       return { label: formatted, className: 'bg-zinc-50 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700' };
+    }
   }
 }
 

@@ -88,6 +88,16 @@ export const Inbox = () => {
     const [socketConnected, setSocketConnected] = useState(isInboxConnected());
     const [typing, setTyping] = useState(false);
 
+    const handleSelectTicket = (ticketId: string) => {
+        if (ticketId === selected) return;
+        setSelected(ticketId);
+        setMessagePage(1);
+        setActivityPage(1);
+        setFiles([]);
+        setAllMessages([]);
+        shouldScrollToBottomRef.current = true;
+    };
+
     useEffect(() => retainInboxSocket(), []);
     useEffect(() => selected ? subscribeInboxTicket(selected) : undefined, [selected]);
     useEffect(() => {
@@ -122,16 +132,6 @@ export const Inbox = () => {
         else nextParams.delete('id');
         setParams(nextParams, { replace: true });
     }, [selected]);
-
-    const prevSelectedRef = useRef(selected);
-    if (selected !== prevSelectedRef.current) {
-        prevSelectedRef.current = selected;
-        setMessagePage(1);
-        setActivityPage(1);
-        setFiles([]);
-        setAllMessages([]);
-        shouldScrollToBottomRef.current = true;
-    }
 
     useEffect(() => {
         setListPage(1);
@@ -275,7 +275,7 @@ export const Inbox = () => {
         switch (act.action) {
             case 'CREATED':
                 return `${actorName} đã tạo yêu cầu`;
-            case 'REPLIED':
+            case 'REPLIED': {
                 if (act.actor.type === 'ADMIN') {
                     return `${actorName} (Quản trị viên) đã phản hồi`;
                 }
@@ -287,12 +287,14 @@ export const Inbox = () => {
                     }
                 }
                 return `${actorName} đã phản hồi`;
+            }
             case 'INTERNAL_NOTE':
                 return `${actorName} (Quản trị viên) đã thêm ghi chú nội bộ`;
-            case 'STATUS_CHANGED':
+            case 'STATUS_CHANGED': {
                 const fromStr = label[act.fromValue || ''] || act.fromValue || 'Không rõ';
                 const toStr = label[act.toValue || ''] || act.toValue || 'Không rõ';
                 return `${actorName} đã cập nhật trạng thái từ [${fromStr}] sang [${toStr}]`;
+            }
             default:
                 return `${actorName} · ${act.action}`;
         }
@@ -388,7 +390,7 @@ export const Inbox = () => {
                                 return (
                                     <motion.button
                                         key={t._id}
-                                        onClick={() => setSelected(t._id)}
+                                        onClick={() => handleSelectTicket(t._id)}
                                         whileHover={{ x: 2 }}
                                         className={`w-full p-4 text-left hover:bg-muted/30 transition-all flex items-start gap-3.5 relative ${selected === t._id ? 'bg-primary/5 dark:bg-primary/10' : ''
                                             }`}
@@ -447,7 +449,7 @@ export const Inbox = () => {
                         loading={isFetchingList}
                         onPageChange={(nextPage) => {
                             setListPage(nextPage);
-                            setSelected('');
+                            handleSelectTicket('');
                         }}
                     />
                 </section>
