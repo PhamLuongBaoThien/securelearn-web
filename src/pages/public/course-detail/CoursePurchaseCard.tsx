@@ -7,7 +7,7 @@
 //   - Dispatch action addToCart vào Redux store khi người dùng mua
 // Phần "Khóa học bao gồm" nằm ở main content để học viên đọc trước curriculum.
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -92,28 +92,6 @@ export function CoursePurchaseCard({ course, isEnrolled, accessSource, accessEnd
 
   // Ref cho wrapper ngoài (dùng để đặt z-index và chiều rộng cột)
   const sidebarRef = useRef<HTMLDivElement>(null);
-  // Ref cho phần tử sentinel — phần tử vô hình dùng để phát hiện sidebar đang sticky
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  // Trạng thái sticky: true khi sentinel đã bị cuộn ra khỏi viewport
-  const [isSticky, setIsSticky] = useState(false);
-
-  // IntersectionObserver theo dõi sentinel để biết sidebar có đang sticky không.
-  // Khi sentinel rời khỏi viewport (cuộn xuống qua) → isSticky = true → ẩn thumbnail.
-  // Khi sentinel quay lại viewport (cuộn ngược lên) → isSticky = false → hiện thumbnail.
-  // rootMargin: '-88px' là chiều cao của navbar để tính đúng điểm sticky.
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsSticky(!entry.isIntersecting),
-      { threshold: 0, rootMargin: '-88px 0px 0px 0px' }
-    );
-    observer.observe(sentinel);
-
-    // Cleanup: ngắt observer khi component unmount
-    return () => observer.disconnect();
-  }, []);
 
   // Thêm khóa học vào giỏ hàng Redux
   const handleAddToCart = () => {
@@ -129,35 +107,12 @@ export function CoursePurchaseCard({ course, isEnrolled, accessSource, accessEnd
   };
 
   return (
-    <div className="w-full lg:w-1/3 lg:-mt-72 z-20" ref={sidebarRef}>
-      {/* Sentinel: phần tử vô hình dùng để phát hiện thời điểm sidebar bắt đầu sticky */}
-      <div ref={sentinelRef} className="h-0 w-full" />
+    <div className="w-full lg:w-1/3 z-20" ref={sidebarRef}>
+
 
       {/* Container sticky — bám theo viewport khi cuộn */}
       <div className="lg:sticky lg:top-[88px]">
         <div className="bg-card w-full shadow-xl border border-border rounded-lg overflow-hidden">
-
-          {/* Thumbnail — ẩn dần (max-h về 0) khi sidebar đang sticky trên desktop */}
-          <div
-            className={`relative aspect-video bg-black overflow-hidden transition-all duration-300 ease-in-out ${
-              isSticky
-                ? 'lg:max-h-0 lg:opacity-0 max-h-[300px] opacity-100'
-                : 'max-h-[300px] opacity-100'
-            }`}
-          >
-            {course.thumbnail ? (
-              <img
-                src={course.thumbnail}
-                alt={course.title}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              // Placeholder khi chưa có thumbnail
-              <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                <span className="text-muted-foreground text-sm">Chưa có ảnh</span>
-              </div>
-            )}
-          </div>
 
           <div className="p-5 lg:p-6">
             {isOwnCourse ? (

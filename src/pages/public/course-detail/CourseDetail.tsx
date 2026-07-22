@@ -25,47 +25,181 @@ import { CourseIncludes } from './CourseIncludes';
 import { CourseReviews } from './CourseReviews';
 import { ReportDialog } from '@/components/inbox/ReportDialog';
 
-// Skeleton cho phần hero banner — hiển thị trong lúc API đang tải
+// Skeleton cho phần hero banner — khớp layout Split Hero mới
 function HeroBannerSkeleton() {
   return (
-    <div className="bg-zinc-900 pt-[120px] pb-8 lg:pt-[136px] lg:pb-12 px-6">
-      <div className="max-w-[1340px] mx-auto lg:w-2/3 space-y-4 animate-pulse">
-        <div className="h-4 w-48 bg-zinc-700 rounded" />
-        <div className="h-10 w-3/4 bg-zinc-700 rounded" />
-        <div className="h-6 w-full bg-zinc-700 rounded" />
-        <div className="h-6 w-2/3 bg-zinc-700 rounded" />
-        <div className="flex gap-3">
-          <div className="h-5 w-24 bg-zinc-700 rounded" />
-          <div className="h-5 w-32 bg-zinc-700 rounded" />
+    <div className="relative pt-[120px] pb-10 lg:pt-[136px] lg:pb-14 px-6 overflow-hidden bg-gradient-to-b from-primary/[0.06] via-primary/[0.03] to-background">
+      <div className="relative z-10 max-w-[1340px] mx-auto flex flex-col lg:flex-row lg:items-center gap-8 lg:gap-12 animate-pulse">
+        {/* Cột trái: thông tin */}
+        <div className="lg:w-7/12 space-y-5">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-16 bg-secondary rounded" />
+            <div className="h-3 w-3 bg-secondary rounded" />
+            <div className="h-4 w-24 bg-secondary rounded" />
+            <div className="h-3 w-3 bg-secondary rounded" />
+            <div className="h-4 w-32 bg-secondary rounded" />
+          </div>
+          {/* Tiêu đề */}
+          <div className="h-9 md:h-10 w-3/4 bg-secondary rounded" />
+          {/* Mô tả */}
+          <div className="space-y-2 max-w-2xl">
+            <div className="h-5 w-full bg-secondary rounded" />
+            <div className="h-5 w-2/3 bg-secondary rounded" />
+          </div>
+          {/* Badge cấp độ + rating + số học viên */}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <div className="h-6 w-16 bg-secondary rounded-sm" />
+            <div className="h-5 w-28 bg-secondary rounded" />
+            <div className="h-5 w-36 bg-secondary rounded" />
+            <div className="h-5 w-28 bg-secondary rounded" />
+          </div>
+          {/* Giảng viên */}
+          <div className="h-5 w-44 bg-secondary rounded" />
+          {/* Ngày cập nhật */}
+          <div className="flex items-center gap-4">
+            <div className="h-5 w-48 bg-secondary rounded" />
+            <div className="h-5 w-20 bg-secondary rounded" />
+          </div>
+        </div>
+        {/* Cột phải: thumbnail skeleton với dots 4 góc */}
+        <div className="lg:w-5/12 flex-shrink-0">
+          <div className="relative">
+            <div className="absolute -top-4 -left-4 w-[51px] h-[51px] opacity-35 dark:opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1.5px, transparent 1.5px)', backgroundSize: '10px 10px', backgroundPosition: 'left 3px top 3px' }} />
+            <div className="absolute -top-4 -right-4 w-[51px] h-[51px] opacity-35 dark:opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1.5px, transparent 1.5px)', backgroundSize: '10px 10px', backgroundPosition: 'right 3px top 3px' }} />
+            <div className="absolute -bottom-4 -left-4 w-[51px] h-[51px] opacity-35 dark:opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1.5px, transparent 1.5px)', backgroundSize: '10px 10px', backgroundPosition: 'left 3px bottom 3px' }} />
+            <div className="absolute -bottom-4 -right-4 w-[51px] h-[51px] opacity-35 dark:opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1.5px, transparent 1.5px)', backgroundSize: '10px 10px', backgroundPosition: 'right 3px bottom 3px' }} />
+            <div className="w-full aspect-video bg-secondary rounded-2xl" />
+          </div>
         </div>
       </div>
+      {/* Đường gạch chia hero và nội dung */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
     </div>
   );
 }
 
-// Skeleton cho phần nội dung bên dưới — hiển thị trong lúc API đang tải
+// Skeleton cho phần nội dung bên dưới — khớp kích thước và các khối thực tế
 function ContentSkeleton() {
   return (
-    <div className="max-w-[1340px] mx-auto px-6 flex flex-col-reverse lg:flex-row gap-12 pt-8 lg:pt-0 animate-pulse">
+    <div className="max-w-[1340px] mx-auto px-6 relative flex flex-col-reverse lg:flex-row gap-12 pt-8 lg:pt-0 lg:items-stretch items-start animate-pulse">
       {/* Cột trái: các khối nội dung */}
-      <div className="w-full lg:w-2/3 space-y-8">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="space-y-3">
-            <div className="h-7 w-48 bg-secondary rounded" />
-            <div className="h-4 w-full bg-secondary rounded" />
-            <div className="h-4 w-5/6 bg-secondary rounded" />
-            <div className="h-4 w-4/6 bg-secondary rounded" />
+      <div className="w-full lg:w-2/3 space-y-12 pt-8">
+        {/* Khối "Bạn sẽ học được gì" */}
+        <div className="border border-border p-6 lg:p-8 bg-card shadow-sm rounded-lg space-y-6">
+          <div className="h-7 w-48 bg-secondary rounded" />
+          <div className="grid md:grid-cols-2 gap-x-8 gap-y-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="h-5 w-5 bg-secondary rounded shrink-0 mt-0.5" />
+                <div className="h-5 w-full bg-secondary rounded" />
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {/* Khối "Khóa học bao gồm" */}
+        <div className="rounded-lg border border-border bg-card p-6 lg:p-7 shadow-sm space-y-5">
+          <div>
+            <div className="h-3 w-32 bg-secondary rounded mb-2" />
+            <div className="h-7 w-48 bg-secondary rounded" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-11 bg-secondary/40 rounded-md" />
+            ))}
+          </div>
+        </div>
+
+        {/* Khối "Nội dung khóa học" */}
+        <div className="space-y-5">
+          <div>
+            <div className="h-7 w-52 bg-secondary rounded mb-2" />
+            <div className="h-4 w-64 bg-secondary rounded" />
+          </div>
+          <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-14 bg-secondary/40" />
+            ))}
+          </div>
+        </div>
+
+        {/* Khối "Yêu cầu & Mô tả" */}
+        <div className="rounded-lg border border-border bg-card divide-y divide-border shadow-sm">
+          <div className="p-6 lg:p-7 space-y-4">
+            <div className="h-6 w-36 bg-secondary rounded" />
+            <div className="space-y-2">
+              <div className="h-4 w-full bg-secondary rounded" />
+              <div className="h-4 w-5/6 bg-secondary rounded" />
+              <div className="h-4 w-4/6 bg-secondary rounded" />
+            </div>
+          </div>
+          <div className="p-6 lg:p-7 space-y-4">
+            <div className="h-6 w-36 bg-secondary rounded" />
+            <div className="space-y-2">
+              <div className="h-4 w-full bg-secondary rounded" />
+              <div className="h-4 w-full bg-secondary rounded" />
+              <div className="h-4 w-3/4 bg-secondary rounded" />
+            </div>
+          </div>
+        </div>
+
+        {/* Khối "Giảng viên" */}
+        <div className="rounded-lg border border-border bg-card p-6 lg:p-7 shadow-sm space-y-6">
+          <div className="h-7 w-36 bg-secondary rounded" />
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+            <div className="h-20 w-20 rounded-full bg-secondary shrink-0" />
+            <div className="space-y-3 flex-1">
+              <div className="h-6 w-44 bg-secondary rounded" />
+              <div className="h-4 w-32 bg-secondary rounded" />
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="h-5 w-36 bg-secondary rounded" />
+                <div className="h-5 w-28 bg-secondary rounded" />
+                <div className="h-5 w-32 bg-secondary rounded" />
+              </div>
+              <div className="space-y-2 pt-2">
+                <div className="h-4 w-full bg-secondary rounded" />
+                <div className="h-4 w-4/5 bg-secondary rounded" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Khối "Đánh giá khóa học" */}
+        <div className="rounded-lg border border-border bg-card p-6 lg:p-7 shadow-sm space-y-6">
+          <div>
+            <div className="h-7 w-48 bg-secondary rounded mb-2" />
+            <div className="h-4 w-72 bg-secondary rounded" />
+          </div>
+          <div className="h-28 bg-secondary/30 rounded-lg" />
+          <div className="divide-y divide-border border-y border-border">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="py-4 flex gap-3">
+                <div className="h-10 w-10 rounded-full bg-secondary shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-36 bg-secondary rounded" />
+                  <div className="h-3 w-28 bg-secondary rounded" />
+                  <div className="h-4 w-full bg-secondary rounded pt-1" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
+
       {/* Cột phải: sidebar mua hàng */}
-      <div className="w-full lg:w-1/3">
-        <div className="border border-border bg-card">
-          <div className="aspect-video bg-secondary" />
-          <div className="p-6 space-y-4">
-            <div className="h-9 w-1/2 bg-secondary rounded" />
-            <div className="h-12 bg-secondary rounded" />
-            <div className="h-12 bg-secondary rounded" />
+      <div className="w-full lg:w-1/3 z-20">
+        <div className="border border-border bg-card rounded-lg overflow-hidden shadow-xl">
+          <div className="p-5 lg:p-6 space-y-4">
+            <div className="h-3 w-32 bg-secondary rounded" />
+            <div className="h-9 w-40 bg-secondary rounded" />
+            <div className="h-4 w-full bg-secondary rounded" />
+            <div className="h-[52px] bg-secondary rounded-lg" />
+            <div className="h-[52px] bg-secondary rounded-lg" />
+            <div className="h-[52px] bg-secondary rounded-lg" />
+            <div className="pt-4 border-t border-border">
+              <div className="h-[44px] bg-secondary rounded-lg" />
+            </div>
           </div>
         </div>
       </div>

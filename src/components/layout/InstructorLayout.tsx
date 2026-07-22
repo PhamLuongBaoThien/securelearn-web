@@ -74,7 +74,7 @@ export const InstructorLayout: React.FC = () => {
         items: [
           { name: 'Giao tiếp', path: '/instructor/communication', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
           { name: unreadNotifications ? 'Thông báo (' + unreadNotifications + ')' : 'Thông báo', path: '/instructor/notifications', icon: <Bell className="w-5 h-5 shrink-0" /> },
-{ name: inboxUnread ? 'Hỗ trợ & góp ý (' + inboxUnread + ')' : 'Hỗ trợ & góp ý', path: '/support', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
+          { name: inboxUnread ? 'Hỗ trợ & góp ý (' + inboxUnread + ')' : 'Hỗ trợ & góp ý', path: '/support', icon: <MessageSquare className="w-5 h-5 shrink-0" /> },
         ],
       }
     },
@@ -111,15 +111,15 @@ export const InstructorLayout: React.FC = () => {
 
       {/* Main Content */}
       <main className={`flex-1 transition-[margin-left] duration-200 ease-out relative min-h-screen will-change-[margin-left] ${collapsed ? 'ml-20' : 'ml-72'}`}>
-        
+
         {/* Top Header */}
-        <header className="h-16 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/60 sticky top-0 z-10 flex items-center justify-between px-6">
+        <header className="h-16 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/60 sticky top-0 z-50 flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
-             {/* Logo or page title placeholder */}
+            {/* Logo or page title placeholder */}
           </div>
           <div className="flex items-center gap-4">
             <NotificationBell allPath="/notifications" />
-            <button 
+            <button
               onClick={handleBackToStudent}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"
             >
@@ -131,7 +131,7 @@ export const InstructorLayout: React.FC = () => {
 
         {/* Dynamic Background Blob */}
         <div className="absolute top-16 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none -z-10 transition-all duration-500" />
-        
+
         <div className="p-6 md:p-8 w-full max-w-7xl mx-auto h-full animate-in fade-in duration-500">
           <Outlet />
         </div>

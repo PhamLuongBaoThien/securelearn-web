@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
   SlidersHorizontal,
+  BookOpen,
 } from "lucide-react";
 import { useCatalog } from "@/hooks/useCatalog";
 import { usePublicCourseCategories } from "@/hooks/usePublicCourseCategories";
@@ -337,19 +338,31 @@ export function Catalog() {
     setIsDrawerOpen(false);
   };
 
-
-
   return (
-    <div className="max-w-[1340px] mx-auto px-4 md:px-6 py-8">
-      {/* ── Page Heading ── */}
-      <div className="mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold font-serif mb-1">
-          Khám phá Khóa học
-        </h1>
-        <p className="text-muted-foreground text-base">
-          {isCatalogCardsLoading ? "Đang tải..." : `${total.toLocaleString()} khóa học`}
-        </p>
-      </div>
+    <div className="relative -mt-[88px] min-h-screen bg-background text-foreground antialiased">
+      {/* ── Hero Banner (Đồng bộ phong cách trang Chi tiết khóa học) ── */}
+      <section className="relative pt-[120px] pb-10 lg:pt-[136px] lg:pb-14 px-6 overflow-hidden bg-gradient-to-b from-primary/[0.06] via-primary/[0.03] to-background">
+        {/* Họa tiết chấm trang trí nhẹ ở background */}
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+
+        <div className="relative z-10 max-w-[1340px] mx-auto space-y-2">
+          <p className="text-sm font-semibold text-primary">
+            Thư viện khóa học SecureLearn
+          </p>
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold font-serif text-foreground tracking-tight">
+            Khám phá Khóa học
+          </h1>
+          <p className="text-base text-muted-foreground leading-relaxed pt-1 max-w-2xl">
+            Tìm kiếm và lựa chọn các khóa học phù hợp với mục tiêu phát triển của bạn.
+          </p>
+        </div>
+
+        {/* Đường gạch chia nhẹ ở dưới hero banner */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
+      </section>
+
+      {/* ── Nội dung chính của Catalog ── */}
+      <main className="max-w-[1340px] mx-auto px-4 md:px-6 py-8">
 
       {/* ── Horizontal Filter Bar ── */}
       <div className="relative z-40 flex items-center justify-between gap-3 mb-6 flex-wrap">
@@ -402,7 +415,7 @@ export function Catalog() {
       {/* ── Loading Skeleton ── */}
       {isCatalogCardsLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-8">
-          {Array.from({ length: 12 }).map((_, i) => (
+          {Array.from({ length: 8 }).map((_, i) => (
             <CourseCardSkeleton key={i} />
           ))}
         </div>
@@ -468,6 +481,7 @@ export function Catalog() {
         selectedRatings={selectedRatings}
         handleRating={handleRating}
       />
+      </main>
     </div>
   );
 }

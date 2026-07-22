@@ -43,6 +43,7 @@ export interface SidebarProps {
   roleTitle?: string;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  onItemClick?: () => void;
   
   // User info
   userFullName?: string;
@@ -67,6 +68,7 @@ export interface SidebarProps {
 interface SidebarAnimationContextType {
   subMenuVariants: Variants;
   textVariants: Variants;
+  onItemClick?: () => void;
 }
 
 const SidebarAnimationContext = createContext<SidebarAnimationContextType>({
@@ -81,11 +83,11 @@ const RecursiveMenuItem: React.FC<{
   currentPath: string;
   isTopLevel?: boolean;
 }> = ({ item, collapsed, currentPath, isTopLevel = false }) => {
-  const { subMenuVariants, textVariants } = useContext(SidebarAnimationContext);
+  const { subMenuVariants, textVariants, onItemClick } = useContext(SidebarAnimationContext);
   const hasChildren = item.children && item.children.length > 0;
   
   const isDescendantActive = (m: MenuItem): boolean => {
-    if (currentPath === m.path || currentPath.startsWith(m.path + '/')) return true;
+    if (currentPath === m.path) return true;
     if (m.children) return m.children.some(isDescendantActive);
     return false;
   };
@@ -106,40 +108,46 @@ const RecursiveMenuItem: React.FC<{
     }
   };
 
+  const handleLinkClick = () => {
+    if (onItemClick) {
+      onItemClick();
+    }
+  };
+
   if (!hasChildren) {
+    const isCategoryLink = item.path.startsWith('/courses');
+    const isLinkActive = isCategoryLink ? false : currentPath === item.path;
+
     return (
       <NavLink
         to={item.path}
-        className={({ isActive: linkActive }) =>
+        onClick={handleLinkClick}
+        className={
           `flex items-center ${isTopLevel ? 'gap-3 px-3 py-2.5 rounded-xl' : 'gap-2.5 px-3 py-2 rounded-lg'} text-sm transition-colors duration-150 relative ${
-            linkActive
+            isLinkActive
               ? 'bg-primary/10 text-primary font-medium'
               : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:text-zinc-800 dark:hover:text-zinc-200'
           } ${collapsed ? 'justify-center' : ''}`
         }
       >
-        {({ isActive: linkActive }) => (
-          <>
-            <span className={`shrink-0 ${linkActive && isTopLevel ? 'text-primary' : ''}`}>
-              {item.icon}
-            </span>
-            <AnimatePresence initial={false}>
-              {!collapsed && (
-                <motion.span
-                  variants={textVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="hidden"
-                  className="break-words line-clamp-2 truncate whitespace-nowrap overflow-hidden"
-                >
-                  {item.name}
-                </motion.span>
-              )}
-            </AnimatePresence>
-            {linkActive && !collapsed && isTopLevel && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md shadow-[0_0_10px_theme('colors.primary.DEFAULT')]" />
-            )}
-          </>
+        <span className={`shrink-0 ${isLinkActive && isTopLevel ? 'text-primary' : ''}`}>
+          {item.icon}
+        </span>
+        <AnimatePresence initial={false}>
+          {!collapsed && (
+            <motion.span
+              variants={textVariants}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              className="break-words line-clamp-2 truncate whitespace-nowrap overflow-hidden"
+            >
+              {item.name}
+            </motion.span>
+          )}
+        </AnimatePresence>
+        {isLinkActive && !collapsed && isTopLevel && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-md shadow-[0_0_10px_theme('colors.primary.DEFAULT')]" />
         )}
       </NavLink>
     );
@@ -303,6 +311,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   roleTitle,
   collapsed,
   onToggleCollapsed,
+  onItemClick,
   userFullName,
   userEmail,
   userAvatarNode,
@@ -315,6 +324,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   textVariants = sidebarTextVariants,
 }) => {
   const location = useLocation();
+  const fullCurrentPath = location.pathname + location.search;
   const navRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -327,7 +337,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }
     }, 150);
     return () => clearTimeout(timer);
-  }, [location.pathname, collapsed]);
+  }, [location.pathname, location.search, collapsed]);
 
   const getThemeIcon = () => {
     if (theme === 'light') return <Sun className="w-5 h-5 shrink-0" />;
@@ -336,7 +346,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <SidebarAnimationContext.Provider value={{ subMenuVariants, textVariants }}>
+    <SidebarAnimationContext.Provider value={{ subMenuVariants, textVariants, onItemClick }}>
       <aside
         className={`${collapsed ? 'w-20' : 'w-72'} bg-white/80 dark:bg-zinc-950/50 backdrop-blur-xl border-r border-zinc-200 dark:border-zinc-800/60 flex flex-col fixed h-full z-20 transition-[width] duration-200 ease-out will-change-[width]`}
       >
@@ -366,6 +376,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {profileLink ? (
           <NavLink
             to={profileLink}
+            onClick={() => onItemClick?.()}
             className={({ isActive }) =>
               `p-4 flex items-center gap-3 shrink-0 rounded-xl mx-3 mt-2 transition-colors duration-150 ${
                 isActive
@@ -422,7 +433,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   key={entry.path + idx}
                   item={entry as MenuItem}
                   collapsed={collapsed}
-                  currentPath={location.pathname}
+                  currentPath={fullCurrentPath}
                   isTopLevel={true}
                 />
               );
@@ -432,7 +443,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   key={idx}
                   group={entry.group}
                   collapsed={collapsed}
-                  currentPath={location.pathname}
+                  currentPath={fullCurrentPath}
                 />
               );
             } else if (entry.type === 'label') {
@@ -458,7 +469,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         key={item.path + idx}
                         item={item as MenuItem}
                         collapsed={collapsed}
-                        currentPath={location.pathname}
+                        currentPath={fullCurrentPath}
                         isTopLevel={true}
                       />
                     ))}

@@ -48,6 +48,7 @@ export const NavMobileDrawer = ({
             entries={entries}
             collapsed={false}
             onToggleCollapsed={onClose}
+            onItemClick={onClose}
             userFullName={user?.fullName || 'Người dùng'}
             userEmail={user?.email || 'Vui lòng đăng nhập để trải nghiệm'}
             userAvatarNode={

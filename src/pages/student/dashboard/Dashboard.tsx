@@ -447,13 +447,24 @@ function StatCard({
 
 function CourseCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="aspect-video animate-pulse bg-zinc-100 dark:bg-zinc-900" />
-      <div className="space-y-3 p-4">
-        <div className="h-4 w-full animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
-        <div className="h-3 w-2/3 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
-        <div className="h-2 w-full animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
-        <div className="h-10 w-full animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+    <div className="flex flex-col h-full bg-zinc-50 dark:bg-card border border-border rounded-xl overflow-hidden shadow-sm animate-pulse">
+      <div className="w-full aspect-video bg-secondary shrink-0" />
+      <div className="flex flex-col flex-1 p-4">
+        <div className="space-y-1.5 mb-2">
+          <div className="h-4.5 w-full bg-secondary rounded" />
+          <div className="h-4.5 w-3/4 bg-secondary rounded" />
+        </div>
+        <div className="h-3.5 w-1/2 bg-secondary rounded mb-2.5" />
+        <div className="flex items-center gap-1.5 mb-2.5">
+          <div className="h-3.5 w-6 bg-secondary rounded" />
+          <div className="h-3.5 w-16 bg-secondary rounded" />
+          <div className="h-3 w-10 bg-secondary rounded" />
+        </div>
+        <div className="h-3 w-40 bg-secondary rounded mb-3" />
+        <div className="flex flex-col justify-end min-h-[3.5rem] mb-3 mt-auto">
+          <div className="h-6 w-28 bg-secondary rounded" />
+        </div>
+        <div className="h-8 w-full bg-secondary rounded-sm mt-auto" />
       </div>
     </div>
   );
@@ -850,7 +861,7 @@ export function StudentDashboard() {
         </section>
         <section>
           <div className="mb-6 flex flex-col gap-4 border-b border-zinc-200 dark:border-zinc-800 md:flex-row md:items-center md:justify-between">
-            <div className="flex gap-6 overflow-x-auto no-scrollbar">
+            <div className="flex gap-4 sm:gap-6 overflow-x-auto scroll-smooth snap-x touch-pan-x py-1 px-0.5 custom-scrollbar max-w-full">
               {tabs.map((tab) => (
                 <Button
                   key={tab.id}
@@ -865,7 +876,7 @@ export function StudentDashboard() {
                       setSearchParams(params, { replace: true });
                     }
                   }}
-                  className={`relative flex shrink-0 items-center gap-2 pb-3 text-sm transition-colors rounded-none bg-transparent hover:bg-transparent px-0 pt-0 h-auto ${
+                  className={`relative flex shrink-0 snap-start items-center gap-2 pb-3 text-sm transition-colors rounded-none bg-transparent hover:bg-transparent px-0 pt-0 h-auto ${
                     activeTab === tab.id
                       ? 'font-semibold text-zinc-950 dark:text-white'
                       : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'

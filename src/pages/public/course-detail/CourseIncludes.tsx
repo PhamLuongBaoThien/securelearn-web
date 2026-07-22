@@ -70,9 +70,9 @@ export function CourseIncludes({ totalDuration, totalLessons, totalQuizzes = 0, 
   return (
     <section className="rounded-lg border border-border bg-card p-6 lg:p-7 shadow-sm">
       <div className="mb-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {/* <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Tổng quan quyền lợi
-        </p>
+        </p> */}
         <h2 className="text-2xl font-bold font-serif">Khóa học bao gồm</h2>
       </div>
 

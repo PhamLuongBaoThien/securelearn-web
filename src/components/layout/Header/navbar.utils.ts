@@ -67,29 +67,6 @@ export const resolveTheme = (theme: string): 'dark' | 'light' => {
 };
 
 /**
- * Xây dựng đệ quy danh sách MenuItem từ cây ICourseCategoryNode
- * để dùng trong mobile sidebar
- */
-export const buildRecursiveCategories = (
-  cats: ICourseCategoryNode[],
-  iconNode: ReactNode
-): MenuItem[] =>
-  cats.map((c) => {
-    const item: MenuItem = {
-      name: c.name,
-      path: `/courses?category=${encodeURIComponent(c.slug)}`,
-      icon: iconNode,
-    };
-    if (c.children && c.children.length > 0) {
-      item.children = buildRecursiveCategories(
-        c.children as ICourseCategoryNode[],
-        iconNode
-      );
-    }
-    return item;
-  });
-
-/**
  * Xây dựng danh sách SidebarEntry cho mobile sidebar
  * từ categories, trạng thái auth, và teach button props
  */
@@ -100,11 +77,12 @@ export const buildMobileSidebarEntries = (
   teachBtnProps: TeachButtonProps,
   icons: {
     bookOpen: ReactNode;
+    heart?: ReactNode;
+    creditCard?: ReactNode;
     user: ReactNode;
     settings: ReactNode;
     search: ReactNode;
     layers: ReactNode;
-    minus: ReactNode;
     monitor: ReactNode;
   }
 ): SidebarEntry[] => {
@@ -115,9 +93,11 @@ export const buildMobileSidebarEntries = (
     entries.push({
       type: 'label',
       label: {
-        labelName: 'Tài khoản',
+        labelName: user.fullName || 'Tài khoản',
         items: [
           { name: 'Khóa học của tôi', path: '/student/dashboard', icon: icons.bookOpen },
+          { name: 'Danh sách mong muốn', path: '/student/dashboard?tab=wishlist', icon: icons.heart },
+          { name: 'Lịch sử thanh toán', path: '/student/dashboard?tab=payments', icon: icons.creditCard },
           { name: 'Hồ sơ công khai', path: user.publicSlug ? '/users/' + user.publicSlug : '/account/settings/profile', icon: icons.user },
           { name: 'Cài đặt tài khoản', path: '/account/settings/profile', icon: icons.settings },
         ],
@@ -139,29 +119,22 @@ export const buildMobileSidebarEntries = (
   // Khám phá
   entries.push({ type: 'label', label: { labelName: 'Khám phá', items: [] } });
 
-  // Các danh mục gốc
-  categories.forEach((cat) => {
-    const item: SidebarEntry = {
-      type: 'single',
-      name: cat.name,
-      path: `/courses?category=${encodeURIComponent(cat.slug)}`,
-      icon: icons.layers,
-    };
-    if (cat.children && cat.children.length > 0) {
-      item.children = buildRecursiveCategories(
-        cat.children as ICourseCategoryNode[],
-        icons.minus
-      );
-    }
-    entries.push(item);
-  });
-
-  // Tất cả khóa học
+  // Khám phá tất cả
   entries.push({
     type: 'single',
     name: 'Tất cả khóa học',
     path: '/courses',
     icon: icons.search,
+  });
+
+  // Chỉ hiển thị các danh mục gốc chính trên Mobile Sidebar (không đệ quy sâu gây rối)
+  categories.forEach((cat) => {
+    entries.push({
+      type: 'single',
+      name: cat.name,
+      path: `/courses?category=${encodeURIComponent(cat.slug)}`,
+      icon: icons.layers,
+    });
   });
 
   // Giảng dạy

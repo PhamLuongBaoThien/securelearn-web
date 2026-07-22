@@ -15,7 +15,7 @@ export function CourseWhatYouLearn({ items }: Props) {
 
   return (
     <div className="border border-border p-6 lg:p-8 bg-card shadow-sm">
-      <h2 className="text-2xl font-bold font-serif mb-6">Bạn sẽ học được gì</h2>
+      <h2 className="text-2xl font-bold font-serif mb-6">Bạn sẽ học được gì?</h2>
 
       {/* Grid 2 cột trên màn hình md trở lên, 1 cột trên mobile */}
       <div className="grid md:grid-cols-2 gap-x-8 gap-y-3">
