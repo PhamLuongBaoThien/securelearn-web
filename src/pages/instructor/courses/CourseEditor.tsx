@@ -365,6 +365,11 @@ export const CourseEditor: React.FC = () => {
   const savedSnapshotRef = React.useRef<ReturnType<typeof getInitialCourseEditorValues> | null>(null);
   const metadataSaveSeqRef = React.useRef(0);
   const progressionModeSaveSeqRef = React.useRef(0);
+  const metadataSaveInFlightRef = React.useRef(false);
+  const thumbnailChangeSeqRef = React.useRef(0);
+  const [metadataSaveCycle, setMetadataSaveCycle] = useState(0);
+  const sectionTitleDraftsRef = React.useRef<Map<string, string>>(new Map());
+  const lessonTitleDraftsRef = React.useRef<Map<string, string>>(new Map());
   // Giữ nội dung bài học đang gõ để các refetch nền (ví dụ video READY) không ghi đè draft trước khi blur lưu DB.
   const lessonContentDraftsRef = React.useRef<Map<string, string>>(new Map());
 
@@ -429,6 +434,8 @@ export const CourseEditor: React.FC = () => {
     setIsInitialized(false);
     setHasEditedInSession(false);
     setViewMode("draft");
+    sectionTitleDraftsRef.current.clear();
+    lessonTitleDraftsRef.current.clear();
     lessonContentDraftsRef.current.clear();
   }, [courseId]);
 
@@ -440,14 +447,26 @@ export const CourseEditor: React.FC = () => {
     if (!course) return;
 
     // Luôn bám sát dữ liệu giáo trình, nhưng giữ lại content draft đang gõ để refetch nền không làm mất chữ.
-    const nextSections = (course.sections || []).map((section) => ({
-      ...section,
-      lessons: section.lessons.map((lesson) => {
-        if (!lesson._id) return lesson;
-        const draft = lessonContentDraftsRef.current.get(lesson._id);
-        return draft === undefined ? lesson : { ...lesson, content: draft };
-      }),
-    }));
+    const nextSections = (course.sections || []).map((section) => {
+      const sectionTitleDraft = section._id
+        ? sectionTitleDraftsRef.current.get(section._id)
+        : undefined;
+
+      return {
+        ...section,
+        ...(sectionTitleDraft === undefined ? {} : { title: sectionTitleDraft }),
+        lessons: section.lessons.map((lesson) => {
+          if (!lesson._id) return lesson;
+          const titleDraft = lessonTitleDraftsRef.current.get(lesson._id);
+          const contentDraft = lessonContentDraftsRef.current.get(lesson._id);
+          return {
+            ...lesson,
+            ...(titleDraft === undefined ? {} : { title: titleDraft }),
+            ...(contentDraft === undefined ? {} : { content: contentDraft }),
+          };
+        }),
+      };
+    });
     setSections(nextSections);
 
     // Chỉ gán giá trị mặc định cho form vào lần đầu tiên để tránh ghi đè dữ liệu đang gõ dở
@@ -551,6 +570,7 @@ export const CourseEditor: React.FC = () => {
   };
 
   const handleThumbnailChange = (previewUrl: string, file: File | null) => {
+    thumbnailChangeSeqRef.current += 1;
     setThumbnail(previewUrl);
     setThumbnailFile(file);
     setHasUnsavedChanges(true);
@@ -647,6 +667,8 @@ export const CourseEditor: React.FC = () => {
   const handleSectionTitleChange = (sectionIndex: number, value: string) => {
     setSections((prev) => {
       const next = [...prev];
+      const sectionId = next[sectionIndex]?._id;
+      if (sectionId) sectionTitleDraftsRef.current.set(sectionId, value);
       next[sectionIndex] = { ...next[sectionIndex], title: value };
       return next;
     });
@@ -663,6 +685,9 @@ export const CourseEditor: React.FC = () => {
         payload: { title: section.title },
       });
       await refreshCourse();
+      if (sectionTitleDraftsRef.current.get(sectionId) === section.title) {
+        sectionTitleDraftsRef.current.delete(sectionId);
+      }
     });
   };
 
@@ -727,6 +752,9 @@ export const CourseEditor: React.FC = () => {
 
   const handleLessonFieldChange = (sectionIndex: number, lessonIndex: number, field: keyof ILesson, value: ILesson[keyof ILesson]) => {
     const lessonId = sections[sectionIndex]?.lessons[lessonIndex]?._id;
+    if (field === "title" && lessonId) {
+      lessonTitleDraftsRef.current.set(lessonId, String(value ?? ""));
+    }
     if (field === "content" && lessonId) {
       lessonContentDraftsRef.current.set(lessonId, String(value ?? ""));
     }
@@ -768,6 +796,9 @@ export const CourseEditor: React.FC = () => {
         payload: { title: lesson.title },
       });
       await refreshCourse();
+      if (lessonTitleDraftsRef.current.get(lessonId) === lesson.title) {
+        lessonTitleDraftsRef.current.delete(lessonId);
+      }
     });
   };
 
@@ -853,18 +884,27 @@ export const CourseEditor: React.FC = () => {
     if (!areCourseEditorValuesEqual(debouncedMetadataDraft, metadataDraft)) return;
     if (!debouncedMetadataDraft.title.trim()) return;
     if (areCourseEditorValuesEqual(debouncedMetadataDraft, savedSnapshotRef.current)) return;
+    // Chỉ chạy một metadata save tại một thời điểm. Khi request hiện tại xong,
+    // metadataSaveCycle sẽ kích hoạt lại effect để lưu bản nháp mới nhất.
+    if (metadataSaveInFlightRef.current) return;
 
     let cancelled = false;
     const saveSeq = metadataSaveSeqRef.current + 1;
+    const thumbnailChangeSeq = thumbnailChangeSeqRef.current;
     metadataSaveSeqRef.current = saveSeq;
     if (metadataSaveTimerRef.current) clearTimeout(metadataSaveTimerRef.current);
+    metadataSaveInFlightRef.current = true;
     setMetadataSaveStatus("saving");
 
     void updateMutation.mutateAsync({
       courseId: courseId!,
       payload: buildCourseMetadataPayload(debouncedMetadataDraft, thumbnailFile),
     }).then((updatedCourse) => {
-      if (cancelled || metadataSaveSeqRef.current !== saveSeq) return;
+      if (
+        cancelled ||
+        metadataSaveSeqRef.current !== saveSeq ||
+        thumbnailChangeSeqRef.current !== thumbnailChangeSeq
+      ) return;
 
       const nextSnapshot = {
         ...debouncedMetadataDraft,
@@ -879,16 +919,23 @@ export const CourseEditor: React.FC = () => {
       setMetadataSaveStatus("saved");
       metadataSaveTimerRef.current = setTimeout(() => setMetadataSaveStatus("idle"), 2000);
     }).catch((error) => {
-      if (cancelled || metadataSaveSeqRef.current !== saveSeq) return;
+      if (
+        cancelled ||
+        metadataSaveSeqRef.current !== saveSeq ||
+        thumbnailChangeSeqRef.current !== thumbnailChangeSeq
+      ) return;
       setMetadataSaveStatus("error");
       metadataSaveTimerRef.current = setTimeout(() => setMetadataSaveStatus("idle"), 3000);
       toast.error(error instanceof Error ? error.message : "Không thể tự lưu thông tin khóa học.");
+    }).finally(() => {
+      metadataSaveInFlightRef.current = false;
+      setMetadataSaveCycle((cycle) => cycle + 1);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [debouncedMetadataDraft, effectiveReadOnly, isInitialized]);
+  }, [debouncedMetadataDraft, effectiveReadOnly, isInitialized, metadataSaveCycle]);
 
   useEffect(() => {
     if (!isInitialized || effectiveReadOnly || !savedSnapshotRef.current) return;
@@ -1278,7 +1325,7 @@ export const CourseEditor: React.FC = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Ảnh quảng cáo khóa học</label>
-                <ThumbnailUploader value={isViewingPublished ? displayCourse.thumbnail || "" : thumbnail} onChange={handleThumbnailChange} disabled={updateMutation.isPending || effectiveReadOnly} />
+                <ThumbnailUploader value={isViewingPublished ? displayCourse.thumbnail || "" : thumbnail} onChange={handleThumbnailChange} disabled={effectiveReadOnly} />
                 <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1.5">Khuyến nghị tỉ lệ 16:9, tối thiểu 1280×720px. Muốn có 1080p, hãy dùng nguồn 1920×1080px trở lên</p>
               </div>
             </div>

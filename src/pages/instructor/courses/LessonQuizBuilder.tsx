@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useGetLessonQuiz, useSaveLessonQuiz } from '@/hooks/useInstructorCourses';
-import { type IQuiz, type IQuizQuestion } from '@/services/courseApi';
+import { type IQuiz, type IQuizQuestion, type IQuizQuestionOption } from '@/services/courseApi';
 
 interface LessonQuizBuilderProps {
   courseId: string;
@@ -20,10 +20,40 @@ interface LessonQuizFormProps extends LessonQuizBuilderProps {
   initialQuiz?: IQuiz | null;
 }
 
-const createEmptyQuestion = (): IQuizQuestion => ({
+interface QuizOptionDraft extends IQuizQuestionOption {
+  clientId: string;
+}
+
+interface QuizQuestionDraft extends Omit<IQuizQuestion, 'options'> {
+  clientId: string;
+  options: QuizOptionDraft[];
+}
+
+let quizDraftIdSequence = 0;
+const createQuizDraftId = (prefix: 'question' | 'option') => `${prefix}-${++quizDraftIdSequence}`;
+const createDraftOption = (text = ''): QuizOptionDraft => ({ clientId: createQuizDraftId('option'), text });
+
+const toQuestionDraft = (question: IQuizQuestion): QuizQuestionDraft => ({
+  ...question,
+  clientId: createQuizDraftId('question'),
+  options: question.options.map((option) => createDraftOption(option.text)),
+});
+
+const toQuestionPayload = (question: QuizQuestionDraft): IQuizQuestion => ({
+  questionId: question.questionId,
+  type: question.type,
+  prompt: question.prompt,
+  options: question.options.map((option) => ({ text: option.text })),
+  correctOptionIndexes: question.correctOptionIndexes,
+  explanation: question.explanation,
+  points: question.points,
+});
+
+const createEmptyQuestion = (): QuizQuestionDraft => ({
+  clientId: createQuizDraftId('question'),
   type: 'SINGLE_CHOICE',
   prompt: '',
-  options: [{ text: '' }, { text: '' }],
+  options: [createDraftOption(), createDraftOption()],
   correctOptionIndexes: [0],
   explanation: '',
   points: 1,
@@ -46,12 +76,14 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
   const saveQuizMutation = useSaveLessonQuiz();
   const [title, setTitle] = useState(initialQuiz?.title ?? 'Quiz');
   const [passingScore, setPassingScore] = useState(initialQuiz?.passingScore ?? 70);
-  const [questions, setQuestions] = useState<IQuizQuestion[]>(
-    initialQuiz && initialQuiz.questions.length > 0 ? initialQuiz.questions : [createEmptyQuestion()]
+  const [questions, setQuestions] = useState<QuizQuestionDraft[]>(
+    initialQuiz && initialQuiz.questions.length > 0
+      ? initialQuiz.questions.map(toQuestionDraft)
+      : [createEmptyQuestion()]
   );
   const [quizId, setQuizId] = useState<string | null>(initialQuiz?._id ?? null);
 
-  const updateQuestion = (index: number, partial: Partial<IQuizQuestion>) => {
+  const updateQuestion = (index: number, partial: Partial<QuizQuestionDraft>) => {
     setQuestions((prev) => prev.map((question, questionIndex) => (
       questionIndex === index ? { ...question, ...partial } : question
     )));
@@ -64,7 +96,7 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
       const payload: Omit<IQuiz, '_id'> = {
         title,
         passingScore,
-        questions,
+        questions: questions.map(toQuestionPayload),
       };
 
       const savedQuiz = await saveQuizMutation.mutateAsync({
@@ -98,7 +130,7 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
 
       <div className="space-y-4">
         {questions.map((question, index) => (
-          <div key={index} className="rounded-xl border border-zinc-200 bg-white dark:bg-zinc-900 dark:border-zinc-800 shadow-sm overflow-hidden">
+          <div key={question.clientId} className="rounded-xl border border-zinc-200 bg-white dark:bg-zinc-900 dark:border-zinc-800 shadow-sm overflow-hidden">
             <div className="bg-zinc-50 dark:bg-zinc-950 p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 flex-1">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
@@ -108,9 +140,13 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
                   value={question.type}
                   onChange={(e) => {
                     const newType = e.target.value as IQuizQuestion['type'];
-                    const partial: Partial<IQuizQuestion> = { type: newType, correctOptionIndexes: [0] };
+                    const firstSelectedIndex = question.correctOptionIndexes[0] ?? 0;
+                    const partial: Partial<QuizQuestionDraft> = { type: newType };
                     if (newType === 'TRUE_FALSE') {
-                      partial.options = [{ text: 'Đúng' }, { text: 'Sai' }];
+                      partial.options = [createDraftOption('Đúng'), createDraftOption('Sai')];
+                      partial.correctOptionIndexes = [firstSelectedIndex <= 1 ? firstSelectedIndex : 0];
+                    } else if (newType === 'SINGLE_CHOICE') {
+                      partial.correctOptionIndexes = [firstSelectedIndex];
                     }
                     updateQuestion(index, partial);
                   }}
@@ -135,7 +171,7 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
 
               <div className="space-y-2 pl-2">
                 {question.options.map((option, optionIndex) => (
-                  <div key={optionIndex} className="flex items-center gap-3">
+                  <div key={option.clientId} className="flex items-center gap-3">
                     {question.type === 'MULTIPLE_CHOICE' ? (
                       <input
                         type="checkbox"
@@ -144,7 +180,7 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
                           const isChecked = e.target.checked;
                           let nextIndexes = [...question.correctOptionIndexes];
                           if (isChecked) {
-                            nextIndexes.push(optionIndex);
+                            nextIndexes = Array.from(new Set([...nextIndexes, optionIndex])).sort((a, b) => a - b);
                           } else {
                             nextIndexes = nextIndexes.filter((idx) => idx !== optionIndex);
                           }
@@ -155,7 +191,7 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
                     ) : (
                       <input
                         type="radio"
-                        name={`question-${index}`}
+                        name={`quiz-${lessonId ?? 'lesson'}-${question.clientId}`}
                         checked={question.correctOptionIndexes[0] === optionIndex}
                         onChange={() => updateQuestion(index, { correctOptionIndexes: [optionIndex] })}
                         className="w-4 h-4 shrink-0 border-zinc-300 text-primary focus:ring-primary bg-white dark:bg-zinc-900 dark:border-zinc-700 mt-0.5"
@@ -165,7 +201,7 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
                       value={option.text}
                       onChange={(event) => {
                         const nextOptions = question.options.map((item, itemIndex) => (
-                          itemIndex === optionIndex ? { text: event.target.value } : item
+                          itemIndex === optionIndex ? { ...item, text: event.target.value } : item
                         ));
                         updateQuestion(index, { options: nextOptions });
                       }}
@@ -193,7 +229,7 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
                 ))}
                 
                 {question.type !== 'TRUE_FALSE' && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => updateQuestion(index, { options: [...question.options, { text: '' }] })} className="gap-2 text-xs text-muted-foreground mt-1 ml-5">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => updateQuestion(index, { options: [...question.options, createDraftOption()] })} className="gap-2 text-xs text-muted-foreground mt-1 ml-5">
                     <Plus className="h-3.5 w-3.5" /> Thêm lựa chọn
                   </Button>
                 )}
