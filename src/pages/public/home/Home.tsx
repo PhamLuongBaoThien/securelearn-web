@@ -214,23 +214,23 @@ export const Home = () => {
         </section>
 
         {/* Featured Courses */}
-        <section className="px-6 py-20 max-w-[1340px] mx-auto">
+        <section className="mx-auto flex w-full max-w-[1340px] flex-col justify-center overflow-hidden px-6 py-12 md:h-screen md:py-8">
           <SectionReveal>
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div className="max-w-3xl">
-                <h2 className="text-3xl md:text-4xl font-bold mb-4 font-sans tracking-tight">Khóa Học Nổi Bật</h2>
-                <p className="text-lg md:text-xl text-muted-foreground">
+                <h2 className="mb-3 font-sans text-2xl font-bold tracking-tight md:text-3xl">Khóa Học Nổi Bật</h2>
+                <p className="text-base leading-relaxed text-muted-foreground md:text-lg">
                   Khám phá các khóa học được đánh giá cao nhất. Nâng cấp kỹ năng của bạn ngay hôm nay với lộ trình bài bản từ cơ bản đến chuyên sâu.
                 </p>
               </div>
-              <Link to="/courses" className={buttonVariants({ variant: 'outline', className: "rounded-full font-semibold px-8 shrink-0 border-primary/50 hover:bg-primary/5 hover:text-primary" })}>
+              <Link to="/courses" className={buttonVariants({ variant: 'outline', className: "shrink-0 rounded-full border-primary/50 px-6 font-semibold hover:bg-primary/5 hover:text-primary" })}>
                 Xem tất cả
               </Link>
             </div>
           </SectionReveal>
           
           <SectionReveal delay={0.08}>
-            <div className="flex gap-8 mb-8 overflow-x-auto pb-1 scrollbar-hide border-b border-border/30">
+            <div className="mb-4 flex gap-6 overflow-x-auto border-b border-border/30 pb-1 scrollbar-hide">
               {categoryTabs.map((category) => (
                 <button
                   key={category.id}
@@ -259,13 +259,14 @@ export const Home = () => {
               ))}
             </div>
             
-            <div className="relative pt-4">
+            <div className="relative pt-1">
                {/* Background glowing effect */}
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 rounded-full bg-primary/5 blur-[120px] pointer-events-none -z-10" />
                
                <AnimatePresence mode="wait" initial={false}>
                  <motion.div
                    key={selectedCategory || 'all'}
+                   className="min-h-[440px]"
                    initial={{ opacity: shouldReduceMotion ? 1 : 0 }}
                    animate={{ opacity: 1 }}
                    exit={{ opacity: shouldReduceMotion ? 1 : 0 }}
@@ -273,7 +274,7 @@ export const Home = () => {
                    aria-live="polite"
                  >
                {isFeaturedCoursesLoading ? (
-                 <div className="flex gap-4 overflow-hidden py-4" aria-label="Đang tải khóa học nổi bật">
+                 <div className="flex min-h-[440px] gap-4 overflow-hidden py-2" aria-label="Đang tải khóa học nổi bật">
                    {Array.from({ length: 4 }).map((_, index) => (
                      <div key={index} className="min-w-[240px] md:min-w-[260px] max-w-[280px] shrink-0">
                        <CourseCardSkeleton />
@@ -281,7 +282,7 @@ export const Home = () => {
                    ))}
                  </div>
                ) : isFeaturedCoursesError ? (
-                 <div className="flex min-h-48 flex-col items-center justify-center gap-4 rounded-xl border border-border bg-background/70 px-6 text-center">
+                 <div className="flex min-h-[440px] flex-col items-center justify-center gap-4 rounded-xl border border-border bg-background/70 px-6 text-center">
                    <p className="text-muted-foreground">
                      {featuredCoursesError instanceof Error
                        ? featuredCoursesError.message
@@ -296,7 +297,7 @@ export const Home = () => {
                    </button>
                  </div>
                ) : featuredCourses.length === 0 ? (
-                 <div className="flex min-h-48 items-center justify-center rounded-xl border border-dashed border-border px-6 text-center text-muted-foreground">
+                 <div className="flex min-h-[440px] items-center justify-center rounded-xl border border-dashed border-border px-6 text-center text-muted-foreground">
                    Chưa có khóa học phù hợp trong danh mục này.
                  </div>
                ) : (
