@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { HorizontalStaggerContainer, HorizontalStaggerItem } from '@/components/animations/HorizontalStagger';
 import { SectionReveal, SectionSequence, SectionSequenceItem } from '@/components/animations/SectionReveal';
 import { CourseCarousel } from '@/components/ui/CourseCarousel';
 import { buttonVariants } from '@/components/ui/button';
+import { useCatalog } from '@/hooks/useCatalog';
+import { usePublicCourseCategories } from '@/hooks/usePublicCourseCategories';
+import { CourseCardSkeleton } from '@/pages/public/catalog/CourseCardSkeleton';
 import { HomeBannerSlider } from './HomeBannerSlider';
 
 const CopyrightIllustration = () => (
@@ -78,17 +82,6 @@ const TrustIllustration = () => (
   </svg>
 );
 
-import type { ICourse } from '@/services/courseApi';
-
-const mockCourses: Partial<ICourse>[] = [
-  { _id: '1', slug: '1', title: '100 Days of Code: The Complete Python Pro Bootcamp', instructorName: 'Dr. Angela Yu', rating: 4.7, reviews: 295000, price: 349000, originalPrice: 1999000, thumbnail: 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=500&q=80', badge: 'Bestseller' },
-  { _id: '2', slug: '2', title: 'The Complete Python Bootcamp From Zero to Hero in Python', instructorName: 'Jose Portilla', rating: 4.6, reviews: 480000, price: 329000, originalPrice: 2490000, thumbnail: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=500&q=80', badge: 'Bestseller' },
-  { _id: '3', slug: '3', title: 'Python for Data Science and Machine Learning', instructorName: 'Jose Portilla', rating: 4.6, reviews: 135000, price: 429000, originalPrice: 2690000, thumbnail: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=500&q=80' },
-  { _id: '4', slug: '4', title: 'Python Mega Course: Learn Python in 60 Days', instructorName: 'Ardit Sulce', rating: 4.7, reviews: 68000, price: 349000, originalPrice: 1999000, thumbnail: 'https://images.unsplash.com/photo-1575089976121-8ed7b2a54265?auto=format&fit=crop&w=500&q=80' },
-  { _id: '5', slug: '5', title: 'Automate the Boring Stuff with Python', instructorName: 'Al Sweigart', rating: 4.6, reviews: 108000, price: 299000, originalPrice: 1290000, thumbnail: 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=500&q=80' },
-];
-
-
 const PARTNER_LOGOS = [
   { id: 'ctu', node: <div className="text-2xl md:text-3xl font-black tracking-widest text-blue-700 select-none">CTU</div> },
   { id: 'ctump', node: <div className="text-2xl md:text-3xl font-black tracking-widest text-teal-600 select-none">CTUMP</div> },
@@ -159,6 +152,32 @@ const PartnerSlider = () => {
 };
 
 export const Home = () => {
+  const shouldReduceMotion = useReducedMotion();
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const { data: categoryTree = [] } = usePublicCourseCategories();
+  const {
+    data: featuredCoursesData,
+    isLoading: isFeaturedCoursesLoading,
+    isError: isFeaturedCoursesError,
+    error: featuredCoursesError,
+    refetch: refetchFeaturedCourses,
+  } = useCatalog({
+    page: 1,
+    limit: 8,
+    sort: 'top_rated',
+    category: selectedCategory ? [selectedCategory] : undefined,
+  });
+
+  const featuredCourses = featuredCoursesData?.courses ?? [];
+  const categoryTabs = [
+    { id: 'all', name: 'Tất cả khóa học', slug: '' },
+    ...categoryTree.map((category) => ({
+      id: category._id,
+      name: category.name,
+      slug: category.slug,
+    })),
+  ];
+
   return (
     <>
       <HomeBannerSlider />
@@ -211,24 +230,31 @@ export const Home = () => {
           </SectionReveal>
           
           <SectionReveal delay={0.08}>
-            {/* Category Tabs Array (Dễ dàng thay bằng dữ liệu API sau này) */}
             <div className="flex gap-8 mb-8 overflow-x-auto pb-1 scrollbar-hide border-b border-border/30">
-              {[
-                { id: 'all', name: 'Tất cả khóa học' },
-                { id: 'programming', name: 'Lập trình Lõi' },
-                { id: 'security', name: 'An toàn Thông tin' },
-                { id: 'cloud', name: 'DevOps & Cloud' },
-                { id: 'ai', name: 'Trí tuệ Nhân tạo' },
-              ].map((cat, idx) => (
-                <button 
-                  key={cat.id}
-                  className={`text-base font-bold pb-3 whitespace-nowrap border-b-2 transition-all ${
-                    idx === 0 
-                      ? 'text-primary border-primary' 
-                      : 'text-muted-foreground hover:text-foreground border-transparent'
+              {categoryTabs.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  aria-pressed={selectedCategory === category.slug}
+                  onClick={() => setSelectedCategory(category.slug)}
+                  className={`relative cursor-pointer pb-3 text-base font-bold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+                    selectedCategory === category.slug
+                      ? 'text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {cat.name}
+                  {category.name}
+                  {selectedCategory === category.slug && (
+                    <motion.div
+                      layoutId="home-featured-category-tab"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary"
+                      transition={
+                        shouldReduceMotion
+                          ? { duration: 0 }
+                          : { type: 'spring', stiffness: 500, damping: 36 }
+                      }
+                    />
+                  )}
                 </button>
               ))}
             </div>
@@ -237,8 +263,47 @@ export const Home = () => {
                {/* Background glowing effect */}
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 rounded-full bg-primary/5 blur-[120px] pointer-events-none -z-10" />
                
-               {/* Carousel Component */}
-               <CourseCarousel courses={mockCourses as unknown as ICourse[]} />
+               <AnimatePresence mode="wait" initial={false}>
+                 <motion.div
+                   key={selectedCategory || 'all'}
+                   initial={{ opacity: shouldReduceMotion ? 1 : 0 }}
+                   animate={{ opacity: 1 }}
+                   exit={{ opacity: shouldReduceMotion ? 1 : 0 }}
+                   transition={{ duration: shouldReduceMotion ? 0 : 0.15 }}
+                   aria-live="polite"
+                 >
+               {isFeaturedCoursesLoading ? (
+                 <div className="flex gap-4 overflow-hidden py-4" aria-label="Đang tải khóa học nổi bật">
+                   {Array.from({ length: 4 }).map((_, index) => (
+                     <div key={index} className="min-w-[240px] md:min-w-[260px] max-w-[280px] shrink-0">
+                       <CourseCardSkeleton />
+                     </div>
+                   ))}
+                 </div>
+               ) : isFeaturedCoursesError ? (
+                 <div className="flex min-h-48 flex-col items-center justify-center gap-4 rounded-xl border border-border bg-background/70 px-6 text-center">
+                   <p className="text-muted-foreground">
+                     {featuredCoursesError instanceof Error
+                       ? featuredCoursesError.message
+                       : 'Không thể tải khóa học nổi bật.'}
+                   </p>
+                   <button
+                     type="button"
+                     onClick={() => void refetchFeaturedCourses()}
+                     className={buttonVariants({ variant: 'outline' })}
+                   >
+                     Thử lại
+                   </button>
+                 </div>
+               ) : featuredCourses.length === 0 ? (
+                 <div className="flex min-h-48 items-center justify-center rounded-xl border border-dashed border-border px-6 text-center text-muted-foreground">
+                   Chưa có khóa học phù hợp trong danh mục này.
+                 </div>
+               ) : (
+                 <CourseCarousel courses={featuredCourses} />
+               )}
+                 </motion.div>
+               </AnimatePresence>
             </div>
           </SectionReveal>
         </section>

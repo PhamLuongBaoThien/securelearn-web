@@ -355,8 +355,15 @@ export const Navbar = () => {
               <div className="hidden xl:flex items-center gap-1 shrink-0">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Link to={teachBtnProps.to} className={`${desktopNavLinkClass(isInstructorView)} transition-transform duration-200 ease-out hover:scale-105 active:scale-95`}>
-                      {teachBtnProps.text}
+                    <Link to={teachBtnProps.to} className={`${desktopNavLinkClass(isInstructorView)} transition-transform duration-200 ease-out hover:scale-105 active:scale-95 whitespace-nowrap`}>
+                      {!showAuthenticatedUI && teachBtnProps.text === 'Giảng dạy trên SecureLearn' ? (
+                        <>
+                          <span className="2xl:hidden">Dạy trên SecureLearn</span>
+                          <span className="hidden 2xl:inline">Giảng dạy trên SecureLearn</span>
+                        </>
+                      ) : (
+                        teachBtnProps.text
+                      )}
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
@@ -389,25 +396,27 @@ export const Navbar = () => {
                   <NotificationBell enabled={showAuthenticatedUI} />
                 </div>
                 {/* Wishlist */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to="/student/dashboard?tab=wishlist"
-                      className="hidden sm:flex relative p-2 hover:bg-secondary rounded-full transition-transform duration-200 ease-out hover:scale-110 active:scale-95 group shrink-0"
-                    >
-                      <Heart className="h-5 w-5 text-foreground group-hover:text-primary transition-colors" />
-                      {wishlist.length > 0 && (
-                        <span
-                          key={wishlist.length}
-                          className="absolute top-0 right-0 h-[14px] w-[14px] rounded-full bg-rose-500 text-[9px] font-bold text-white flex items-center justify-center pointer-events-none animate-badge-pop"
-                        >
-                          {wishlist.length}
-                        </span>
-                      )}
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">Danh sách mong muốn</TooltipContent>
-                </Tooltip>
+                {showAuthenticatedUI && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        to="/student/dashboard?tab=wishlist"
+                        className="hidden sm:flex relative p-2 hover:bg-secondary rounded-full transition-transform duration-200 ease-out hover:scale-110 active:scale-95 group shrink-0"
+                      >
+                        <Heart className="h-5 w-5 text-foreground group-hover:text-primary transition-colors" />
+                        {wishlist.length > 0 && (
+                          <span
+                            key={wishlist.length}
+                            className="absolute top-0 right-0 h-[14px] w-[14px] rounded-full bg-rose-500 text-[9px] font-bold text-white flex items-center justify-center pointer-events-none animate-badge-pop"
+                          >
+                            {wishlist.length}
+                          </span>
+                        )}
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Danh sách mong muốn</TooltipContent>
+                  </Tooltip>
+                )}
 
                 {/* Cart */}
                 <Tooltip>
