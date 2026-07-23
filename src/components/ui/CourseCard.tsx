@@ -367,7 +367,7 @@ export const CourseCard = ({ course, mode = 'default', couponPreview, disableCou
         side="right"
         align="start"
         sideOffset={15}
-        className="w-80 p-5 shadow-xl pointer-events-none bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hidden md:block"
+        className="z-40 w-80 p-5 shadow-xl pointer-events-none bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl hidden md:block"
       >
         <h4 className="font-bold text-sm mb-3 text-zinc-900 dark:text-zinc-50">
           Những gì bạn sẽ học được:
