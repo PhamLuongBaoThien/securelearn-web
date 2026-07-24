@@ -391,7 +391,7 @@ export function Catalog() {
     maxDuration: durationOpt?.maxDuration,
     sort: sortKey,
     page,
-    limit: 12,
+    limit: 9,
   });
 
   const courses    = data?.courses    ?? [];
@@ -609,7 +609,7 @@ export function Catalog() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
           
           {/* ── Left Sidebar (Modern Glassmorphism Card Filters) ── */}
-          <aside className="hidden lg:block lg:col-span-1 space-y-4 sticky top-28 self-start">
+          <aside className="hidden lg:block lg:col-span-1 space-y-4 self-start">
             <div className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-md p-4 shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-border/60">
                 <h3 className="font-bold text-base text-foreground flex items-center gap-2">
@@ -789,7 +789,7 @@ export function Catalog() {
             {/* ── Loading Skeleton ── */}
             {isCatalogCardsLoading && (
               <div className="grid auto-rows-fr grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: 12 }).map((_, i) => (
+                {Array.from({ length: 9 }).map((_, i) => (
                   <CourseCardSkeleton key={i} />
                 ))}
               </div>

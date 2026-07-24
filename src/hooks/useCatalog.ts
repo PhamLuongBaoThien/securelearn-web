@@ -38,7 +38,7 @@ export function useCatalog(filters: CatalogFilters = {}) {
     queryFn: async () => {
       const response = await getPublishedCourses({
         page: filters.page || 1,
-        limit: filters.limit || 12,
+        limit: filters.limit || 9,
         search: filters.search || undefined,
         category: filters.category?.join(',') || undefined,
         level: filters.level?.join(',') || undefined,
