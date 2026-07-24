@@ -331,7 +331,7 @@ interface ApiResponse<T = undefined> {
   data?: T;
 }
 
-interface PaginatedData {
+export interface PaginatedData {
   courses: ICourse[];
   total: number;
   page: number;
@@ -572,6 +572,10 @@ export const getPublishedCourses = async (params?: {
   return data;
 };
 
+export const getRelatedCourses = async (courseId: string, params?: { page?: number; limit?: number }) => {
+  const { data } = await apiClient.get<ApiResponse<PaginatedData>>(`/api/courses/${courseId}/related`, { params });
+  return data;
+};
 export const getCourseReviews = async (courseId: string, params?: { page?: number; limit?: number }) => {
   const { data } = await apiClient.get<ApiResponse<PaginatedCourseReviews>>(`/api/courses/${courseId}/reviews`, { params });
   return data;

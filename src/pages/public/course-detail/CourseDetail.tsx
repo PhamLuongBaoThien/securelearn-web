@@ -23,6 +23,7 @@ import { CourseRequirements } from './CourseRequirements';
 import { CourseInstructor } from './CourseInstructor';
 import { CourseIncludes } from './CourseIncludes';
 import { CourseReviews } from './CourseReviews';
+import { RelatedCourses } from './RelatedCourses';
 import { ReportDialog } from '@/components/inbox/ReportDialog';
 
 // Skeleton cho phần hero banner — khớp layout Split Hero mới
@@ -340,6 +341,8 @@ export function CourseDetail() {
         />
 
       </div>
+
+      <RelatedCourses key={course._id} course={course} />
     </div>
   );
 }
