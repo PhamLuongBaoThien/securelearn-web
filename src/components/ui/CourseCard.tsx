@@ -184,8 +184,8 @@ export const CourseCard = ({ course, mode = 'default', couponPreview, disableCou
       {/* Info area */}
       <div className="flex flex-col flex-1 p-4">
         {/* Title */}
-        <Link to={`/course/${course.slug}`}>
-          <h3 className="font-bold text-base leading-snug line-clamp-2 mb-0.5 text-foreground">
+        <Link to={`/course/${course.slug}`} className="block">
+          <h3 className="mb-0.5 min-h-11 line-clamp-2 text-base font-bold leading-snug text-foreground">
             {course.title}
           </h3>
         </Link>
@@ -357,6 +357,7 @@ export const CourseCard = ({ course, mode = 'default', couponPreview, disableCou
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div
+          className="h-full"
           onMouseEnter={() => setIsOpen(true)}
           onMouseLeave={() => setIsOpen(false)}
         >

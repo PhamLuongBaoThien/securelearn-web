@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Hook: useCourseCouponPreviews
 // Mục đích:
 // - gom nhiều khóa học thành một request bulk để lấy coupon preview tốt nhất
@@ -8,7 +8,7 @@
 // - course carousel hoặc các danh sách khóa học nhiều item
 // ========================
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { ICourse } from '@/services/courseApi';
 import { getBestCourseCouponPreviews } from '@/services/paymentApi';
 import { useAppSelector } from '@/app/hooks';
@@ -32,7 +32,7 @@ export function useCourseCouponPreviews(courses: ICourse[], enabled = true) {
       return response.data.previews;
     },
     staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
     gcTime: 10 * 60 * 1000,
   });
 }
-

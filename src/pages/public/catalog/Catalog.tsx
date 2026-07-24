@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef, type MouseEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { CourseCard } from "@/components/ui/CourseCard";
@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
   SlidersHorizontal,
-  BookOpen,
 } from "lucide-react";
 import { useCatalog } from "@/hooks/useCatalog";
 import { usePublicCourseCategories } from "@/hooks/usePublicCourseCategories";
@@ -21,6 +20,15 @@ import {
   type PriceRangeValue,
 } from "@/lib/courseUtils";
 import { CatalogFilterSidebar } from "./CatalogFilterSidebar";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 import {
   PRICE_MAX,
@@ -32,6 +40,7 @@ import { SortDropdown } from "./SortDropdown";
 import { useCourseCouponPreviews } from "@/hooks/useCourseCouponPreviews";
 import { useEnrolledCourses } from "@/hooks/useEnrolledCourses";
 import { useAppSelector } from "@/app/hooks";
+import type { ICourseCategoryNode } from "@/services/courseApi";
 
 
 // ── Empty State Illustration SVG ──────────────────────────────────────────────
@@ -152,6 +161,35 @@ function EmptyStateIllustration() {
   );
 }
 
+
+type PageItem = number | 'ellipsis-start' | 'ellipsis-end';
+
+function normalizePage(value: string | null): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function getVisiblePages(page: number, totalPages: number): PageItem[] {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages = Array.from(new Set([1, totalPages, page - 1, page, page + 1]))
+    .filter((value) => value >= 1 && value <= totalPages)
+    .sort((a, b) => a - b);
+  const result: PageItem[] = [];
+
+  pages.forEach((value, index) => {
+    const previous = pages[index - 1];
+    if (previous && value - previous > 1) {
+      result.push(previous === 1 ? 'ellipsis-start' : 'ellipsis-end');
+    }
+    result.push(value);
+  });
+
+  return result;
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 export function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -167,7 +205,7 @@ export function Catalog() {
   const searchParam = searchParams.get("search") || "";
   const durationParam = searchParams.get("duration") || "";
   const sortParam = searchParams.get("sort") || "newest";
-  const pageParam = searchParams.get("page") || "1";
+  const pageParam = normalizePage(searchParams.get("page"));
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     categoryParam ? categoryParam.split(",") : []
@@ -184,8 +222,9 @@ export function Catalog() {
   });
   const [selectedDuration,   setSelectedDuration]   = useState<string>(durationParam);
   const [sortKey,            setSortKey]            = useState(sortParam);
-  const [page,               setPage]               = useState(Number(pageParam));
+  const [page,               setPage]               = useState(pageParam);
   const [isDrawerOpen,       setIsDrawerOpen]       = useState(false);
+  const catalogGridRef = useRef<HTMLDivElement>(null);
 
   // URL -> State sync (khi URL thay đổi từ bên ngoài hoặc khi tải xong categoryTree)
   useEffect(() => {
@@ -194,9 +233,9 @@ export function Catalog() {
     // Chuẩn hóa danh mục (tự động check cha/con) khi dữ liệu cây đã tải xong
     if (categoryTree.length > 0 && newCat.length > 0) {
       // Thu thập tất cả active slugs trong tree
-      const getAllSlugsInTree = (nodes: any[]): string[] => {
+      const getAllSlugsInTree = (nodes: ICourseCategoryNode[]): string[] => {
         const slugs: string[] = [];
-        const traverse = (items: any[]) => {
+        const traverse = (items: ICourseCategoryNode[]) => {
           for (const item of items) {
             slugs.push(item.slug);
             if (item.children?.length) {
@@ -235,7 +274,7 @@ export function Catalog() {
 
     setSelectedDuration((prev) => prev !== durationParam ? durationParam : prev);
     setSortKey((prev) => prev !== sortParam ? sortParam : prev);
-    setPage((prev) => prev !== Number(pageParam) ? Number(pageParam) : prev);
+    setPage((prev) => prev !== pageParam ? pageParam : prev);
   }, [categoryParam, levelParam, ratingParam, minPriceParam, maxPriceParam, durationParam, sortParam, pageParam, categoryTree]);
 
   // State -> URL sync (debounce để tránh update quá nhanh khi kéo thanh giá)
@@ -307,12 +346,10 @@ export function Catalog() {
     limit: 12,
   });
 
-
-
   const courses    = data?.courses    ?? [];
   const total      = data?.total      ?? 0;
   const totalPages = data?.totalPages ?? 0;
-  const hasMore    = page < totalPages;
+
   const couponPreviewsQuery = useCourseCouponPreviews(courses, !isLoading && !isFetching && !isError);
   const couponPreviews = couponPreviewsQuery.data ?? {};
   const enrolledCoursesQuery = useEnrolledCourses();
@@ -336,6 +373,32 @@ export function Catalog() {
     setSelectedDuration('');
     setPage(1);
     setIsDrawerOpen(false);
+  };
+  const getPageHref = (targetPage: number) => {
+    const next = new URLSearchParams(searchParams);
+    if (targetPage <= 1) next.delete('page');
+    else next.set('page', targetPage.toString());
+    const query = next.toString();
+    return query ? `?${query}` : '?';
+  };
+
+  const changePage = (nextPage: number) => {
+    if (isCatalogCardsLoading || nextPage < 1 || nextPage > totalPages || nextPage === page) return;
+    setPage(nextPage);
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => {
+      catalogGridRef.current?.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    });
+  };
+
+  const handlePageClick = (event: MouseEvent<HTMLAnchorElement>, nextPage: number) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    changePage(nextPage);
   };
 
   return (
@@ -365,7 +428,7 @@ export function Catalog() {
       <main className="max-w-[1340px] mx-auto px-4 md:px-6 py-8">
 
       {/* ── Horizontal Filter Bar ── */}
-      <div className="relative z-40 flex items-center justify-between gap-3 mb-6 flex-wrap">
+      <div ref={catalogGridRef} className="relative z-40 flex scroll-mt-28 items-center justify-between gap-3 mb-6 flex-wrap">
         {/* Left: filter chips */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Tất cả bộ lọc — Mở Drawer */}
@@ -414,8 +477,8 @@ export function Catalog() {
 
       {/* ── Loading Skeleton ── */}
       {isCatalogCardsLoading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-8">
-          {Array.from({ length: 8 }).map((_, i) => (
+        <div className="grid auto-rows-fr grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 12 }).map((_, i) => (
             <CourseCardSkeleton key={i} />
           ))}
         </div>
@@ -437,27 +500,68 @@ export function Catalog() {
 
       {/* ── Course Grid ── */}
       {!isCatalogCardsLoading && !isError && courses.length > 0 && (
-        <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-5 gap-y-8">
+        <StaggerContainer className="grid auto-rows-fr grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {courses.map((course) => (
-            <StaggerItem key={course._id}>
+            <StaggerItem key={course._id} className="h-full">
               <CourseCard course={course} couponPreview={couponPreviews[course._id] ?? null} disableCouponPreviewFetch isEnrolledOverride={enrolledCourseIds.has(course._id)} />
             </StaggerItem>
           ))}
         </StaggerContainer>
       )}
 
-      {/* ── Load More ── */}
-      {hasMore && (
-        <div className="mt-12 flex justify-center">
-          <Button
-            variant="outline"
-            className="px-10 py-5 font-bold border-2 rounded-none"
-            disabled={isFetching}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            {isFetching ? "Đang tải..." : "Xem thêm khóa học"}
-          </Button>
-        </div>
+      {/* ── Pagination ── */}
+      {!isError && totalPages > 1 && (
+        <Pagination className="mt-12">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href={getPageHref(page - 1)}
+                text="Trước"
+                aria-disabled={page <= 1 || isCatalogCardsLoading}
+                tabIndex={page <= 1 || isCatalogCardsLoading ? -1 : undefined}
+                className={page <= 1 || isCatalogCardsLoading
+                  ? 'pointer-events-none rounded-xl opacity-50'
+                  : 'cursor-pointer rounded-xl'}
+                onClick={(event) => handlePageClick(event, page - 1)}
+              />
+            </PaginationItem>
+
+            {getVisiblePages(page, totalPages).map((item) => (
+              <PaginationItem key={item}>
+                {typeof item === 'number' ? (
+                  <PaginationLink
+                    href={getPageHref(item)}
+                    isActive={item === page}
+                    aria-label={`Đi tới trang ${item}`}
+                    aria-disabled={isCatalogCardsLoading}
+                    tabIndex={isCatalogCardsLoading ? -1 : undefined}
+                    className={isCatalogCardsLoading
+                      ? 'pointer-events-none rounded-xl opacity-50'
+                      : 'cursor-pointer rounded-xl'}
+                    onClick={(event) => handlePageClick(event, item)}
+                  >
+                    {item}
+                  </PaginationLink>
+                ) : (
+                  <PaginationEllipsis className="text-muted-foreground" />
+                )}
+              </PaginationItem>
+            ))}
+
+            <PaginationItem>
+              <PaginationNext
+                href={getPageHref(page + 1)}
+                text="Sau"
+                aria-disabled={page >= totalPages || isCatalogCardsLoading}
+                tabIndex={page >= totalPages || isCatalogCardsLoading ? -1 : undefined}
+                className={page >= totalPages || isCatalogCardsLoading
+                  ? 'pointer-events-none rounded-xl opacity-50'
+                  : 'cursor-pointer rounded-xl'}
+                onClick={(event) => handlePageClick(event, page + 1)}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       )}
 
       {/* ── Filter Drawer (Left Side Panel) ── */}
@@ -485,8 +589,3 @@ export function Catalog() {
     </div>
   );
 }
-
-
-
-
-
