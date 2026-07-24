@@ -7,19 +7,67 @@ import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
   SlidersHorizontal,
+  Check,
+  Star,
+  ChevronDown,
+  X,
+  Tag,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+// ── Collapsible Filter Section Component với Card Styling ─────────────────────
+function SidebarFilterSection({
+  title,
+  badgeCount,
+  children,
+  defaultOpen = false,
+}: {
+  title: string;
+  badgeCount?: number;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-xl border border-border/70 bg-card/50 p-4 transition-all hover:border-border">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full font-semibold text-sm text-foreground flex items-center justify-between text-left group focus-visible:outline-none"
+      >
+        <span className="flex items-center gap-2">
+          {title}
+          {Boolean(badgeCount) && (
+            <Badge variant="secondary" className="px-1.5 py-0 text-[11px] font-bold bg-primary/10 text-primary border-0 rounded-full">
+              {badgeCount}
+            </Badge>
+          )}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 text-muted-foreground group-hover:text-primary transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+      {isOpen && <div className="mt-3.5 pt-3 border-t border-border/50">{children}</div>}
+    </div>
+  );
+}
 import { useCatalog } from "@/hooks/useCatalog";
 import { usePublicCourseCategories } from "@/hooks/usePublicCourseCategories";
 import {
-  MultiSelectDropdown,
-  DurationDropdown,
+  CategoryTreeFilter,
+  InlinePriceRange,
+  DurationFilter,
 } from "./CatalogFilters";
 import {
   normalizeCategorySelection,
+  getMinimalCategoryChips,
+  deselectCategoryFromTree,
   DURATION_OPTIONS,
   type PriceRangeValue,
 } from "@/lib/courseUtils";
-import { CatalogFilterSidebar } from "./CatalogFilterSidebar";
+import { CatalogFilterDrawer } from "./CatalogFilterDrawer";
 import {
   Pagination,
   PaginationContent,
@@ -427,164 +475,429 @@ export function Catalog() {
       {/* ── Nội dung chính của Catalog ── */}
       <main className="max-w-[1340px] mx-auto px-4 md:px-6 py-8">
 
-      {/* ── Horizontal Filter Bar ── */}
-      <div ref={catalogGridRef} className="relative z-40 flex scroll-mt-28 items-center justify-between gap-3 mb-6 flex-wrap">
-        {/* Left: filter chips */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Tất cả bộ lọc — Mở Drawer */}
-          <button
-            onClick={() => setIsDrawerOpen(true)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border rounded-full transition-all ${
-              hasActiveFilter
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border hover:bg-secondary bg-background text-foreground"
-            }`}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Tất cả bộ lọc
-          </button>
+        {/* ── Top Bar: Filter stats, Level/Duration Dropdowns & Sort ── */}
+        <div ref={catalogGridRef} className="relative z-30 space-y-4 mb-6 pb-4 border-b border-border">
+          <div className="flex scroll-mt-28 items-center justify-between gap-3 flex-wrap">
+            {/* Left: Mobile Drawer trigger & Result count */}
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Mobile Filter Drawer Trigger */}
+              <button
+                onClick={() => setIsDrawerOpen(true)}
+                className={`lg:hidden flex items-center gap-2 px-4 py-2 text-sm font-semibold border rounded-xl transition-all ${
+                  hasActiveFilter
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border hover:bg-secondary bg-background text-foreground"
+                }`}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                Bộ lọc {hasActiveFilter && "•"}
+              </button>
 
+              <p className="text-sm text-muted-foreground font-medium">
+                Hiển thị <span className="font-bold text-foreground">{total.toLocaleString()}</span> khóa học
+              </p>
+            </div>
 
-          <MultiSelectDropdown
-            label="Cấp độ"
-            options={LEVEL_OPTIONS}
-            selected={selectedLevels}
-            onSelect={handleLevel}
-          />
+            {/* Right: Sort */}
+            <SortDropdown
+              value={sortKey}
+              onChange={(val) => { setSortKey(val); resetPage(); }}
+            />
+          </div>
 
-
-          <DurationDropdown
-            selected={selectedDuration}
-            onChange={(k) => { setSelectedDuration(k); resetPage(); }}
-          />
-        </div>
-
-        {/* Right: Sort */}
-        <SortDropdown
-          value={sortKey}
-          onChange={(val) => { setSortKey(val); resetPage(); }}
-        />
-      </div>
-
-      {/* ── Error ── */}
-      {isError && (
-        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-          <AlertCircle className="w-12 h-12 text-destructive" />
-          <p className="text-lg font-semibold">Không thể tải khóa học</p>
-          <p className="text-muted-foreground text-sm">Vui lòng thử lại sau.</p>
-        </div>
-      )}
-
-      {/* ── Loading Skeleton ── */}
-      {isCatalogCardsLoading && (
-        <div className="grid auto-rows-fr grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <CourseCardSkeleton key={i} />
-          ))}
-        </div>
-      )}
-
-      {/* ── Empty ── */}
-      {!isCatalogCardsLoading && !isError && courses.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-          <EmptyStateIllustration />
-          <p className="text-lg font-semibold">Không tìm thấy khóa học</p>
-          <p className="text-muted-foreground text-sm">
-            {hasActiveFilter ? "Thử thay đổi bộ lọc." : "Chưa có khóa học nào được xuất bản."}
-          </p>
+          {/* ── Active Filter Chips Bar (Dải Chips Lựa Chọn) ── */}
           {hasActiveFilter && (
-            <Button variant="outline" onClick={clearAllFilters}>Xóa bộ lọc</Button>
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mr-1">
+                <Tag className="w-3 h-3" /> Đang chọn:
+              </span>
+
+              {/* Category Chips (Hiển thị tối giản: Nếu chọn hết con thì chỉ hiện Cha) */}
+              {getMinimalCategoryChips(selectedCategories, categoryTree).map((cat) => (
+                <Badge
+                  key={cat.slug}
+                  variant="secondary"
+                  className="gap-1.5 px-3 py-1 text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                >
+                  <span>{cat.name}</span>
+                  <X
+                    className="w-3 h-3 cursor-pointer opacity-70 hover:opacity-100"
+                    onClick={() => {
+                      const next = deselectCategoryFromTree(cat.slug, selectedCategories, categoryTree);
+                      handleCategoryChange(next);
+                    }}
+                  />
+                </Badge>
+              ))}
+
+              {/* Level Chips */}
+              {selectedLevels.map((lvl) => {
+                const label = LEVEL_OPTIONS.find((l) => l.value === lvl)?.label || lvl;
+                return (
+                  <Badge
+                    key={lvl}
+                    variant="secondary"
+                    className="gap-1.5 px-3 py-1 text-xs font-medium bg-secondary text-foreground border border-border hover:bg-secondary/80 transition-colors"
+                  >
+                    <span>{label}</span>
+                    <X
+                      className="w-3 h-3 cursor-pointer opacity-70 hover:opacity-100"
+                      onClick={() => handleLevel(lvl)}
+                    />
+                  </Badge>
+                );
+              })}
+
+              {/* Price Range Chip */}
+              {isPriceFiltered && (
+                <Badge
+                  variant="secondary"
+                  className="gap-1.5 px-3 py-1 text-xs font-medium bg-secondary text-foreground border border-border hover:bg-secondary/80 transition-colors"
+                >
+                  <span>Giá: {priceRange.min / 1000}k - {priceRange.max >= PRICE_MAX ? 'Max' : `${priceRange.max / 1000}k`}</span>
+                  <X
+                    className="w-3 h-3 cursor-pointer opacity-70 hover:opacity-100"
+                    onClick={() => { setPriceRange(DEFAULT_PRICE); resetPage(); }}
+                  />
+                </Badge>
+              )}
+
+              {/* Duration Chip */}
+              {selectedDuration && (
+                <Badge
+                  variant="secondary"
+                  className="gap-1.5 px-3 py-1 text-xs font-medium bg-secondary text-foreground border border-border hover:bg-secondary/80 transition-colors"
+                >
+                  <span>{DURATION_OPTIONS.find((d) => d.key === selectedDuration)?.label || selectedDuration}</span>
+                  <X
+                    className="w-3 h-3 cursor-pointer opacity-70 hover:opacity-100"
+                    onClick={() => { setSelectedDuration(''); resetPage(); }}
+                  />
+                </Badge>
+              )}
+
+              {/* Rating Chips */}
+              {selectedRatings.map((rat) => (
+                <Badge
+                  key={rat}
+                  variant="secondary"
+                  className="gap-1.5 px-3 py-1 text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                >
+                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                  <span>≥ {rat} sao</span>
+                  <X
+                    className="w-3 h-3 cursor-pointer opacity-70 hover:opacity-100"
+                    onClick={() => handleRating(rat)}
+                  />
+                </Badge>
+              ))}
+
+              {/* Clear All Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="text-xs text-muted-foreground hover:text-destructive h-7 px-2 font-medium"
+              >
+                Xóa tất cả
+              </Button>
+            </div>
           )}
         </div>
-      )}
 
-      {/* ── Course Grid ── */}
-      {!isCatalogCardsLoading && !isError && courses.length > 0 && (
-        <StaggerContainer className="grid auto-rows-fr grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {courses.map((course) => (
-            <StaggerItem key={course._id} className="h-full">
-              <CourseCard course={course} couponPreview={couponPreviews[course._id] ?? null} disableCouponPreviewFetch isEnrolledOverride={enrolledCourseIds.has(course._id)} />
-            </StaggerItem>
-          ))}
-        </StaggerContainer>
-      )}
-
-      {/* ── Pagination ── */}
-      {!isError && totalPages > 1 && (
-        <Pagination className="mt-12">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href={getPageHref(page - 1)}
-                text="Trước"
-                aria-disabled={page <= 1 || isCatalogCardsLoading}
-                tabIndex={page <= 1 || isCatalogCardsLoading ? -1 : undefined}
-                className={page <= 1 || isCatalogCardsLoading
-                  ? 'pointer-events-none rounded-xl opacity-50'
-                  : 'cursor-pointer rounded-xl'}
-                onClick={(event) => handlePageClick(event, page - 1)}
-              />
-            </PaginationItem>
-
-            {getVisiblePages(page, totalPages).map((item) => (
-              <PaginationItem key={item}>
-                {typeof item === 'number' ? (
-                  <PaginationLink
-                    href={getPageHref(item)}
-                    isActive={item === page}
-                    aria-label={`Đi tới trang ${item}`}
-                    aria-disabled={isCatalogCardsLoading}
-                    tabIndex={isCatalogCardsLoading ? -1 : undefined}
-                    className={isCatalogCardsLoading
-                      ? 'pointer-events-none rounded-xl opacity-50'
-                      : 'cursor-pointer rounded-xl'}
-                    onClick={(event) => handlePageClick(event, item)}
+        {/* ── 2 Column Grid Layout (Modern Card Sidebar + Right Content) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+          
+          {/* ── Left Sidebar (Modern Glassmorphism Card Filters) ── */}
+          <aside className="hidden lg:block lg:col-span-1 space-y-4 sticky top-28 self-start">
+            <div className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-md p-4 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                <h3 className="font-bold text-base text-foreground flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-primary" />
+                  Bộ lọc tìm kiếm
+                </h3>
+                {hasActiveFilter && (
+                  <button
+                    onClick={clearAllFilters}
+                    className="text-xs font-semibold text-primary hover:underline"
                   >
-                    {item}
-                  </PaginationLink>
-                ) : (
-                  <PaginationEllipsis className="text-muted-foreground" />
+                    Xóa tất cả
+                  </button>
                 )}
-              </PaginationItem>
-            ))}
+              </div>
 
-            <PaginationItem>
-              <PaginationNext
-                href={getPageHref(page + 1)}
-                text="Sau"
-                aria-disabled={page >= totalPages || isCatalogCardsLoading}
-                tabIndex={page >= totalPages || isCatalogCardsLoading ? -1 : undefined}
-                className={page >= totalPages || isCatalogCardsLoading
-                  ? 'pointer-events-none rounded-xl opacity-50'
-                  : 'cursor-pointer rounded-xl'}
-                onClick={(event) => handlePageClick(event, page + 1)}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
+              {/* 1. Danh mục (Collapsible Card) */}
+              <SidebarFilterSection
+                title="Danh mục"
+                badgeCount={selectedCategories.length}
+              >
+                <CategoryTreeFilter
+                  nodes={categoryTree}
+                  selected={selectedCategories}
+                  onChange={handleCategoryChange}
+                />
+              </SidebarFilterSection>
 
-      {/* ── Filter Drawer (Left Side Panel) ── */}
-      <CatalogFilterSidebar
-        isDrawerOpen={isDrawerOpen}
-        setIsDrawerOpen={setIsDrawerOpen}
-        total={total}
-        hasActiveFilter={hasActiveFilter}
-        clearAllFilters={clearAllFilters}
-        categoryTree={categoryTree}
-        selectedCategories={selectedCategories}
-        handleCategoryChange={handleCategoryChange}
-        selectedLevels={selectedLevels}
-        handleLevel={handleLevel}
-        isPriceFiltered={isPriceFiltered}
-        priceRange={priceRange}
-        setPriceRange={setPriceRange}
-        resetPage={resetPage}
-        selectedDuration={selectedDuration}
-        setSelectedDuration={setSelectedDuration}
-        selectedRatings={selectedRatings}
-        handleRating={handleRating}
-      />
+              {/* 2. Cấp độ (Collapsible Card) */}
+              <SidebarFilterSection
+                title="Cấp độ"
+                badgeCount={selectedLevels.length}
+              >
+                <div className="space-y-2.5">
+                  {LEVEL_OPTIONS.map((opt) => {
+                    const isSelected = selectedLevels.includes(opt.value);
+                    return (
+                      <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                        <div
+                          className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "border-border group-hover:border-primary"
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3" />}
+                        </div>
+                        <span className={`text-sm ${isSelected ? "font-semibold text-primary" : "text-muted-foreground group-hover:text-foreground"}`}>
+                          {opt.label}
+                        </span>
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={isSelected}
+                          onChange={() => handleLevel(opt.value)}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </SidebarFilterSection>
+
+              {/* 3. Khoảng giá (Collapsible Card) */}
+              <SidebarFilterSection
+                title="Khoảng giá"
+                badgeCount={isPriceFiltered ? 1 : 0}
+              >
+                <InlinePriceRange
+                  value={priceRange}
+                  onChange={(v) => {
+                    setPriceRange(v);
+                    resetPage();
+                  }}
+                />
+              </SidebarFilterSection>
+
+              {/* 4. Thời lượng (Collapsible Card) */}
+              <SidebarFilterSection
+                title="Thời lượng"
+                badgeCount={selectedDuration ? 1 : 0}
+              >
+                <DurationFilter
+                  selected={selectedDuration}
+                  onChange={(k) => {
+                    setSelectedDuration(k);
+                    resetPage();
+                  }}
+                />
+              </SidebarFilterSection>
+
+              {/* 5. Đánh giá (Collapsible Card) */}
+              <SidebarFilterSection
+                title="Đánh giá"
+                badgeCount={selectedRatings.length}
+              >
+                <div className="space-y-2.5">
+                  {[
+                    { value: '4.5', label: 'Từ 4.5 trở lên' },
+                    { value: '4.0', label: 'Từ 4.0 trở lên' },
+                    { value: '3.5', label: 'Từ 3.5 trở lên' },
+                    { value: '3.0', label: 'Từ 3.0 trở lên' },
+                  ].map((opt) => {
+                    const isSelected = selectedRatings.includes(opt.value);
+                    const numVal = Number(opt.value);
+                    const fullStars = Math.floor(numVal);
+                    const hasHalf = numVal % 1 !== 0;
+                    const emptyStars = 5 - fullStars - (hasHalf ? 1 : 0);
+
+                    return (
+                      <label key={opt.value} className="flex items-center gap-2.5 cursor-pointer group">
+                        {/* Square Checkbox matching Level options */}
+                        <div
+                          className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "border-border group-hover:border-primary"
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3" />}
+                        </div>
+
+                        {/* 5 Stars display (Full / Half / Empty) */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="flex items-center gap-0.5">
+                            {/* Full Stars */}
+                            {Array.from({ length: fullStars }).map((_, idx) => (
+                              <Star key={`full-${idx}`} className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
+                            ))}
+
+                            {/* Half Star (SVG với nửa vàng nửa trống) */}
+                            {hasHalf && (
+                              <div className="relative w-3.5 h-3.5 shrink-0">
+                                <Star className="absolute inset-0 w-3.5 h-3.5 text-amber-500 stroke-amber-500" />
+                                <div className="absolute inset-0 w-[50%] overflow-hidden">
+                                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Empty Stars */}
+                            {Array.from({ length: emptyStars }).map((_, idx) => (
+                              <Star key={`empty-${idx}`} className="w-3.5 h-3.5 text-amber-500/40 stroke-amber-500/60 fill-transparent shrink-0" />
+                            ))}
+                          </span>
+
+                          <span className={`text-xs ${isSelected ? "font-semibold text-foreground" : "text-muted-foreground group-hover:text-foreground"}`}>
+                            {opt.label}
+                          </span>
+                        </div>
+
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={isSelected}
+                          onChange={() => handleRating(opt.value)}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </SidebarFilterSection>
+            </div>
+          </aside>
+
+          {/* ── Right Content: Course Cards Grid (3 Columns) ── */}
+          <div className="lg:col-span-3">
+
+            {/* ── Error ── */}
+            {isError && (
+              <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+                <AlertCircle className="w-12 h-12 text-destructive" />
+                <p className="text-lg font-semibold">Không thể tải khóa học</p>
+                <p className="text-muted-foreground text-sm">Vui lòng thử lại sau.</p>
+              </div>
+            )}
+
+            {/* ── Loading Skeleton ── */}
+            {isCatalogCardsLoading && (
+              <div className="grid auto-rows-fr grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <CourseCardSkeleton key={i} />
+                ))}
+              </div>
+            )}
+
+            {/* ── Empty ── */}
+            {!isCatalogCardsLoading && !isError && courses.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 text-center gap-4 border border-dashed border-border rounded-2xl p-8">
+                <EmptyStateIllustration />
+                <p className="text-lg font-semibold">Không tìm thấy khóa học</p>
+                <p className="text-muted-foreground text-sm">
+                  {hasActiveFilter ? "Thử thay đổi bộ lọc bên cột trái." : "Chưa có khóa học nào được xuất bản."}
+                </p>
+                {hasActiveFilter && (
+                  <Button variant="outline" onClick={clearAllFilters}>Xóa tất cả bộ lọc</Button>
+                )}
+              </div>
+            )}
+
+            {/* ── Course Grid (3 Columns) ── */}
+            {!isCatalogCardsLoading && !isError && courses.length > 0 && (
+              <StaggerContainer className="grid auto-rows-fr grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+                {courses.map((course) => (
+                  <StaggerItem key={course._id} className="h-full">
+                    <CourseCard course={course} couponPreview={couponPreviews[course._id] ?? null} disableCouponPreviewFetch isEnrolledOverride={enrolledCourseIds.has(course._id)} />
+                  </StaggerItem>
+                ))}
+              </StaggerContainer>
+            )}
+
+            {/* ── Pagination ── */}
+            {!isError && totalPages > 1 && (
+              <Pagination className="mt-12">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href={getPageHref(page - 1)}
+                      text="Trước"
+                      aria-disabled={page <= 1 || isCatalogCardsLoading}
+                      tabIndex={page <= 1 || isCatalogCardsLoading ? -1 : undefined}
+                      className={page <= 1 || isCatalogCardsLoading
+                        ? 'pointer-events-none rounded-xl opacity-50'
+                        : 'cursor-pointer rounded-xl'}
+                      onClick={(event) => handlePageClick(event, page - 1)}
+                    />
+                  </PaginationItem>
+
+                  {getVisiblePages(page, totalPages).map((item) => (
+                    <PaginationItem key={item}>
+                      {typeof item === 'number' ? (
+                        <PaginationLink
+                          href={getPageHref(item)}
+                          isActive={item === page}
+                          aria-label={`Đi tới trang ${item}`}
+                          aria-disabled={isCatalogCardsLoading}
+                          tabIndex={isCatalogCardsLoading ? -1 : undefined}
+                          className={isCatalogCardsLoading
+                            ? 'pointer-events-none rounded-xl opacity-50'
+                            : 'cursor-pointer rounded-xl'}
+                          onClick={(event) => handlePageClick(event, item)}
+                        >
+                          {item}
+                        </PaginationLink>
+                      ) : (
+                        <PaginationEllipsis className="text-muted-foreground" />
+                      )}
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      href={getPageHref(page + 1)}
+                      text="Sau"
+                      aria-disabled={page >= totalPages || isCatalogCardsLoading}
+                      tabIndex={page >= totalPages || isCatalogCardsLoading ? -1 : undefined}
+                      className={page >= totalPages || isCatalogCardsLoading
+                        ? 'pointer-events-none rounded-xl opacity-50'
+                        : 'cursor-pointer rounded-xl'}
+                      onClick={(event) => handlePageClick(event, page + 1)}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
+          </div>
+        </div>
+
+        {/* ── Filter Drawer (Mobile Only Panel) ── */}
+        <CatalogFilterDrawer
+          isDrawerOpen={isDrawerOpen}
+          setIsDrawerOpen={setIsDrawerOpen}
+          total={total}
+          hasActiveFilter={hasActiveFilter}
+          clearAllFilters={clearAllFilters}
+          categoryTree={categoryTree}
+          selectedCategories={selectedCategories}
+          handleCategoryChange={handleCategoryChange}
+          selectedLevels={selectedLevels}
+          handleLevel={handleLevel}
+          isPriceFiltered={isPriceFiltered}
+          priceRange={priceRange}
+          setPriceRange={setPriceRange}
+          resetPage={resetPage}
+          selectedDuration={selectedDuration}
+          setSelectedDuration={setSelectedDuration}
+          selectedRatings={selectedRatings}
+          handleRating={handleRating}
+        />
       </main>
     </div>
   );

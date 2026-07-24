@@ -1,62 +1,11 @@
 import { useState } from 'react';
-import { ChevronDown, Check, ChevronRight } from 'lucide-react';
+import { ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import type { ICourseCategoryNode } from '@/services/courseApi';
 import type { PriceRangeValue } from '@/lib/courseUtils';
 import { DURATION_OPTIONS, normalizeCategorySelection } from '@/lib/courseUtils';
 
-export interface MultiSelectDropdownProps {
-  label: string;
-  options: { value: string; label: string }[];
-  selected: string[];
-  onSelect: (val: string) => void;
-}
-
-export function MultiSelectDropdown({ label, options, selected, onSelect }: MultiSelectDropdownProps) {
-  const [open, setOpen] = useState(false);
-  const isActive = selected.length > 0;
-
-  return (
-    <div className="relative hidden md:block z-20">
-      <Button
-        onClick={() => setOpen((v) => !v)}
-        variant={isActive ? 'udemy_dark' : 'outline'}
-        className="rounded-full px-3.5 py-2 text-sm font-medium"
-      >
-        {label} {isActive && `(${selected.length})`}
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </Button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-50 min-w-[200px] max-h-72 overflow-y-auto bg-background border border-border rounded-lg shadow-lg py-1">
-            {options.map((opt) => {
-              const isSelected = selected.includes(opt.value);
-              return (
-                <Button
-                  key={opt.value}
-                  variant="ghost"
-                  onClick={() => onSelect(opt.value)}
-                  className="w-full justify-start gap-2 px-4 py-2.5 text-sm font-normal rounded-none hover:bg-secondary text-left transition-colors"
-                >
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-border'}`}>
-                    {isSelected && <Check className="w-3 h-3" />}
-                  </div>
-                  <span className={isSelected ? 'font-medium' : ''}>
-                    {opt.label}
-                  </span>
-                </Button>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Price Range Filter (Dual Slider — dùng trên top bar) ─────────────────────
 const PRICE_MAX = 5_000_000;
 const PRICE_STEP = 100_000;
 
@@ -65,85 +14,7 @@ function formatPrice(val: number) {
   return `${(val / 1000).toLocaleString('vi-VN')}k`;
 }
 
-function DualRangeTrack({ min, max, valueMin, valueMax }: { min: number; max: number; valueMin: number; valueMax: number }) {
-  const left = ((valueMin - min) / (max - min)) * 100;
-  const right = 100 - ((valueMax - min) / (max - min)) * 100;
-  return (
-    <div className="w-full h-1.5 bg-secondary rounded-full relative">
-      <div
-        className="absolute h-1.5 bg-primary rounded-full"
-        style={{ left: `${left}%`, right: `${right}%` }}
-      />
-    </div>
-  );
-}
-
-export function PriceRangeFilter({
-  value,
-  onChange,
-}: {
-  value: PriceRangeValue;
-  onChange: (v: PriceRangeValue) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [local, setLocal] = useState<PriceRangeValue>(value);
-
-  // Sync nếu value bị reset từ bên ngoài
-  if (local.min !== value.min && value.min === 0 && value.max === PRICE_MAX) {
-    setLocal({ min: 0, max: PRICE_MAX });
-  }
-
-  const isActive = value.min > 0 || value.max < PRICE_MAX;
-
-  const handleApply = () => { onChange(local); setOpen(false); };
-  const handleClear = () => { const reset = { min: 0, max: PRICE_MAX }; setLocal(reset); onChange(reset); setOpen(false); };
-
-  return (
-    <div className="relative hidden md:block z-20">
-      <Button
-        onClick={() => { setLocal(value); setOpen((v) => !v); }}
-        variant={isActive ? 'udemy_dark' : 'outline'}
-        className="rounded-full px-3.5 py-2 text-sm font-medium"
-      >
-        {isActive ? `${formatPrice(value.min)} – ${formatPrice(value.max)}` : 'Giá'}
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </Button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-50 w-76 bg-background border border-border rounded-lg shadow-lg p-5">
-            <h4 className="font-semibold text-sm mb-4">Khoảng giá</h4>
-            <div className="flex items-center justify-between text-sm font-medium mb-4">
-              <span className="px-2.5 py-1 bg-secondary rounded text-xs">{formatPrice(local.min)}</span>
-              <span className="text-muted-foreground text-xs">–</span>
-              <span className="px-2.5 py-1 bg-secondary rounded text-xs">{local.max >= PRICE_MAX ? 'Không giới hạn' : formatPrice(local.max)}</span>
-            </div>
-
-            <DualRangeTrack min={0} max={PRICE_MAX} valueMin={local.min} valueMax={local.max} />
-            <div className="dual-range-slider mt-1 mb-4">
-              <input type="range" min={0} max={PRICE_MAX} step={PRICE_STEP} value={local.min}
-                onChange={(e) => setLocal((p) => ({ ...p, min: Math.min(Number(e.target.value), p.max - PRICE_STEP) }))}
-                style={{ zIndex: local.min > PRICE_MAX - PRICE_STEP ? 5 : 3 }}
-              />
-              <input type="range" min={0} max={PRICE_MAX} step={PRICE_STEP} value={local.max}
-                onChange={(e) => setLocal((p) => ({ ...p, max: Math.max(Number(e.target.value), p.min + PRICE_STEP) }))}
-                style={{ zIndex: 4 }}
-              />
-            </div>
-
-            <div className="flex gap-2 mt-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={handleClear}>Xóa</Button>
-              <Button size="sm" className="flex-1" onClick={handleApply}>Áp dụng</Button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Inline Price Range (dùng trong Drawer) ─────────────────────────────────────
+// ── Inline Price Range (dùng trong Drawer & Sidebar) ──────────────────────────
 export function InlinePriceRange({
   value,
   onChange,
@@ -153,24 +24,25 @@ export function InlinePriceRange({
 }) {
   const isActive = value.min > 0 || value.max < PRICE_MAX;
   return (
-    <div className="px-1">
-      <div className="flex items-center justify-between text-sm font-medium mb-4">
-        <span className="px-2.5 py-1 bg-secondary rounded text-xs">{formatPrice(value.min)}</span>
+    <div className="px-1 space-y-3.5">
+      <div className="flex items-center justify-between text-sm font-medium">
+        <span className="px-2.5 py-1 bg-secondary text-foreground rounded-lg text-xs font-semibold">{formatPrice(value.min)}</span>
         <span className="text-muted-foreground text-xs">–</span>
-        <span className="px-2.5 py-1 bg-secondary rounded text-xs">{value.max >= PRICE_MAX ? 'Không giới hạn' : formatPrice(value.max)}</span>
+        <span className="px-2.5 py-1 bg-secondary text-foreground rounded-lg text-xs font-semibold">{value.max >= PRICE_MAX ? 'Không giới hạn' : formatPrice(value.max)}</span>
       </div>
 
-      <DualRangeTrack min={0} max={PRICE_MAX} valueMin={value.min} valueMax={value.max} />
-      <div className="dual-range-slider mt-1 mb-3">
-        <input type="range" min={0} max={PRICE_MAX} step={PRICE_STEP} value={value.min}
-          onChange={(e) => onChange({ ...value, min: Math.min(Number(e.target.value), value.max - PRICE_STEP) })}
-          style={{ zIndex: value.min > PRICE_MAX - PRICE_STEP ? 5 : 3 }}
-        />
-        <input type="range" min={0} max={PRICE_MAX} step={PRICE_STEP} value={value.max}
-          onChange={(e) => onChange({ ...value, max: Math.max(Number(e.target.value), value.min + PRICE_STEP) })}
-          style={{ zIndex: 4 }}
+      <div className="py-2">
+        <Slider
+          value={[value.min, value.max]}
+          min={0}
+          max={PRICE_MAX}
+          step={PRICE_STEP}
+          onValueChange={([min, max]) => {
+            onChange({ min, max });
+          }}
         />
       </div>
+
       {isActive && (
         <Button
           variant="link"
@@ -185,45 +57,7 @@ export function InlinePriceRange({
   );
 }
 
-export function CategoryTreeDropdown({
-  label,
-  nodes,
-  selected,
-  onChange,
-}: {
-  label: string;
-  nodes: ICourseCategoryNode[];
-  selected: string[];
-  onChange: (newSelected: string[]) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const isActive = selected.length > 0;
-
-  return (
-    <div className="relative hidden md:block z-20">
-      <Button
-        onClick={() => setOpen((v) => !v)}
-        variant={isActive ? 'udemy_dark' : 'outline'}
-        className="rounded-full px-3.5 py-2 text-sm font-medium"
-      >
-        {label} {isActive && `(${selected.length})`}
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </Button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-50 min-w-[280px] max-h-[400px] overflow-y-auto bg-background border border-border rounded-lg shadow-lg py-3 px-3">
-            <CategoryTreeFilter nodes={nodes} selected={selected} onChange={onChange} />
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-
-
+// ── Category Tree Filter (Cây danh mục inline) ────────────────────────────────
 export function CategoryTreeFilter({
   nodes,
   selected,
@@ -240,7 +74,6 @@ export function CategoryTreeFilter({
   ) => {
     const nextSet = new Set(selected);
 
-    // Thu thập tất cả danh mục con của node được toggle
     const allDescendantSlugs: string[] = [];
     const gatherDescendants = (n: ICourseCategoryNode) => {
       allDescendantSlugs.push(n.slug);
@@ -249,18 +82,12 @@ export function CategoryTreeFilter({
     gatherDescendants(toggledNode);
 
     if (isSelecting) {
-      // TICK: Thêm node + tất cả con vào set
       allDescendantSlugs.forEach(slug => nextSet.add(slug));
-      
-      // Bottom-up: Gọi hàm chuẩn hóa trên toàn cây (nó sẽ tự check cha)
       const normalized = normalizeCategorySelection(Array.from(nextSet), nodes);
       onChange(normalized);
       return;
     } else {
-      // BỎ TICK: Xóa node + tất cả con khỏi set
       allDescendantSlugs.forEach(slug => nextSet.delete(slug));
-
-      // Bỏ tick con thì tự động bỏ tick tất cả tổ tiên
       ancestors.forEach(slug => nextSet.delete(slug));
     }
 
@@ -276,8 +103,19 @@ export function CategoryTreeFilter({
   );
 }
 
-function CategoryNode({ node, selected, onToggle, depth = 0, ancestors = [] }: { node: ICourseCategoryNode; selected: string[]; onToggle: (node: ICourseCategoryNode, isSelecting: boolean, ancestors: string[]) => void; depth?: number; ancestors?: string[] }) {
-  // Check if any descendant is selected to auto-expand
+function CategoryNode({
+  node,
+  selected,
+  onToggle,
+  depth = 0,
+  ancestors = [],
+}: {
+  node: ICourseCategoryNode;
+  selected: string[];
+  onToggle: (node: ICourseCategoryNode, isSelecting: boolean, ancestors: string[]) => void;
+  depth?: number;
+  ancestors?: string[];
+}) {
   const isDescendantSelected = (n: ICourseCategoryNode): boolean => {
     if (selected.includes(n.slug)) return true;
     if (n.children) return n.children.some(isDescendantSelected);
@@ -329,9 +167,7 @@ function CategoryNode({ node, selected, onToggle, depth = 0, ancestors = [] }: {
   );
 }
 
-
-
-// Inline (dùng trong Drawer)
+// ── Duration Filter (Inline Thời lượng) ──────────────────────────────────────
 export function DurationFilter({
   selected,
   onChange,
@@ -363,56 +199,6 @@ export function DurationFilter({
           </label>
         );
       })}
-    </div>
-  );
-}
-
-// Dropdown (dùng trên top bar)
-export function DurationDropdown({
-  selected,
-  onChange,
-}: {
-  selected: string;
-  onChange: (key: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const current = DURATION_OPTIONS.find((o) => o.key === selected);
-  const isActive = !!current;
-
-  return (
-    <div className="relative hidden md:block z-20">
-      <Button
-        onClick={() => setOpen((v) => !v)}
-        variant={isActive ? 'udemy_dark' : 'outline'}
-        className="rounded-full px-3.5 py-2 text-sm font-medium"
-      >
-        {isActive ? current.label : 'Thời lượng'}
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </Button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-2 z-50 min-w-[200px] bg-background border border-border rounded-lg shadow-lg py-1">
-            {DURATION_OPTIONS.map((opt) => {
-              const isSelected = selected === opt.key;
-              return (
-                <Button
-                  key={opt.key}
-                  variant="ghost"
-                  onClick={() => { onChange(isSelected ? '' : opt.key); setOpen(false); }}
-                  className="w-full justify-start gap-2 px-4 py-2.5 text-sm font-normal rounded-none hover:bg-secondary text-left transition-colors"
-                >
-                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-border'}`}>
-                    {isSelected && <Check className="w-3 h-3" />}
-                  </div>
-                  <span className={isSelected ? 'font-medium' : ''}>{opt.label}</span>
-                </Button>
-              );
-            })}
-          </div>
-        </>
-      )}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import type { PriceRangeValue } from "@/lib/courseUtils";
 import { LEVEL_OPTIONS, RATING_OPTIONS } from "./constants";
 import type { ICourseCategoryNode } from "@/services/courseApi";
 
-export interface CatalogFilterSidebarProps {
+export interface CatalogFilterDrawerProps {
   isDrawerOpen: boolean;
   setIsDrawerOpen: (val: boolean) => void;
   total: number;
@@ -61,7 +61,7 @@ function FilterSection({
   );
 }
 
-export function CatalogFilterSidebar({
+export function CatalogFilterDrawer({
   isDrawerOpen,
   setIsDrawerOpen,
   total,
@@ -79,7 +79,7 @@ export function CatalogFilterSidebar({
   setSelectedDuration,
   selectedRatings,
   handleRating,
-}: CatalogFilterSidebarProps) {
+}: CatalogFilterDrawerProps) {
   const drawerFooter = (
     <>
       <Button className="w-full font-bold h-11" onClick={() => setIsDrawerOpen(false)}>
@@ -168,6 +168,11 @@ export function CatalogFilterSidebar({
           <div className="space-y-3">
             {RATING_OPTIONS.map((opt) => {
               const isSelected = selectedRatings.includes(opt.value);
+              const numVal = Number(opt.value);
+              const fullStars = Math.floor(numVal);
+              const hasHalf = numVal % 1 !== 0;
+              const emptyStars = 5 - fullStars - (hasHalf ? 1 : 0);
+
               return (
                 <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
                   <div
@@ -179,14 +184,33 @@ export function CatalogFilterSidebar({
                   >
                     {isSelected && <Check className="w-3.5 h-3.5" />}
                   </div>
-                  <span
-                    className={`text-sm flex items-center gap-1.5 ${
-                      isSelected ? "font-medium" : "text-foreground"
-                    }`}
-                  >
-                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    {opt.label}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-0.5">
+                      {/* Full Stars */}
+                      {Array.from({ length: fullStars }).map((_, idx) => (
+                        <Star key={`full-${idx}`} className="w-4 h-4 fill-amber-500 text-amber-500 shrink-0" />
+                      ))}
+
+                      {/* Half Star */}
+                      {hasHalf && (
+                        <div className="relative w-4 h-4 shrink-0">
+                          <Star className="absolute inset-0 w-4 h-4 text-amber-500 stroke-amber-500" />
+                          <div className="absolute inset-0 w-[50%] overflow-hidden">
+                            <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Empty Stars */}
+                      {Array.from({ length: emptyStars }).map((_, idx) => (
+                        <Star key={`empty-${idx}`} className="w-4 h-4 text-amber-500/40 stroke-amber-500/60 fill-transparent shrink-0" />
+                      ))}
+                    </span>
+
+                    <span className={`text-sm ${isSelected ? "font-semibold text-foreground" : "text-muted-foreground group-hover:text-foreground"}`}>
+                      {opt.label}
+                    </span>
+                  </div>
                   <input
                     type="checkbox"
                     className="hidden"

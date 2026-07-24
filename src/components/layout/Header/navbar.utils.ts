@@ -3,7 +3,7 @@
 // ========================
 import type { ReactNode } from 'react';
 import type { ICourseCategoryNode } from '@/services/courseApi';
-import type { SidebarEntry, MenuItem } from '../Sidebar';
+import type { SidebarEntry } from '../Sidebar';
 
 
 // ===== Types =====

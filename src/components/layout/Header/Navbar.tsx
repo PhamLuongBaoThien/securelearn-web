@@ -9,7 +9,7 @@ import { toggleTheme } from '../../../features/dashboard/uiSlice';
 import { useLogout } from '@/hooks/useAuth';
 import {
   ShoppingCart, Search, Menu, Sun, Moon, Heart, CreditCard,
-  Layers, BookOpen, User, Settings, Monitor, Compass,
+  Layers, BookOpen, User, Settings, Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
