@@ -41,7 +41,7 @@ export const Footer = () => {
             <Link to="/about" className="hover:text-white transition-colors">Giới thiệu</Link>
             <Link to="/careers" className="hover:text-white transition-colors">Tuyển dụng</Link>
             <Link to="/blog" className="hover:text-white transition-colors">Tin tức & Blog</Link>
-            <Link to="/contact" className="hover:text-white transition-colors">Liên hệ</Link>
+            <Link to="/support" className="hover:text-white transition-colors">Liên hệ</Link>
           </div>
 
           <div className="flex flex-col gap-4">
@@ -54,7 +54,7 @@ export const Footer = () => {
 
           <div className="flex flex-col gap-4">
             <h4 className="text-white font-bold text-base mb-2">Hỗ trợ</h4>
-            <Link to="/help" className="hover:text-white transition-colors">Trung tâm trợ giúp</Link>
+            <Link to="/support" className="hover:text-white transition-colors">Trung tâm trợ giúp</Link>
             <Link to="/policies" className="hover:text-white transition-colors">Chính sách & Điều khoản</Link>
             <Link to="/sitemap" className="hover:text-white transition-colors">Sơ đồ trang web</Link>
           </div>
