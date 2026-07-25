@@ -9,7 +9,7 @@ import { useLocation, useNavigate, useSearchParams, Navigate } from 'react-route
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
 import { clearCart, setCartItems } from '@/features/courses/cartSlice';
-import { clearGuestCart, clearUserCart } from '@/features/courses/cartStorage';
+import { clearGuestCart, clearUserCart, saveUserCart } from '@/features/courses/cartStorage';
 import { cartKeys } from '@/hooks/useCart';
 import { enrolledKeys } from '@/hooks/useEnrolledCourses';
 import { useQueryClient } from '@tanstack/react-query';
@@ -29,6 +29,7 @@ export function VnpayReturn() {
   const queryClient = useQueryClient();
   const hasRun = useRef(false);
   const { authResolved, isAuthenticated } = useAppSelector((state) => state.auth);
+  const cartItems = useAppSelector((state) => state.cart.cartItems);
 
   useEffect(() => {
     if (!authResolved) return;
@@ -46,12 +47,27 @@ export function VnpayReturn() {
       setTransaction(payment);
       setIsDone(true);
       if (payment.productType === 'COURSE') {
-        // Chỉ checkout khóa học mới dọn cart; subscription checkout không dùng cart.
-        clearGuestCart();
-        clearUserCart();
-        dispatch(clearCart());
-        dispatch(setCartItems([]));
-        queryClient.setQueryData(cartKeys.items, { items: [], totalPrice: 0 });
+        // Đồng bộ theo mode đã được lưu trong transaction, không tin query string của return URL.
+        if (payment.checkoutMode === 'BUY_NOW') {
+          const paidCourseIds = new Set(payment.items.map((item) => item.courseId));
+          const remainingItems = cartItems.filter((item) => !paidCourseIds.has(item._id));
+          saveUserCart(remainingItems);
+          dispatch(setCartItems(remainingItems));
+          queryClient.setQueryData(cartKeys.items, {
+            items: remainingItems,
+            totalPrice: remainingItems.reduce((sum, item) => sum + item.price, 0),
+          });
+          // Event ghi danh/dọn giỏ chạy bất đồng bộ; refetch trễ để không kéo A trở lại do race.
+          window.setTimeout(() => {
+            void queryClient.invalidateQueries({ queryKey: cartKeys.items });
+          }, 2000);
+        } else {
+          clearGuestCart();
+          clearUserCart();
+          dispatch(clearCart());
+          dispatch(setCartItems([]));
+          queryClient.setQueryData(cartKeys.items, { items: [], totalPrice: 0 });
+        }
         queryClient.invalidateQueries({ queryKey: enrolledKeys.all });
         toast.success('Thanh toán thành công. Khóa học đã được mở quyền.');
       } else {
@@ -140,7 +156,7 @@ export function VnpayReturn() {
     };
 
     run();
-  }, [authResolved, dispatch, isAuthenticated, location, navigate, queryClient, searchParams]);
+  }, [authResolved, cartItems, dispatch, isAuthenticated, location, navigate, queryClient, searchParams]);
 
   if (authResolved && !isAuthenticated) {
     return <Navigate to="/auth/login" state={{ from: location }} replace />;

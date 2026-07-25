@@ -9,8 +9,9 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2, ShieldCheck, ShoppingCart, CreditCard, CheckCircle2, ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppSelector } from '@/app/hooks';
-import { useMutation } from '@tanstack/react-query';
-import { createCourseCheckout, type CouponValidation, type PaymentMethod, type PaymentProvider } from '@/services/paymentApi';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { createCourseCheckout, getBestCourseCouponPreview, type CouponValidation, type PaymentMethod, type PaymentProvider } from '@/services/paymentApi';
+import { getBuyNowItem } from '@/services/cartApi';
 import { toast } from 'sonner';
 
 import momoLogo from '@/assets/Logo-MoMo.webp';
@@ -35,16 +36,65 @@ export const Checkout = () => {
   const navigate = useNavigate();
   const { isAuthenticated, authResolved } = useAppSelector((state) => state.auth);
   const cartItems = useAppSelector((state) => state.cart.cartItems);
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const isBuyNow = searchParams.get('mode') === 'buy-now';
+  const courseId = searchParams.get('courseId')?.trim() || '';
 
-  const totalPrice = useMemo(() => cartItems.reduce((sum, item) => sum + item.price, 0), [cartItems]);
-  const appliedCoupon = useMemo<CouponValidation | null>(() => {
+  const buyNowQuery = useQuery({
+    queryKey: ['buy-now-item', courseId],
+    enabled: authResolved && isAuthenticated && isBuyNow && Boolean(courseId),
+    queryFn: async () => {
+      const response = await getBuyNowItem(courseId);
+      if (response.code === 'COURSE_ALREADY_OWNED') {
+        return { item: null, alreadyOwned: true, slug: response.data?.slug || '' };
+      }
+      if (response.status === 'ERR' || !response.data?.item) {
+        throw new Error(response.message || 'Khóa học không thể mua ngay.');
+      }
+      return { item: response.data.item, alreadyOwned: false };
+    },
+    retry: false,
+  });
+
+
+  const checkoutItems = useMemo(
+    () => isBuyNow ? (buyNowQuery.data?.item ? [buyNowQuery.data.item] : []) : cartItems,
+    [isBuyNow, buyNowQuery.data?.item, cartItems],
+  );
+  const totalPrice = useMemo(() => checkoutItems.reduce((sum, item) => sum + item.price, 0), [checkoutItems]);
+
+  const storedCartCoupon = useMemo<CouponValidation | null>(() => {
+    if (isBuyNow) return null;
     try {
       const saved = sessionStorage.getItem(COUPON_STORAGE_KEY);
       return saved ? (JSON.parse(saved) as CouponValidation) : null;
     } catch {
       return null;
     }
-  }, [totalPrice]);
+  }, [isBuyNow]);
+
+  const buyNowCouponQuery = useQuery({
+    queryKey: ['buy-now-best-coupon', courseId, totalPrice],
+    enabled: isBuyNow && totalPrice > 0,
+    queryFn: async () => {
+      const response = await getBestCourseCouponPreview(totalPrice);
+      if (response.status === 'ERR') throw new Error(response.message || 'Không thể tải coupon.');
+      return response.data ?? { subtotal: totalPrice, coupon: null };
+    },
+  });
+  const appliedCoupon = useMemo<CouponValidation | null>(() => {
+    if (!isBuyNow) return storedCartCoupon;
+    const preview = buyNowCouponQuery.data;
+    const coupon = preview?.coupon;
+    if (!coupon) return null;
+    const discountAmount = coupon.discountAmount ?? coupon.discountPreview ?? 0;
+    return {
+      coupon,
+      subtotal: preview.subtotal,
+      discountAmount,
+      finalAmount: coupon.finalAmount ?? Math.max(preview.subtotal - discountAmount, 0),
+    };
+  }, [isBuyNow, storedCartCoupon, buyNowCouponQuery.data]);
   const discountAmount = appliedCoupon?.subtotal === totalPrice ? appliedCoupon.discountAmount : 0;
   const finalPrice = Math.max(totalPrice - discountAmount, 0);
 
@@ -56,6 +106,8 @@ export const Checkout = () => {
         paymentMethod,
         provider: providerForMethod(paymentMethod),
         couponCode: discountAmount > 0 ? appliedCoupon?.coupon.code : undefined,
+        checkoutMode: isBuyNow ? 'BUY_NOW' : 'CART',
+        courseId: isBuyNow ? courseId : undefined,
       });
 
       if (response.status === 'ERR') {
@@ -105,6 +157,31 @@ export const Checkout = () => {
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
+  if (isBuyNow && buyNowQuery.data?.alreadyOwned && buyNowQuery.data.slug) {
+    return <Navigate to={'/course/' + encodeURIComponent(buyNowQuery.data.slug)} replace />;
+  }
+
+  if (isBuyNow && (!courseId || buyNowQuery.isError)) {
+    const message = !courseId
+      ? 'Thiếu khóa học cần mua ngay.'
+      : (buyNowQuery.error instanceof Error ? buyNowQuery.error.message : 'Khóa học không thể mua ngay.');
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-5 px-4 text-center">
+        <h1 className="text-2xl font-bold">Không thể tiếp tục mua ngay</h1>
+        <p className="text-muted-foreground">{message}</p>
+        <Button onClick={() => navigate('/courses')}>Quay lại danh sách khóa học</Button>
+      </div>
+    );
+  }
+
+  if (isBuyNow && buyNowQuery.isPending) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-10 min-h-[60vh]">
       {/* ── Progress Stepper ── */}
@@ -138,7 +215,7 @@ export const Checkout = () => {
 
       <h1 className="text-3xl font-bold font-serif mb-8 animate-fade-in-up">Thanh toán</h1>
 
-      {cartItems.length === 0 ? (
+      {checkoutItems.length === 0 ? (
         <div className="border border-border py-16 px-6 text-center rounded-2xl bg-card animate-fade-in">
           <div className="w-20 h-20 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-6">
             <ShoppingCart className="w-8 h-8 text-zinc-400" />
@@ -236,12 +313,12 @@ export const Checkout = () => {
             <div className="bg-card border border-border rounded-2xl sticky top-24 overflow-hidden animate-fade-in">
               <div className="p-6">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-5">
-                  Đơn hàng ({cartItems.length} khóa học)
+                  Đơn hàng ({checkoutItems.length} khóa học)
                 </h2>
 
                 {/* Item list */}
                 <div className="space-y-4 mb-6">
-                  {cartItems.map((item) => (
+                  {checkoutItems.map((item) => (
                     <div key={item._id} className="flex gap-3">
                       <div className="w-14 h-14 shrink-0 rounded-lg overflow-hidden border border-border bg-muted">
                         <img

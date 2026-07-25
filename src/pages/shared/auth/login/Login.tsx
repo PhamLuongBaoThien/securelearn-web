@@ -102,7 +102,7 @@ export function Login() {
   };
 
   const handleGoogleLogin = () => {
-    googleLogin(); // Redirect tới backend OAuth
+    googleLogin(from); // Giữ đích quay lại qua redirect ngoài trang của Google
   };
 
   return (

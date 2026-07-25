@@ -8,7 +8,7 @@ import { useAppDispatch } from '@/app/hooks';
 import { setUser } from '@/features/auth/authSlice';
 import { setCartItems, setWishlistItems } from '@/features/courses/cartSlice';
 import { setAccessToken } from '@/services/apiClient';
-import { getMe } from '@/services/authApi';
+import { getMe, OAUTH_RETURN_TO_KEY } from '@/services/authApi';
 import { mergeGuestCart } from '@/services/cartApi';
 import { mergeGuestWishlist } from '@/services/wishlistApi';
 import { useQueryClient } from '@tanstack/react-query';
@@ -71,7 +71,10 @@ export function OAuthCallback() {
             queryClient.setQueryData(wishlistKeys.items, mergedWishlist.data);
           }
           toast.success(profileRes.message || `Chào mừng ${profileRes.data.fullName}!`);
-          navigate('/', { replace: true });
+          const savedReturnTo = sessionStorage.getItem(OAUTH_RETURN_TO_KEY) || '/';
+          sessionStorage.removeItem(OAUTH_RETURN_TO_KEY);
+          const returnTo = savedReturnTo.startsWith('/') && !savedReturnTo.startsWith('//') ? savedReturnTo : '/';
+          navigate(returnTo, { replace: true });
         } else {
           throw new Error(profileRes.message || 'Không lấy được thông tin profile.');
         }

@@ -120,7 +120,11 @@ export const refreshToken = async () => {
  * Redirect tới trang đăng nhập Google OAuth.
  * Không dùng Axios — chuyển hướng trực tiếp trên trình duyệt.
  */
-export const googleLogin = () => {
+export const OAUTH_RETURN_TO_KEY = 'sl_oauth_return_to';
+
+export const googleLogin = (returnTo = '/') => {
+  const safeReturnTo = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/';
+  sessionStorage.setItem(OAUTH_RETURN_TO_KEY, safeReturnTo);
   window.location.href = `${getApiBaseUrl()}/api/auth/google`;
 };
 

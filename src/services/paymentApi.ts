@@ -119,6 +119,7 @@ export interface PaymentTransaction {
   fullName: string;
   email: string;
   items: PaymentCourseItem[];
+  checkoutMode?: 'CART' | 'BUY_NOW';
   amount: number;
   discountAmount?: number;
   couponSnapshot?: {
@@ -239,6 +240,8 @@ export const createCourseCheckout = async (payload: {
   paymentMethod: PaymentMethod;
   provider?: PaymentProvider;
   couponCode?: string;
+  checkoutMode?: 'CART' | 'BUY_NOW';
+  courseId?: string;
 }) => {
   const { data } = await apiClient.post<ApiResponse<CourseCheckoutResponse>>('/api/payments/course-checkout', payload);
   return data;

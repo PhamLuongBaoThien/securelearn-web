@@ -1,3 +1,4 @@
+import axios from 'axios';
 import apiClient from './apiClient';
 import type { CartItem } from '@/features/courses/cartSlice';
 
@@ -9,12 +10,27 @@ export interface CartData {
 interface ApiResponse<T = undefined> {
   status: string;
   message?: string;
+  code?: string;
   data?: T;
 }
 
 export const getCart = async () => {
   const { data } = await apiClient.get<ApiResponse<CartData>>('/api/cart');
   return data;
+};
+
+export const getBuyNowItem = async (courseId: string) => {
+  try {
+    const { data } = await apiClient.get<ApiResponse<{ item?: CartItem; courseId?: string; slug?: string }>>(
+      '/api/cart/buy-now/' + encodeURIComponent(courseId),
+    );
+    return data;
+  } catch (error) {
+    if (axios.isAxiosError<ApiResponse<{ item?: CartItem; courseId?: string; slug?: string }>>(error) && error.response?.data) {
+      return error.response.data;
+    }
+    throw error;
+  }
 };
 
 export const addCartItem = async (courseId: string) => {

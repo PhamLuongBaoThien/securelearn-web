@@ -100,10 +100,9 @@ export function CoursePurchaseCard({ course, isEnrolled, accessSource, accessEnd
     });
   };
 
-  // Thêm vào giỏ rồi chuyển luôn sang trang giỏ hàng
+  // Mua ngay là một checkout độc lập, không làm thay đổi giỏ hàng.
   const handleBuyNow = () => {
-    handleAddToCart();
-    navigate('/cart');
+    navigate('/checkout?mode=buy-now&courseId=' + encodeURIComponent(course._id));
   };
 
   return (
@@ -188,11 +187,11 @@ export function CoursePurchaseCard({ course, isEnrolled, accessSource, accessEnd
                   <Button
                     variant="outline"
                     className="mt-4 w-full py-6 font-bold rounded-lg"
-                    onClick={() => isInCart ? navigate('/cart') : handleBuyNow()}
+                    onClick={handleBuyNow}
                     disabled={isAdding}
                   >
                     <CreditCard className="mr-2 h-4 w-4" />
-                    {isInCart ? 'Xem giỏ hàng' : isAdding ? 'Đang thêm...' : 'Mua đứt khóa học'}
+                    Mua đứt khóa học
                   </Button>
                 </div>
               </div>
