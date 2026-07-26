@@ -183,37 +183,56 @@ export const Checkout = () => {
   }
 
   return (
-    <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-10 min-h-[60vh]">
-      {/* ── Progress Stepper ── */}
-      <nav className="flex items-center gap-2 mb-10 animate-fade-in">
-        {STEPS.map((step, i) => {
-          const Icon = step.icon;
-          const isActive = i === 1;
-          const isCompleted = i < 1;
+    <div className="relative -mt-[88px] min-h-screen bg-background text-foreground antialiased">
+      {/* ── Hero Banner (Đồng bộ phong cách trang Catalog / Pricing / Cart) ── */}
+      <section className="relative pt-[104px] pb-6 lg:pt-[116px] lg:pb-8 px-4 md:px-6 overflow-hidden bg-gradient-to-b from-primary/[0.06] via-primary/[0.03] to-background">
+        {/* Họa tiết chấm trang trí nhẹ ở background */}
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
-          return (
-            <div key={step.label} className="flex items-center gap-2">
-              {i > 0 && <ChevronRight className="w-4 h-4 text-zinc-300 dark:text-zinc-600" />}
-              <div className={`checkout-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
-                <div className={`
-                  w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors
-                  ${isActive
-                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                    : isCompleted
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
-                      : 'bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500'
-                  }
-                `}>
-                  {isCompleted ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
-                </div>
-                <span className="hidden sm:inline">{step.label}</span>
-              </div>
+        <div className="relative z-10 max-w-[1340px] mx-auto flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold font-serif text-foreground tracking-tight">
+              Hoàn tất đơn hàng
+            </h1>
+            <p className="text-xs md:text-sm text-muted-foreground leading-relaxed pt-1 max-w-xl">
+              Lựa chọn phương thức thanh toán phù hợp để kích hoạt ngay các khóa học của bạn.
+            </p>
+          </div>
+
+          {/* Stepper trong Hero Banner */}
+          <nav className="shrink-0">
+            <div className="flex items-center gap-1.5 p-1.5 bg-card/70 backdrop-blur-md border border-border/80 rounded-2xl shadow-xs">
+              {STEPS.map((step, i) => {
+                const Icon = step.icon;
+                const isActive = i === 1;
+                const isCompleted = i < 1;
+
+                return (
+                  <div key={step.label} className="flex items-center gap-1.5">
+                    {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/60" />}
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground shadow-xs'
+                        : isCompleted
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                          : 'text-muted-foreground'
+                    }`}>
+                      {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
+                      <span className="hidden sm:inline">{step.label}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </nav>
+          </nav>
+        </div>
 
-      <h1 className="text-3xl font-bold font-serif mb-8 animate-fade-in-up">Thanh toán</h1>
+        {/* Đường gạch chia nhẹ ở dưới hero banner */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
+      </section>
+
+      {/* ── Main Content của Checkout ── */}
+      <main className="max-w-[1340px] mx-auto px-4 md:px-6 py-6 md:py-10">
 
       {checkoutItems.length === 0 ? (
         <div className="border border-border py-16 px-6 text-center rounded-2xl bg-card animate-fade-in">
@@ -367,6 +386,7 @@ export const Checkout = () => {
           </div>
         </div>
       )}
+      </main>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-﻿// ========================
+// ========================
 // Cart Page
 // Mục đích:
 // - hiển thị giỏ hàng mua khóa học và tổng tiền hiện tại
@@ -10,7 +10,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, ShoppingCart, ArrowRight, ShieldCheck, BookOpen, CreditCard, CheckCircle2, ChevronRight, Star, Clock, BadgePercent, Sparkles } from 'lucide-react';
+import { Trash2, ShoppingCart, ArrowRight, ShieldCheck, BookOpen, CreditCard, CheckCircle2, ChevronRight, Star, Clock } from 'lucide-react';
 import { useCartActions } from '@/hooks/useCart';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -199,29 +199,51 @@ export const Cart = () => {
   const availableCoupons = availableCouponsQuery.data?.coupons ?? [];
 
   return (
-    <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-10 min-h-[60vh]">
-      <nav className="flex items-center gap-2 mb-10 animate-fade-in">
-        {STEPS.map((step, i) => {
-          const Icon = step.icon;
-          const isActive = i === 0;
+    <div className="relative -mt-[88px] min-h-screen bg-background text-foreground antialiased">
+      {/* ── Hero Banner (Đồng bộ phong cách trang Catalog / Pricing) ── */}
+      <section className="relative pt-[104px] pb-6 lg:pt-[116px] lg:pb-8 px-4 md:px-6 overflow-hidden bg-gradient-to-b from-primary/[0.06] via-primary/[0.03] to-background">
+        {/* Họa tiết chấm trang trí nhẹ ở background */}
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
-          return (
-            <div key={step.label} className="flex items-center gap-2">
-              {i > 0 && <ChevronRight className="w-4 h-4 text-zinc-300 dark:text-zinc-600" />}
-              <div className={`checkout-step ${isActive ? 'active' : ''}`}>
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${isActive ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900' : 'bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500'}`}>
-                  <Icon className="w-3.5 h-3.5" />
-                </div>
-                <span className="hidden sm:inline">{step.label}</span>
-              </div>
+        <div className="relative z-10 max-w-[1340px] mx-auto flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold font-serif text-foreground tracking-tight">
+              Giỏ hàng của bạn
+            </h1>
+            <p className="text-xs md:text-sm text-muted-foreground leading-relaxed pt-1 max-w-xl">
+              Kiểm tra các khóa học đã chọn, áp dụng mã ưu đãi tốt nhất và tiến hành thanh toán an toàn.
+            </p>
+          </div>
+
+          {/* Stepper trong Hero Banner */}
+          <nav className="shrink-0">
+            <div className="flex items-center gap-1.5 p-1.5 bg-card/70 backdrop-blur-md border border-border/80 rounded-2xl shadow-xs">
+              {STEPS.map((step, i) => {
+                const Icon = step.icon;
+                const isActive = i === 0;
+
+                return (
+                  <div key={step.label} className="flex items-center gap-1.5">
+                    {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/60" />}
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                      isActive ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                    }`}>
+                      <Icon className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">{step.label}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </nav>
+          </nav>
+        </div>
 
-      <div className="flex items-center gap-3 mb-8">
-        <h1 className="text-3xl font-bold font-serif">Giỏ hàng</h1>
-      </div>
+        {/* Đường gạch chia nhẹ ở dưới hero banner */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
+      </section>
+
+      {/* ── Main Content của Cart ── */}
+      <main className="max-w-[1340px] mx-auto px-4 md:px-6 py-6 md:py-10">
 
       {cartItems.length === 0 ? (
         /* ── Empty State ── */
@@ -332,10 +354,9 @@ export const Cart = () => {
                   {!isAuthenticated && <p className="text-xs text-muted-foreground">Đăng nhập để xem và áp dụng coupon khả dụng.</p>}
                   {appliedCoupon && discountAmount > 0 && (
                     <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
-                      <span className="flex items-center gap-2 font-semibold">
-                        {appliedCoupon.source === 'AUTO' ? <Sparkles className="h-4 w-4" /> : <BadgePercent className="h-4 w-4" />}
+                      <span className="font-semibold">
                         {appliedCoupon.coupon.code}
-                        {appliedCoupon.source === 'AUTO' && <span className="text-xs font-medium">Tự chọn tốt nhất</span>}
+                        {appliedCoupon.source === 'AUTO' && <span className="ml-2 text-xs font-medium">(Tự chọn tốt nhất)</span>}
                       </span>
                       <button type="button" className="font-semibold" onClick={clearCoupon}>Bỏ</button>
                     </div>
@@ -343,8 +364,8 @@ export const Cart = () => {
 
                   {availableCoupons.length > 0 && (
                     <div className="rounded-xl border border-dashed border-zinc-200 p-3 dark:border-zinc-700">
-                      <div className="mb-2 flex items-center gap-2 text-sm font-bold">
-                        <BadgePercent className="h-4 w-4" /> Coupon khả dụng
+                      <div className="mb-2 text-sm font-bold">
+                        Coupon khả dụng
                       </div>
                       <div className="space-y-2">
                         {availableCoupons.slice(0, 4).map((coupon) => (
@@ -389,6 +410,7 @@ export const Cart = () => {
           </div>
         </div>
       )}
+      </main>
     </div>
   );
 };
