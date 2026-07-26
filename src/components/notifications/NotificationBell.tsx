@@ -68,7 +68,7 @@ export function NotificationBell({ enabled = true, allPath = '/notifications' }:
   if (!enabled) return null;
   return (
     <div ref={rootRef} className="relative">
-      <button type="button" onClick={() => void toggle()} className="relative rounded-full p-2 hover:bg-secondary" aria-label="Thông báo">
+      <button type="button" onClick={() => void toggle()} className="relative rounded-full p-2 hover:bg-secondary transition-transform duration-200 ease-out hover:scale-110 active:scale-95 cursor-pointer" aria-label="Thông báo">
         <Bell className="h-5 w-5" />
         {count > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">{count > 99 ? '99+' : count}</span>}
       </button>

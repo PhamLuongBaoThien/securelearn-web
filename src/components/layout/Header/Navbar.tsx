@@ -392,9 +392,7 @@ export const Navbar = () => {
 
               {/* Actions */}
               <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                <div className="transition-transform duration-200 ease-out hover:scale-110 active:scale-95">
-                  <NotificationBell enabled={showAuthenticatedUI} />
-                </div>
+                <NotificationBell enabled={showAuthenticatedUI} />
                 {/* Wishlist */}
                 {showAuthenticatedUI && (
                   <Tooltip>
