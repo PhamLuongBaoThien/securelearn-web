@@ -39,25 +39,40 @@ export const Teach = () => {
   return (
     <div className="w-full">
       {/* Hero Section */}
-      <section className="relative -mt-[88px] flex min-h-[520px] w-full items-center justify-center bg-gradient-to-br from-sky-50 via-blue-100 to-blue-200 px-6 pb-20 pt-36 text-slate-950 dark:from-slate-950 dark:via-blue-950 dark:to-slate-900 dark:text-white">
+      <section className="relative -mt-[88px] flex min-h-[480px] w-full items-center justify-center overflow-hidden bg-gradient-to-b from-primary/[0.06] via-primary/[0.03] to-background px-6 pt-[120px] pb-16 lg:pt-[140px] lg:pb-20 text-foreground antialiased">
+        {/* Họa tiết chấm trang trí nhẹ ở background */}
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+
         <div className="relative z-10 max-w-3xl text-center">
           <SlideUp>
-            <h1 className="mb-6 font-serif text-4xl font-bold md:text-6xl">
-              Đến lúc truyền cảm hứng
+            <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+              Giảng dạy cùng SecureLearn
+            </p>
+            <h1 className="mb-4 font-serif text-3xl font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
+              Chia sẻ kiến thức của bạn
             </h1>
-            <p className="mx-auto mb-8 max-w-2xl text-xl leading-snug text-slate-700 md:text-2xl dark:text-white/85">
-              Trở thành giảng viên trên SecureLearn và tiếp cận hàng triệu học viên toàn thế giới. Nền tảng của chúng tôi cung cấp hệ thống bảo mật bảo vệ triệt để chất xám của bạn.
+            <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">
+              SecureLearn cung cấp công cụ xây dựng khóa học, tổ chức bài giảng và quản lý học viên. Khóa học được gửi kiểm duyệt trước khi xuất bản và học liệu được áp dụng các cơ chế kiểm soát truy cập.
             </p>
             <Button
               onClick={handleStartTeaching}
               disabled={switchToInstructorMutation.isPending}
-              variant="default"
-              className="h-14 px-8 text-lg font-bold rounded-none bg-blue-600 text-white hover:bg-blue-700 border-0 dark:bg-white dark:text-blue-700 dark:hover:bg-white/90 cursor-pointer"
+              size="lg"
+              className="h-12 px-8 text-base font-bold rounded-xl shadow-md cursor-pointer"
             >
-              {switchToInstructorMutation.isPending ? 'Đang chuyển...' : 'Bắt đầu giảng dạy'}
+              {switchToInstructorMutation.isPending
+                ? 'Đang xử lý...'
+                : user?.role === 'INSTRUCTOR'
+                  ? 'Đi đến trang giảng viên'
+                  : isAuthenticated
+                    ? 'Chuyển sang giảng viên'
+                    : 'Đăng ký để giảng dạy'}
             </Button>
           </SlideUp>
         </div>
+
+        {/* Đường gạch chia nhẹ ở dưới hero banner */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />
       </section>
 
       {/* Reasons to teach */}
@@ -68,37 +83,43 @@ export const Teach = () => {
             <div className="mx-auto w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
                <img src="https://cdn-icons-png.flaticon.com/512/3214/3214746.png" alt="Inspire" className="w-12 h-12 opacity-80 dark:invert" />
             </div>
-            <h3 className="text-xl font-bold mb-4">Giảng dạy theo cách của bạn</h3>
-            <p className="text-muted-foreground leading-relaxed">Tự do kiểm soát nội dung và xuất bản các khóa học theo phong cách riêng của bạn. Đội ngũ kỹ thuật hỗ trợ tận tình phía sau lưng.</p>
+            <h3 className="text-xl font-bold mb-4">Xây dựng khóa học có tổ chức</h3>
+            <p className="text-muted-foreground leading-relaxed">Tạo khóa học, sắp xếp chương và bài học, bổ sung video, tài liệu hoặc bài kiểm tra trước khi gửi quản trị viên kiểm duyệt.</p>
           </FadeIn>
           <FadeIn delay={0.2}>
             <div className="mx-auto w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
                <img src="https://cdn-icons-png.flaticon.com/512/2933/2933116.png" alt="Security" className="w-12 h-12 opacity-80 dark:invert" />
             </div>
-            <h3 className="text-xl font-bold mb-4">Bảo mật bằng DRM mạnh mẽ</h3>
-            <p className="text-muted-foreground leading-relaxed">Khóa học của bạn được bảo vệ tuyệt đối bằng mã hóa AES-128 HLS, chặn chia sẻ tài khoản, và chặn tính năng quay-chụp màn hình trái phép.</p>
+            <h3 className="text-xl font-bold mb-4">Hỗ trợ bảo vệ học liệu</h3>
+            <p className="text-muted-foreground leading-relaxed">Video được chuyển sang HLS, mã hóa AES-128 và kiểm tra quyền xem. Hệ thống kết hợp phiên học, liên kết có thời hạn và watermark để hạn chế khai thác trái phép.</p>
           </FadeIn>
           <FadeIn delay={0.3}>
             <div className="mx-auto w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mb-6">
                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Earn" className="w-12 h-12 opacity-80 dark:invert" />
             </div>
-            <h3 className="text-xl font-bold mb-4">Tạo thu nhập thụ động</h3>
-            <p className="text-muted-foreground leading-relaxed">Gia tăng thu nhập từ mỗi lượt mua. Mạng lưới Affiliate tự động giúp khóa học của bạn mở rộng mạng lưới với các học viên tiềm năng.</p>
+            <h3 className="text-xl font-bold mb-4">Quản lý hoạt động giảng dạy</h3>
+            <p className="text-muted-foreground leading-relaxed">Theo dõi học viên, trao đổi trong bài học, gửi thông báo khóa học và xem kết quả hoạt động cùng doanh thu được hệ thống ghi nhận.</p>
           </FadeIn>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="bg-secondary/40 px-6 py-20 text-center border-t border-border">
-        <h2 className="text-3xl font-bold font-serif mb-6">Bạn đã sẵn sàng bước lên bục giảng?</h2>
-        <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">Tham gia cùng hàng ngàn giảng viên uy tín trên mạng lưới của SecureLearn để truyền đạt kiến thức ngay hôm nay.</p>
+      <section className="bg-secondary/40 px-6 py-16 md:py-20 text-center border-t border-border">
+        <h2 className="text-2xl md:text-3xl font-bold font-serif mb-4 text-foreground">Bắt đầu xây dựng khóa học của bạn</h2>
+        <p className="text-base text-muted-foreground mb-8 max-w-xl mx-auto">Đăng ký tài khoản hoặc chuyển sang khu vực giảng viên, hoàn thiện hồ sơ và bắt đầu tạo khóa học đầu tiên trên SecureLearn.</p>
         <Button
           onClick={handleStartTeaching}
           disabled={switchToInstructorMutation.isPending}
-          variant="udemy_dark"
-          className="h-14 px-12 text-lg font-bold rounded-none cursor-pointer"
+          size="lg"
+          className="h-12 px-8 text-base font-bold rounded-xl shadow-md cursor-pointer"
         >
-          {switchToInstructorMutation.isPending ? 'Đang xử lý...' : 'Bắt đầu ngay bây giờ'}
+          {switchToInstructorMutation.isPending
+            ? 'Đang xử lý...'
+            : user?.role === 'INSTRUCTOR'
+              ? 'Đi đến trang giảng viên'
+              : isAuthenticated
+                ? 'Chuyển sang giảng viên'
+                : 'Đăng ký để giảng dạy'}
         </Button>
       </section>
     </div>
