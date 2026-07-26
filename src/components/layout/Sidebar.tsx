@@ -76,6 +76,12 @@ const SidebarAnimationContext = createContext<SidebarAnimationContextType>({
   textVariants: sidebarTextVariants,
 });
 
+const isMenuPathActive = (currentPath: string, menuPath: string) => {
+  if (menuPath.includes('?')) return currentPath === menuPath;
+  const currentPathname = currentPath.split('?')[0];
+  return currentPathname === menuPath || currentPathname.startsWith(`${menuPath}/`);
+};
+
 // Recursive Menu Item for nested subcategories
 const RecursiveMenuItem: React.FC<{
   item: MenuItem;
@@ -87,7 +93,7 @@ const RecursiveMenuItem: React.FC<{
   const hasChildren = item.children && item.children.length > 0;
   
   const isDescendantActive = (m: MenuItem): boolean => {
-    if (currentPath === m.path) return true;
+    if (isMenuPathActive(currentPath, m.path)) return true;
     if (m.children) return m.children.some(isDescendantActive);
     return false;
   };
@@ -116,7 +122,7 @@ const RecursiveMenuItem: React.FC<{
 
   if (!hasChildren) {
     const isCategoryLink = item.path.startsWith('/courses');
-    const isLinkActive = isCategoryLink ? false : currentPath === item.path;
+    const isLinkActive = isCategoryLink ? false : isMenuPathActive(currentPath, item.path);
 
     return (
       <NavLink
