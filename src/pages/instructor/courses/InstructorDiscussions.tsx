@@ -518,7 +518,10 @@ function ReplyItem({
   return (
     <article className={`rounded-2xl border bg-zinc-50 p-4 dark:bg-zinc-900 ${reply.hiddenAt ? 'border-amber-300 dark:border-amber-800' : 'border-zinc-200 dark:border-zinc-800'}`}>
       <div className="flex gap-3">
-        <UserAvatar user={{ fullName: reply.authorName }} className="h-8 w-8 text-[10px]" />
+        <UserAvatar
+          user={{ fullName: reply.authorName, avatarUrl: reply.authorAvatarUrl }}
+          className="h-8 w-8 text-[10px]"
+        />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
