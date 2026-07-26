@@ -649,11 +649,11 @@ export function NotificationCenter() {
               )}
             </button>
             <button
-              onClick={() => setActiveTab('preferences')}
-              className={`pb-4 px-6 text-sm font-semibold border-b-2 transition-all duration-300 flex items-center gap-2 cursor-pointer ${activeTab === 'preferences'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
+              type="button"
+              disabled
+              aria-disabled="true"
+              title="Tính năng đang được hoàn thiện"
+              className="pb-4 px-6 text-sm font-semibold border-b-2 border-transparent text-muted-foreground/60 transition-all duration-300 flex items-center gap-2 cursor-not-allowed"
             >
               <Settings className="h-4 w-4" />
               Cài đặt nhận tin
