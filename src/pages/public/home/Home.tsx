@@ -183,7 +183,7 @@ export const Home = () => {
       <HomeBannerSlider />
 
         {/* Dành cho bạn */}
-        <section className="bg-secondary/10 px-6 overflow-hidden md:h-screen w-full flex items-center justify-center">
+        <section className="bg-secondary/10 px-6 py-16 md:py-24 overflow-hidden w-full flex items-center justify-center">
           <div className="max-w-[1340px] mx-auto">
             <SectionReveal>
               <div className="text-center mb-10">
@@ -214,7 +214,7 @@ export const Home = () => {
         </section>
 
         {/* Featured Courses */}
-        <section className="mx-auto flex w-full max-w-[1340px] flex-col justify-center overflow-hidden px-6 py-12 md:h-screen md:py-8">
+        <section className="mx-auto flex w-full max-w-[1340px] flex-col justify-center overflow-hidden px-6 py-16 md:py-24">
           <SectionReveal>
             <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div className="max-w-3xl">
