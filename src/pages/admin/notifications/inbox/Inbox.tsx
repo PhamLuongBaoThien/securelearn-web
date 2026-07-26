@@ -11,6 +11,7 @@ import type { TicketStatus, TicketType, TicketActivity, TicketMessage } from '@/
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { toast } from 'sonner';
 
 import { CannedReplyManager } from '@/components/inbox/CannedReplyManager';
@@ -63,7 +64,7 @@ interface ApiError {
 }
 
 export const Inbox = () => {
-    const { user } = useAppSelector((state) => state.auth);
+    const { user } = useAppSelector((state) => state.adminAuth);
     const queryClient = useQueryClient();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -578,9 +579,14 @@ export const Inbox = () => {
                                                     className={`flex items-start gap-3 ${isFromAdmin ? 'justify-end' : 'justify-start'}`}
                                                 >
                                                     {!isFromAdmin && (
-                                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground border">
-                                                            <User className="h-4.5 w-4.5" />
-                                                        </div>
+                                                        <UserAvatar
+                                                            user={{
+                                                                fullName: m.author.name || detail.sender.name,
+                                                                avatarUrl: m.author.avatarUrl || detail.sender.avatarUrl,
+                                                            }}
+                                                            className="h-8 w-8 text-xs"
+                                                            fallbackClassName="bg-muted text-muted-foreground border"
+                                                        />
                                                     )}
 
                                                     <div className={`max-w-[72%] space-y-1 ${isFromAdmin ? 'text-right' : ''}`}>
@@ -602,9 +608,14 @@ export const Inbox = () => {
                                                     </div>
 
                                                     {isFromAdmin && (
-                                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20">
-                                                            <Shield className="h-4.5 w-4.5" />
-                                                        </div>
+                                                        <UserAvatar
+                                                            user={{
+                                                                fullName: m.author.name || user?.fullName,
+                                                                avatarUrl: m.author.avatarUrl || (m.author.id === user?._id ? user?.avatarUrl : undefined),
+                                                            }}
+                                                            className="h-8 w-8 text-xs"
+                                                            fallbackClassName="bg-primary/10 text-primary border border-primary/20"
+                                                        />
                                                     )}
                                                 </motion.div>
                                             );

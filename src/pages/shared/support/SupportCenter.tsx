@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { TicketPagination } from '@/components/inbox/TicketPagination';
+import { UserAvatar } from '@/components/ui/UserAvatar';
+import { useAppSelector } from '@/app/hooks';
 import { toast } from 'sonner';
 
 import {
@@ -73,6 +75,7 @@ export function SupportCenter() {
   const { id } = useParams();
   const nav = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const currentUser = useAppSelector(state => state.auth.user);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const [items, setItems] = useState<Ticket[]>([]);
@@ -426,9 +429,13 @@ export function SupportCenter() {
                       >
                         {/* Avatar Admin */}
                         {isAdminMsg && (
-                          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-                            S
-                          </div>
+                          <UserAvatar
+                            user={{
+                              fullName: m.author.name || 'SecureLearn',
+                              avatarUrl: m.author.avatarUrl,
+                            }}
+                            className="w-8 h-8 text-xs"
+                          />
                         )}
 
                         <div className={`flex flex-col max-w-[75%] ${isAdminMsg ? 'items-start' : 'items-end'}`}>
@@ -476,9 +483,14 @@ export function SupportCenter() {
 
                         {/* Avatar Học viên */}
                         {!isAdminMsg && (
-                          <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 text-foreground border border-border flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-                            U
-                          </div>
+                          <UserAvatar
+                            user={{
+                              fullName: m.author.name || currentUser?.fullName,
+                              avatarUrl: m.author.avatarUrl || detail.sender.avatarUrl || currentUser?.profile?.avatarUrl,
+                            }}
+                            className="w-8 h-8 text-xs"
+                            fallbackClassName="bg-zinc-200 dark:bg-zinc-800 text-foreground border border-border"
+                          />
                         )}
                       </div>
                     );
