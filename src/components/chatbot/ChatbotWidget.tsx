@@ -62,8 +62,8 @@ const toChatMessages = (items: Awaited<ReturnType<typeof getChatbotMessages>>): 
     id: message.id,
     role: message.role === 'USER' ? 'user' as const : 'assistant' as const,
     content: message.content,
-    intent: message.intent,
-    suggestedCourses: message.intent === 'COURSE' ? message.suggestedCourses || [] : [],
+    intent: message.role === 'ASSISTANT' ? message.intent : undefined,
+    suggestedCourses: message.role === 'ASSISTANT' && message.intent === 'COURSE' ? message.suggestedCourses || [] : [],
   }));
   return mapped.length ? mapped : [welcomeMessage];
 };
@@ -375,7 +375,7 @@ export function ChatbotWidget() {
                       <p className="whitespace-pre-line">{message.content}</p>
                     </div>
 
-                    {message.intent === 'COURSE' && message.suggestedCourses && message.suggestedCourses.length > 0 && (
+                    {message.role === 'assistant' && message.intent === 'COURSE' && message.suggestedCourses && message.suggestedCourses.length > 0 && (
                       <div className="mt-2 space-y-1.5">
                         {message.suggestedCourses.map((course) => (
                           <Link
@@ -390,7 +390,7 @@ export function ChatbotWidget() {
                       </div>
                     )}
 
-                    {message.intent === 'OUT_OF_SCOPE' && (
+                    {message.role === 'assistant' && message.intent === 'OUT_OF_SCOPE' && (
                       <div className="mt-2 grid gap-1.5">
                         <Link
                           to="/policies"
