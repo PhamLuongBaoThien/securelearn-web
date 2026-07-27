@@ -2,7 +2,7 @@
 // StaffFormDialog: Dialog tạo/sửa staff, tách riêng khỏi StaffList để giữ luồng chính gọn hơn.
 // ========================
 import React, { useState } from 'react';
-import { Eye, EyeOff, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { toast } from 'sonner';
 import type { IAdminStaff, IRolePermission } from '@/types/admin.types';
 import {
@@ -42,7 +42,6 @@ export const StaffFormDialog: React.FC<StaffFormDialogProps> = ({
   availableRoles,
 }) => {
   const isEdit = !!initial;
-  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState<StaffFormValues>({
     fullName: initial?.fullName || '',
     email: initial?.email || '',
@@ -176,24 +175,13 @@ export const StaffFormDialog: React.FC<StaffFormDialogProps> = ({
           </Field>
           {!isEdit && (
             <Field label="Mật khẩu *">
-              <div className="relative">
-                <Input
-                  className={`${staffInputClassName} pr-10`}
-                  type={showPassword ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={(event) => setField('password', event.target.value)}
-                  placeholder="Tối thiểu 6 ký tự"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-zinc-400 hover:text-zinc-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </Button>
-              </div>
+              <Input
+                className={staffInputClassName}
+                type="password"
+                value={form.password}
+                onChange={(event) => setField('password', event.target.value)}
+                placeholder="Tối thiểu 6 ký tự"
+              />
             </Field>
           )}
         </div>
