@@ -18,8 +18,6 @@ import {
 } from 'lucide-react';
 import {
   Area,
-  Bar,
-  BarChart,
   CartesianGrid,
   ComposedChart,
   Line,
@@ -27,9 +25,8 @@ import {
   YAxis,
 } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
-import { useAppSelector, useAppDispatch } from '@/app/hooks';
+import { useAppSelector } from '@/app/hooks';
 import { getUsers, getCoursesForReview, getRevenueStats, getRevenueSplitConfig } from '@/services/adminApi';
-import { setSidebarOpen } from '@/features/dashboard/uiSlice';
 import {
   ChartContainer,
   ChartLegend,
@@ -63,13 +60,6 @@ const monthlyChartConfig = {
   },
 } satisfies ChartConfig;
 
-const providerChartConfig = {
-  revenue: {
-    label: 'Doanh thu',
-    color: 'var(--chart-4)',
-  },
-} satisfies ChartConfig;
-
 const KpiCard: React.FC<{
   label: string;
   value: string;
@@ -91,7 +81,6 @@ const KpiCard: React.FC<{
 );
 
 export const Dashboard: React.FC = () => {
-  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.adminAuth);
 
   // Fetch users stats
@@ -149,7 +138,6 @@ export const Dashboard: React.FC = () => {
   const activeSubscriptions = revenue?.activeSubscriptions ?? 0;
   const successfulTransactions = revenue?.successfulTransactions ?? 0;
   const monthlyData = revenue?.monthlyData ?? [];
-  const providerBreakdown = revenue?.providerBreakdown ?? [];
   const adminPercent = splitConfig?.adminPercent ?? revenue?.adminPercent ?? 0;
   const instructorPercent = splitConfig?.instructorPercent ?? revenue?.instructorPercent ?? 0;
 
@@ -161,13 +149,6 @@ export const Dashboard: React.FC = () => {
     instructorRevenue: m.instructorRevenue,
     subscriptionRevenue: m.subscriptionRevenue ?? 0,
     transactions: m.transactions,
-  }));
-
-  // Provider chart data
-  const providerChartData = providerBreakdown.map((p) => ({
-    name: p.provider,
-    revenue: p.revenue,
-    transactions: p.transactions,
   }));
 
   if (isLoading) {
@@ -384,103 +365,6 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Provider breakdown */}
-      {providerChartData.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className={`${cardClass} p-5`}>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4">Doanh thu theo cổng thanh toán</h3>
-            <ChartContainer config={providerChartConfig} className="h-56 w-full">
-              <BarChart data={providerChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tickMargin={8} />
-                <YAxis axisLine={false} tickLine={false} tickMargin={8} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
-                <ChartTooltip
-                  cursor={false}
-                  content={
-                    <ChartTooltipContent
-                      hideLabel={false}
-                      formatter={(value) => formatCurrency(Number(value ?? 0))}
-                    />
-                  }
-                />
-                <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[6, 6, 0, 0]} barSize={36} />
-              </BarChart>
-            </ChartContainer>
-          </div>
-
-          <div className={`${cardClass} p-5`}>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4">Chi tiết cổng thanh toán</h3>
-            <div className="space-y-3">
-              {providerBreakdown.map((p) => (
-                <div key={p.provider} className="flex items-center justify-between p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                  <div>
-                    <p className="text-sm font-semibold text-zinc-850 dark:text-zinc-200">{p.provider}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">{p.transactions} giao dịch</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-zinc-900 dark:text-white">{formatCurrency(p.revenue)}</p>
-                    <p className="text-xs text-zinc-400">QTV: {formatCurrency(p.adminRevenue)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quick links */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Link
-          to="/admin/finance/transactions"
-          onClick={() => dispatch(setSidebarOpen(true))}
-          className={`${cardClass} p-5 hover:shadow-md hover:border-primary/30 transition-all group`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform shrink-0">
-              <DollarSign className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-zinc-900 dark:text-white">Quản lý giao dịch</p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Xem chi tiết & cấu hình chia doanh thu</p>
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/admin/users/list"
-          onClick={() => dispatch(setSidebarOpen(true))}
-          className={`${cardClass} p-5 hover:shadow-md hover:border-primary/30 transition-all group`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform shrink-0">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-zinc-900 dark:text-white">Quản lý người dùng</p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{totalUsers.toLocaleString('vi-VN')} người dùng đăng ký</p>
-            </div>
-          </div>
-        </Link>
-        <Link
-          to="/admin/courses/review"
-          onClick={() => dispatch(setSidebarOpen(true))}
-          className={`${cardClass} p-5 hover:shadow-md hover:border-primary/30 transition-all group`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform shrink-0">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-zinc-900 dark:text-white">Kiểm duyệt khóa học</p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{pendingCount} khóa chờ duyệt</p>
-            </div>
-          </div>
-        </Link>
-      </div>
     </div>
   );
 };
-
-
-
-
-

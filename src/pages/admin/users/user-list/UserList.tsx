@@ -78,6 +78,7 @@ export const UserList: React.FC = () => {
     users,
     total,
     totalPages,
+    summary,
     isLoading,
     isFetching,
     invalidate,
@@ -335,20 +336,20 @@ export const UserList: React.FC = () => {
         {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-3">
           <KpiCard
-            label="Học viên"
-            value={users.filter((u) => u.role === 'STUDENT').length}
-            sub="Trong danh sách trang này"
+            label="Tổng người dùng"
+            value={summary.totalUsers}
+            sub="Trên toàn hệ thống"
             icon={<Users className="h-5 w-5 text-blue-500" />}
           />
           <KpiCard
             label="Giảng viên"
-            value={users.filter((u) => u.role === 'INSTRUCTOR').length}
-            sub="Trong danh sách trang này"
+            value={summary.totalInstructors}
+            sub="Trên toàn hệ thống"
             icon={<GraduationCap className="h-5 w-5 text-violet-500" />}
           />
           <KpiCard
             label="Tài khoản bị khóa"
-            value={users.filter((u) => u.status === 'LOCKED').length}
+            value={summary.totalLocked}
             sub="Đã bị khóa tạm thời"
             icon={<AlertCircle className="h-5 w-5 text-red-500" />}
           />

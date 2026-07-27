@@ -212,8 +212,14 @@ export function ChatbotWidget() {
       setSession(nextSession);
       writeSession(nextSession);
       setMessages((old) => [...old, { id: crypto.randomUUID(), role: 'assistant', content: data.reply, intent: data.intent, suggestedCourses: data.intent === 'COURSE' ? data.suggestedCourses : [] }]);
-    } catch (error: any) {
-      setMessages((old) => [...old, { id: crypto.randomUUID(), role: 'assistant', content: error?.response?.data?.message || 'Chatbot chưa thể phản hồi. Bạn thử lại sau nhé.' }]);
+    } catch (error: unknown) {
+      const errorMessage =
+        error && typeof error === 'object' && 'response' in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : error instanceof Error
+            ? error.message
+            : undefined;
+      setMessages((old) => [...old, { id: crypto.randomUUID(), role: 'assistant', content: errorMessage || 'Chatbot chưa thể phản hồi. Bạn thử lại sau nhé.' }]);
     } finally {
       setSending(false);
     }

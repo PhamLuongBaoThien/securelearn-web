@@ -155,6 +155,7 @@ function SortableRow({ id, disabled, children }: { id: string; disabled: boolean
     {children}
   </div>;
 }
+
 export const BannerManager: React.FC = () => {
   const query = useAdminBanners();
   const save = useSaveBanner();
@@ -195,14 +196,14 @@ export const BannerManager: React.FC = () => {
     <p className="my-2 text-sm text-zinc-500">{query.error.message}</p><Button variant="outline" onClick={() => void query.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Thử lại</Button>
   </div>;
 
-  return <div className="w-full space-y-6">
+  return <div className="w-full max-w-full space-y-6 overflow-x-hidden">
     {dialogOpen && <BannerFormDialog key={editItem?._id || 'new'} open={dialogOpen} onOpenChange={setDialogOpen} initial={editItem} saving={save.isPending}
       onSave={async (payload) => { try { await save.mutateAsync({ id: editItem?._id, payload }); toast.success(editItem ? 'Đã cập nhật banner.' : 'Đã thêm banner mới.'); setDialogOpen(false); } catch (error) { showError(error); } }} />}
     <ConfirmDialog open={deleteId !== null} onOpenChange={(value) => !value && setDeleteId(null)}
       title="Xóa Banner?" description="Banner sẽ bị xóa vĩnh viễn và không thể khôi phục." confirmText={remove.isPending ? 'Đang xóa...' : 'Xóa Banner'} isDestructive
       onConfirm={async () => { if (!deleteId) return; try { await remove.mutateAsync(deleteId); toast.success('Đã xóa banner.'); setDeleteId(null); } catch (error) { showError(error); } }} />
     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-      <div><h1 className="mb-1 text-3xl font-bold text-zinc-900 dark:text-white">Quản lý Banner & Slider</h1>
+      <div><h1 className="mb-1 text-3xl font-bold text-zinc-900 dark:text-white">Quản lý banner trang chủ</h1>
         <p className="text-zinc-500 dark:text-zinc-400">Cập nhật hình ảnh và thông điệp quảng bá hiển thị tại trang chủ.</p></div>
       <Button onClick={() => { setEditItem(undefined); setDialogOpen(true); }}><Plus className="mr-2 h-4 w-4" />Thêm Banner</Button>
     </div>
@@ -216,22 +217,32 @@ export const BannerManager: React.FC = () => {
       : <DndContext sensors={sensors} onDragEnd={(event: DragEndEvent) => { if (event.over && event.active.id !== event.over.id) void move(String(event.active.id), String(event.over.id)); }}>
         <SortableContext items={banners.map((item) => item._id)} strategy={verticalListSortingStrategy}>
         <div className="divide-y divide-zinc-100 dark:divide-zinc-800">{banners.map((banner, index) => (
-        <SortableRow key={banner._id} id={banner._id} disabled={reorder.isPending}>
-
-          <div className="flex items-center gap-2"><GripVertical className="hidden h-5 w-5 cursor-grab text-zinc-300 sm:block" aria-hidden />
-            <div className="h-20 w-36 shrink-0 overflow-hidden rounded-xl border bg-zinc-100 dark:border-zinc-700"><img src={banner.imageUrl} alt="" className="h-full w-full object-cover" /></div></div>
-          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-semibold">{banner.title}</p>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${banner.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800'}`}>{banner.isActive ? 'Đang hiển thị' : 'Ẩn'}</span></div>
-            <p className="mt-1 truncate text-xs text-zinc-500">{banner.subtitle || 'Không có phụ đề'}</p>{banner.linkUrl && <p className="mt-1 truncate text-xs text-primary">{banner.linkUrl}</p>}</div>
-          <div className="flex items-center justify-end gap-1">
-            <button aria-label="Đưa banner lên" disabled={index === 0 || reorder.isPending} onClick={() => step(banner._id, -1)} className="rounded-lg p-2 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-700"><ArrowUp className="h-4 w-4" /></button>
-            <button aria-label="Đưa banner xuống" disabled={index === banners.length - 1 || reorder.isPending} onClick={() => step(banner._id, 1)} className="rounded-lg p-2 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-700"><ArrowDown className="h-4 w-4" /></button>
-            <button aria-label={banner.isActive ? 'Ẩn banner' : 'Hiển thị banner'} disabled={toggle.isPending} onClick={async () => { try { await toggle.mutateAsync({ id: banner._id, isActive: !banner.isActive }); toast.success('Đã cập nhật trạng thái banner.'); } catch (error) { showError(error); } }} className="rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700">{banner.isActive ? <ToggleRight className="h-5 w-5 text-primary" /> : <ToggleLeft className="h-5 w-5 text-zinc-400" />}</button>
-            <button aria-label="Chỉnh sửa banner" onClick={() => { setEditItem(banner); setDialogOpen(true); }} className="rounded-lg p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10"><Pencil className="h-4 w-4" /></button>
-            <button aria-label="Xóa banner" disabled={remove.isPending} onClick={() => setDeleteId(banner._id)} className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></button>
-          </div>
-        </SortableRow>
-      ))}</div>
+          <SortableRow key={banner._id} id={banner._id} disabled={reorder.isPending}>
+            <div className="flex items-center gap-2 shrink-0">
+              <GripVertical className="hidden h-5 w-5 cursor-grab text-zinc-300 sm:block" aria-hidden />
+              <div className="h-20 w-36 shrink-0 overflow-hidden rounded-xl border bg-zinc-100 dark:border-zinc-700">
+                <img src={banner.imageUrl} alt="" className="h-full w-full object-cover" />
+              </div>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <p className="truncate text-sm font-semibold min-w-0 flex-1">{banner.title}</p>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${banner.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800'}`}>
+                  {banner.isActive ? 'Đang hiển thị' : 'Ẩn'}
+                </span>
+              </div>
+              <p className="mt-1 truncate text-xs text-zinc-500">{banner.subtitle || 'Không có phụ đề'}</p>
+              {banner.linkUrl && <p className="mt-1 truncate text-xs text-primary">{banner.linkUrl}</p>}
+            </div>
+            <div className="flex items-center justify-between sm:justify-end gap-1 shrink-0 pt-2 border-t border-zinc-100 dark:border-zinc-800/60 sm:border-0 sm:pt-0">
+              <button aria-label="Đưa banner lên" disabled={index === 0 || reorder.isPending} onClick={() => step(banner._id, -1)} className="rounded-lg p-2 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-700"><ArrowUp className="h-4 w-4" /></button>
+              <button aria-label="Đưa banner xuống" disabled={index === banners.length - 1 || reorder.isPending} onClick={() => step(banner._id, 1)} className="rounded-lg p-2 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-700"><ArrowDown className="h-4 w-4" /></button>
+              <button aria-label={banner.isActive ? 'Ẩn banner' : 'Hiển thị banner'} disabled={toggle.isPending} onClick={async () => { try { await toggle.mutateAsync({ id: banner._id, isActive: !banner.isActive }); toast.success('Đã cập nhật trạng thái banner.'); } catch (error) { showError(error); } }} className="rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700">{banner.isActive ? <ToggleRight className="h-5 w-5 text-primary" /> : <ToggleLeft className="h-5 w-5 text-zinc-400" />}</button>
+              <button aria-label="Chỉnh sửa banner" onClick={() => { setEditItem(banner); setDialogOpen(true); }} className="rounded-lg p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10"><Pencil className="h-4 w-4" /></button>
+              <button aria-label="Xóa banner" disabled={remove.isPending} onClick={() => setDeleteId(banner._id)} className="rounded-lg p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"><Trash2 className="h-4 w-4" /></button>
+            </div>
+          </SortableRow>
+        ))}</div>
         </SortableContext>
       </DndContext>}
     </div>

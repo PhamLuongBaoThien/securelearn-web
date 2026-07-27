@@ -64,11 +64,17 @@ export const useAdminUsers = (filters: UserFilters = {}) => {
   }));
   const total = query.data?.data?.total ?? 0;
   const totalPages = query.data?.data?.totalPages ?? 1;
+  const summary = query.data?.data?.summary ?? {
+    totalUsers: 0,
+    totalInstructors: 0,
+    totalLocked: 0,
+  };
 
   return {
     users,
     total,
     totalPages,
+    summary,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     invalidate: () => queryClient.invalidateQueries({ queryKey: ['admin_users'] }),

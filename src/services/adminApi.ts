@@ -290,7 +290,17 @@ export const getUsers = async (params?: {
   page?: number;
   limit?: number;
   sort?: string;
-}): Promise<AdminApiResponse<{ users: IAdminUser[]; total: number; page: number; totalPages: number }>> => {
+}): Promise<AdminApiResponse<{
+  users: IAdminUser[];
+  total: number;
+  page: number;
+  totalPages: number;
+  summary: {
+    totalUsers: number;
+    totalInstructors: number;
+    totalLocked: number;
+  };
+}>> => {
   const res = await apiClient.get(`${ADMIN}/auth/users`, { params });
   return res.data;
 };
@@ -340,7 +350,15 @@ export const getCoursesForReview = async (params?: {
   page?: number;
   limit?: number;
   sort?: string;
-}): Promise<AdminApiResponse<{ courses: ICourseReview[]; total: number; page: number; totalPages: number }>> => {
+}): Promise<AdminApiResponse<{
+  courses: ICourseReview[];
+  total: number;
+  page: number;
+  totalPages: number;
+  summary: {
+    pending: number;
+  };
+}>> => {
   const res = await apiClient.get(`${ADMIN}/courses/review`, { params });
   return res.data;
 };

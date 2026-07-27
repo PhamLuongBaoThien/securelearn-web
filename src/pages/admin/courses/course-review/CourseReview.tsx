@@ -1566,10 +1566,7 @@ export const CourseReview: React.FC = () => {
   };
   const approveTarget =
     courses.find((course) => course._id === approveTargetId) || null;
-  const pendingCount =
-    statusFilter === "PENDING"
-      ? reviewQuery.data?.total || courses.length
-      : courses.filter((c) => c.status === "PENDING").length;
+  const pendingCount = reviewQuery.data?.summary.pending ?? 0;
   const fmt = (n: number) => n.toLocaleString("vi-VN") + "₫";
   const fmtDuration = (mins?: number) => {
     if (!mins) return "-";

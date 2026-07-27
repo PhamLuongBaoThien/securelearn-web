@@ -45,7 +45,7 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[], inbox
       groupIcon: <Settings className="w-5 h-5 shrink-0" />,
       items: [
         { name: 'Cấu hình Website', path: '/admin/system/config', icon: <Globe className="w-4 h-4 shrink-0" />, req: 'system:config' },
-        { name: 'Banner & Slider', path: '/admin/system/banners', icon: <Image className="w-4 h-4 shrink-0" />, req: 'system:config' },
+        { name: 'Banner trang chủ', path: '/admin/system/banners', icon: <Image className="w-4 h-4 shrink-0" />, req: 'system:config' },
         { name: 'Chính sách', path: '/admin/system/policies', icon: <ScrollText className="w-4 h-4 shrink-0" />, req: 'system:config' },
         { name: 'Danh mục', path: '/admin/system/categories', icon: <Tag className="w-4 h-4 shrink-0" />, req: 'system:config' },
       ],
@@ -97,7 +97,7 @@ function buildSidebarEntries(isSuperAdmin: boolean, permissions: string[], inbox
   const entries: SidebarEntry[] = [
     {
       type: 'single',
-      name: 'Bảng điều khiển',
+      name: 'Tổng quan',
       path: '/admin/dashboard',
       icon: <LayoutDashboard className="w-5 h-5 shrink-0" />,
     },
@@ -200,7 +200,7 @@ export const AdminLayout: React.FC = () => {
       />
 
       {/* Main Content */}
-      <main className={`flex-1 transition-[margin-left] duration-200 ease-out relative min-h-screen will-change-[margin-left] ${!sidebarOpen ? 'ml-20' : 'ml-72'}`}>
+      <main className={`flex-1 transition-[margin-left] duration-200 ease-out relative min-h-screen overflow-x-hidden will-change-[margin-left] ${!sidebarOpen ? 'ml-20' : 'ml-72'}`}>
         <div className="sticky top-0 z-50 flex h-14 items-center justify-end gap-3 border-b bg-background/80 px-8 backdrop-blur">
           {user?.adminRole && (
             <span className={`px-2.5 py-0.5 text-[11px] font-semibold border rounded-full ${getAdminRoleLabel(user.adminRole).className}`}>
