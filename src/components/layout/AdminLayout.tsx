@@ -200,7 +200,7 @@ export const AdminLayout: React.FC = () => {
       />
 
       {/* Main Content */}
-      <main className={`flex-1 transition-[margin-left] duration-200 ease-out relative min-h-screen overflow-x-hidden will-change-[margin-left] ${!sidebarOpen ? 'ml-20' : 'ml-72'}`}>
+      <main className={`flex-1 transition-[margin-left] duration-200 ease-out relative min-h-screen overflow-x-clip will-change-[margin-left] ${!sidebarOpen ? 'ml-20' : 'ml-72'}`}>
         <div className="sticky top-0 z-50 flex h-14 items-center justify-end gap-3 border-b bg-background/80 px-8 backdrop-blur">
           {user?.adminRole && (
             <span className={`px-2.5 py-0.5 text-[11px] font-semibold border rounded-full ${getAdminRoleLabel(user.adminRole).className}`}>

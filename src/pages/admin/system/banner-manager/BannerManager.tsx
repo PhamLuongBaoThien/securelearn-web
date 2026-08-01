@@ -196,7 +196,7 @@ export const BannerManager: React.FC = () => {
     <p className="my-2 text-sm text-zinc-500">{query.error.message}</p><Button variant="outline" onClick={() => void query.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Thử lại</Button>
   </div>;
 
-  return <div className="w-full max-w-full space-y-6 overflow-x-hidden">
+  return <div className="w-full max-w-full space-y-6 overflow-x-clip">
     {dialogOpen && <BannerFormDialog key={editItem?._id || 'new'} open={dialogOpen} onOpenChange={setDialogOpen} initial={editItem} saving={save.isPending}
       onSave={async (payload) => { try { await save.mutateAsync({ id: editItem?._id, payload }); toast.success(editItem ? 'Đã cập nhật banner.' : 'Đã thêm banner mới.'); setDialogOpen(false); } catch (error) { showError(error); } }} />}
     <ConfirmDialog open={deleteId !== null} onOpenChange={(value) => !value && setDeleteId(null)}
