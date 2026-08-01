@@ -274,7 +274,11 @@ export function LearningInterface() {
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950 px-6 text-center text-white">
         <p className="text-lg font-semibold">Không thể mở khóa học</p>
         <p className="mt-2 text-sm text-zinc-400">{(courseQuery.error as Error)?.message || 'Bạn không còn quyền truy cập.'}</p>
-        <Button variant="link" className="mt-5 text-sm text-primary" onClick={() => navigate('/student/dashboard')}>
+        <Button
+          type="button"
+          className="mt-5 bg-white px-5 text-zinc-950 shadow-md hover:bg-zinc-200"
+          onClick={() => navigate('/student/dashboard')}
+        >
           Quay lại khóa học của tôi
         </Button>
       </div>
