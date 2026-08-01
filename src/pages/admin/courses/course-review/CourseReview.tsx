@@ -922,7 +922,7 @@ const CourseCurriculumPreview: React.FC<{
             </h5>
             <div className="mt-4 space-y-3 text-sm">
               <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
-                <p className="text-xs text-zinc-500">Luật mở bài</p>
+                <p className="text-xs text-zinc-500">Trình tự học tập</p>
                 <p className="mt-1 font-semibold text-indigo-700 dark:text-indigo-300">{progressionLabel}</p>
                 <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">{progressionDescription}</p>
               </div>

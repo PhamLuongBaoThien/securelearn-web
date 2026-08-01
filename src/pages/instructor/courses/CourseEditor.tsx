@@ -1158,7 +1158,7 @@ export const CourseEditor: React.FC = () => {
               <div className="mt-3 rounded-2xl border border-blue-200 bg-blue-50/90 px-4 py-3 text-sm text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200">
                 <p className="font-semibold">Bạn đang chỉnh sửa bản nháp của khóa học.</p>
                 <p className="mt-1 leading-6 text-blue-700/90 dark:text-blue-100/90">
-                  Mọi thay đổi, bao gồm cả luật mở bài, chỉ áp dụng cho học viên sau khi bạn gửi duyệt và admin phê duyệt bản cập nhật này.
+                  Mọi thay đổi, bao gồm cả trình tự học tập, chỉ áp dụng cho học viên sau khi bạn gửi duyệt và admin phê duyệt bản cập nhật này.
                 </p>
                 <p className="mt-2 text-xs text-blue-700/80 dark:text-blue-100/80">
                   Bản đang public hiện dùng <span className="font-semibold">{publishedProgressionModeOption.label}</span>
@@ -1413,7 +1413,7 @@ export const CourseEditor: React.FC = () => {
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,280px)_1fr] lg:items-center">
               <div>
-                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Luật mở bài</h3>
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Trình tự học tập</h3>
                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                   Chọn cách học viên đi qua giáo trình để tránh học nhảy cóc nếu khóa học cần theo thứ tự.
                 </p>
