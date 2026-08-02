@@ -28,7 +28,6 @@ import {
 } from '@/components/ui/tooltip';
 import type { ILesson } from '@/services/courseApi';
 import { acquireLearningSession, releaseLearningSession, type LearningSessionConflict, type LearningSessionGrant } from '@/services/progressApi';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   formatWatermarkText,
   shouldIgnoreProtectionShortcut,
@@ -107,6 +106,13 @@ const isSeekWarningSuppressed = () => {
 
 type LearningSessionState = LearningSessionGrant & {
   acquiredAt: number;
+};
+
+type StartLearningOptions = {
+  force?: boolean;
+  expectedActiveSessionId?: string;
+  playAfterAcquire?: boolean;
+  takeOverOnConflict?: boolean;
 };
 
 const LEARNING_CLIENT_INSTANCE_KEY = 'securelearn.learning.client-instance';
@@ -243,6 +249,7 @@ export function VideoPlayer({
     leaseLastActiveAtRef.current = 0;
     resetPlaybackUi();
     setLearningSession(null);
+    setLearningConflict(null);
     setLearningRevoked(true);
     return true;
   }, [clearVideoSource, destroyActiveHls, preservePlaybackPosition, resetPlaybackUi]);
@@ -264,7 +271,12 @@ export function VideoPlayer({
   const isCurrentLearningSession = useCallback((candidate: LearningSessionState) =>
     learningSessionRef.current === candidate, []);
 
-  const startLearning = useCallback(async (force = false, expectedActiveSessionId = '', playAfterAcquire = true) => {
+  const startLearning = useCallback(async ({
+    force = false,
+    expectedActiveSessionId = '',
+    playAfterAcquire = true,
+    takeOverOnConflict = false,
+  }: StartLearningOptions = {}) => {
     if (!videoAssetId || startLearningPendingRef.current) return;
     const current = learningSessionRef.current;
     if (!force && current && (current.bypass || Date.now() - leaseLastActiveAtRef.current < current.leaseExpiresIn * 1000)) return;
@@ -274,30 +286,52 @@ export function VideoPlayer({
       // HLS dùng XHR riêng nên không đi qua interceptor Axios. Làm mới access
       // token trước khi acquire để manifest/key/segment mới không khởi đầu bằng 401.
       await ensureFreshAccessToken('user');
-      const response = await acquireLearningSession({
-        courseId,
-        lessonId: lesson._id || '',
-        videoAssetId,
-        clientInstanceId,
-        force,
-        expectedActiveSessionId: force ? expectedActiveSessionId : undefined,
-      });
-      if (!response.data) throw new Error(response.message || 'Không thể bắt đầu phiên học.');
-      const next = { ...response.data, acquiredAt: Date.now() };
-      learningSessionRef.current = next;
-      leaseLastActiveAtRef.current = Date.now();
-      resetPlaybackUi();
-      setLearningSession(next);
-      setLearningConflict(null);
-      setLearningRevoked(false);
-      resumePlaybackAfterRenewRef.current = playAfterAcquire;
+      let nextForce = force;
+      let nextExpectedActiveSessionId = expectedActiveSessionId;
+      while (true) {
+        try {
+          const response = await acquireLearningSession({
+            courseId,
+            lessonId: lesson._id || '',
+            videoAssetId,
+            clientInstanceId,
+            force: nextForce,
+            expectedActiveSessionId: nextForce ? nextExpectedActiveSessionId : undefined,
+          });
+          if (!response.data) throw new Error(response.message || 'Không thể bắt đầu phiên học.');
+
+          const next = { ...response.data, acquiredAt: Date.now() };
+          learningSessionRef.current = next;
+          leaseLastActiveAtRef.current = Date.now();
+          resetPlaybackUi();
+          setLearningSession(next);
+          setLearningConflict(null);
+          setLearningRevoked(false);
+          resumePlaybackAfterRenewRef.current = playAfterAcquire;
+          return;
+        } catch (error) {
+          const parsed = getLearningError(error);
+          if (parsed.code === 'LEARNING_SESSION_CONFLICT' && parsed.data) {
+            // Người dùng đã xác nhận tiếp tục ngay trên overlay phiên bị thu hồi.
+            // Probe không force lấy đúng activeSessionId hiện tại, sau đó takeover
+            // bằng compare-and-swap để không ghi đè nhầm một phiên vừa thay đổi.
+            if (takeOverOnConflict && !nextForce) {
+              nextForce = true;
+              nextExpectedActiveSessionId = parsed.data.activeSessionId;
+              continue;
+            }
+
+            setLearningRevoked(false);
+            setLearningConflict(parsed.data);
+          } else {
+            toast.error(parsed.message || 'Không thể bắt đầu phiên học.');
+          }
+          return;
+        }
+      }
     } catch (error) {
       const parsed = getLearningError(error);
-      if (parsed.code === 'LEARNING_SESSION_CONFLICT' && parsed.data) {
-        setLearningConflict(parsed.data);
-      } else {
-        toast.error(parsed.message || 'Không thể bắt đầu phiên học.');
-      }
+      toast.error(parsed.message || 'Không thể bắt đầu phiên học.');
     } finally {
       startLearningPendingRef.current = false;
       setIsStartingLearning(false);
@@ -324,7 +358,7 @@ export function VideoPlayer({
   // Chuẩn bị manifest/segment ngay khi mở lesson để player có metadata và frame thật.
   // Acquire không force nên không thu hồi video đang phát ở thiết bị khác.
   useEffect(() => {
-    void startLearning(false, '', false);
+    void startLearning({ playAfterAcquire: false });
   }, [startLearning]);
 
   useEffect(() => () => {
@@ -666,7 +700,7 @@ export function VideoPlayer({
               if (leaseExpired) {
                 const shouldResumePlayback = !video.paused || resumePlaybackAfterRenewRef.current;
                 if (markLearningExpired(learningSession)) {
-                  void startLearning(false, '', shouldResumePlayback);
+                  void startLearning({ playAfterAcquire: shouldResumePlayback });
                 }
               } else {
                 markLearningRevoked(learningSession);
@@ -676,7 +710,7 @@ export function VideoPlayer({
             if ([401, 403].includes(networkStatus) && leaseExpired) {
               const shouldResumePlayback = !video.paused || resumePlaybackAfterRenewRef.current;
               if (markLearningExpired(learningSession)) {
-                void startLearning(false, '', shouldResumePlayback);
+                void startLearning({ playAfterAcquire: shouldResumePlayback });
               }
               return;
             }
@@ -710,7 +744,7 @@ export function VideoPlayer({
       if (parsed.code === 'LEARNING_SESSION_EXPIRED') {
         const shouldResumePlayback = resumePlaybackAfterRenewRef.current;
         if (markLearningExpired(learningSession)) {
-          void startLearning(false, '', shouldResumePlayback);
+          void startLearning({ playAfterAcquire: shouldResumePlayback });
         }
         return;
       }
@@ -807,7 +841,7 @@ export function VideoPlayer({
             // Heartbeat này chứng minh người dùng vẫn đang tương tác với player.
             // Xin lease mới ngay và dựng lại HLS tại timestamp đã lưu thay vì để video trắng.
             if (markLearningExpired(learningSession)) {
-              void startLearning(false, '', shouldResumePlayback);
+              void startLearning({ playAfterAcquire: shouldResumePlayback });
             }
           }
         },
@@ -1189,7 +1223,7 @@ export function VideoPlayer({
               // Vô hiệu hóa ref đồng bộ trước khi request cũ kịp trả về. Sau đó
               // acquire lease mới và dựng HLS lại tại đúng vị trí đang dừng.
               if (markLearningExpired(learningSession)) {
-                void startLearning(false, '', true);
+                void startLearning({ playAfterAcquire: true });
               }
               return;
             }
@@ -1299,20 +1333,55 @@ export function VideoPlayer({
             </button>
           </div>
         )}
-        {!learningSession && learningRevoked && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center bg-gradient-to-b from-zinc-950/80 to-black px-5 text-white">
+        {!learningSession && (learningRevoked || learningConflict) && (
+          <div
+            className="absolute inset-0 z-30 flex items-center justify-center bg-gradient-to-b from-zinc-950/85 to-black px-5 text-white"
+            role="alertdialog"
+            aria-labelledby="learning-session-conflict-title"
+            aria-describedby="learning-session-conflict-description"
+          >
             <div className="max-w-md text-center">
-              <AlertTriangle className="mx-auto h-9 w-9 text-amber-400" />
-              <h3 className="mt-3 text-lg font-semibold">Video đã được chuyển sang nơi khác</h3>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-                Video đã dừng vì tài khoản của bạn đang học trên một thiết bị hoặc tab khác. Tài khoản trên thiết bị này vẫn được đăng nhập.
-              </p>
+              <AlertTriangle className="mx-auto h-9 w-9 text-amber-400" aria-hidden="true" />
+              <h3 id="learning-session-conflict-title" className="mt-3 text-lg font-semibold">
+                {learningConflict ? 'Tài khoản đang phát video ở nơi khác' : 'Video đã được chuyển sang nơi khác'}
+              </h3>
+              <div id="learning-session-conflict-description" className="mt-2 space-y-2 text-sm leading-relaxed text-zinc-300">
+                {learningConflict ? (
+                  <>
+                    <p>
+                      {learningConflict.sameAuthSession
+                        ? 'Một tab khác trên thiết bị này đang phát video.'
+                        : `Video đang được phát trên ${learningConflict.deviceName || 'một thiết bị khác'}.`}
+                    </p>
+                    <p>Nếu tiếp tục tại đây, video ở nơi kia sẽ dừng nhưng thiết bị đó không bị đăng xuất.</p>
+                  </>
+                ) : (
+                  <p>Video đã dừng vì tài khoản của bạn đang học trên một thiết bị hoặc tab khác. Tài khoản trên thiết bị này vẫn được đăng nhập.</p>
+                )}
+              </div>
               <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
-                <Button type="button" onClick={() => void startLearning()} disabled={isStartingLearning}>
-                  {isStartingLearning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Tiếp tục tại đây
+                <Button
+                  type="button"
+                  autoFocus
+                  onClick={() => {
+                    if (learningConflict) {
+                      void startLearning({ force: true, expectedActiveSessionId: learningConflict.activeSessionId });
+                    } else {
+                      void startLearning({ takeOverOnConflict: true });
+                    }
+                  }}
+                  disabled={isStartingLearning}
+                >
+                  {isStartingLearning && <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+                  Tiếp tục trên thiết bị này
                 </Button>
-                <Button type="button" variant="outline" onClick={() => window.history.back()} className="border-zinc-600 bg-transparent text-white hover:bg-white/10 hover:text-white">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.history.back()}
+                  disabled={isStartingLearning}
+                  className="border-zinc-600 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                >
                   Quay lại khóa học
                 </Button>
               </div>
@@ -1359,31 +1428,6 @@ export function VideoPlayer({
       </div>
 
 
-      <Dialog open={Boolean(learningConflict)} onOpenChange={(open) => { if (!open && !isStartingLearning) setLearningConflict(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              Tài khoản đang phát video ở nơi khác
-            </DialogTitle>
-            <DialogDescription className="space-y-2 pt-2 leading-relaxed">
-              <span className="block">
-                {learningConflict?.sameAuthSession
-                  ? 'Một tab khác trên thiết bị này đang phát video.'
-                  : `Video đang được phát trên ${learningConflict?.deviceName || 'một thiết bị khác'}.`}
-              </span>
-              <span className="block">Nếu tiếp tục tại đây, video ở nơi kia sẽ dừng nhưng thiết bị đó không bị đăng xuất.</span>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setLearningConflict(null)} disabled={isStartingLearning}>Hủy</Button>
-            <Button type="button" onClick={() => learningConflict && void startLearning(true, learningConflict.activeSessionId)} disabled={isStartingLearning}>
-              {isStartingLearning && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Tiếp tục trên thiết bị này
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       <div className="border-b border-zinc-200 bg-white px-5 py-3.5 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="line-clamp-1 text-base font-semibold text-zinc-900 dark:text-white">{lesson.title}</h2>
         <p className="mt-0.5 text-xs text-zinc-500">
