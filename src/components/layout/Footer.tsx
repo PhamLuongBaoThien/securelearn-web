@@ -48,7 +48,7 @@ export const Footer = () => {
             <h4 className="text-white font-bold text-base mb-2">Hệ sinh thái</h4>
             <Link to="/courses" className="hover:text-white transition-colors">Khám phá khóa học</Link>
             <Link to="/pricing" className="hover:text-white transition-colors">Gói Hội viên</Link>
-            <Link to="/teach" className="hover:text-white transition-colors">Trở thành Giảng viên</Link>
+            <Link to="/teach" className="hover:text-white transition-colors">Trở thành người giảng dạy</Link>
             <Link to="/business" className="hover:text-white transition-colors">Dành cho Doanh nghiệp</Link>
           </div>
 

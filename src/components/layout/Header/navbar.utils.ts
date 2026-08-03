@@ -51,7 +51,7 @@ export const getTeachButtonProps = (
 ): TeachButtonProps => {
   if (!user) return { text: 'Giảng dạy trên SecureLearn', to: '/teach' };
   if (isInstructorView) return { text: 'Học viên', to: '/student/dashboard' };
-  if (isInstructor) return { text: 'Giảng viên', to: '/instructor/dashboard' };
+  if (isInstructor) return { text: 'Giảng dạy', to: '/instructor/dashboard' };
   return { text: 'Giảng dạy trên SecureLearn', to: '/teach' };
 };
 

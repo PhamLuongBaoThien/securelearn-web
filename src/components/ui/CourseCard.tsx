@@ -243,7 +243,7 @@ export const CourseCard = ({ course, mode = 'default', couponPreview, disableCou
         <div className="flex flex-col justify-start min-h-[3.5rem] mb-3 mt-auto">
           {isOwnCourse ? (
             <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-              Bạn là giảng viên khóa học này
+              Bạn là tác giả của khóa học này
             </span>
           ) : isEnrolled ? (
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">

@@ -305,7 +305,7 @@ export const InstructorDashboard: React.FC = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Tổng quan</h1>
-          <p className="mt-1 text-muted-foreground">Xin chào {user?.fullName || 'Giảng viên'}, hãy tạo khóa học đầu tiên của bạn.</p>
+          <p className="mt-1 text-muted-foreground">Xin chào {user?.fullName || 'bạn'}, hãy tạo khóa học đầu tiên của bạn.</p>
         </div>
         <EmptyPanel />
       </div>

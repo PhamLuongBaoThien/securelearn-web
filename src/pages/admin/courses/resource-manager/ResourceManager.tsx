@@ -390,7 +390,7 @@ const CourseDetailDialog: React.FC<{
             <div className="space-y-2">
               <h2 className="text-base font-bold text-zinc-900 dark:text-white leading-snug">{course.title}</h2>
               <div className="text-xs space-y-1.5 text-zinc-500 dark:text-zinc-400">
-                <p><span className="font-medium text-zinc-700 dark:text-zinc-300">Giảng viên:</span> {course.instructorName || 'Chưa có tên'}</p>
+                <p><span className="font-medium text-zinc-700 dark:text-zinc-300">Tác giả khóa học:</span> {course.instructorName || 'Chưa có tên'}</p>
                 <p><span className="font-medium text-zinc-700 dark:text-zinc-300">Danh mục:</span> {getCategoryPath(course.category, categories)}</p>
                 <div className="pt-1">
                   <span className="font-medium text-zinc-700 dark:text-zinc-300 block mb-0.5">Đường dẫn slug:</span>
@@ -846,7 +846,7 @@ export const ResourceManager: React.FC = () => {
                 nextParams.delete('page');
                 setSearchParams(nextParams, { replace: true });
               }}
-              placeholder="Tìm tên, slug, giảng viên, ID..."
+              placeholder="Tìm tên, slug, tác giả, ID..."
               className="border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
             />
           </div>
@@ -964,7 +964,7 @@ export const ResourceManager: React.FC = () => {
                     </div>
                   </th>
                 ) : (
-                  ['Khóa học', 'Giảng viên', 'Danh mục', 'Thuê bao', 'Giá', 'Học viên', 'Rating', 'Cập nhật', 'Hành động'].map((heading) => (
+                  ['Khóa học', 'Tác giả', 'Danh mục', 'Thuê bao', 'Giá', 'Học viên', 'Rating', 'Cập nhật', 'Hành động'].map((heading) => (
                     <th key={heading} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</th>
                   ))
                 )}

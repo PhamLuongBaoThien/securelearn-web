@@ -263,7 +263,7 @@ export const Navbar = () => {
               <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
               <Input
                 type="text"
-                placeholder="Tìm khóa học, giảng viên..."
+                placeholder="Tìm khóa học, tác giả..."
                 value={searchQuery}
                 onFocus={() => setIsSearchActive(true)}
                 onChange={(e) => {
@@ -321,11 +321,11 @@ export const Navbar = () => {
                         </button>
                       ))}
 
-                      {instructorSuggestions.length > 0 && <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Giảng viên</p>}
+                      {instructorSuggestions.length > 0 && <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tác giả khóa học</p>}
                       {instructorSuggestions.map((instructor) => (
                         <button key={instructor._id} type="button" onClick={() => { navigate(`/users/${instructor.publicSlug}`); setSearchQuery(''); setIsSearchActive(false); setIsMobileSearchOpen(false); }} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-secondary">
                           <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 font-semibold text-primary">{instructor.avatarUrl ? <img src={instructor.avatarUrl} alt={instructor.fullName} className="h-full w-full object-cover" /> : instructor.fullName.charAt(0).toUpperCase()}</div>
-                          <div className="min-w-0 flex-1"><p className="line-clamp-1 text-sm font-semibold">{instructor.fullName}</p><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{instructor.headline || 'Giảng viên SecureLearn'}</p></div>
+                          <div className="min-w-0 flex-1"><p className="line-clamp-1 text-sm font-semibold">{instructor.fullName}</p><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{instructor.headline || 'Người giảng dạy tại SecureLearn'}</p></div>
                         </button>
                       ))}
                     </div>
@@ -370,7 +370,7 @@ export const Navbar = () => {
                     {isInstructorView
                       ? 'Chuyển sang Giao diện Học viên'
                       : isInstructor
-                        ? 'Chuyển sang Kênh Giảng viên'
+                        ? 'Trở thành người giảng dạy'
                         : 'Đăng ký Giảng dạy trên SecureLearn'}
                   </TooltipContent>
                 </Tooltip>
@@ -551,11 +551,11 @@ export const Navbar = () => {
                           <div className="min-w-0 flex-1"><p className="line-clamp-1 text-sm font-semibold text-foreground">{course.title}</p><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{course.instructorName}</p></div>
                         </button>
                       ))}
-                      {instructorSuggestions.length > 0 && <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Giảng viên</p>}
+                      {instructorSuggestions.length > 0 && <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tác giả khóa học</p>}
                       {instructorSuggestions.map((instructor) => (
                         <button key={instructor._id} type="button" onClick={() => { navigate(`/users/${instructor.publicSlug}`); setSearchQuery(''); setIsSearchActive(false); setIsMobileSearchOpen(false); }} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-secondary">
                           <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 font-semibold text-primary">{instructor.avatarUrl ? <img src={instructor.avatarUrl} alt={instructor.fullName} className="h-full w-full object-cover" /> : instructor.fullName.charAt(0).toUpperCase()}</div>
-                          <div className="min-w-0 flex-1"><p className="line-clamp-1 text-sm font-semibold">{instructor.fullName}</p><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{instructor.headline || 'Giảng viên SecureLearn'}</p></div>
+                          <div className="min-w-0 flex-1"><p className="line-clamp-1 text-sm font-semibold">{instructor.fullName}</p><p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{instructor.headline || 'Người giảng dạy tại SecureLearn'}</p></div>
                         </button>
                       ))}
                       {hasMoreSuggestions && (

@@ -496,7 +496,7 @@ export function NotificationCenter() {
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {c === 'SYSTEM' && 'Các thông báo bảo trì, bảo mật, và tài khoản.'}
                         {c === 'PAYMENT' && 'Lịch sử giao dịch, hóa đơn và đăng ký thuê bao.'}
-                        {c === 'COURSE' && 'Cập nhật tài liệu học tập, bài giảng mới từ giảng viên.'}
+                        {c === 'COURSE' && 'Cập nhật tài liệu học tập, bài giảng mới từ người giảng dạy.'}
                         {c === 'LEARNING' && 'Nhắc nhở học tập, hoàn thành bài tập, và tiến độ.'}
                         {c === 'CAMPAIGN' && 'Các chương trình khuyến mãi, tin tức, khảo sát.'}
                       </p>

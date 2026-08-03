@@ -200,8 +200,8 @@ function SubscriptionSettlementCard({
         {[
           { label: 'Doanh thu ghi nhận', value: item.recognizedGross, note: 'Doanh thu thuê bao thuộc kỳ' },
           { label: 'Doanh thu nền tảng', value: item.adminRevenue, note: `Gồm hết hạn ${fmt(item.expiredToAdmin)}` },
-          { label: 'Quỹ giảng viên có thể chia', value: availablePool, note: `Quỹ mới ${fmt(item.instructorPool)} + chuyển kỳ trước ${fmt(item.carriedIn)}` },
-          { label: 'Đã phân bổ', value: item.allocatedAmount, note: `${item.allocations?.length || 0} khóa/giảng viên` },
+          { label: 'Quỹ dành cho người giảng dạy', value: availablePool, note: `Quỹ mới ${fmt(item.instructorPool)} + chuyển kỳ trước ${fmt(item.carriedIn)}` },
+          { label: 'Đã phân bổ', value: item.allocatedAmount, note: `${item.allocations?.length || 0} khóa học/tác giả` },
         ].map((metric) => (
           <div key={metric.label} className="bg-white p-4 dark:bg-zinc-900">
             <p className="text-xs font-medium text-zinc-500">{metric.label}</p>
@@ -222,12 +222,12 @@ function SubscriptionSettlementCard({
           <section>
             <div className="mb-3 flex items-center gap-2">
               <Users className="h-4 w-4 text-violet-500" />
-              <h4 className="font-semibold text-zinc-900 dark:text-white">Phân bổ theo giảng viên và khóa học</h4>
+              <h4 className="font-semibold text-zinc-900 dark:text-white">Phân bổ theo người giảng dạy và khóa học</h4>
             </div>
             <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
               <table className="w-full min-w-[760px] text-sm">
                 <thead className="bg-zinc-50 text-left text-xs text-zinc-500 dark:bg-zinc-950/40">
-                  <tr><th className="px-3 py-2.5">Khóa học</th><th>Giảng viên</th><th>Học viên</th><th>Kỳ góp quỹ</th><th>Phút hợp lệ</th><th>Tỷ lệ chia</th><th className="pr-3 text-right">Số tiền</th></tr>
+                  <tr><th className="px-3 py-2.5">Khóa học</th><th>Tác giả</th><th>Học viên</th><th>Kỳ góp quỹ</th><th>Phút hợp lệ</th><th>Tỷ lệ chia</th><th className="pr-3 text-right">Số tiền</th></tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {(item.allocations || []).map((allocation) => (
@@ -238,7 +238,7 @@ function SubscriptionSettlementCard({
                       <td className="pr-3 text-right font-semibold">{fmt(allocation.amount)}</td>
                     </tr>
                   ))}
-                  {!item.allocations?.length && <tr><td colSpan={7} className="px-3 py-8 text-center text-zinc-400">Kỳ này chưa có khoản phân bổ cho giảng viên.</td></tr>}
+                  {!item.allocations?.length && <tr><td colSpan={7} className="px-3 py-8 text-center text-zinc-400">Kỳ này chưa có khoản phân bổ cho người giảng dạy.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -388,7 +388,7 @@ export const Transactions: React.FC = () => {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-zinc-500 mb-1 block">Giảng viên %</label>
+              <label className="text-xs font-medium text-zinc-500 mb-1 block">Tỷ lệ người giảng dạy</label>
               <Input
                 type="number"
                 min={0}
@@ -436,7 +436,7 @@ export const Transactions: React.FC = () => {
               <p className="text-xl font-bold text-zinc-900 dark:text-white mt-1">{fmt(summary?.totalAdminRevenue ?? 0)}</p>
             </div>
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4">
-              <p className="text-xs text-zinc-500">{productType === 'SUBSCRIPTION' ? 'Tổng quỹ giảng viên' : 'Doanh thu Giảng viên'}</p>
+              <p className="text-xs text-zinc-500">{productType === 'SUBSCRIPTION' ? 'Tổng quỹ giảng dạy' : 'Thu nhập từ giảng dạy'}</p>
               <p className="text-xl font-bold text-zinc-900 dark:text-white mt-1">{fmt(summary?.totalInstructorRevenue ?? 0)}</p>
             </div>
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4">
@@ -452,7 +452,7 @@ export const Transactions: React.FC = () => {
         <section className="space-y-4">
           <div>
             <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Đối soát và phân bổ quỹ thuê bao</h2>
-            <p className="mt-1 text-sm text-zinc-500">Tự chốt lúc 02:00 ngày 1 theo giờ Việt Nam. Quỹ được tính riêng cho từng kỳ học viên, sau đó mới tổng hợp theo giảng viên và khóa học.</p>
+            <p className="mt-1 text-sm text-zinc-500">Tự chốt lúc 02:00 ngày 1 theo giờ Việt Nam. Quỹ được tính riêng cho từng kỳ học viên, sau đó mới tổng hợp theo người giảng dạy và khóa học.</p>
           </div>
           {(settlementsQuery.data || []).map((item) => (
             <SubscriptionSettlementCard

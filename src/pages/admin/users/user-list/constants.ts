@@ -16,7 +16,7 @@ export const STATUS_COLORS: Record<UserStatus, string> = {
 
 export const ROLE_LABEL: Record<UserRole, string> = {
   STUDENT:    'Học viên',
-  INSTRUCTOR: 'Giảng viên',
+  INSTRUCTOR: 'Người giảng dạy',
   ADMIN:      'Admin',
 };
 

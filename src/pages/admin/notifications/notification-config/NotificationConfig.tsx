@@ -64,7 +64,7 @@ const variableDescription: Record<string, string> = {
   courseName: 'Tên khóa học',
   createdAt: 'Thời gian giao dịch',
   reason: 'Lý do hoặc nội dung cần chỉnh sửa',
-  instructorName: 'Tên giảng viên',
+  instructorName: 'Tên tác giả khóa học',
   courseUrl: 'Đường dẫn khóa học',
   learnerName: 'Tên học viên mới',
   senderName: 'Tên người gửi',

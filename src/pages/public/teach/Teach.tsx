@@ -21,11 +21,11 @@ export const Teach = () => {
       if (user.role !== 'INSTRUCTOR') {
         switchToInstructorMutation.mutate(undefined, {
           onSuccess: () => {
-             toast.success('Chào mừng bạn đến với trang Giảng viên!');
+             toast.success('Chào mừng bạn đến với khu vực giảng dạy!');
              navigate('/instructor/dashboard');
           },
           onError: (error: unknown) => {
-             toast.error((error as Error).message || 'Có lỗi xảy ra khi chuyển sang Giảng viên');
+             toast.error((error as Error).message || 'Có lỗi xảy ra khi chuyển sang vai trò người giảng dạy');
           }
         });
       } else {
@@ -63,9 +63,9 @@ export const Teach = () => {
               {switchToInstructorMutation.isPending
                 ? 'Đang xử lý...'
                 : user?.role === 'INSTRUCTOR'
-                  ? 'Đi đến trang giảng viên'
+                  ? 'Đi đến khu vực giảng dạy'
                   : isAuthenticated
-                    ? 'Chuyển sang giảng viên'
+                    ? 'Trở thành người giảng dạy'
                     : 'Đăng ký để giảng dạy'}
             </Button>
           </SlideUp>
@@ -106,7 +106,7 @@ export const Teach = () => {
       {/* CTA */}
       <section className="bg-secondary/40 px-6 py-16 md:py-20 text-center border-t border-border">
         <h2 className="text-2xl md:text-3xl font-bold font-serif mb-4 text-foreground">Bắt đầu xây dựng khóa học của bạn</h2>
-        <p className="text-base text-muted-foreground mb-8 max-w-xl mx-auto">Đăng ký tài khoản hoặc chuyển sang khu vực giảng viên, hoàn thiện hồ sơ và bắt đầu tạo khóa học đầu tiên trên SecureLearn.</p>
+        <p className="text-base text-muted-foreground mb-8 max-w-xl mx-auto">Đăng ký tài khoản hoặc chuyển sang khu vực giảng dạy, hoàn thiện hồ sơ và bắt đầu tạo khóa học đầu tiên trên SecureLearn.</p>
         <Button
           onClick={handleStartTeaching}
           disabled={switchToInstructorMutation.isPending}
@@ -116,9 +116,9 @@ export const Teach = () => {
           {switchToInstructorMutation.isPending
             ? 'Đang xử lý...'
             : user?.role === 'INSTRUCTOR'
-              ? 'Đi đến trang giảng viên'
+              ? 'Đi đến khu vực giảng dạy'
               : isAuthenticated
-                ? 'Chuyển sang giảng viên'
+                ? 'Trở thành người giảng dạy'
                 : 'Đăng ký để giảng dạy'}
         </Button>
       </section>

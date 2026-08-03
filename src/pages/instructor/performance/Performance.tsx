@@ -604,7 +604,7 @@ const ReviewsTab = ({ stats }: { stats: IInstructorRatingStats | undefined }) =>
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <StatCard
-          label="Xếp hạng giảng viên"
+          label="Xếp hạng người giảng dạy"
           value={stats?.reviewCount ? stats.averageRating.toFixed(1) : '—'}
           sub={stats?.reviewCount ? 'trung bình tất cả đánh giá' : 'chưa có đánh giá'}
           icon={<Star className="w-4 h-4" />}

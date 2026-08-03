@@ -164,7 +164,7 @@ export const InstructorCourses: React.FC = () => {
       },
       onError: (err: unknown) => {
         const message = (err as Error).message || 'Không thể gửi duyệt khóa học.';
-        toast.error(message, message.includes('Hồ sơ giảng viên') ? { action: { label: 'Cập nhật hồ sơ', onClick: () => navigate('/account/settings/profile') } } : undefined);
+        toast.error(message, message.includes('Hồ sơ người giảng dạy') ? { action: { label: 'Cập nhật hồ sơ', onClick: () => navigate('/account/settings/profile') } } : undefined);
       },
     });
   };
@@ -537,7 +537,7 @@ export const InstructorCourses: React.FC = () => {
                   Doanh thu được chia thế nào?
                 </div>
                 <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-                  Phần dành cho giảng viên trong kỳ thuê bao của từng học viên được chia cho các khóa họ thực sự xem, theo tỷ lệ thời lượng video hợp lệ. Doanh thu không cố định theo lượt ghi danh hay giá bán lẻ của khóa học.
+                  Phần dành cho người giảng dạy trong kỳ thuê bao của từng học viên được chia cho các khóa họ thực sự xem, theo tỷ lệ thời lượng video hợp lệ. Doanh thu không cố định theo lượt ghi danh hay giá bán lẻ của khóa học.
                 </p>
               </div>
 

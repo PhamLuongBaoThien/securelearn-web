@@ -51,7 +51,7 @@ const monthlyChartConfig = {
     color: 'var(--chart-2)',
   },
   instructorRevenue: {
-    label: 'Giảng viên',
+    label: 'Người giảng dạy',
     color: 'var(--chart-3)',
   },
   subscriptionRevenue: {
@@ -186,7 +186,7 @@ export const Dashboard: React.FC = () => {
         <KpiCard
           label="Tổng người dùng"
           value={totalUsers.toLocaleString('vi-VN')}
-          sub="Tài khoản học viên & giảng viên đăng ký"
+          sub="Tài khoản học viên và người giảng dạy đã đăng ký"
           icon={<Users className="h-5 w-5" />}
         />
         <KpiCard
@@ -208,7 +208,7 @@ export const Dashboard: React.FC = () => {
             icon: <CreditCard className="w-4 h-4 text-violet-500" />,
           },
           { label: 'Doanh thu QTV', val: totalAdminRevenue, icon: <DollarSign className="w-4 h-4 text-emerald-500" /> },
-          { label: 'Doanh thu Giảng viên', val: totalInstructorRevenue, icon: <DollarSign className="w-4 h-4 text-blue-500" /> },
+          { label: 'Thu nhập từ giảng dạy', val: totalInstructorRevenue, icon: <DollarSign className="w-4 h-4 text-blue-500" /> },
           {
             label: 'Doanh thu tháng này',
             val: thisMonthRevenue,
@@ -297,7 +297,7 @@ export const Dashboard: React.FC = () => {
                   strokeOpacity={0.95}
                   dot={false}
                   activeDot={{ r: 4 }}
-                  name="Giảng viên"
+                  name="Người giảng dạy"
                 />                <Line
                   type="monotone"
                   dataKey="subscriptionRevenue"

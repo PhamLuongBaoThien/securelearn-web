@@ -125,7 +125,7 @@ export function CoursePurchaseCard({ course, isEnrolled, accessSource, accessEnd
                     Khóa học của bạn
                   </h3>
                   <p className="text-xs text-blue-800/80 dark:text-blue-400/80 max-w-[240px]">
-                    Bạn là giảng viên giảng dạy khóa học này. Bạn có quyền xem toàn bộ nội dung học liệu và bài học.
+                    Bạn là tác giả của khóa học này. Bạn có quyền xem toàn bộ nội dung học liệu và bài học.
                   </p>
                 </div>
                 <Button

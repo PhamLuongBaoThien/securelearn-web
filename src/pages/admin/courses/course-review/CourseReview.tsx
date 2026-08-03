@@ -301,7 +301,7 @@ const RejectDialog: React.FC<RejectDialogProps> = ({
             Yêu cầu chỉnh sửa
           </DialogTitle>
           <DialogDescription>
-            Cung cấp góp ý cụ thể để giảng viên biết cần cải thiện điều gì trước
+            Cung cấp góp ý cụ thể để người giảng dạy biết cần cải thiện điều gì trước
             khi nộp lại.
           </DialogDescription>
         </DialogHeader>
@@ -918,7 +918,7 @@ const CourseCurriculumPreview: React.FC<{
 
           <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Thiết lập của giảng viên
+              Thiết lập của người giảng dạy
             </h5>
             <div className="mt-4 space-y-3 text-sm">
               <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
@@ -944,7 +944,7 @@ const CourseCurriculumPreview: React.FC<{
 
           <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Giảng viên
+              Tác giả khóa học
             </h5>
             <div className="mt-4 flex items-start gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -957,7 +957,7 @@ const CourseCurriculumPreview: React.FC<{
               <div className="min-w-0">
                 <p className="font-semibold text-zinc-900 dark:text-white">{course.instructorName}</p>
                 <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
-                  {course.instructorProfile?.bio || "Giảng viên chưa bổ sung giới thiệu cá nhân."}
+                  {course.instructorProfile?.bio || "Tác giả khóa học chưa bổ sung giới thiệu cá nhân."}
                 </p>
               </div>
             </div>
@@ -1087,7 +1087,7 @@ const SubscriptionCourseReviewPage: React.FC<{
 
   const submitReasonAction = () => {
     if (!reasonAction || !reason.trim()) {
-      toast.error("Vui lòng nhập lý do để giảng viên biết cần xử lý gì.");
+      toast.error("Vui lòng nhập lý do để người giảng dạy biết cần xử lý gì.");
       return;
     }
     const payload = {
@@ -1139,7 +1139,7 @@ const SubscriptionCourseReviewPage: React.FC<{
                 : "Rút khỏi gói thuê bao"}
             </DialogTitle>
             <DialogDescription>
-              Lý do sẽ được hiển thị cho giảng viên trong trang quản lý khóa
+              Lý do sẽ được hiển thị cho người giảng dạy trong trang quản lý khóa
               học.
             </DialogDescription>
           </DialogHeader>
@@ -1170,7 +1170,7 @@ const SubscriptionCourseReviewPage: React.FC<{
             Kiểm duyệt Khóa học
           </h1>
           <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-            Xem xét các khóa học giảng viên đăng ký tham gia gói thuê bao.
+            Xem xét các khóa học người giảng dạy đăng ký tham gia gói thuê bao.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -1197,7 +1197,7 @@ const SubscriptionCourseReviewPage: React.FC<{
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm khóa học hoặc giảng viên..."
+              placeholder="Tìm khóa học hoặc tác giả..."
               className="border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
             />
           </div>
@@ -1647,7 +1647,7 @@ export const CourseReview: React.FC = () => {
             Kiểm duyệt Khóa học
           </h1>
           <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-            Xem xét và phê duyệt khóa học từ giảng viên trước khi xuất bản.
+            Xem xét và phê duyệt khóa học do tác giả gửi trước khi xuất bản.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -1674,7 +1674,7 @@ export const CourseReview: React.FC = () => {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm khóa học, giảng viên..."
+              placeholder="Tìm khóa học, tác giả..."
               className="border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
             />
           </div>

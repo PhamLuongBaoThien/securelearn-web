@@ -313,7 +313,7 @@ export const UserList: React.FC = () => {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-zinc-900 dark:text-white">Danh sách người dùng</h1>
-            <p className="mt-1 text-zinc-500 dark:text-zinc-400">Quản lý tài khoản Học viên và Giảng viên trên nền tảng.</p>
+            <p className="mt-1 text-zinc-500 dark:text-zinc-400">Quản lý tài khoản học viên và người giảng dạy trên nền tảng.</p>
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -342,7 +342,7 @@ export const UserList: React.FC = () => {
             icon={<Users className="h-5 w-5 text-blue-500" />}
           />
           <KpiCard
-            label="Giảng viên"
+            label="Người giảng dạy"
             value={summary.totalInstructors}
             sub="Trên toàn hệ thống"
             icon={<GraduationCap className="h-5 w-5 text-violet-500" />}
@@ -410,7 +410,7 @@ export const UserList: React.FC = () => {
               >
                 <option value="">Tất cả vai trò</option>
                 <option value="STUDENT">Học viên</option>
-                <option value="INSTRUCTOR">Giảng viên</option>
+                <option value="INSTRUCTOR">Người giảng dạy</option>
               </Select>
             </div>
 

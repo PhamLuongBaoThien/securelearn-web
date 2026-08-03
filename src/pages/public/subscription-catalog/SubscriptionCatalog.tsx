@@ -71,7 +71,7 @@ export function SubscriptionCatalog() {
         <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
           <BookOpen className="h-12 w-12 text-muted-foreground" />
           <p className="text-lg font-semibold">Hiện chưa có khóa học nào trong gói</p>
-          <p className="text-sm text-muted-foreground">Danh sách này sẽ được cập nhật khi giảng viên đăng ký tham gia và quản trị viên phê duyệt thêm khóa học.</p>
+          <p className="text-sm text-muted-foreground">Danh sách này sẽ được cập nhật khi người giảng dạy đăng ký tham gia và quản trị viên phê duyệt thêm khóa học.</p>
         </div>
       )}
     </div>

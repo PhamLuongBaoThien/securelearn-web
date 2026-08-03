@@ -345,7 +345,7 @@ function DiscussionItem({
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-zinc-900 dark:text-white">{item.authorName || 'Người học'}</span>
               {item.authorRole === 'INSTRUCTOR' && (
-                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">Giảng viên</span>
+                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">Người giảng dạy</span>
               )}
               {item.hiddenAt && <span className="text-[10px] font-semibold text-amber-600">Đã ẩn</span>}
               {item.pinnedAt && <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary"><Pin className="h-3 w-3 fill-current" />Đã ghim</span>}
@@ -527,7 +527,7 @@ function ReplyItem({
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-zinc-900 dark:text-white">{reply.authorName || 'Người học'}</span>
               {reply.authorRole === 'INSTRUCTOR' && (
-                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">Giảng viên</span>
+                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">Người giảng dạy</span>
               )}
               {reply.hiddenAt && <span className="text-[10px] font-semibold text-amber-600">Đã ẩn</span>}
             </div>

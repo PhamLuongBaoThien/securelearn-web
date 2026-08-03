@@ -118,7 +118,7 @@ export function DiscussionPanel({
       <div className="max-w-4xl space-y-5">
         <div className="rounded-3xl border border-zinc-200 bg-gradient-to-br from-white via-zinc-50 to-amber-50/60 p-5 shadow-sm dark:border-zinc-800 dark:from-zinc-950 dark:via-zinc-950 dark:to-amber-950/20">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Thảo luận bài học</p>
-          <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Trao đổi cùng giảng viên và học viên</h3>
+          <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Trao đổi cùng người giảng dạy và học viên</h3>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             Đặt câu hỏi, chia sẻ góc nhìn và trao đổi về nội dung bài học theo thời gian thực.
           </p>
@@ -237,7 +237,7 @@ function DiscussionItem({
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-zinc-900 dark:text-white">{item.authorName || 'Người học'}</span>
               {item.authorRole === 'INSTRUCTOR' && (
-                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">Giảng viên</span>
+                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">Người giảng dạy</span>
               )}
               {item.editedAt && <span className="text-[10px] text-zinc-400">Đã chỉnh sửa</span>}
               {item.hiddenAt && <span className="text-[10px] font-semibold text-amber-600">Đã ẩn</span>}

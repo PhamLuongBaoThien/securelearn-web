@@ -92,10 +92,10 @@ export const InstructorLayout: React.FC = () => {
     <div className="min-h-screen bg-zinc-50 dark:bg-[#0A0A0A] flex text-zinc-900 dark:text-zinc-100 font-sans selection:bg-primary/30 transition-colors duration-300">
       <Sidebar
         entries={instructorEntries}
-        roleTitle="Trang giảng viên"
+        roleTitle="Khu vực giảng dạy"
         collapsed={collapsed}
         onToggleCollapsed={handleToggleSidebar}
-        userFullName={user?.fullName || 'Giảng viên'}
+        userFullName={user?.fullName || 'Người giảng dạy'}
         userEmail={user?.email || 'instructor@securelearn.com'}
         userAvatarNode={
           <UserAvatar

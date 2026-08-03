@@ -68,7 +68,7 @@ export function useInstructorRatingStats(instructorId: string, enabled = true) {
     queryFn: async () => {
       const response = await getInstructorRatingStats(instructorId);
       if (response.status === 'ERR' || !response.data) {
-        throw new Error(response.message || 'Không thể tải xếp hạng giảng viên.');
+        throw new Error(response.message || 'Không thể tải xếp hạng người giảng dạy.');
       }
       return response.data;
     },

@@ -267,7 +267,7 @@ function ResourcesPanel({
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Tài liệu học tập</p>
         <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Tài liệu đính kèm bài học</h3>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Xem trực tiếp hoặc tải các tài liệu học tập, bài tập thực hành do giảng viên cung cấp để củng cố kiến thức.
+          Xem trực tiếp hoặc tải các tài liệu học tập, bài tập thực hành do người giảng dạy cung cấp để củng cố kiến thức.
         </p>
       </div>
 
@@ -616,7 +616,7 @@ function ReviewsPanel({ course }: { course: ICourse }) {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Đánh giá & Cảm nhận</p>
           <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-white">Cảm nhận từ học viên</h3>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Xem những nhận xét thực tế về nội dung học và giảng viên từ những học viên khác để hiểu sâu hơn về khóa học.
+            Xem những nhận xét thực tế về nội dung học và người giảng dạy từ những học viên khác để hiểu sâu hơn về khóa học.
           </p>
         </div>
 

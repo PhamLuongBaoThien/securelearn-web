@@ -131,7 +131,7 @@ export function PublicUserProfile() {
 
             {/* Badge Vai trò */}
             <span className="mt-5 inline-flex items-center rounded-full bg-primary/10 px-3.5 py-1.5 text-xs font-semibold text-primary">
-              {isInstructor ? 'Giảng viên' : 'Học viên'}
+              {isInstructor ? 'Người giảng dạy' : 'Học viên'}
             </span>
 
             {/* Liên kết mạng xã hội */}
@@ -227,7 +227,7 @@ export function PublicUserProfile() {
                 {profile.fullName}
               </h1>
               <p className="mt-2 text-lg font-medium text-muted-foreground">
-                {profile.profile.headline || (isInstructor ? 'Giảng viên tại SecureLearn' : 'Học viên tại SecureLearn')}
+                {profile.profile.headline || (isInstructor ? 'Người giảng dạy tại SecureLearn' : 'Học viên tại SecureLearn')}
               </p>
               
               {/* Nút hành động */}
@@ -286,7 +286,7 @@ export function PublicUserProfile() {
                   <div className="mb-5 flex items-center justify-between">
                     <div>
                       <h2 className="text-xl font-bold text-foreground">Khóa học đang giảng dạy</h2>
-                      <p className="mt-1 text-xs text-muted-foreground">Các khóa học chất lượng được thiết kế và xuất bản bởi giảng viên.</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Các khóa học chất lượng được thiết kế và xuất bản bởi tác giả.</p>
                     </div>
                     {stats?.courseCount !== undefined && stats.courseCount > 0 && (
                       <span className="rounded-md bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground">
@@ -305,7 +305,7 @@ export function PublicUserProfile() {
                   ) : (
                     <CourseGrid 
                       courses={authoredQuery.data ?? []} 
-                      emptyText="Giảng viên chưa có khóa học nào được xuất bản trên SecureLearn." 
+                      emptyText="Tác giả này chưa có khóa học nào được xuất bản trên SecureLearn."
                     />
                   )}
                 </div>
