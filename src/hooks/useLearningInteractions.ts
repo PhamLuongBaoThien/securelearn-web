@@ -11,6 +11,7 @@ import {
   createLessonDiscussion,
   deleteLearningNote,
   deleteLessonDiscussion,
+  getDiscussionContext,
   getLearningNotes,
   getLessonDiscussionReplies,
   getLessonDiscussions,
@@ -90,6 +91,21 @@ export function useDeleteLearningNote(courseId: string, lessonId: string) {
         response.data || [],
       );
     },
+  });
+}
+
+export function useDiscussionContext(courseId: string, discussionId: string) {
+  return useQuery({
+    queryKey: ['learning', 'discussion-context', courseId, discussionId],
+    queryFn: async () => {
+      const response = await getDiscussionContext(courseId, discussionId);
+      if (response.status === 'ERR' || !response.data) {
+        throw new Error(response.message || 'Không thể xác định bài học của thảo luận.');
+      }
+      return response.data;
+    },
+    enabled: Boolean(courseId && discussionId),
+    staleTime: 5 * 60_000,
   });
 }
 

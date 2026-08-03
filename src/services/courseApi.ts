@@ -647,6 +647,22 @@ export const deleteLearningNote = async (
   return data;
 };
 
+export interface IDiscussionContext {
+  courseId: string;
+  lessonId: string;
+  discussionId: string;
+}
+
+export const getDiscussionContext = async (
+  courseId: string,
+  discussionId: string,
+) => {
+  const { data } = await apiClient.get<ApiResponse<IDiscussionContext>>(
+    '/api/courses/' + courseId + '/discussions/' + discussionId + '/context',
+  );
+  return data;
+};
+
 export const getLessonDiscussions = async (
   courseId: string,
   lessonId: string,

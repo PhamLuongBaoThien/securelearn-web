@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useCourseLearning } from '@/hooks/useCourseLearning';
+import { useDiscussionContext } from '@/hooks/useLearningInteractions';
 import { useCourseAccess, useCourseProgress, useLearnerActivity } from '@/hooks/useLearningProgress';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
@@ -200,6 +201,8 @@ export function LearningInterface() {
   const requestedLessonId = searchParams.get('lessonId') || '';
   const requestedDiscussionId = searchParams.get('discussionId') || '';
   const requestedTab = searchParams.get('tab') || '';
+  const discussionContextQuery = useDiscussionContext(courseId, requestedDiscussionId);
+  const resolvedRequestedLessonId = discussionContextQuery.data?.lessonId || requestedLessonId;
 
   useEffect(() => {
     if (requestedDiscussionId) setActiveInteractionTab('discussions');
@@ -208,7 +211,7 @@ export function LearningInterface() {
   const accessByLessonId = useMemo(() => accessQuery.data?.lessons || {}, [accessQuery.data?.lessons]);
   
   // Xác định ID bài học mục tiêu: Ưu tiên state hiện tại -> URL query -> Bài học học dở lần trước -> Bài học đầu tiên
-  const requestedOrStoredLessonId = selectedLessonId || requestedLessonId || progressQuery.data?.course.lastLessonId || lessons[0]?._id || '';
+  const requestedOrStoredLessonId = selectedLessonId || resolvedRequestedLessonId || progressQuery.data?.course.lastLessonId || lessons[0]?._id || '';
   
   // Tìm bài học đầu tiên trong giáo trình không bị khóa để làm điểm fallback
   const firstUnlockedLesson = lessons.find((lesson) => !accessByLessonId[lesson._id || '']?.locked) || lessons[0];
