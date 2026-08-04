@@ -4,7 +4,7 @@
 // Lắng nghe event session-expired từ apiClient interceptor.
 // ========================
 import { useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/app/hooks';
 import { setUser, clearUser } from '@/features/auth/authSlice';
 import { setAdminUser, clearAdminUser } from '@/features/auth/adminAuthSlice';
@@ -20,6 +20,7 @@ interface AuthInitializerProps {
 
 export function AuthInitializer({ children }: AuthInitializerProps) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { pathname } = useLocation();
   const isAdminPath = pathname === '/admin' || pathname.startsWith('/admin/');
   const userSession = useInitializeAuth({ enabled: !isAdminPath });
@@ -35,6 +36,9 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
   useEffect(() => {
     if (userSession.status === 'success' && userSession.data) {
       dispatch(setUser({ user: userSession.data.user }));
+      if (pathname === '/auth/login') {
+        navigate('/', { replace: true });
+      }
       if (!hasMergedGuestCart.current) {
         hasMergedGuestCart.current = true;
         mergeGuestCartAfterSessionRestore();
@@ -50,6 +54,8 @@ export function AuthInitializer({ children }: AuthInitializerProps) {
     userSession.status,
     userSession.data,
     dispatch,
+    navigate,
+    pathname,
     isAdminPath,
     mergeGuestCartAfterSessionRestore,
     mergeGuestWishlistAfterSessionRestore,
