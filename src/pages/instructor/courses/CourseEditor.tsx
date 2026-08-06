@@ -692,6 +692,7 @@ export const CourseEditor: React.FC = () => {
   };
 
   const handleMoveSection = async (sectionIndex: number, direction: "up" | "down") => {
+    if (hasBlockingVideos) return;
     const targetIndex = direction === "up" ? sectionIndex - 1 : sectionIndex + 1;
     if (targetIndex < 0 || targetIndex >= sections.length) return;
 
@@ -818,6 +819,7 @@ export const CourseEditor: React.FC = () => {
   };
 
   const handleMoveLesson = async (sectionIndex: number, lessonIndex: number, direction: "up" | "down") => {
+    if (hasBlockingVideos) return;
     const section = sections[sectionIndex];
     if (!section?._id) return;
 
@@ -1502,7 +1504,7 @@ export const CourseEditor: React.FC = () => {
                     )}
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "up"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={isMutatingCurriculum || effectiveReadOnly || sectionIndex === 0}>
+                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "up"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={hasBlockingVideos || isMutatingCurriculum || effectiveReadOnly || sectionIndex === 0}>
                           <ArrowUp className="w-4 h-4" />
                         </Button>
                       </TooltipTrigger>
@@ -1510,7 +1512,7 @@ export const CourseEditor: React.FC = () => {
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "down"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={isMutatingCurriculum || effectiveReadOnly || sectionIndex === displaySections.length - 1}>
+                        <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); void handleMoveSection(sectionIndex, "down"); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={hasBlockingVideos || isMutatingCurriculum || effectiveReadOnly || sectionIndex === displaySections.length - 1}>
                           <ArrowDown className="w-4 h-4" />
                         </Button>
                       </TooltipTrigger>
@@ -1552,6 +1554,7 @@ export const CourseEditor: React.FC = () => {
                           attachmentOperation={lesson._id ? attachmentOperations[lesson._id] : undefined}
                           onRefresh={refreshCourse}
                           isReadOnly={effectiveReadOnly}
+                          reorderDisabled={hasBlockingVideos || isMutatingCurriculum}
                           onUpdateField={(field, value) => {
                             if (isViewingPublished) return;
                             if (field === "attachments") {
@@ -1603,6 +1606,7 @@ interface LessonRowProps {
   canMoveDown: boolean;
   attachmentOperation?: AttachmentOperation;
   isReadOnly?: boolean;
+  reorderDisabled?: boolean;
   onRefresh: () => Promise<void>;
   onUpdateField: (field: keyof ILesson, value: ILesson[keyof ILesson]) => void;
   onTitleBlur: () => void;
@@ -1614,7 +1618,7 @@ interface LessonRowProps {
   onRemove: () => void;
 }
 
-const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canMoveDown, attachmentOperation, isReadOnly = false, onRefresh, onUpdateField, onTitleBlur, onContentBlur, onAttachmentOperationChange, onChangeType, onMoveUp, onMoveDown, onRemove }) => {
+const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canMoveDown, attachmentOperation, isReadOnly = false, reorderDisabled = false, onRefresh, onUpdateField, onTitleBlur, onContentBlur, onAttachmentOperationChange, onChangeType, onMoveUp, onMoveDown, onRemove }) => {
   const isVideo = lesson.type === "VIDEO";
   const isQuiz = lesson.type === "QUIZ";
   const status = getVideoDisplayStatus(lesson);
@@ -1653,7 +1657,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
         )}
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onMoveUp(); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={!canMoveUp || isReadOnly}>
+            <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onMoveUp(); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={!canMoveUp || isReadOnly || reorderDisabled}>
               <ArrowUp className="w-3.5 h-3.5" />
             </Button>
           </TooltipTrigger>
@@ -1661,7 +1665,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onMoveDown(); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={!canMoveDown || isReadOnly}>
+            <Button type="button" variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onMoveDown(); }} className="h-7 w-7 p-1 text-zinc-400 hover:text-zinc-700 transition-colors shrink-0" disabled={!canMoveDown || isReadOnly || reorderDisabled}>
               <ArrowDown className="w-3.5 h-3.5" />
             </Button>
           </TooltipTrigger>

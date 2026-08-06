@@ -832,6 +832,10 @@ export function VideoPlayer({
         onError: (error) => {
           if (!isCurrentLearningSession(learningSession)) return;
           const code = getLearningError(error).code;
+          if (code === 'COURSE_VERSION_CHANGED') {
+            window.location.reload();
+            return;
+          }
           if (code === 'LEARNING_SESSION_REPLACED') {
             markLearningRevoked(learningSession);
             return;
