@@ -32,7 +32,7 @@ import type {
   IRevenueSplitConfig,
   IActiveSubscription,
   INotificationTemplate,
-  ILearningProgress,
+  IAdminCourseStudent,
   IRolePermission,
   AdminApiResponse,
   IAdminStaff,
@@ -344,6 +344,17 @@ export const updateAdminCourseWatch = async (ids: string[], isWatched: boolean):
   return res.data;
 };
 
+export const updateAdminCourseCategory = async (
+  courseId: string,
+  categoryId: string,
+): Promise<AdminApiResponse<{
+  courseId: string;
+  category: { _id: string; name: string; slug: string; parentId: string | null };
+}>> => {
+  const res = await apiClient.patch(`${ADMIN}/courses/${courseId}/category`, { categoryId });
+  return res.data;
+};
+
 export const getCoursesForReview = async (params?: {
   status?: string;
   search?: string;
@@ -519,18 +530,11 @@ export const updateNotificationTemplate = async (id: string, data: Partial<INoti
   return res.data;
 };
 
-export const getLearningProgress = async (params?: {
-  courseId?: string;
-  userId?: string;
+export const getCourseStudents = async (courseId: string, params?: {
   page?: number;
   limit?: number;
-}): Promise<AdminApiResponse<{ progress: ILearningProgress[]; total: number }>> => {
-  if (params?.courseId) {
-    const { courseId, ...rest } = params;
-    const res = await apiClient.get(`${ADMIN}/courses/${courseId}/students`, { params: rest });
-    return res.data;
-  }
-  const res = await apiClient.get(`${ADMIN}/notifications/learning-progress`, { params });
+}): Promise<AdminApiResponse<{ students: IAdminCourseStudent[]; total: number }>> => {
+  const res = await apiClient.get(`${ADMIN}/courses/${courseId}/students`, { params });
   return res.data;
 };
 

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getAdminCourses, updateAdminCourseWatch } from '@/services/adminApi';
+import { getAdminCourses, updateAdminCourseCategory, updateAdminCourseWatch } from '@/services/adminApi';
 import { toast } from 'sonner';
 
 export type AdminCourseListParams = {
@@ -42,5 +42,19 @@ export function useUpdateAdminCourseWatch() {
       toast.success(response.message || (variables.isWatched ? 'Đã đánh dấu theo dõi khóa học.' : 'Đã bỏ theo dõi khóa học.'));
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái theo dõi.'),
+  });
+}
+
+export function useUpdateAdminCourseCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ courseId, categoryId }: { courseId: string; categoryId: string }) =>
+      updateAdminCourseCategory(courseId, categoryId),
+    onSuccess: async (response) => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'courses', 'list'] });
+      toast.success(response.message || 'Đã cập nhật danh mục khóa học.');
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Không thể cập nhật danh mục khóa học.'),
   });
 }

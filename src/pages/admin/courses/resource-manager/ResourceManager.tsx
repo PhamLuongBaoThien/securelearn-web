@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
   BookOpen,
-  Clipboard,
   ChevronDown,
   CreditCard,
   Eye,
@@ -18,13 +17,13 @@ import {
   RefreshCw,
   Search,
   Star,
+  Tag,
   Users,
   CheckCircle2,
   X,
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { getCategories, getLearningProgress } from '@/services/adminApi';
-import { useAdminCourses, useUpdateAdminCourseWatch } from '@/hooks/useAdminCourses';
+import { getCategories, getCourseStudents } from '@/services/adminApi';
+import { useAdminCourses, useUpdateAdminCourseCategory, useUpdateAdminCourseWatch } from '@/hooks/useAdminCourses';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useMultiSelect } from '@/hooks/useMultiSelect';
 
@@ -40,6 +39,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -96,19 +96,11 @@ const fmtDuration = (seconds: number) => {
 };
 const fmtDate = (value: string) => new Date(value).toLocaleDateString('vi-VN');
 
-const flattenCategories = (categories: ICategory[], level = 0): Array<ICategory & { depth: number }> =>
-  categories.flatMap((category) => [
-    { ...category, depth: level },
-    ...flattenCategories(category.children || [], level + 1),
-  ]);
 
 const subscriptionOptions = [
-  { value: '', label: 'Tất cả gói thuê bao' },
-  { value: 'NOT_OPTED_IN', label: 'Chưa đăng ký' },
-  { value: 'PENDING', label: 'Chờ duyệt gói' },
-  { value: 'APPROVED', label: 'Trong gói' },
-  { value: 'REJECTED', label: 'Từ chối' },
-  { value: 'REMOVED', label: 'Đã rút' },
+  { value: '', label: 'Tất cả khóa học' },
+  { value: 'APPROVED', label: 'Trong gói thuê bao' },
+  { value: 'NOT_APPROVED', label: 'Không trong gói thuê bao' },
 ];
 
 const watchOptions = [
@@ -497,12 +489,11 @@ const CourseStudentsDialog: React.FC<{
   const [studentPage, setStudentPage] = useState(1);
   const STUDENT_PAGE_SIZE = 8;
 
-  const progressQuery = useQuery({
+  const studentsQuery = useQuery({
     queryKey: ['admin', 'course-students', course?._id, studentPage],
     queryFn: async () => {
-      if (!course?._id) return { progress: [], total: 0 };
-      const response = await getLearningProgress({
-        courseId: course._id,
+      if (!course?._id) return { students: [], total: 0 };
+      const response = await getCourseStudents(course._id, {
         page: studentPage,
         limit: STUDENT_PAGE_SIZE,
       });
@@ -523,8 +514,8 @@ const CourseStudentsDialog: React.FC<{
 
   if (!course) return null;
 
-  const progressList = progressQuery.data?.progress || [];
-  const totalStudents = progressQuery.data?.total || 0;
+  const students = studentsQuery.data?.students || [];
+  const totalStudents = studentsQuery.data?.total || 0;
   const totalStudentPages = Math.max(1, Math.ceil(totalStudents / STUDENT_PAGE_SIZE));
 
   return (
@@ -536,25 +527,21 @@ const CourseStudentsDialog: React.FC<{
             Học viên đang tham gia
           </DialogTitle>
           <DialogDescription className="truncate">
-            Danh sách học viên và tiến độ học tập của khóa học: <span className="font-semibold text-zinc-800 dark:text-zinc-200">{course.title}</span>
+            Danh sách học viên đang tham gia khóa học: <span className="font-semibold text-zinc-800 dark:text-zinc-200">{course.title}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="mt-4 overflow-hidden rounded-xl border border-zinc-150 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/20">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px]">
+            <table className="w-full min-w-[480px]">
               <thead>
                 <tr className="border-b border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Học viên</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Ngày tham gia</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Tiến độ</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Bài đã học</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Thời gian xem</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">Hoạt động cuối</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {progressList.map((item) => (
+                {students.map((item) => (
                   <tr key={item._id} className="text-xs transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -574,49 +561,27 @@ const CourseStudentsDialog: React.FC<{
                       </div>
                     </td>
                     <td className="px-4 py-3 text-zinc-500">{fmtDate(item.enrolledAt)}</td>
-                    <td className="px-4 py-3">
-                      <div className="w-28 space-y-1">
-                        <div className="flex justify-between font-medium text-zinc-700 dark:text-zinc-300">
-                          <span>{item.progressPercent}%</span>
-                        </div>
-                        <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-zinc-800">
-                          <div
-                            className="h-full rounded-full bg-emerald-500 transition-all duration-300"
-                            style={{ width: `${item.progressPercent}%` }}
-                          />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">
-                      {item.completedLessons} / {item.totalLessons} bài học
-                    </td>
-                    <td className="px-4 py-3 text-zinc-500">
-                      {item.totalWatchTime ? `${item.totalWatchTime.toFixed(1)} phút` : '0 phút'}
-                    </td>
-                    <td className="px-4 py-3 text-zinc-500">
-                      {item.lastActivityAt ? fmtDate(item.lastActivityAt) : 'Chưa bắt đầu'}
-                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {progressQuery.isLoading && (
+          {studentsQuery.isLoading && (
             <div className="flex flex-col items-center justify-center py-12 text-zinc-400">
               <Loader2 className="mb-2 h-8 w-8 animate-spin" />
               <p className="text-xs">Đang tải danh sách học viên...</p>
             </div>
           )}
 
-          {progressQuery.isError && (
+          {studentsQuery.isError && (
             <div className="flex flex-col items-center justify-center py-12 text-red-500">
               <AlertCircle className="mb-2 h-8 w-8" />
               <p className="text-xs">Không thể tải danh sách học viên.</p>
             </div>
           )}
 
-          {!progressQuery.isLoading && !progressQuery.isError && progressList.length === 0 && (
+          {!studentsQuery.isLoading && !studentsQuery.isError && students.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-zinc-400">
               <Users className="mb-2 h-8 w-8 opacity-40" />
               <p className="text-xs">Khóa học này chưa có học viên nào tham gia.</p>
@@ -660,6 +625,69 @@ const CourseStudentsDialog: React.FC<{
 };
 
 
+const CourseCategoryDialog: React.FC<{
+  course: IAdminCourseListItem | null;
+  categories: ICategory[];
+  open: boolean;
+  pending: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (categoryId: string) => void;
+}> = ({ course, categories, open, pending, onOpenChange, onSubmit }) => {
+  const [categoryId, setCategoryId] = useState('');
+
+  React.useEffect(() => {
+    if (open) setCategoryId(course?.category?._id || '');
+  }, [course, open]);
+
+  if (!course) return null;
+
+  const hasChanged = Boolean(categoryId && categoryId !== course.category?._id);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
+            <Tag className="h-5 w-5 text-blue-500" />
+            Đổi danh mục khóa học
+          </DialogTitle>
+          <DialogDescription>
+            Chọn danh mục mới cho “{course.title}”. Thao tác này không gửi khóa học qua kiểm duyệt lại.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 py-2">
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <span className="text-zinc-500 dark:text-zinc-400">Danh mục hiện tại: </span>
+            <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+              {course.category?.name || 'Chưa phân loại'}
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Danh mục mới</label>
+            <CategoryFilterDropdown
+              label="Chọn danh mục mới"
+              value={categoryId}
+              categories={categories}
+              onChange={setCategoryId}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
+            Hủy
+          </Button>
+          <Button type="button" onClick={() => onSubmit(categoryId)} disabled={!hasChanged || pending}>
+            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Lưu danh mục
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 export const ResourceManager: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -673,6 +701,7 @@ export const ResourceManager: React.FC = () => {
 
   const [selectedCourse, setSelectedCourse] = useState<IAdminCourseListItem | null>(null);
   const [selectedCourseForStudents, setSelectedCourseForStudents] = useState<IAdminCourseListItem | null>(null);
+  const [selectedCourseForCategory, setSelectedCourseForCategory] = useState<IAdminCourseListItem | null>(null);
 
   const debouncedSearch = useDebounce(searchVal.trim(), 300);
 
@@ -697,10 +726,11 @@ export const ResourceManager: React.FC = () => {
     },
   });
   const data = coursesQuery.data;
-  const courses = data?.courses || [];
+  const courses = useMemo(() => data?.courses || [], [data?.courses]);
   const summary = data?.summary || { total: 0, subscriptionApproved: 0, subscriptionPending: 0, adminWatched: 0, withDraft: 0 };
   const totalPages = Math.max(1, data?.totalPages || 1);
   const updateWatchMutation = useUpdateAdminCourseWatch();
+  const updateCategoryMutation = useUpdateAdminCourseCategory();
 
   const visiblePages = useMemo(() => getVisiblePages(page, totalPages), [page, totalPages]);
 
@@ -742,16 +772,6 @@ export const ResourceManager: React.FC = () => {
     setSearchParams(new URLSearchParams(), { replace: true });
   };
 
-  const copyCourse = async (course: IAdminCourseListItem) => {
-    const value = `${course._id} | ${course.slug}`;
-    try {
-      await navigator.clipboard.writeText(value);
-      toast.success('Đã sao chép ID và slug khóa học.');
-    } catch {
-      toast.error('Không thể sao chép tự động.');
-    }
-  };
-
   const updateSelectedWatch = (isWatched: boolean) => {
     updateWatchMutation.mutate(
       { ids: selectedIds, isWatched },
@@ -759,13 +779,9 @@ export const ResourceManager: React.FC = () => {
     );
   };
 
-  const goToReview = (course: IAdminCourseListItem, mode: 'PUBLISH' | 'SUBSCRIPTION' = 'PUBLISH') => {
-    navigate('/admin/courses/review', { state: { mode, search: course.title } });
-  };
-
   return (
     <TooltipProvider>
-      <div className="w-full space-y-6">
+      <div className="w-full min-w-0 space-y-6 overflow-x-hidden">
         <CourseDetailDialog
           course={selectedCourse}
           open={selectedCourse !== null}
@@ -775,6 +791,20 @@ export const ResourceManager: React.FC = () => {
           course={selectedCourseForStudents}
           open={selectedCourseForStudents !== null}
           onOpenChange={(open) => { if (!open) setSelectedCourseForStudents(null); }}
+        />
+        <CourseCategoryDialog
+          course={selectedCourseForCategory}
+          categories={categoriesQuery.data || []}
+          open={selectedCourseForCategory !== null}
+          pending={updateCategoryMutation.isPending}
+          onOpenChange={(open) => { if (!open) setSelectedCourseForCategory(null); }}
+          onSubmit={(nextCategoryId) => {
+            if (!selectedCourseForCategory) return;
+            updateCategoryMutation.mutate(
+              { courseId: selectedCourseForCategory._id, categoryId: nextCategoryId },
+              { onSuccess: () => setSelectedCourseForCategory(null) },
+            );
+          }}
         />
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -831,7 +861,7 @@ export const ResourceManager: React.FC = () => {
       <div className={`${cardClass} p-4 space-y-3`}>
         {/* Search */}
         <div className="flex items-center gap-2 w-full">
-          <div className="flex items-center gap-2 flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+          <div className="flex min-w-0 items-center gap-2 flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-lg">
             <Search className="h-4 w-4 shrink-0 text-zinc-400" />
             <Input
               value={searchVal}
@@ -866,7 +896,7 @@ export const ResourceManager: React.FC = () => {
         {/* Filters */}
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
           <Filter className="h-4 w-4 text-zinc-400 shrink-0 hidden sm:block" />
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 flex-1">
+          <div className="grid min-w-0 gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 flex-1">
             <CategoryFilterDropdown
               label="Tất cả danh mục"
               value={categoryId}
@@ -874,7 +904,7 @@ export const ResourceManager: React.FC = () => {
               onChange={updateFilter('category')}
             />
             <FilterDropdown
-              label="Tất cả gói thuê bao"
+              label="Trạng thái gói thuê bao"
               value={subscriptionStatus}
               options={subscriptionOptions}
               onChange={updateFilter('status')}
@@ -912,8 +942,8 @@ export const ResourceManager: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className={`w-full min-w-[1100px] transition-opacity duration-150 ${coursesQuery.isFetching ? 'opacity-70' : 'opacity-100'}`}>
+        <div className="min-w-0 overflow-hidden">
+          <table className={`w-full table-fixed transition-opacity duration-150 ${coursesQuery.isFetching ? 'opacity-70' : 'opacity-100'}`}>
             <thead>
               <tr className={`border-b border-zinc-100 dark:border-zinc-800 transition-colors ${selectedIds.length > 0 ? 'bg-indigo-50/50 dark:bg-indigo-950/20' : ''}`}>
                 <th className="w-10 px-4 py-3 align-middle">
@@ -933,7 +963,7 @@ export const ResourceManager: React.FC = () => {
                 </th>
                 {selectedIds.length > 0 ? (
                   <th colSpan={9} className="px-4 py-2 align-middle text-left">
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
                         Đã chọn {selectedIds.length} khóa học
                       </span>
@@ -964,8 +994,18 @@ export const ResourceManager: React.FC = () => {
                     </div>
                   </th>
                 ) : (
-                  ['Khóa học', 'Tác giả', 'Danh mục', 'Thuê bao', 'Giá', 'Học viên', 'Rating', 'Cập nhật', 'Hành động'].map((heading) => (
-                    <th key={heading} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">{heading}</th>
+                  [
+                    { label: 'Khóa học', className: 'w-[46%] lg:w-[40%] 2xl:w-[28%]' },
+                    { label: 'Tác giả', className: 'hidden lg:table-cell' },
+                    { label: 'Danh mục', className: 'hidden 2xl:table-cell' },
+                    { label: 'Thuê bao', className: 'hidden lg:table-cell' },
+                    { label: 'Giá', className: 'hidden xl:table-cell' },
+                    { label: 'Học viên', className: 'hidden 2xl:table-cell' },
+                    { label: 'Rating', className: 'hidden 2xl:table-cell' },
+                    { label: 'Cập nhật', className: 'hidden 2xl:table-cell' },
+                    { label: 'Hành động', className: 'w-24' },
+                  ].map((heading) => (
+                    <th key={heading.label} className={heading.className + ' px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500'}>{heading.label}</th>
                   ))
                 )}
               </tr>
@@ -988,7 +1028,7 @@ export const ResourceManager: React.FC = () => {
                       />
                     </td>
                   <td className="px-4 py-3.5">
-                    <div className="flex min-w-72 items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3 overflow-hidden">
                       <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
                         {course.thumbnail ? (
                           <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
@@ -1025,9 +1065,9 @@ export const ResourceManager: React.FC = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300">{course.instructorName || 'Chưa có tên'}</td>
-                  <td className="px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300">{course.category?.name || 'Chưa phân loại'}</td>
-                  <td className="px-4 py-3.5">
+                  <td className="hidden overflow-hidden px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300 lg:table-cell"><span className="block truncate">{course.instructorName || 'Chưa có tên'}</span></td>
+                  <td className="hidden overflow-hidden px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300 2xl:table-cell"><span className="block truncate">{course.category?.name || 'Chưa phân loại'}</span></td>
+                  <td className="hidden px-4 py-3.5 lg:table-cell">
                     <div className="flex flex-col items-start gap-1.5">
                       <Badge className={subscriptionConfig[course.subscriptionStatus].cls}>{subscriptionConfig[course.subscriptionStatus].label}</Badge>
                       {course.adminWatch?.isWatched && (
@@ -1037,10 +1077,10 @@ export const ResourceManager: React.FC = () => {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3.5 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{fmtMoney(course.price)}</td>
-                  <td className="px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300"><span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-zinc-400" />{course.enrollmentCount.toLocaleString('vi-VN')}</span></td>
-                  <td className="px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300"><span className="inline-flex items-center gap-1.5"><Star className="h-3.5 w-3.5 text-amber-500" />{course.ratingAverage.toFixed(1)} <span className="text-xs text-zinc-400">({course.ratingCount})</span></span></td>
-                  <td className="px-4 py-3.5 text-xs text-zinc-500">{fmtDate(course.updatedAt)}</td>
+                  <td className="hidden px-4 py-3.5 text-sm font-semibold text-zinc-700 dark:text-zinc-200 xl:table-cell">{fmtMoney(course.price)}</td>
+                  <td className="hidden px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300 2xl:table-cell"><span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-zinc-400" />{course.enrollmentCount.toLocaleString('vi-VN')}</span></td>
+                  <td className="hidden px-4 py-3.5 text-sm text-zinc-600 dark:text-zinc-300 2xl:table-cell"><span className="inline-flex items-center gap-1.5"><Star className="h-3.5 w-3.5 text-amber-500" />{course.ratingAverage.toFixed(1)} <span className="text-xs text-zinc-400">({course.ratingCount})</span></span></td>
+                  <td className="hidden px-4 py-3.5 text-xs text-zinc-500 2xl:table-cell">{fmtDate(course.updatedAt)}</td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-1.5">
                       <Tooltip>
@@ -1086,13 +1126,6 @@ export const ResourceManager: React.FC = () => {
                             <span>Xem trên Website</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => goToReview(course)}
-                            className="gap-2 text-zinc-700 dark:text-zinc-300 cursor-pointer"
-                          >
-                            <FilePenLine className="h-4 w-4 text-amber-500" />
-                            <span>Đi tới trang kiểm duyệt</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
                             onClick={() => navigate(`/admin/finance/transactions?q=${encodeURIComponent(course.title)}`)}
                             className="gap-2 text-zinc-700 dark:text-zinc-300 cursor-pointer"
                           >
@@ -1100,18 +1133,18 @@ export const ResourceManager: React.FC = () => {
                             <span>Xem giao dịch mua</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            onClick={() => setSelectedCourseForCategory(course)}
+                            className="gap-2 text-zinc-700 dark:text-zinc-300 cursor-pointer"
+                          >
+                            <Tag className="h-4 w-4 text-blue-500" />
+                            <span>Đổi danh mục</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             onClick={() => setSelectedCourseForStudents(course)}
                             className="gap-2 text-zinc-700 dark:text-zinc-300 cursor-pointer"
                           >
                             <Users className="h-4 w-4 text-indigo-500" />
                             <span>Xem danh sách học viên</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => copyCourse(course)}
-                            className="gap-2 text-zinc-700 dark:text-zinc-300 cursor-pointer"
-                          >
-                            <Clipboard className="h-4 w-4 text-zinc-500" />
-                            <span>Sao chép ID & Slug</span>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

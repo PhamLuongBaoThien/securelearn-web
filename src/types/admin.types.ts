@@ -617,7 +617,7 @@ export interface INotificationTemplate {
   updatedAt: string;
 }
 
-export interface ILearningProgress {
+export interface IAdminCourseStudent {
   _id: string;
   user: {
     _id: string;
@@ -625,19 +625,7 @@ export interface ILearningProgress {
     email: string;
     avatarUrl?: string;
   };
-  course: {
-    _id: string;
-    title: string;
-    instructor: string;
-  };
-  progressPercent: number; // 0-100
-  completedLessons: number;
-  totalLessons: number;
-  heartbeatCount: number; // từ heartbeat service
-  totalWatchTime: number; // phút
-  lastActivityAt: string;
   enrolledAt: string;
-  completedAt?: string;
 }
 
 
