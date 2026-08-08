@@ -1,12 +1,11 @@
 import type React from 'react';
-import { BookOpen, CreditCard, GraduationCap, Inbox, Megaphone, ShieldAlert } from 'lucide-react';
+import { BookOpen, CreditCard, GraduationCap, Inbox, Megaphone } from 'lucide-react';
 import type { NotificationCategory } from '@/types/notification.types';
 
-export const USER_NOTIFICATION_CATEGORIES: NotificationCategory[] = ['SYSTEM', 'PAYMENT', 'COURSE', 'LEARNING', 'CAMPAIGN'];
-export const ADMIN_NOTIFICATION_CATEGORIES: NotificationCategory[] = ['SYSTEM', 'COURSE', 'INBOX', 'CAMPAIGN'];
+export const USER_NOTIFICATION_CATEGORIES: NotificationCategory[] = ['PAYMENT', 'COURSE', 'LEARNING', 'CAMPAIGN'];
+export const ADMIN_NOTIFICATION_CATEGORIES: NotificationCategory[] = ['COURSE', 'INBOX', 'CAMPAIGN'];
 
 export const NOTIFICATION_CATEGORY_LABELS: Record<NotificationCategory, string> = {
-  SYSTEM: 'Hệ thống',
   PAYMENT: 'Thanh toán',
   COURSE: 'Khóa học',
   LEARNING: 'Học tập',
@@ -35,7 +34,6 @@ type CategoryStyle = {
 };
 
 export const NOTIFICATION_CATEGORY_STYLES: Record<NotificationCategory, CategoryStyle> = {
-  SYSTEM: { icon: ShieldAlert, colorClass: 'text-blue-600 dark:text-blue-400', iconBgClass: 'bg-blue-50 dark:bg-blue-950/40', borderClass: 'border-l-blue-500', badgeClass: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800' },
   PAYMENT: { icon: CreditCard, colorClass: 'text-emerald-600 dark:text-emerald-400', iconBgClass: 'bg-emerald-50 dark:bg-emerald-950/40', borderClass: 'border-l-emerald-500', badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' },
   COURSE: { icon: BookOpen, colorClass: 'text-purple-600 dark:text-purple-400', iconBgClass: 'bg-purple-50 dark:bg-purple-950/40', borderClass: 'border-l-purple-500', badgeClass: 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800' },
   LEARNING: { icon: GraduationCap, colorClass: 'text-amber-600 dark:text-amber-400', iconBgClass: 'bg-amber-50 dark:bg-amber-950/40', borderClass: 'border-l-amber-500', badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800' },

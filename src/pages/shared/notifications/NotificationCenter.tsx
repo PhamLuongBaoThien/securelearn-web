@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { Bell, CheckCircle2, Clock, Settings, Inbox, Loader2, ChevronRight, Mail, Smartphone } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { notificationApi } from '@/services/notificationApi';
@@ -87,7 +87,7 @@ export function NotificationCenter() {
 
   const visiblePages = useMemo(() => getVisiblePages(page, totalPages), [page, totalPages]);
 
-  const load = async (forceLoader = false) => {
+  const load = useCallback(async (forceLoader = false) => {
     const sequence = ++loadSequence.current;
     const hasCache = staticCache && staticCache.items.length > 0;
     if (forceLoader || !hasCache) {
@@ -124,13 +124,12 @@ export function NotificationCenter() {
     } finally {
       if (sequence === loadSequence.current) setLoading(false);
     }
-  };
+  }, [category, filter, from, page, search, to]);
 
-  useEffect(() => { void load(false); }, [filter, category, search, from, to, page]);
-  useEffect(() => { setPage(1); }, [filter, category, search, from, to]);
+  useEffect(() => { void load(false); }, [load]);
   useEffect(() => {
     if (activeTab === 'inbox') void load(false);
-  }, [unreadCount, activeTab]);
+  }, [activeTab, load, unreadCount]);
   useEffect(() => {
     const handleRealtime = (event: Event) => {
       const detail = (event as CustomEvent<NotificationRealtimeDetail>).detail;
@@ -174,15 +173,15 @@ export function NotificationCenter() {
     };
     window.addEventListener(NOTIFICATION_REALTIME_EVENT, handleRealtime);
     return () => window.removeEventListener(NOTIFICATION_REALTIME_EVENT, handleRealtime);
-  }, [activeTab, filter, category, search, from, to, page]);
+  }, [activeTab, category, filter, from, load, page, search, to]);
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && activeTab === 'inbox') void load();
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [activeTab, filter, category, search, from, to, page]);
-  const loadPreferences = async () => {
+  }, [activeTab, load]);
+  const loadPreferences = useCallback(async () => {
     setLoadingPrefs(true);
     try {
       const [data, channelCapabilities] = await Promise.all([notificationApi.getPreferences(), notificationApi.getCapabilities()]);
@@ -195,13 +194,13 @@ export function NotificationCenter() {
     } finally {
       setLoadingPrefs(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'preferences' && !preferences) {
       void loadPreferences();
     }
-  }, [activeTab]);
+  }, [activeTab, loadPreferences, preferences]);
 
   const markRead = async (item: NotificationItem) => {
     if (!item.readAt) {
@@ -494,11 +493,10 @@ export function NotificationCenter() {
                     <div>
                       <h4 className="font-bold text-sm sm:text-base text-foreground">{labels[c]}</h4>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {c === 'SYSTEM' && 'Các thông báo bảo trì, bảo mật, và tài khoản.'}
                         {c === 'PAYMENT' && 'Lịch sử giao dịch, hóa đơn và đăng ký thuê bao.'}
                         {c === 'COURSE' && 'Cập nhật tài liệu học tập, bài giảng mới từ người giảng dạy.'}
                         {c === 'LEARNING' && 'Nhắc nhở học tập, hoàn thành bài tập, và tiến độ.'}
-                        {c === 'CAMPAIGN' && 'Các chương trình khuyến mãi, tin tức, khảo sát.'}
+                        {c === 'CAMPAIGN' && 'Thông báo chào mừng tài khoản, tin tức, chương trình và nội dung từ quản trị viên SecureLearn.'}
                       </p>
                       {capability && capability.missingEmailEvents.length > 0 && <p className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400">Email chưa áp dụng cho: {capability.missingEmailEvents.map(event => eventLabels[event] || event).join(', ')}. Quản trị viên cần bật template Email tương ứng.</p>}
                     </div>

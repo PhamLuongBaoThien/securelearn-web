@@ -2,21 +2,11 @@
 // PageTransition: Hiệu ứng chuyển trang kiểu "cửa đóng lại → hiện logo → mở ra"
 // Sử dụng useBlocker để chặn định tuyến, giúp chuyển trang mượt mà kể cả khi bấm Back/Forward của Browser
 // ========================
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useBlocker } from 'react-router-dom';
 import { useBrandLogoSrc } from '@/components/branding/useBrandLogoSrc';
-
-// ── Context ──────────────────────────────────────────────
-interface PageTransitionContextType {
-  navigateWithTransition: (to: string) => void;
-}
-
-const PageTransitionContext = createContext<PageTransitionContextType>({
-  navigateWithTransition: () => { },
-});
-
-export const usePageTransition = () => useContext(PageTransitionContext);
+import { PageTransitionContext } from './pageTransitionContext';
 
 // ── Timing (ms) ──────────────────────────────────────────
 const CLOSE_DURATION = 0.5;   // thời gian 2 cửa đóng lại
@@ -27,11 +17,14 @@ const OPEN_DURATION = 0.5;    // thời gian 2 cửa mở ra
 export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const logoSrc = useBrandLogoSrc();
   const navigate = useNavigate();
-  const [phase, setPhase] = useState<'closing' | 'holding' | 'opening' | 'idle'>('idle');
+  const [phase, setPhaseState] = useState<'closing' | 'holding' | 'opening' | 'idle'>('idle');
   
   // Dùng ref để blocker callback luôn lấy được trạng thái mới nhất ngay lập tức
   const phaseRef = useRef<'closing' | 'holding' | 'opening' | 'idle'>('idle');
-  phaseRef.current = phase;
+  const setPhase = (nextPhase: 'closing' | 'holding' | 'opening' | 'idle') => {
+    phaseRef.current = nextPhase;
+    setPhaseState(nextPhase);
+  };
 
   // Sử dụng useBlocker để chặn định tuyến khi chuyển đổi qua lại giữa Student ↔ Instructor
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
@@ -52,15 +45,12 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
     }
     return false;
   });
+  const visualPhase = blocker.state === 'blocked' && phase === 'idle' ? 'closing' : phase;
 
   // Khi định tuyến bị chặn, đóng cửa rồi mới proceed
   useEffect(() => {
     if (blocker.state === 'blocked') {
-      setPhase('closing');
-      phaseRef.current = 'closing';
-
       const t1 = setTimeout(() => {
-        phaseRef.current = 'holding';
         setPhase('holding');
         blocker.proceed?.(); // Kích hoạt chuyển trang thực sự đằng sau cánh cửa đóng
       }, CLOSE_DURATION * 1000);
@@ -74,14 +64,12 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
     if (phase === 'holding') {
       const t2 = setTimeout(() => {
         setPhase('opening');
-        phaseRef.current = 'opening';
       }, LOGO_HOLD * 1000);
 
       return () => clearTimeout(t2);
     } else if (phase === 'opening') {
       const t3 = setTimeout(() => {
         setPhase('idle');
-        phaseRef.current = 'idle';
       }, OPEN_DURATION * 1000);
 
       return () => clearTimeout(t3);
@@ -93,7 +81,7 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
     navigate(to);
   };
 
-  const showOverlay = phase !== 'idle';
+  const showOverlay = visualPhase !== 'idle';
 
   return (
     <PageTransitionContext.Provider value={{ navigateWithTransition }}>
@@ -114,15 +102,15 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
               }}
               initial={{ x: '-100%' }}
               animate={
-                phase === 'closing' || phase === 'holding'
+                visualPhase === 'closing' || visualPhase === 'holding'
                   ? { x: '0%' }
-                  : phase === 'opening'
+                  : visualPhase === 'opening'
                     ? { x: '-100%' }
                     : { x: '-100%' }
               }
               exit={{ x: '-100%' }}
               transition={{
-                duration: phase === 'closing' ? CLOSE_DURATION : OPEN_DURATION,
+                duration: visualPhase === 'closing' ? CLOSE_DURATION : OPEN_DURATION,
                 ease: [0.76, 0, 0.24, 1], // easeInOutQuart
               }}
             >
@@ -146,15 +134,15 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
               }}
               initial={{ x: '100%' }}
               animate={
-                phase === 'closing' || phase === 'holding'
+                visualPhase === 'closing' || visualPhase === 'holding'
                   ? { x: '0%' }
-                  : phase === 'opening'
+                  : visualPhase === 'opening'
                     ? { x: '100%' }
                     : { x: '100%' }
               }
               exit={{ x: '100%' }}
               transition={{
-                duration: phase === 'closing' ? CLOSE_DURATION : OPEN_DURATION,
+                duration: visualPhase === 'closing' ? CLOSE_DURATION : OPEN_DURATION,
                 ease: [0.76, 0, 0.24, 1],
               }}
             >
@@ -175,15 +163,15 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
                 className="flex flex-col items-center gap-4"
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={
-                  phase === 'holding'
-                    ? { opacity: 1, scale: 1 }
-                    : phase === 'opening'
+                    visualPhase === 'holding'
+                      ? { opacity: 1, scale: 1 }
+                      : visualPhase === 'opening'
                       ? { opacity: 0, scale: 1.1 }
                       : { opacity: 0, scale: 0.5 }
                 }
                 transition={{
-                  duration: phase === 'holding' ? 0.35 : 0.25,
-                  ease: phase === 'holding' ? [0.34, 1.56, 0.64, 1] : 'easeOut',
+                    duration: visualPhase === 'holding' ? 0.35 : 0.25,
+                    ease: visualPhase === 'holding' ? [0.34, 1.56, 0.64, 1] : 'easeOut',
                 }}
               >
                 <motion.img
@@ -191,7 +179,7 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
                   alt="SecureLearn"
                   className="w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-2xl"
                   animate={
-                    phase === 'holding'
+                    visualPhase === 'holding'
                       ? { rotate: [0, -5, 5, 0] }
                       : {}
                   }
@@ -207,13 +195,13 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
                     background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)',
                   }}
                   animate={
-                    phase === 'holding'
+                    visualPhase === 'holding'
                       ? { scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }
                       : { scale: 0, opacity: 0 }
                   }
                   transition={{
                     duration: 0.8,
-                    repeat: phase === 'holding' ? Infinity : 0,
+                    repeat: visualPhase === 'holding' ? Infinity : 0,
                     ease: 'easeInOut',
                   }}
                 />

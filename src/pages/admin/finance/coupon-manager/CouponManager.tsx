@@ -204,7 +204,10 @@ export const CouponManager = () => {
     clear,
   } = useMultiSelect();
 
-  const coupons = couponsQuery.data?.coupons ?? [];
+  const coupons = useMemo(
+    () => couponsQuery.data?.coupons ?? [],
+    [couponsQuery.data?.coupons],
+  );
   const currentPageCouponIds = useMemo(
     () => coupons.map((c) => c._id),
     [coupons],

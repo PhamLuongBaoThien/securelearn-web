@@ -186,7 +186,10 @@ export function LearningInterface() {
   const [mobileCurriculumOpen, setMobileCurriculumOpen] = useState(false);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [pauseSignal, setPauseSignal] = useState(0);
-  const [activeInteractionTab, setActiveInteractionTab] = useState<LearningTabId>('overview');
+  const [interactionTabState, setInteractionTabState] = useState<{ requestKey: string; tab: LearningTabId }>({
+    requestKey: '',
+    tab: 'overview',
+  });
   const [openNotesSignal, setOpenNotesSignal] = useState(0);
   const lastLockedToastLessonIdRef = useRef('');
 
@@ -203,11 +206,18 @@ export function LearningInterface() {
   const requestedTab = searchParams.get('tab') || '';
   const discussionContextQuery = useDiscussionContext(courseId, requestedDiscussionId);
   const resolvedRequestedLessonId = discussionContextQuery.data?.lessonId || requestedLessonId;
-
-  useEffect(() => {
-    if (requestedDiscussionId) setActiveInteractionTab('discussions');
-    else if (requestedTab === 'announcements') setActiveInteractionTab('announcements');
-  }, [requestedDiscussionId, requestedTab]);
+  const interactionRequestKey = `${requestedDiscussionId}:${requestedTab}`;
+  const requestedInteractionTab: LearningTabId = requestedDiscussionId
+    ? 'discussions'
+    : requestedTab === 'announcements'
+      ? 'announcements'
+      : 'overview';
+  const activeInteractionTab = interactionTabState.requestKey === interactionRequestKey
+    ? interactionTabState.tab
+    : requestedInteractionTab;
+  const setActiveInteractionTab = (tab: LearningTabId) => {
+    setInteractionTabState({ requestKey: interactionRequestKey, tab });
+  };
   const accessByLessonId = useMemo(() => accessQuery.data?.lessons || {}, [accessQuery.data?.lessons]);
   
   // Xác định ID bài học mục tiêu: Ưu tiên state hiện tại -> URL query -> Bài học học dở lần trước -> Bài học đầu tiên

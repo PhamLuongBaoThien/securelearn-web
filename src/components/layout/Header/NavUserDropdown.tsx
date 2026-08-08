@@ -1,7 +1,7 @@
 // ========================
 // NavUserDropdown: Avatar + dropdown menu khi user đã đăng nhập
 // ========================
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useEffectEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,21 +27,22 @@ export const NavUserDropdown = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const inboxUnread = useInboxUnread();
+  const closeMenu = useEffectEvent(onClose);
 
   // Đóng dropdown khi click bên ngoài
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        onClose();
+        closeMenu();
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onClose]);
+  }, []);
 
   // Đóng dropdown khi chuyển trang
   useEffect(() => {
-    onClose();
+    closeMenu();
   }, [location.pathname]);
 
   return (

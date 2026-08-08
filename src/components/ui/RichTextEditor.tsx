@@ -131,7 +131,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       editor.commands.setContent(value);
       lastSynchronizedContentRef.current = editor.getHTML();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
 
   React.useEffect(() => {

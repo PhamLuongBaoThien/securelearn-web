@@ -6,6 +6,7 @@
 // ========================
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { InfiniteData } from '@tanstack/react-query';
 import {
   createLearningNote,
   createLessonDiscussion,
@@ -21,6 +22,7 @@ import {
   updateLearningNote,
   updateLessonDiscussion,
 } from '@/services/courseApi';
+import type { IDiscussionPage } from '@/services/courseApi';
 import { getDocumentAsset } from '@/services/mediaApi';
 
 export const learningInteractionKeys = {
@@ -153,13 +155,13 @@ export function useLessonDiscussionReaction(courseId: string, lessonId: string) 
   const queryKey = learningInteractionKeys.discussions(courseId, lessonId);
 
   const updateCache = useCallback((discussionId: string, liked: boolean) => {
-    queryClient.setQueriesData<any>({ queryKey }, (old: any) => {
+    queryClient.setQueriesData<InfiniteData<IDiscussionPage>>({ queryKey }, (old) => {
       if (!old?.pages) return old;
       return {
         ...old,
-        pages: old.pages.map((page: any) => ({
+        pages: old.pages.map((page) => ({
           ...page,
-          items: page.items.map((item: any) => {
+          items: page.items.map((item) => {
             if (item._id !== discussionId || item.likedByViewer === liked) return item;
             return {
               ...item,
@@ -266,6 +268,5 @@ export function useModerateLessonDiscussion(courseId: string, lessonId: string) 
     onSuccess: () => queryClient.invalidateQueries({ queryKey: learningInteractionKeys.discussions(courseId, lessonId) }),
   });
 }
-
 
 

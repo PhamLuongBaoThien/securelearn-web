@@ -48,7 +48,7 @@ const KpiCard: React.FC<{
 
 export const CategoryManager: React.FC = () => {
   const categoriesQuery = useAdminCategories();
-  const categories = categoriesQuery.data || [];
+  const categories = useMemo(() => categoriesQuery.data || [], [categoriesQuery.data]);
   const isLoading = categoriesQuery.isLoading;
   const isFetching = categoriesQuery.isFetching;
   const error = categoriesQuery.error;

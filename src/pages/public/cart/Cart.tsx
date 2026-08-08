@@ -119,7 +119,7 @@ export const Cart = () => {
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [appliedCoupon, isAuthenticated, cartSignature, totalPrice]);
+  }, [appliedCoupon, isAuthenticated, cartSignature, totalPrice, userId]);
 
   useEffect(() => {
     if (!bestCouponQuery.isSuccess || appliedCoupon?.source === 'MANUAL') return;

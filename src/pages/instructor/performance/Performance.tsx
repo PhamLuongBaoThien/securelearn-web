@@ -91,8 +91,8 @@ const compactCurrency = (value: number) => {
 };
 
 const shortenText = (value: string, max = 24) => (value.length > max ? `${value.slice(0, max - 1)}...` : value);
-const stripSectionPrefix = (value: string) => value.trim().replace(/^chương\s*\d+\s*[:.\-]?\s*/i, '').trim();
-const stripLessonPrefix = (value: string) => value.trim().replace(/^bài\s*\d+\s*[:.\-]?\s*/i, '').trim();
+const stripSectionPrefix = (value: string) => value.trim().replace(/^chương\s*\d+\s*[:.-]?\s*/i, '').trim();
+const stripLessonPrefix = (value: string) => value.trim().replace(/^bài\s*\d+\s*[:.-]?\s*/i, '').trim();
 const lessonFullLabel = (lesson: { positionLabel: string; title: string }) => (
   lesson.title ? `${lesson.positionLabel}: ${lesson.title}` : lesson.positionLabel
 );

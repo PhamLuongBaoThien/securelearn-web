@@ -22,8 +22,10 @@ export function ReportDialog({ targetType, targetId, courseId, label = 'Báo cá
       setOpen(false);
       setTitle('');
       setDescription('');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Không thể gửi báo cáo.');
+    } catch (error: unknown) {
+      const responseMessage = (error as { response?: { data?: { message?: string } } })
+        .response?.data?.message;
+      toast.error(responseMessage || 'Không thể gửi báo cáo.');
     } finally {
       setBusy(false);
     }

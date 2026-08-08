@@ -6,7 +6,7 @@
 // Lưu ý:
 // - editor hiện dùng CRUD item-level thật
 // - publish bị chặn nếu còn video pending/processing hoặc validate backend không pass
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useEffectEvent, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -864,7 +864,7 @@ export const CourseEditor: React.FC = () => {
   const isViewingPublished = viewMode === "published" && Boolean(publishedCourse);
   const effectiveReadOnly = Boolean(isReadOnly || isViewingPublished);
 
-  const buildCurrentEditorValues = (nextProgressionMode = progressionMode): CourseEditorValues => ({
+  const buildCurrentEditorValues = useEffectEvent((nextProgressionMode = progressionMode): CourseEditorValues => ({
     title,
     shortDescription,
     description,
@@ -878,7 +878,10 @@ export const CourseEditor: React.FC = () => {
     level: level as ICourse["level"],
     progressionMode: nextProgressionMode,
     price,
-  });
+  }));
+  const saveCourseUpdate = useEffectEvent((payload: Parameters<typeof updateMutation.mutateAsync>[0]) =>
+    updateMutation.mutateAsync(payload));
+  const runCurriculumSave = useEffectEvent(withCurriculumSave);
 
   useEffect(() => {
     if (!isInitialized || effectiveReadOnly || !savedSnapshotRef.current) return;
@@ -897,7 +900,7 @@ export const CourseEditor: React.FC = () => {
     metadataSaveInFlightRef.current = true;
     setMetadataSaveStatus("saving");
 
-    void updateMutation.mutateAsync({
+    void saveCourseUpdate({
       courseId: courseId!,
       payload: buildCourseMetadataPayload(debouncedMetadataDraft, thumbnailFile),
     }).then((updatedCourse) => {
@@ -936,7 +939,7 @@ export const CourseEditor: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [debouncedMetadataDraft, effectiveReadOnly, isInitialized, metadataSaveCycle]);
+  }, [courseId, debouncedMetadataDraft, effectiveReadOnly, isInitialized, metadataDraft, metadataSaveCycle, thumbnailFile]);
 
   useEffect(() => {
     if (!isInitialized || effectiveReadOnly || !savedSnapshotRef.current) return;
@@ -946,10 +949,10 @@ export const CourseEditor: React.FC = () => {
     const saveSeq = progressionModeSaveSeqRef.current + 1;
     progressionModeSaveSeqRef.current = saveSeq;
 
-    void withCurriculumSave(async () => {
+    void runCurriculumSave(async () => {
       const payload = new FormData();
       payload.append("progressionMode", debouncedProgressionMode);
-      const updatedCourse = await updateMutation.mutateAsync({
+      const updatedCourse = await saveCourseUpdate({
         courseId: courseId!,
         payload,
       });
@@ -971,7 +974,7 @@ export const CourseEditor: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [debouncedProgressionMode, effectiveReadOnly, isInitialized]);
+  }, [courseId, debouncedProgressionMode, effectiveReadOnly, isInitialized]);
 
   const handleProgressionModeChange = (nextProgressionMode: CourseProgressionMode) => {
     if (nextProgressionMode === progressionMode || effectiveReadOnly) return;

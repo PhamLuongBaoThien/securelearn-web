@@ -99,18 +99,14 @@ const RecursiveMenuItem: React.FC<{
   };
   
   const isActive = isDescendantActive(item);
-  const [open, setOpen] = useState(isActive);
-
-  useEffect(() => {
-    if (isActive) {
-      setOpen(true);
-    }
-  }, [isActive]);
+  const activityKey = isActive ? currentPath : 'inactive';
+  const [openState, setOpenState] = useState({ activityKey, open: isActive });
+  const open = openState.activityKey === activityKey ? openState.open : isActive;
 
   const toggleOpen = (e: React.MouseEvent) => {
     if (hasChildren && !collapsed) {
       e.preventDefault();
-      setOpen((prev) => !prev);
+      setOpenState({ activityKey, open: !open });
     }
   };
 
@@ -242,16 +238,12 @@ const GroupMenu: React.FC<{
 }> = ({ group, collapsed, currentPath }) => {
   const { subMenuVariants, textVariants } = useContext(SidebarAnimationContext);
   const isGroupActive = group.items.some((item) => currentPath.startsWith(item.path));
-  const [open, setOpen] = useState(isGroupActive);
-
-  useEffect(() => {
-    if (isGroupActive) {
-      setOpen(true);
-    }
-  }, [isGroupActive]);
+  const activityKey = isGroupActive ? currentPath : 'inactive';
+  const [openState, setOpenState] = useState({ activityKey, open: isGroupActive });
+  const open = openState.activityKey === activityKey ? openState.open : isGroupActive;
 
   const toggleOpen = () => {
-    if (!collapsed) setOpen((prev) => !prev);
+    if (!collapsed) setOpenState({ activityKey, open: !open });
   };
 
   return (

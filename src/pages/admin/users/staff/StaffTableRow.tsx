@@ -86,21 +86,23 @@ export const StaffTableRow: React.FC<StaffTableRowProps> = ({
       <td className="px-4 py-3.5 text-xs text-zinc-500">{getRelativeLoginTime(now, staff.lastLoginAt)}</td>
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => onEdit(staff)}
-            title="Chỉnh sửa"
-            className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 text-blue-500 transition-colors"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
           {!isSuperAdmin && (
-            <button
-              onClick={() => onDelete(staff)}
-              title="Xóa tài khoản"
-              className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <>
+              <button
+                onClick={() => onEdit(staff)}
+                title="Chỉnh sửa"
+                className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 text-blue-500 transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onDelete(staff)}
+                title="Xóa tài khoản"
+                className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
           )}
         </div>
       </td>

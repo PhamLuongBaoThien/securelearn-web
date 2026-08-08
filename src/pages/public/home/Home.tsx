@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { HorizontalStaggerContainer, HorizontalStaggerItem } from '@/components/animations/HorizontalStagger';
 import { SectionReveal, SectionSequence, SectionSequenceItem } from '@/components/animations/SectionReveal';
 import { CourseCarousel } from '@/components/ui/CourseCarousel';
-import { buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { useCatalog } from '@/hooks/useCatalog';
 import { usePublicCourseCategories } from '@/hooks/usePublicCourseCategories';
 import { CourseCardSkeleton } from '@/pages/public/catalog/CourseCardSkeleton';
@@ -346,4 +346,3 @@ export const Home = () => {
     </>
   );
 };
-

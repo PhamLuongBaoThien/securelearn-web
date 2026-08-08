@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { CircleHelp, Flame } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { LearnerActivitySummary } from '@/services/progressApi';
@@ -23,6 +23,21 @@ const HERO_RING_SIZE = 52;
 const HERO_RING_STROKE = 3;
 const COMPACT_RING_SIZE = 32;
 const COMPACT_RING_STROKE = 3;
+
+const CELEBRATION_PARTICLES = Array.from({ length: 12 }, (_, index) => {
+  const angle = (index / 12) * Math.PI * 2;
+  const radius = 18 + (index % 4) * 4;
+  return {
+    left: 50 + Math.cos(angle) * (12 + (index % 3) * 5),
+    top: 50 + Math.sin(angle) * (10 + (index % 4) * 3),
+    duration: 0.65 + (index % 5) * 0.07,
+    xMid: Math.cos(angle) * radius * 0.55,
+    yMid: Math.sin(angle) * radius * 0.55 - 10,
+    xEnd: Math.cos(angle) * radius,
+    yEnd: Math.sin(angle) * radius - 24,
+    color: ['#fbbf24', '#f59e0b', '#fb923c', '#34d399', '#22d3ee', '#a78bfa'][index % 6],
+  };
+});
 
 function getRingMetrics(variant: StreakGoalWidgetVariant) {
   const size = variant === 'hero' ? HERO_RING_SIZE : variant === 'compact' ? COMPACT_RING_SIZE : DAILY_GOAL_RING_SIZE;
@@ -124,27 +139,31 @@ function DailyGoalRing({
 function CelebrationParticles() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {Array.from({ length: 12 }).map((_, i) => (
+      {CELEBRATION_PARTICLES.map((particle, index) => (
         <div
-          key={i}
+          key={index}
           className="absolute h-1.5 w-1.5 rounded-full"
           style={{
-            left: `${50 + (Math.random() - 0.5) * 60}%`,
-            top: `${50 + (Math.random() - 0.5) * 60}%`,
-            backgroundColor: ['#fbbf24', '#f59e0b', '#fb923c', '#34d399', '#22d3ee', '#a78bfa'][i % 6],
+            left: `${particle.left}%`,
+            top: `${particle.top}%`,
+            backgroundColor: particle.color,
             animationName: 'streak-particle',
-            animationDuration: `${0.6 + Math.random() * 0.4}s`,
+            animationDuration: `${particle.duration}s`,
             animationTimingFunction: 'ease-out',
             animationFillMode: 'forwards',
-            animationDelay: `${i * 0.05}s`,
-          }}
+            animationDelay: `${index * 0.05}s`,
+            '--particle-x-mid': `${particle.xMid}px`,
+            '--particle-y-mid': `${particle.yMid}px`,
+            '--particle-x-end': `${particle.xEnd}px`,
+            '--particle-y-end': `${particle.yEnd}px`,
+          } as CSSProperties}
         />
       ))}
       <style>{`
         @keyframes streak-particle {
           0% { opacity: 1; transform: scale(0) translate(0, 0); }
-          50% { opacity: 1; transform: scale(1.2) translate(${Math.random() > 0.5 ? '' : '-'}${8 + Math.random() * 12}px, -${10 + Math.random() * 16}px); }
-          100% { opacity: 0; transform: scale(0.5) translate(${Math.random() > 0.5 ? '' : '-'}${16 + Math.random() * 20}px, -${20 + Math.random() * 24}px); }
+          50% { opacity: 1; transform: scale(1.2) translate(var(--particle-x-mid), var(--particle-y-mid)); }
+          100% { opacity: 0; transform: scale(0.5) translate(var(--particle-x-end), var(--particle-y-end)); }
         }
       `}</style>
     </div>

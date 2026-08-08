@@ -76,8 +76,8 @@ export const InstructorStudents: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const { data, isLoading, isFetching, isError, error, refetch } = useInstructorStudents();
 
-  const enrollments = data?.enrollments ?? [];
-  const courses = data?.courses ?? [];
+  const enrollments = useMemo(() => data?.enrollments ?? [], [data?.enrollments]);
+  const courses = useMemo(() => data?.courses ?? [], [data?.courses]);
   const summary = data?.summary ?? { total: 0, purchase: 0, subscription: 0, active: 0 };
 
   const filteredEnrollments = useMemo(() => {

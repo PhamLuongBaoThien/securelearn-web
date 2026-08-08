@@ -6,7 +6,7 @@ import {
   BookOpen,
   HelpCircle,
   Download,
-  Infinity,
+  Infinity as InfinityIcon,
   Smartphone,
   Trophy,
 } from 'lucide-react';
@@ -55,7 +55,7 @@ export function CourseIncludes({ totalDuration, totalLessons, totalQuizzes = 0, 
     } : null,
     {
       text: 'Truy cập trọn đời khi mua đứt',
-      icon: Infinity,
+      icon: InfinityIcon,
     },
     {
       text: 'Truy cập trên mobile và TV',
@@ -90,5 +90,4 @@ export function CourseIncludes({ totalDuration, totalLessons, totalQuizzes = 0, 
     </section>
   );
 }
-
 

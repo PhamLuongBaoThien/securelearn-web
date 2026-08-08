@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent, MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, History, LifeBuoy, Loader2, MessageCircle, Plus, Send, Trash2, X } from 'lucide-react';
@@ -90,7 +90,7 @@ export function ChatbotWidget() {
     setHistoryOpen(false);
   };
 
-  const refreshConversations = async (currentSession = session) => {
+  const refreshConversations = useCallback(async (currentSession = session) => {
     setHistoryLoading(true);
     try {
       const data = await getChatbotConversations(currentSession);
@@ -100,7 +100,7 @@ export function ChatbotWidget() {
     } finally {
       setHistoryLoading(false);
     }
-  };
+  }, [session]);
 
   const loadConversation = async (conversationId: string) => {
     setHistoryLoading(true);
@@ -186,7 +186,7 @@ export function ChatbotWidget() {
 
   useEffect(() => {
     if (open && historyOpen && isAuthenticated) void refreshConversations();
-  }, [open, historyOpen, isAuthenticated]);
+  }, [historyOpen, isAuthenticated, open, refreshConversations]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -495,6 +495,5 @@ export function ChatbotWidget() {
     </>
   );
 }
-
 
 

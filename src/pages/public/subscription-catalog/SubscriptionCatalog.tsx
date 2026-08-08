@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { BookOpen, Loader2 } from 'lucide-react';
 import { CourseCard } from '@/components/ui/CourseCard';
-import { buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { getSubscriptionCatalog } from '@/services/courseApi';
 import { useMySubscription } from '@/hooks/useMySubscription';
 

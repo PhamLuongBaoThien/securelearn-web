@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, Check, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '@/services/notificationApi';
@@ -14,6 +14,10 @@ export function NotificationBell({ enabled = true, allPath = '/notifications' }:
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const { count, refresh } = useUnreadNotifications(enabled);
+
+  const loadRecent = useCallback(async () => {
+    try { setItems(await notificationApi.recent()); } catch { setItems([]); }
+  }, []);
 
   useEffect(() => {
     const close = (event: MouseEvent) => {
@@ -39,11 +43,7 @@ export function NotificationBell({ enabled = true, allPath = '/notifications' }:
     };
     window.addEventListener(NOTIFICATION_REALTIME_EVENT, handleRealtime);
     return () => window.removeEventListener(NOTIFICATION_REALTIME_EVENT, handleRealtime);
-  }, [open]);
-
-  const loadRecent = async () => {
-    try { setItems(await notificationApi.recent()); } catch { setItems([]); }
-  };
+  }, [loadRecent, open]);
 
   const toggle = async () => {
     const next = !open;

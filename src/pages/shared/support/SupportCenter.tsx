@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState, useRef } from 'react';
+import { useEffectEvent } from 'react';
 import type { ElementType } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { inboxApi } from '@/services/inboxApi';
@@ -103,7 +104,7 @@ export function SupportCenter() {
   useEffect(() => retainInboxSocket(), []);
   useEffect(() => id ? subscribeInboxTicket(id) : undefined, [id]);
 
-  const load = async (resetPage = false) => {
+  const load = useEffectEvent(async (resetPage = false) => {
     try {
       if (id) {
         const currentPage = resetPage ? 1 : messagePage;
@@ -125,7 +126,7 @@ export function SupportCenter() {
       const error = e as ApiError;
       toast.error(error.response?.data?.message || 'Không thể tải thông tin yêu cầu.');
     }
-  };
+  });
 
   const loadMoreMessages = async () => {
     if (!detail || messagePage >= detail.messages.totalPages || loadingOldMessages) return;
@@ -145,7 +146,7 @@ export function SupportCenter() {
         return [...newItems, ...prev];
       });
       setMessagePage(nextPage);
-    } catch (e) {
+    } catch {
       toast.error('Không thể tải tin nhắn cũ hơn.');
     } finally {
       setLoadingOldMessages(false);
@@ -207,7 +208,7 @@ export function SupportCenter() {
   useEffect(() => { if (socketConnected || document.hidden) return; const timer = setInterval(() => void load(), 15000); return () => clearInterval(timer); }, [socketConnected, id]);
 
   useEffect(() => {
-    if (!detail) return;
+    if (!id) return;
     const container = chatContainerRef.current;
     if (!container) return;
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, ChevronRight, FileText, Home, Loader2, Shield } from 'lucide-react';
 import { usePublicPolicyBySlug } from '@/hooks/usePolicies';
@@ -35,17 +35,15 @@ export const PolicyDetail: React.FC = () => {
     window.scrollTo({ top: 0 });
   }, [slug]);
 
-  const headings = useMemo(() => (policy?.content ? extractHeadings(policy.content) : []), [policy?.content]);
-  const processedContent = useMemo(() => (policy?.content ? injectHeadingIds(policy.content) : ''), [policy?.content]);
-
-  const formattedDate = useMemo(() => {
-    if (!policy?.updatedAt) return '';
-    return new Date(policy.updatedAt).toLocaleDateString('vi-VN', {
+  const headings = policy?.content ? extractHeadings(policy.content) : [];
+  const processedContent = policy?.content ? injectHeadingIds(policy.content) : '';
+  const formattedDate = policy?.updatedAt
+    ? new Date(policy.updatedAt).toLocaleDateString('vi-VN', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-    });
-  }, [policy?.updatedAt]);
+    })
+    : '';
 
   // ──── Loading ────
   if (isLoading) {
@@ -59,7 +57,8 @@ export const PolicyDetail: React.FC = () => {
 
   // ──── 404 / Error ────
   if (isError || !policy) {
-    const is404 = (error as any)?.message?.includes('404') || (error as any)?.message?.includes('Không tìm thấy');
+    const errorMessage = error instanceof Error ? error.message : '';
+    const is404 = errorMessage.includes('404') || errorMessage.includes('Không tìm thấy');
     return (
       <div className="mx-auto max-w-2xl px-6 py-24 text-center">
         {is404 ? (

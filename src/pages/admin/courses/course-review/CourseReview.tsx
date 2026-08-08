@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
   Search,
@@ -1033,7 +1033,11 @@ const SubscriptionCourseReviewPage: React.FC<{
       .map((course) => course._id),
     [courses],
   );
-  const selectedSet = React.useMemo(() => new Set(selectedIds), [selectedIds]);
+  const validSelectedIds = React.useMemo(
+    () => selectedIds.filter((id) => selectableIds.includes(id)),
+    [selectableIds, selectedIds],
+  );
+  const selectedSet = React.useMemo(() => new Set(validSelectedIds), [validSelectedIds]);
   const selectedPendingIds = React.useMemo(
     () => courses
       .filter((course) => selectedSet.has(course._id) && course.subscriptionStatus === "PENDING")
@@ -1051,10 +1055,6 @@ const SubscriptionCourseReviewPage: React.FC<{
   const hasActiveFilters = React.useMemo(() => {
     return Boolean(search.trim() || status !== "PENDING" || sortVal !== "submitted_desc");
   }, [search, status, sortVal]);
-
-  useEffect(() => {
-    setSelectedIds((current) => current.filter((id) => selectableIds.includes(id)));
-  }, [selectableIds]);
 
   const toggleSelected = (courseId: string, checked: boolean) => {
     setSelectedIds((current) => checked
@@ -1187,7 +1187,10 @@ const SubscriptionCourseReviewPage: React.FC<{
             <Search className="h-4 w-4 shrink-0 text-zinc-400" />
             <Input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setSelectedIds([]);
+              }}
               placeholder="Tìm khóa học hoặc tác giả..."
               className="border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
             />
@@ -1213,13 +1216,17 @@ const SubscriptionCourseReviewPage: React.FC<{
               label="Tất cả trạng thái"
               value={status}
               options={subscriptionStatusOptions}
-              onChange={(val) => setStatus(val as any)}
+              onChange={(val) => {
+                setStatus(val as Exclude<SubscriptionCatalogStatus, "NOT_OPTED_IN">);
+                setSelectedIds([]);
+              }}
             />
             <FilterSelect
               label="Sắp xếp khóa học"
               value={sortVal}
               options={sortOptions}
               onChange={(val) => {
+                setSelectedIds([]);
                 const nextParams = new URLSearchParams(searchParams);
                 if (val === "submitted_desc") nextParams.delete("sort");
                 else nextParams.set("sort", val);
@@ -1246,7 +1253,7 @@ const SubscriptionCourseReviewPage: React.FC<{
             />
             Chọn tất cả
           </label>
-          {selectedIds.length > 0 && <span>{selectedIds.length} đã chọn</span>}
+          {validSelectedIds.length > 0 && <span>{validSelectedIds.length} đã chọn</span>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {selectedPendingIds.length > 0 && (
@@ -1483,7 +1490,7 @@ export const CourseReview: React.FC = () => {
   const createCategoryMutation = useCreateAdminCategory();
   const [statusFilter, setStatusFilter] = useState<string>("PENDING");
   const [search, setSearch] = useState(initialState.search || "");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null | undefined>(undefined);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
@@ -1521,7 +1528,11 @@ export const CourseReview: React.FC = () => {
     () => courses.filter((course) => course.status === "PENDING").map((course) => course._id),
     [courses],
   );
-  const selectedSet = React.useMemo(() => new Set(selectedIds), [selectedIds]);
+  const validSelectedIds = React.useMemo(
+    () => selectedIds.filter((id) => selectableIds.includes(id)),
+    [selectableIds, selectedIds],
+  );
+  const selectedSet = React.useMemo(() => new Set(validSelectedIds), [validSelectedIds]);
   const selectedPendingIds = React.useMemo(
     () => courses
       .filter((course) => selectedSet.has(course._id) && course.status === "PENDING")
@@ -1529,13 +1540,11 @@ export const CourseReview: React.FC = () => {
     [courses, selectedSet],
   );
   const allSelectableSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedSet.has(id));
-  useEffect(() => {
-    const versionId = searchParams.get('versionId');
-    if (versionId && courses.some(course => course._id === versionId)) setExpandedId(versionId);
-  }, [courses, searchParams]);
-  useEffect(() => {
-    setSelectedIds((current) => current.filter((id) => selectableIds.includes(id)));
-  }, [selectableIds]);
+  const requestedVersionId = searchParams.get('versionId');
+  const requestedExpandedId = requestedVersionId && courses.some((course) => course._id === requestedVersionId)
+    ? requestedVersionId
+    : null;
+  const resolvedExpandedId = expandedId === undefined ? requestedExpandedId : expandedId;
 
   const toggleSelected = (courseId: string, checked: boolean) => {
     setSelectedIds((current) => checked
@@ -1664,7 +1673,10 @@ export const CourseReview: React.FC = () => {
             <Search className="h-4 w-4 shrink-0 text-zinc-400" />
             <Input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setSelectedIds([]);
+              }}
               placeholder="Tìm khóa học, tác giả..."
               className="border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
             />
@@ -1690,13 +1702,17 @@ export const CourseReview: React.FC = () => {
               label="Tất cả trạng thái"
               value={statusFilter}
               options={publishStatusOptions}
-              onChange={(val) => setStatusFilter(val)}
+              onChange={(val) => {
+                setStatusFilter(val);
+                setSelectedIds([]);
+              }}
             />
             <FilterSelect
               label="Sắp xếp khóa học"
               value={sortVal}
               options={sortOptions}
               onChange={(val) => {
+                setSelectedIds([]);
                 const nextParams = new URLSearchParams(searchParams);
                 if (val === "submitted_desc") nextParams.delete("sort");
                 else nextParams.set("sort", val);
@@ -1723,7 +1739,7 @@ export const CourseReview: React.FC = () => {
             />
             Chọn tất cả
           </label>
-          {selectedIds.length > 0 && <span>{selectedIds.length} đã chọn</span>}
+          {validSelectedIds.length > 0 && <span>{validSelectedIds.length} đã chọn</span>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {selectedPendingIds.length > 0 && (
@@ -1755,7 +1771,7 @@ export const CourseReview: React.FC = () => {
         <div className={`space-y-4 transition-opacity duration-150 ${reviewQuery.isFetching ? "opacity-70" : "opacity-100"}`}>
           {courses.map((course: ICourseReview) => {
             const sc = statusConfig[course.status];
-            const isExpanded = expandedId === course._id;
+            const isExpanded = resolvedExpandedId === course._id;
             const isSelectable = course.status === "PENDING";
             const isSelected = selectedSet.has(course._id);
             return (

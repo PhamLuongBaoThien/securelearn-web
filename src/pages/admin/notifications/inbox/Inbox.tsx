@@ -88,6 +88,7 @@ export const Inbox = () => {
     const [files, setFiles] = useState<File[]>([]);
     const [socketConnected, setSocketConnected] = useState(isInboxConnected());
     const [typing, setTyping] = useState(false);
+    const [mergedDetailSignature, setMergedDetailSignature] = useState('');
 
     const handleSelectTicket = (ticketId: string) => {
         if (ticketId === selected) return;
@@ -97,6 +98,10 @@ export const Inbox = () => {
         setFiles([]);
         setAllMessages([]);
         shouldScrollToBottomRef.current = true;
+        const nextParams = new URLSearchParams(params);
+        if (ticketId) nextParams.set('id', ticketId);
+        else nextParams.delete('id');
+        setParams(nextParams, { replace: true });
     };
 
     useEffect(() => retainInboxSocket(), []);
@@ -126,32 +131,19 @@ export const Inbox = () => {
         window.addEventListener(INBOX_REALTIME_EVENT, handler); return () => { window.removeEventListener(INBOX_REALTIME_EVENT, handler); clearTimeout(typingTimer); };
     }, [queryClient, selected]);
     useEffect(() => { if (socketConnected || document.hidden) return; const timer = setInterval(() => { void queryClient.invalidateQueries({ queryKey: ['adminInboxList'] }); if (selected) void queryClient.invalidateQueries({ queryKey: ['adminInboxDetail', selected] }); }, 15000); return () => clearInterval(timer); }, [socketConnected, selected, queryClient]);
-    // Đồng bộ ID được chọn lên URL search params
-    useEffect(() => {
-        const nextParams = new URLSearchParams(params);
-        if (selected) nextParams.set('id', selected);
-        else nextParams.delete('id');
-        setParams(nextParams, { replace: true });
-    }, [selected]);
-
-    useEffect(() => {
-        setListPage(1);
-    }, [search, type, status, sortVal]);
-
     // Query: Danh sách ticket
     const { data: listData, isLoading: isLoadingList, isFetching: isFetchingList } = useQuery({
         queryKey: ['adminInboxList', search, type, status, sortVal, listPage],
-        queryFn: () => inboxApi.list({ search, type, status, sort: sortVal, page: listPage, limit: 20 }, true),
+        queryFn: () => inboxApi.list({ search, type, status, sort: sortVal, page: listPage, limit: 10 }, true),
         placeholderData: keepPreviousData,
     });
 
-    const items = listData?.items || [];
+    const lastAvailableListPage = Math.max(1, listData?.totalPages || 1);
+    if (listData && listPage > lastAvailableListPage) {
+        setListPage(lastAvailableListPage);
+    }
 
-    useEffect(() => {
-        if (listData?.totalPages && listPage > listData.totalPages) {
-            setListPage(listData.totalPages);
-        }
-    }, [listData?.totalPages, listPage]);
+    const items = listData?.items || [];
 
     // Query: Chi tiết ticket
     const { data: detail, isLoading: isLoadingDetail, isFetching: isFetchingDetail } = useQuery({
@@ -172,11 +164,13 @@ export const Inbox = () => {
         setMessagePage(prev => prev + 1);
     };
 
-    useEffect(() => {
-        if (!detail) return;
+    const detailSignature = detail
+        ? `${selected}:${messagePage}:${detail.messages.items.map((message) => message._id).join(',')}`
+        : '';
+    if (detail && detailSignature !== mergedDetailSignature) {
+        setMergedDetailSignature(detailSignature);
         if (messagePage === 1) {
             setAllMessages(detail.messages.items);
-            shouldScrollToBottomRef.current = true;
         } else {
             setAllMessages(prev => {
                 const existingIds = new Set(prev.map(m => m._id));
@@ -184,7 +178,7 @@ export const Inbox = () => {
                 return [...newItems, ...prev];
             });
         }
-    }, [detail, messagePage]);
+    }
 
     useEffect(() => {
         if (selected && detail) {
@@ -195,7 +189,7 @@ export const Inbox = () => {
     }, [selected, detail]);
 
     useEffect(() => {
-        if (!detail) return;
+        if (!selected) return;
         const container = chatContainerRef.current;
         if (!container) return;
 
@@ -320,12 +314,16 @@ export const Inbox = () => {
                         <Input
                             value={searchDraft}
                             onChange={(e) => setSearchDraft(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && setSearch(searchDraft)}
+                            onKeyDown={(e) => {
+                                if (e.key !== 'Enter') return;
+                                setSearch(searchDraft);
+                                setListPage(1);
+                            }}
                             placeholder="Tìm kiếm theo tiêu đề..."
                             className="rounded-xl border-border/70 bg-card focus-visible:ring-1"
                         />
                         <div className="flex gap-2">
-                            <Select value={type} onValueChange={(e) => setType(e)}>
+                            <Select value={type} onValueChange={(e) => { setType(e); setListPage(1); }}>
                               <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
@@ -339,7 +337,7 @@ export const Inbox = () => {
                               </SelectContent>
                             </Select>
 
-                            <Select value={status} onValueChange={(e) => setStatus(e)}>
+                            <Select value={status} onValueChange={(e) => { setStatus(e); setListPage(1); }}>
                               <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
