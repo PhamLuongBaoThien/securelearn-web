@@ -244,7 +244,7 @@ export const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11 w-full justify-between rounded-xl border-zinc-200 bg-background px-3 text-left text-sm font-normal dark:border-zinc-800"
+                  className="h-11 w-full justify-between rounded-xl border-zinc-200 bg-background px-3 text-left text-sm font-normal transition-colors hover:translate-y-0 active:scale-100 dark:border-zinc-800"
                 >
                   <span className="truncate text-zinc-900 dark:text-zinc-100">
                     {selectedParentLabel}

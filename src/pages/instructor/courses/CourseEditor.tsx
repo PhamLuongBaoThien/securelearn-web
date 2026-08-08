@@ -14,7 +14,6 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
-  CircleHelp,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -54,7 +53,7 @@ import {
 } from "@/services/courseApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { ThumbnailUploader } from "@/components/ui/ThumbnailUploader";
@@ -235,7 +234,7 @@ const CategoryDropdown: React.FC<CategoryDropdownProps> = ({
         <Button
           type="button"
           variant="outline"
-          className="h-11 w-full justify-between rounded-xl border-zinc-200 bg-background px-3 text-left text-sm font-normal dark:border-zinc-800"
+          className="h-11 w-full justify-between rounded-xl border-zinc-200 bg-background px-3 text-left text-sm font-normal transition-colors hover:translate-y-0 active:scale-100 dark:border-zinc-800"
           disabled={disabled || isLoading}
         >
           <span className={selectedLabel ? "truncate text-zinc-900 dark:text-zinc-100" : "truncate text-zinc-400"}>
@@ -663,7 +662,7 @@ export const CourseEditor: React.FC = () => {
       }
     });
   };
-  
+
   const handleSectionTitleChange = (sectionIndex: number, value: string) => {
     setSections((prev) => {
       const next = [...prev];
@@ -1052,7 +1051,7 @@ export const CourseEditor: React.FC = () => {
     // 3. So sánh cấu trúc Giáo trình (Sections & Lessons)
     const draftSecs = course.sections || [];
     const pubSecs = publishedCourse.sections || [];
-    
+
     // Khác số lượng chương -> có thay đổi
     if (draftSecs.length !== pubSecs.length) return true;
 
@@ -1064,7 +1063,7 @@ export const CourseEditor: React.FC = () => {
 
       const dLessons = ds.lessons || [];
       const pLessons = ps.lessons || [];
-      
+
       // Khác số lượng bài học -> có thay đổi
       if (dLessons.length !== pLessons.length) return true;
 
@@ -1267,14 +1266,19 @@ export const CourseEditor: React.FC = () => {
                   <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Giá (VND)</label>
                   <Input type="number" value={isViewingPublished ? displayCourse.price : price} onChange={(e) => { setPrice(Number(e.target.value)); setHasUnsavedChanges(true); }} className="h-11 rounded-xl" min={0} step={1000} disabled={effectiveReadOnly} />
                 </div>
-                  
+
                   <div>
                     <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 block">Trình độ</label>
-                    <Select value={isViewingPublished ? displayCourse.level : level} onChange={(e) => { setLevel(e.target.value); setHasUnsavedChanges(true); }}
-                      className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm" disabled={effectiveReadOnly}>
-                      <option value="BEGINNER">Cơ bản</option>
-                      <option value="INTERMEDIATE">Trung cấp</option>
-                      <option value="ADVANCED">Nâng cao</option>
+                    <Select value={isViewingPublished ? displayCourse.level : level} onValueChange={(e) => { setLevel(e); setHasUnsavedChanges(true); }}
+                       disabled={effectiveReadOnly}>
+                      <SelectTrigger className="w-full h-11 px-3 rounded-xl bg-background border border-zinc-200 dark:border-zinc-800 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="BEGINNER">Cơ bản</SelectItem>
+                                              <SelectItem value="INTERMEDIATE">Trung cấp</SelectItem>
+                                              <SelectItem value="ADVANCED">Nâng cao</SelectItem>
+                      </SelectContent>
                     </Select>
                   </div>
                 </div>
@@ -1421,48 +1425,22 @@ export const CourseEditor: React.FC = () => {
                 </p>
               </div>
               <div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild disabled={effectiveReadOnly}>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-11 w-full justify-between rounded-xl border-zinc-200 bg-background px-3 text-left text-sm font-normal dark:border-zinc-800"
-                      disabled={effectiveReadOnly}
-                    >
-                      <span>{selectedProgressionMode.label}</span>
-                      <ChevronDown className="h-4 w-4 text-zinc-400" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-[min(92vw,30rem)] rounded-xl p-1">
+                <Select
+                  value={displayProgressionMode}
+                  onValueChange={(event) => void handleProgressionModeChange(event as CourseProgressionMode)}
+                  disabled={effectiveReadOnly}
+>
+                  <SelectTrigger className="h-11 rounded-xl border-zinc-200 bg-background text-sm dark:border-zinc-800">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
                     {PROGRESSION_MODE_OPTIONS.map((option) => (
-                      <DropdownMenuItem
-                        key={option.value}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2"
-                        onClick={() => void handleProgressionModeChange(option.value)}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{option.label}</p>
-                        </div>
-                        <TooltipProvider delayDuration={100}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-500 transition-colors hover:border-zinc-400 hover:text-zinc-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:text-zinc-200"
-                                onClick={(event) => event.preventDefault()}
-                              >
-                                <CircleHelp className="h-3.5 w-3.5" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="max-w-64 text-pretty leading-5">
-                              {option.description}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                                        <SelectItem key={option.value} value={option.value}>
+                                          {option.label}
+                                        </SelectItem>
+                                      ))}
+                  </SelectContent>
+                </Select>
                 <p className="mt-1.5 text-xs text-zinc-500">
                   {selectedProgressionMode.description}
                 </p>
@@ -1672,9 +1650,14 @@ const LessonRow: React.FC<LessonRowProps> = ({ courseId, lesson, canMoveUp, canM
           <TooltipContent>Di chuyển xuống</TooltipContent>
         </Tooltip>
         <div className="w-[120px] shrink-0" onClick={(e) => e.stopPropagation()}>
-          <Select value={lesson.type} onChange={(e) => setPendingType(e.target.value)} className="h-8 w-full px-2 text-xs rounded-lg bg-background border border-zinc-200 dark:border-zinc-800" disabled={isReadOnly}>
-            <option value="VIDEO">Video</option>
-            <option value="QUIZ">Quiz</option>
+          <Select value={lesson.type} onValueChange={(e) => setPendingType(e)} disabled={isReadOnly}>
+            <SelectTrigger className="h-8 w-full px-2 text-xs rounded-lg bg-background border border-zinc-200 dark:border-zinc-800">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="VIDEO">Video</SelectItem>
+                          <SelectItem value="QUIZ">Quiz</SelectItem>
+            </SelectContent>
           </Select>
         </div>
         <Tooltip>

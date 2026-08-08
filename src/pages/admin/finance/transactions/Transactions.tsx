@@ -1,16 +1,10 @@
-﻿import React, { useMemo, useState } from 'react';
-import { Search, Filter, CreditCard, Download, RefreshCw, CheckCircle, XCircle, Clock, Percent, Save, Undo2, ChevronDown, ChevronUp, CircleDollarSign, Scale, Users, Loader2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Search, Filter, CreditCard, Download, RefreshCw, CheckCircle, XCircle, Clock, Percent, Save, Undo2, ChevronDown, ChevronUp, CircleDollarSign, Scale, Users, Loader2, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import type { ITransaction, PaymentProvider, TransactionStatus, IRevenueSplitConfig, IRevenueStats } from '@/types/admin.types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Pagination,
   PaginationContent,
@@ -91,7 +85,7 @@ function getVisiblePages(currentPage: number, totalPages: number): Array<number 
   return items;
 }
 
-function FilterDropdown({
+function FilterSelect({
   label,
   value,
   options,
@@ -102,30 +96,22 @@ function FilterDropdown({
   options: Array<{ value: string; label: string }>;
   onChange: (value: string) => void;
 }) {
-  const selected = options.find((option) => option.value === value)?.label ?? label;
-
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 min-w-[160px] justify-between rounded-xl border-zinc-200 bg-zinc-50 px-3 text-sm font-medium text-zinc-700 shadow-none hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        >
-          <span className="truncate">{selected}</span>
-          <ChevronDown className="h-4 w-4 text-zinc-400" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
-          {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value || 'all'} value={option.value} className="cursor-pointer">
-              {option.label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Select
+      value={value}
+      onValueChange={(event) => onChange(event)}
+>
+      <SelectTrigger aria-label={label} className="rounded-lg border-zinc-200 bg-zinc-50 font-medium text-zinc-700 shadow-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+                <SelectItem key={option.value || 'all'} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -287,6 +273,14 @@ export const Transactions: React.FC = () => {
   const [draftConfig, setDraftConfig] = useState<IRevenueSplitConfig | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [expandedSettlement, setExpandedSettlement] = useState<string | null>(null);
+
+  const hasActiveFilters = Boolean(urlSearch || providerFilter || statusFilter || sortVal !== 'newest');
+
+  const clearFilters = () => {
+    const params = new URLSearchParams(searchParams);
+    ['q', 'provider', 'status', 'sort', 'page'].forEach((key) => params.delete(key));
+    setSearchParams(params, { replace: true });
+  };
 
   const splitConfigQuery = useAdminRevenueSplitConfig(productType);
 
@@ -473,8 +467,10 @@ export const Transactions: React.FC = () => {
         </section>
       )}
 
-      <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm flex flex-wrap gap-3">
-        <div className="flex items-center gap-2 flex-1 min-w-48 px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl">
+      <div className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+        {/* Search */}
+        <div className="flex w-full items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950/60">
           <Search className="w-4 h-4 text-zinc-400 shrink-0" />
           <Input
             className="bg-transparent text-sm flex-1 border-0 shadow-none px-0 py-0 outline-none text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus-visible:ring-0"
@@ -488,10 +484,25 @@ export const Transactions: React.FC = () => {
               setSearchParams(params, { replace: true });
             }}
           />
+          </div>
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={clearFilters}
+              className="h-10 shrink-0 gap-1.5 rounded-lg border-red-200/50 px-3 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50 hover:text-red-700 dark:border-red-900/50 dark:hover:bg-red-950/20"
+            >
+              <X className="h-3.5 w-3.5" />
+              {'X\u00f3a b\u1ed9 l\u1ecdc'}
+            </Button>
+          )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Filter className="w-4 h-4 text-zinc-400" />
-          <FilterDropdown
+
+        {/* Filters */}
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+          <Filter className="hidden h-4 w-4 shrink-0 text-zinc-400 sm:block" />
+          <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <FilterSelect
             label="Tất cả cổng"
             value={providerFilter}
             options={providerFilters}
@@ -503,7 +514,7 @@ export const Transactions: React.FC = () => {
               setSearchParams(params, { replace: true });
             }}
           />
-          <FilterDropdown
+          <FilterSelect
             label="Tất cả trạng thái"
             value={statusFilter}
             options={statusFilters}
@@ -515,7 +526,7 @@ export const Transactions: React.FC = () => {
               setSearchParams(params, { replace: true });
             }}
           />
-          <FilterDropdown
+          <FilterSelect
             label="Sắp xếp"
             value={sortVal}
             options={[
@@ -532,6 +543,7 @@ export const Transactions: React.FC = () => {
               setSearchParams(params, { replace: true });
             }}
           />
+          </div>
         </div>
       </div>
 

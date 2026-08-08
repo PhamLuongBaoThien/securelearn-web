@@ -151,7 +151,7 @@ function BannerFormDialog({
 function SortableRow({ id, disabled, children }: { id: string; disabled: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
   return <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes} {...listeners}
-    className={`flex flex-col gap-3 p-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 sm:flex-row sm:items-center ${isDragging ? 'relative z-10 opacity-60 shadow-lg' : ''}`}>
+    className={`flex min-w-0 flex-col gap-3 p-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 sm:flex-row sm:items-center ${isDragging ? 'relative z-10 opacity-60 shadow-lg' : ''}`}>
     {children}
   </div>;
 }
@@ -196,18 +196,18 @@ export const BannerManager: React.FC = () => {
     <p className="my-2 text-sm text-zinc-500">{query.error.message}</p><Button variant="outline" onClick={() => void query.refetch()}><RefreshCw className="mr-2 h-4 w-4" />Thử lại</Button>
   </div>;
 
-  return <div className="w-full max-w-full space-y-6 overflow-x-clip">
+  return <div className="min-w-0 w-full space-y-6">
     {dialogOpen && <BannerFormDialog key={editItem?._id || 'new'} open={dialogOpen} onOpenChange={setDialogOpen} initial={editItem} saving={save.isPending}
       onSave={async (payload) => { try { await save.mutateAsync({ id: editItem?._id, payload }); toast.success(editItem ? 'Đã cập nhật banner.' : 'Đã thêm banner mới.'); setDialogOpen(false); } catch (error) { showError(error); } }} />}
     <ConfirmDialog open={deleteId !== null} onOpenChange={(value) => !value && setDeleteId(null)}
       title="Xóa Banner?" description="Banner sẽ bị xóa vĩnh viễn và không thể khôi phục." confirmText={remove.isPending ? 'Đang xóa...' : 'Xóa Banner'} isDestructive
       onConfirm={async () => { if (!deleteId) return; try { await remove.mutateAsync(deleteId); toast.success('Đã xóa banner.'); setDeleteId(null); } catch (error) { showError(error); } }} />
-    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-      <div><h1 className="mb-1 text-3xl font-bold text-zinc-900 dark:text-white">Quản lý banner trang chủ</h1>
+    <div className="flex min-w-0 flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="min-w-0"><h1 className="mb-1 break-words text-3xl font-bold text-zinc-900 dark:text-white">Quản lý banner trang chủ</h1>
         <p className="text-zinc-500 dark:text-zinc-400">Cập nhật hình ảnh và thông điệp quảng bá hiển thị tại trang chủ.</p></div>
-      <Button onClick={() => { setEditItem(undefined); setDialogOpen(true); }}><Plus className="mr-2 h-4 w-4" />Thêm Banner</Button>
+      <Button className="shrink-0 self-start sm:self-auto" onClick={() => { setEditItem(undefined); setDialogOpen(true); }}><Plus className="mr-2 h-4 w-4" />Thêm Banner</Button>
     </div>
-    <div className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+    <div className="min-w-0 overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
       <div className="flex flex-col gap-1 border-b p-4 text-sm text-zinc-500 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
         <span>{banners.length} banner · {banners.filter((item) => item.isActive).length} đang hiển thị</span>
         <span className="text-xs">Kéo thả hoặc dùng nút lên/xuống để sắp xếp</span>
@@ -216,7 +216,7 @@ export const BannerManager: React.FC = () => {
         <h2 className="font-semibold">Chưa có banner nào</h2><p className="mt-1 text-sm text-zinc-500">Trang chủ sẽ sử dụng hero mặc định của SecureLearn.</p></div>
       : <DndContext sensors={sensors} onDragEnd={(event: DragEndEvent) => { if (event.over && event.active.id !== event.over.id) void move(String(event.active.id), String(event.over.id)); }}>
         <SortableContext items={banners.map((item) => item._id)} strategy={verticalListSortingStrategy}>
-        <div className="divide-y divide-zinc-100 dark:divide-zinc-800">{banners.map((banner, index) => (
+        <div className="min-w-0 divide-y divide-zinc-100 dark:divide-zinc-800">{banners.map((banner, index) => (
           <SortableRow key={banner._id} id={banner._id} disabled={reorder.isPending}>
             <div className="flex items-center gap-2 shrink-0">
               <GripVertical className="hidden h-5 w-5 cursor-grab text-zinc-300 sm:block" aria-hidden />
@@ -234,7 +234,7 @@ export const BannerManager: React.FC = () => {
               <p className="mt-1 truncate text-xs text-zinc-500">{banner.subtitle || 'Không có phụ đề'}</p>
               {banner.linkUrl && <p className="mt-1 truncate text-xs text-primary">{banner.linkUrl}</p>}
             </div>
-            <div className="flex items-center justify-between sm:justify-end gap-1 shrink-0 pt-2 border-t border-zinc-100 dark:border-zinc-800/60 sm:border-0 sm:pt-0">
+            <div className="flex max-w-full shrink-0 flex-wrap items-center justify-between gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800/60 sm:justify-end sm:border-0 sm:pt-0">
               <button aria-label="Đưa banner lên" disabled={index === 0 || reorder.isPending} onClick={() => step(banner._id, -1)} className="rounded-lg p-2 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-700"><ArrowUp className="h-4 w-4" /></button>
               <button aria-label="Đưa banner xuống" disabled={index === banners.length - 1 || reorder.isPending} onClick={() => step(banner._id, 1)} className="rounded-lg p-2 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-700"><ArrowDown className="h-4 w-4" /></button>
               <button aria-label={banner.isActive ? 'Ẩn banner' : 'Hiển thị banner'} disabled={toggle.isPending} onClick={async () => { try { await toggle.mutateAsync({ id: banner._id, isActive: !banner.isActive }); toast.success('Đã cập nhật trạng thái banner.'); } catch (error) { showError(error); } }} className="rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700">{banner.isActive ? <ToggleRight className="h-5 w-5 text-primary" /> : <ToggleLeft className="h-5 w-5 text-zinc-400" />}</button>

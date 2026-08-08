@@ -6,7 +6,6 @@ import {
   BookOpen,
   CalendarClock,
   CheckCircle2,
-  ChevronDown,
   Clock,
   Heart,
   Library,
@@ -16,13 +15,7 @@ import {
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '../../../components/ui/dropdown-menu';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../components/ui/tooltip';
 import { StreakGoalWidget } from '../../../components/student/StreakGoalWidget';
 import {
@@ -230,14 +223,18 @@ function ActivitySection({
         <div className="w-full max-w-xs">
           <Select
             value={selectedMonth}
-            onChange={(event) => onMonthChange(event.target.value)}
-            className="h-10 rounded-xl border-zinc-200 bg-white text-sm font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
-          >
-            {monthOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            onValueChange={(event) => onMonthChange(event)}
+>
+            <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-sm font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {monthOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+            </SelectContent>
           </Select>
         </div>
       </div>
@@ -392,38 +389,25 @@ function sortCourses(courses: EnrolledCourseItem[], key: SortKey): EnrolledCours
   });
 }
 
-function SortDropdown({ value, onChange }: { value: SortKey; onChange: (k: SortKey) => void }) {
-  const current = SORT_OPTIONS.find((o) => o.key === value)!;
-
+function SortSelect({ value, onChange }: { value: SortKey; onChange: (k: SortKey) => void }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 focus-visible:ring-0"
-        >
-          <span>{current.label}</span>
-          <ChevronDown className="h-4 w-4 text-zinc-500" />
-        </Button>
-      </DropdownMenuTrigger>
-      
-      <DropdownMenuContent align="end" className="w-48">
-        {SORT_OPTIONS.map((opt) => (
-          <DropdownMenuItem
-            key={opt.key}
-            onClick={() => onChange(opt.key)}
-            className={`w-full justify-start cursor-pointer text-sm py-2 px-3 transition-colors ${
-              opt.key === value
-                ? 'bg-zinc-100 font-semibold text-zinc-950 dark:bg-zinc-900 dark:text-white'
-                : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            {opt.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="w-48">
+      <Select
+        value={value}
+        onValueChange={(event) => onChange(event as SortKey)}
+>
+        <SelectTrigger aria-label={'S\u1eafp x\u1ebfp kh\u00f3a h\u1ecdc'} className="rounded-lg border-zinc-200 bg-white font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {SORT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.key} value={opt.key}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
@@ -919,7 +903,7 @@ export function StudentDashboard() {
               >
                 {!isLoading && !isError && enrolledCourses.length > 0 && (
                   <div className="mb-6 flex justify-end">
-                    <SortDropdown value={sortKey} onChange={setSortKey} />
+                    <SortSelect value={sortKey} onChange={setSortKey} />
                   </div>
                 )}
                 {isError && (
@@ -1029,20 +1013,24 @@ export function StudentDashboard() {
                   <div className="w-full sm:w-[190px]">
                     <Select
                       value={paymentStatusFilter}
-                      onChange={(event) => {
+                      onValueChange={(event) => {
                         const params = new URLSearchParams(searchParams);
-                        if (event.target.value) params.set('paymentStatus', event.target.value);
+                        if (event) params.set('paymentStatus', event);
                         else params.delete('paymentStatus');
                         params.delete('paymentPage');
                         setSearchParams(params, { replace: true });
                       }}
-                      className="h-10 rounded-lg border-zinc-200 bg-white text-sm font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
-                    >
-                      {PAYMENT_STATUS_FILTERS.map((option) => (
-                        <option key={option.value || 'all'} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
+>
+                      <SelectTrigger className="h-10 rounded-lg border-zinc-200 bg-white text-sm font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_STATUS_FILTERS.map((option) => (
+                                                <SelectItem key={option.value || 'all'} value={option.value}>
+                                                  {option.label}
+                                                </SelectItem>
+                                              ))}
+                      </SelectContent>
                     </Select>
                   </div>
                 </div>

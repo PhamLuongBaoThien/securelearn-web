@@ -3,7 +3,7 @@ import { Eye, EyeOff, Heart, Loader2, MessageSquare, Pencil, Pin, Send, Trash2 }
 import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import {
@@ -136,9 +136,14 @@ export function DiscussionPanel({
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">Danh sách thảo luận</p>
           <div className="w-44">
-            <Select aria-label="Sắp xếp thảo luận" value={sort} onChange={event => setSort(event.target.value as 'latest' | 'popular')}>
-              <option value="latest">Mới nhất</option>
-              <option value="popular">Nổi bật nhất</option>
+            <Select value={sort} onValueChange={event => setSort(event as 'latest' | 'popular')}>
+              <SelectTrigger aria-label="Sắp xếp thảo luận">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="latest">Mới nhất</SelectItem>
+                              <SelectItem value="popular">Nổi bật nhất</SelectItem>
+              </SelectContent>
             </Select>
           </div>
         </div>

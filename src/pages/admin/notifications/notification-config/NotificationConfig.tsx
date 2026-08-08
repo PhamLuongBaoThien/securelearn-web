@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const inputCls = 'w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all';
 
@@ -266,11 +266,15 @@ export const NotificationConfig: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Sự kiện</label>
                   <Select
-                    className={inputCls}
                     value={editItem.event}
-                    onChange={(e) => setEditItem((p) => p ? { ...p, event: e.target.value as TemplateEvent } : p)}
-                  >
-                    {Object.entries(eventLabel).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    onValueChange={(e) => setEditItem((p) => p ? { ...p, event: e as TemplateEvent } : p)}
+>
+                    <SelectTrigger className={inputCls}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(eventLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                    </SelectContent>
                   </Select>
                 </div>
               </div>

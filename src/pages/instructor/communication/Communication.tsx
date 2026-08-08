@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { useGetMyCourses } from '@/hooks/useInstructorCourses';
 import { createAnnouncement, listInstructorAnnouncements, setAnnouncementPinned, setAnnouncementVisibility, updateAnnouncement, type CourseAnnouncement } from '@/services/announcementApi';
@@ -84,9 +84,14 @@ function AnnouncementHub({ courses }: { courses: Array<{ _id?: string; title: st
           <h3 className="font-bold">{editing ? 'Sửa thông báo' : 'Đăng thông báo mới'}</h3>
           <p className="text-sm text-muted-foreground">Thông báo được gửi ngay tới học viên của khóa học.</p>
         </div>
-        <Select value={formCourseId} disabled={Boolean(editing)} onChange={e => setFormCourseId(e.target.value)}>
-          <option value="">Chọn khóa học</option>
-          {courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
+        <Select value={formCourseId} disabled={Boolean(editing)} onValueChange={e => setFormCourseId(e)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Chọn khóa học</SelectItem>
+                      {courses.map(c => <SelectItem key={c._id} value={c._id!}>{c.title}</SelectItem>)}
+          </SelectContent>
         </Select>
 
         <Input value={title} onChange={e => setTitle(e.target.value)} maxLength={180} placeholder="Tiêu đề thông báo" />
@@ -119,15 +124,25 @@ function AnnouncementHub({ courses }: { courses: Array<{ _id?: string; title: st
                 className="h-11 rounded-xl pl-10"
               />
             </div>
-            <Select value={filterCourseId} onChange={e => setFilterCourseId(e.target.value)} className="h-11 rounded-xl">
-              <option value="">Tất cả khóa học</option>
-              {courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
+            <Select value={filterCourseId} onValueChange={e => setFilterCourseId(e)}>
+              <SelectTrigger className="h-11 rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Tất cả khóa học</SelectItem>
+                              {courses.map(c => <SelectItem key={c._id} value={c._id!}>{c.title}</SelectItem>)}
+              </SelectContent>
             </Select>
             <div className="flex items-center gap-2">
-              <Select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="h-11 flex-1 rounded-xl">
-                <option value="">Mọi trạng thái</option>
-                <option value="PUBLISHED">Đang hiển thị</option>
-                <option value="HIDDEN">Đã ẩn</option>
+              <Select value={filterStatus} onValueChange={e => setFilterStatus(e)}>
+                <SelectTrigger className="h-11 flex-1 rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Mọi trạng thái</SelectItem>
+                                  <SelectItem value="PUBLISHED">Đang hiển thị</SelectItem>
+                                  <SelectItem value="HIDDEN">Đã ẩn</SelectItem>
+                </SelectContent>
               </Select>
               <Button type="button" variant="ghost" className="h-11 shrink-0 gap-2" onClick={resetFilters} disabled={!hasActiveFilter}>
                 <FilterX className="h-4 w-4" />

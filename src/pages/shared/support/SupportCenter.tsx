@@ -8,7 +8,7 @@ import { INBOX_REALTIME_EVENT, emitInboxTyping, isInboxConnected, retainInboxSoc
 import type { Ticket, TicketDetail, TicketType, TicketMessage } from '@/types/inbox.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TicketPagination } from '@/components/inbox/TicketPagination';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAppSelector } from '@/app/hooks';
@@ -622,11 +622,15 @@ export function SupportCenter() {
               <label className="text-xs font-semibold text-muted-foreground block pl-0.5">Loại yêu cầu</label>
               <Select
                 value={type}
-                onChange={e => setType(e.target.value as TicketType)}
-                className="bg-white dark:bg-zinc-950 border border-border/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 h-10 cursor-pointer"
-              >
-                <option value="SUPPORT">Hỗ trợ kỹ thuật / tài khoản</option>
-                <option value="FEEDBACK">Góp ý giao diện / chức năng</option>
+                onValueChange={e => setType(e as TicketType)}
+>
+                <SelectTrigger className="bg-white dark:bg-zinc-950 border border-border/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 h-10 cursor-pointer">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SUPPORT">Hỗ trợ kỹ thuật / tài khoản</SelectItem>
+                                  <SelectItem value="FEEDBACK">Góp ý giao diện / chức năng</SelectItem>
+                </SelectContent>
               </Select>
             </div>
 

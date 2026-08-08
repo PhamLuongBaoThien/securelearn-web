@@ -35,6 +35,7 @@ import type {
 } from '@/types/admin.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -47,8 +48,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
@@ -147,7 +146,7 @@ function getVisiblePages(currentPage: number, totalPages: number): Array<number 
   return items;
 }
 
-function FilterDropdown({
+function FilterSelect({
   label,
   value,
   options,
@@ -158,30 +157,22 @@ function FilterDropdown({
   options: Array<{ value: string; label: string }>;
   onChange: (value: string) => void;
 }) {
-  const selected = options.find((option) => option.value === value)?.label ?? label;
-
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 w-full justify-between rounded-lg border-zinc-200 bg-zinc-50 px-3 text-sm font-medium text-zinc-700 shadow-none hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        >
-          <span className="truncate">{selected}</span>
-          <ChevronDown className="h-4 w-4 text-zinc-400 shrink-0" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56 max-h-60 overflow-y-auto">
-        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
-          {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value || 'all'} value={option.value} className="cursor-pointer">
-              {option.label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Select
+      value={value}
+      onValueChange={(event) => onChange(event)}
+>
+      <SelectTrigger aria-label={label} className="rounded-lg border-zinc-200 bg-zinc-50 font-medium text-zinc-700 shadow-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+                <SelectItem key={option.value || 'all'} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -253,7 +244,7 @@ function CategoryFilterDropdown({
         <Button
           type="button"
           variant="outline"
-          className="h-10 w-full justify-between rounded-lg border-zinc-200 bg-zinc-50 px-3 text-sm font-medium text-zinc-700 shadow-none hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          className="h-10 w-full justify-between rounded-lg border-zinc-200 bg-zinc-50 px-3 text-sm font-medium text-zinc-700 shadow-none transition-colors hover:translate-y-0 hover:bg-zinc-100 hover:shadow-none active:scale-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
         >
           <span className="truncate">{selectedLabel || label}</span>
           <ChevronDown className="h-4 w-4 text-zinc-400 shrink-0" />
@@ -365,7 +356,7 @@ const CourseDetailDialog: React.FC<{
           <DialogTitle className="pr-8 text-xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Chi tiết quản trị khóa học</DialogTitle>
           <DialogDescription>Tổng quan thông tin vận hành và hệ thống của khóa học.</DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid gap-6 md:grid-cols-[260px_1fr] mt-2">
           {/* Cột trái: Thumbnail & Định danh */}
           <div className="space-y-4">
@@ -378,7 +369,7 @@ const CourseDetailDialog: React.FC<{
                 </div>
               )}
             </div>
-            
+
             <div className="space-y-2">
               <h2 className="text-base font-bold text-zinc-900 dark:text-white leading-snug">{course.title}</h2>
               <div className="text-xs space-y-1.5 text-zinc-500 dark:text-zinc-400">
@@ -903,25 +894,25 @@ export const ResourceManager: React.FC = () => {
               categories={categoriesQuery.data || []}
               onChange={updateFilter('category')}
             />
-            <FilterDropdown
+            <FilterSelect
               label="Trạng thái gói thuê bao"
               value={subscriptionStatus}
               options={subscriptionOptions}
               onChange={updateFilter('status')}
             />
-            <FilterDropdown
+            <FilterSelect
               label="Tất cả theo dõi"
               value={watchFilter}
               options={watchOptions}
               onChange={updateFilter('watch')}
             />
-            <FilterDropdown
+            <FilterSelect
               label="Tất cả trình độ"
               value={level}
               options={levelOptions}
               onChange={updateFilter('level')}
             />
-            <FilterDropdown
+            <FilterSelect
               label="Sắp xếp khóa học"
               value={sort}
               options={sortOptions}

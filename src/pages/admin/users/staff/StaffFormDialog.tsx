@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { staffInputClassName } from './staff.utils';
 import type { StaffFormValues } from './staff.utils';
 
@@ -162,15 +162,19 @@ export const StaffFormDialog: React.FC<StaffFormDialogProps> = ({
           </div>
           <Field label="Vai trò Admin *">
             <Select
-              className={`${staffInputClassName} cursor-pointer`}
               value={form.adminRole}
-              onChange={(event) => setField('adminRole', event.target.value)}
-            >
-              {availableRoles.map((role) => (
-                <option key={role.roleKey} value={role.roleKey}>
-                  {role.label} {role.permissions.length > 0 ? `— ${role.permissions.length} quyền` : '— Chưa có quyền'}
-                </option>
-              ))}
+              onValueChange={(event) => setField('adminRole', event)}
+>
+              <SelectTrigger className={`${staffInputClassName} cursor-pointer`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableRoles.map((role) => (
+                                <SelectItem key={role.roleKey} value={role.roleKey}>
+                                  {role.label} {role.permissions.length > 0 ? `— ${role.permissions.length} quyền` : '— Chưa có quyền'}
+                                </SelectItem>
+                              ))}
+              </SelectContent>
             </Select>
           </Field>
           {!isEdit && (

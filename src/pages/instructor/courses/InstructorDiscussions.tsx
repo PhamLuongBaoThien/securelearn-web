@@ -5,7 +5,7 @@ import { useCourseLearning } from '@/hooks/useCourseLearning';
 import { Eye, EyeOff, FilterX, Loader2, MessageSquare, Pin, Search, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { toast } from 'sonner';
@@ -193,20 +193,35 @@ export function DiscussionManager({
               />
             </div>
             {isSingleCourse ? (
-              <Select value={lessonId} onChange={event => setLessonId(event.target.value)} className="h-11 rounded-xl">
-                <option value="">Tất cả bài học</option>
-                {lessons.map(lesson => <option key={lesson._id} value={lesson._id}>{lesson.title}</option>)}
+              <Select value={lessonId} onValueChange={event => setLessonId(event)}>
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tất cả bài học</SelectItem>
+                                  {lessons.map(lesson => <SelectItem key={lesson._id} value={lesson._id!}>{lesson.title}</SelectItem>)}
+                </SelectContent>
               </Select>
             ) : (
-              <Select value={courseId} onChange={event => setCourseId(event.target.value)} className="h-11 rounded-xl">
-                <option value="">Tất cả khóa học</option>
-                {courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
+              <Select value={courseId} onValueChange={event => setCourseId(event)}>
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tất cả khóa học</SelectItem>
+                                  {courses.map(c => <SelectItem key={c._id} value={c._id!}>{c.title}</SelectItem>)}
+                </SelectContent>
               </Select>
             )}
-            <Select value={hidden} onChange={event => setHidden(event.target.value)} className="h-11 rounded-xl">
-              <option value="">Mọi trạng thái</option>
-              <option value="false">Đang hiển thị</option>
-              <option value="true">Đã ẩn</option>
+            <Select value={hidden} onValueChange={event => setHidden(event)}>
+              <SelectTrigger className="h-11 rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Mọi trạng thái</SelectItem>
+                              <SelectItem value="false">Đang hiển thị</SelectItem>
+                              <SelectItem value="true">Đã ẩn</SelectItem>
+              </SelectContent>
             </Select>
             <Button type="button" variant="ghost" className="h-11 gap-2" onClick={resetFilters} disabled={!hasActiveFilter}>
               <FilterX className="h-4 w-4" />

@@ -41,14 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePublicCourseCategories } from "@/hooks/usePublicCourseCategories";
 import { useCreateAdminCategory } from "@/hooks/useAdminCategories";
@@ -71,7 +64,7 @@ import {
 
 const cardClass = "rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900";
 
-function FilterDropdown({
+function FilterSelect({
   label,
   value,
   options,
@@ -82,30 +75,22 @@ function FilterDropdown({
   options: Array<{ value: string; label: string }>;
   onChange: (value: string) => void;
 }) {
-  const selected = options.find((option) => option.value === value)?.label ?? label;
-
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-10 w-full justify-between rounded-lg border-zinc-200 bg-zinc-50 px-3 text-sm font-medium text-zinc-700 shadow-none hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        >
-          <span className="truncate">{selected}</span>
-          <ChevronDown className="h-4 w-4 text-zinc-400 shrink-0" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56 max-h-60 overflow-y-auto">
-        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
-          {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value || "all"} value={option.value} className="cursor-pointer">
-              {option.label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Select
+      value={value}
+      onValueChange={(event) => onChange(event)}
+>
+      <SelectTrigger aria-label={label} className="rounded-lg border-zinc-200 bg-zinc-50 font-medium text-zinc-700 shadow-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+                <SelectItem key={option.value || "all"} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -481,22 +466,25 @@ const ApproveDialog: React.FC<ApproveDialogProps> = ({
               </label>
               <Select
                 value={finalCategoryId}
-                onChange={(event) => {
-                  setFinalCategoryId(event.target.value);
-                  if (event.target.value) setFinalCategoryError("");
-                }}
-                className="h-11 w-full rounded-xl border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-800"
-              >
-                <option value="">
-                  {needsFinalCategory
-                    ? "Chọn danh mục xuất bản"
-                    : "Giữ nguyên danh mục hiện tại"}
-                </option>
-                {selectableOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
+                onValueChange={(event) => {
+                  setFinalCategoryId(event);
+                  if (event) setFinalCategoryError("");
+                }}>
+                <SelectTrigger className="h-11 w-full rounded-xl border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-800">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">
+                                    {needsFinalCategory
+                                      ? "Chọn danh mục xuất bản"
+                                      : "Giữ nguyên danh mục hiện tại"}
+                                  </SelectItem>
+                                  {selectableOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                </SelectContent>
               </Select>
               {finalCategoryError && (
                 <p className="mt-1 text-sm text-red-600">
@@ -518,17 +506,20 @@ const ApproveDialog: React.FC<ApproveDialogProps> = ({
                 />
                 <Select
                   value={newCategoryParentId}
-                  onChange={(event) =>
-                    setNewCategoryParentId(event.target.value)
-                  }
-                  className="h-10 rounded-xl border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-800"
-                >
-                  <option value="">Tạo ở cấp gốc</option>
-                  {selectableOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                  onValueChange={(event) =>
+                    setNewCategoryParentId(event)
+                  }>
+                  <SelectTrigger className="h-10 rounded-xl border border-zinc-200 bg-background px-3 text-sm dark:border-zinc-800">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Tạo ở cấp gốc</SelectItem>
+                                      {selectableOptions.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                          {option.label}
+                                        </SelectItem>
+                                      ))}
+                  </SelectContent>
                 </Select>
               </div>
               <textarea
@@ -1218,13 +1209,13 @@ const SubscriptionCourseReviewPage: React.FC<{
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
           <Filter className="h-4 w-4 text-zinc-400 shrink-0 hidden sm:block" />
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 flex-1">
-            <FilterDropdown
+            <FilterSelect
               label="Tất cả trạng thái"
               value={status}
               options={subscriptionStatusOptions}
               onChange={(val) => setStatus(val as any)}
             />
-            <FilterDropdown
+            <FilterSelect
               label="Sắp xếp khóa học"
               value={sortVal}
               options={sortOptions}
@@ -1695,13 +1686,13 @@ export const CourseReview: React.FC = () => {
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
           <Filter className="h-4 w-4 text-zinc-400 shrink-0 hidden sm:block" />
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 flex-1">
-            <FilterDropdown
+            <FilterSelect
               label="Tất cả trạng thái"
               value={statusFilter}
               options={publishStatusOptions}
               onChange={(val) => setStatusFilter(val)}
             />
-            <FilterDropdown
+            <FilterSelect
               label="Sắp xếp khóa học"
               value={sortVal}
               options={sortOptions}

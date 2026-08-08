@@ -7,7 +7,7 @@ import { Plus, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useGetLessonQuiz, useSaveLessonQuiz } from '@/hooks/useInstructorCourses';
 import { type IQuiz, type IQuizQuestion, type IQuizQuestionOption } from '@/services/courseApi';
 
@@ -138,8 +138,8 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
                 </span>
                 <Select
                   value={question.type}
-                  onChange={(e) => {
-                    const newType = e.target.value as IQuizQuestion['type'];
+                  onValueChange={(e) => {
+                    const newType = e as IQuizQuestion['type'];
                     const firstSelectedIndex = question.correctOptionIndexes[0] ?? 0;
                     const partial: Partial<QuizQuestionDraft> = { type: newType };
                     if (newType === 'TRUE_FALSE') {
@@ -150,11 +150,15 @@ function LessonQuizForm({ courseId, lessonId, initialQuiz }: LessonQuizFormProps
                     }
                     updateQuestion(index, partial);
                   }}
-                  className="h-8 rounded-lg border-zinc-200 bg-white px-2 py-1 text-xs font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:border-zinc-700 dark:bg-zinc-900"
-                >
-                  <option value="SINGLE_CHOICE">Một đáp án</option>
-                  <option value="MULTIPLE_CHOICE">Nhiều đáp án</option>
-                  <option value="TRUE_FALSE">Đúng / Sai</option>
+>
+                  <SelectTrigger className="h-8 rounded-lg border-zinc-200 bg-white px-2 py-1 text-xs font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary/50 dark:border-zinc-700 dark:bg-zinc-900">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SINGLE_CHOICE">Một đáp án</SelectItem>
+                                      <SelectItem value="MULTIPLE_CHOICE">Nhiều đáp án</SelectItem>
+                                      <SelectItem value="TRUE_FALSE">Đúng / Sai</SelectItem>
+                  </SelectContent>
                 </Select>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-zinc-500">Điểm:</span>

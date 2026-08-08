@@ -17,7 +17,7 @@ import { useAdminRoles } from '@/hooks/useAdminRoles';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDebounce } from '@/hooks/useDebounce';
 import { StaffFormDialog } from './StaffFormDialog';
@@ -289,8 +289,8 @@ export const StaffList: React.FC = () => {
             <div className="w-48">
               <Select
                 value={roleVal}
-                onChange={(event) => {
-                  const val = event.target.value;
+                onValueChange={(event) => {
+                  const val = event;
                   const nextParams = new URLSearchParams(searchParams);
                   if (val) {
                     nextParams.set('role', val);
@@ -300,27 +300,37 @@ export const StaffList: React.FC = () => {
                   nextParams.delete('page');
                   setSearchParams(nextParams, { replace: true });
                 }}
-              >
-                <option value="">Tất cả vai trò</option>
-                {rolesData.map((role) => (
-                  <option key={role.roleKey} value={role.roleKey}>
-                    {role.label}
-                  </option>
-                ))}
+>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tất cả vai trò</SelectItem>
+                                  {rolesData.map((role) => (
+                                    <SelectItem key={role.roleKey} value={role.roleKey}>
+                                      {role.label}
+                                    </SelectItem>
+                                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="w-48">
-              <Select aria-label="Sắp xếp" value={sortVal} onChange={(event) => {
+              <Select value={sortVal} onValueChange={(event) => {
                 const nextParams = new URLSearchParams(searchParams);
-                if (event.target.value === 'newest') nextParams.delete('sort');
-                else nextParams.set('sort', event.target.value);
+                if (event === 'newest') nextParams.delete('sort');
+                else nextParams.set('sort', event);
                 nextParams.delete('page');
                 setSearchParams(nextParams, { replace: true });
               }}>
-                <option value="newest">Mới nhất</option>
-                <option value="oldest">Cũ nhất</option>
-                <option value="name_asc">Tên A → Z</option>
-                <option value="name_desc">Tên Z → A</option>
+                <SelectTrigger aria-label="Sắp xếp">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Mới nhất</SelectItem>
+                                  <SelectItem value="oldest">Cũ nhất</SelectItem>
+                                  <SelectItem value="name_asc">Tên A → Z</SelectItem>
+                                  <SelectItem value="name_desc">Tên Z → A</SelectItem>
+                </SelectContent>
               </Select>
             </div>
           </div>

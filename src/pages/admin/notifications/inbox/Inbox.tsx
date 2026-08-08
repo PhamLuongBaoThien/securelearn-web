@@ -10,7 +10,7 @@ import { INBOX_REALTIME_EVENT, emitInboxTyping, emitInboxReconcile, isInboxConne
 import type { TicketStatus, TicketType, TicketActivity, TicketMessage } from '@/types/inbox.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { toast } from 'sonner';
 
@@ -325,42 +325,56 @@ export const Inbox = () => {
                             className="rounded-xl border-border/70 bg-card focus-visible:ring-1"
                         />
                         <div className="flex gap-2">
-                            <Select value={type} onChange={(e) => setType(e.target.value)}>
-                                <option value="">Tất cả phân loại</option>
-                                {(['REPORT', 'SUPPORT', 'FEEDBACK'] as TicketType[]).map((x) => (
-                                    <option key={x} value={x}>
-                                        {label[x]}
-                                    </option>
-                                ))}
+                            <Select value={type} onValueChange={(e) => setType(e)}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Tất cả phân loại</SelectItem>
+                                                                {(['REPORT', 'SUPPORT', 'FEEDBACK'] as TicketType[]).map((x) => (
+                                                                    <SelectItem key={x} value={x}>
+                                                                        {label[x]}
+                                                                    </SelectItem>
+                                                                ))}
+                              </SelectContent>
                             </Select>
 
-                            <Select value={status} onChange={(e) => setStatus(e.target.value)}>
-                                <option value="">Tất cả trạng thái</option>
-                                {(
-                                    ['OPEN', 'IN_PROGRESS', 'WAITING_USER', 'RESOLVED', 'CLOSED'] as TicketStatus[]
-                                ).map((x) => (
-                                    <option key={x} value={x}>
-                                        {label[x]}
-                                    </option>
-                                ))}
+                            <Select value={status} onValueChange={(e) => setStatus(e)}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">Tất cả trạng thái</SelectItem>
+                                                                {(
+                                                                    ['OPEN', 'IN_PROGRESS', 'WAITING_USER', 'RESOLVED', 'CLOSED'] as TicketStatus[]
+                                                                ).map((x) => (
+                                                                    <SelectItem key={x} value={x}>
+                                                                        {label[x]}
+                                                                    </SelectItem>
+                                                                ))}
+                              </SelectContent>
                             </Select>
                         </div>
                         <Select
-                            aria-label="Sắp xếp"
                             value={sortVal}
-                            onChange={(event) => {
+                            onValueChange={(event) => {
                                 const nextParams = new URLSearchParams(params);
-                                if (event.target.value === 'activity_desc') nextParams.delete('sort');
-                                else nextParams.set('sort', event.target.value);
+                                if (event === 'activity_desc') nextParams.delete('sort');
+                                else nextParams.set('sort', event);
                                 nextParams.delete('page');
                                 setListPage(1);
                                 setParams(nextParams, { replace: true });
                             }}
-                        >
-                            <option value="activity_desc">Hoạt động gần nhất</option>
-                            <option value="activity_asc">Hoạt động cũ nhất</option>
-                            <option value="created_desc">Tạo mới nhất</option>
-                            <option value="created_asc">Tạo cũ nhất</option>
+>
+                          <SelectTrigger aria-label="Sắp xếp">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="activity_desc">Hoạt động gần nhất</SelectItem>
+                                                        <SelectItem value="activity_asc">Hoạt động cũ nhất</SelectItem>
+                                                        <SelectItem value="created_desc">Tạo mới nhất</SelectItem>
+                                                        <SelectItem value="created_asc">Tạo cũ nhất</SelectItem>
+                          </SelectContent>
                         </Select>
                     </div>
 
@@ -484,15 +498,20 @@ export const Inbox = () => {
                                         <div className="w-40">
                                             <Select
                                                 value={detail.status}
-                                                onChange={(e) => handleStatusChange(e.target.value as TicketStatus)}
-                                            >
+                                                onValueChange={(e) => handleStatusChange(e as TicketStatus)}
+>
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
                                                 {(
-                                                    ['OPEN', 'IN_PROGRESS', 'WAITING_USER', 'RESOLVED', 'CLOSED'] as TicketStatus[]
-                                                ).map((x) => (
-                                                    <option key={x} value={x}>
-                                                        {statusStyles[x].label}
-                                                    </option>
-                                                ))}
+                                                                                                    ['OPEN', 'IN_PROGRESS', 'WAITING_USER', 'RESOLVED', 'CLOSED'] as TicketStatus[]
+                                                                                                ).map((x) => (
+                                                                                                    <SelectItem key={x} value={x}>
+                                                                                                        {statusStyles[x].label}
+                                                                                                    </SelectItem>
+                                                                                                ))}
+                                              </SelectContent>
                                             </Select>
                                         </div>
                                     </div>

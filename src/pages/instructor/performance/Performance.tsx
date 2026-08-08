@@ -34,7 +34,7 @@ import {
   type InstructorSubscriptionFinance,
 } from '@/services/paymentApi';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -460,10 +460,15 @@ const StudentsTab = ({
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Theo dõi tỷ lệ hoàn thành, tiến độ xem video và kết quả bài kiểm tra.</p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row">
-            <Select value={selectedCourseId} onChange={(event) => onSelectCourse(event.target.value)} className="h-11 rounded-xl border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-              {courses.map((course) => (
-                <option key={course._id} value={course._id}>{course.title}</option>
-              ))}
+            <Select value={selectedCourseId} onValueChange={(event) => onSelectCourse(event)}>
+              <SelectTrigger className="h-11 rounded-xl border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {courses.map((course) => (
+                                <SelectItem key={course._id} value={course._id}>{course.title}</SelectItem>
+                              ))}
+              </SelectContent>
             </Select>
             <Link
               to={`/instructor/students?courseId=${selectedCourseId}`}
@@ -649,14 +654,16 @@ const ReviewsTab = ({ stats }: { stats: IInstructorRatingStats | undefined }) =>
           </div>
           <Select
             value={reviewStatus}
-            onChange={(event) => setReviewStatus(event.target.value as typeof reviewStatus)}
-            aria-label="Lọc khóa học theo trạng thái đánh giá"
-            className="h-10"
-          >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="unreviewed">Chưa có đánh giá</option>
-            <option value="needs-improvement">Cần cải thiện (&lt; 4 sao)</option>
-            <option value="positive">Từ 4 sao trở lên</option>
+            onValueChange={(event) => setReviewStatus(event as typeof reviewStatus)}>
+            <SelectTrigger aria-label="Lọc khóa học theo trạng thái đánh giá" className="h-10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                          <SelectItem value="unreviewed">Chưa có đánh giá</SelectItem>
+                          <SelectItem value="needs-improvement">Cần cải thiện (&lt; 4 sao)</SelectItem>
+                          <SelectItem value="positive">Từ 4 sao trở lên</SelectItem>
+            </SelectContent>
           </Select>
         </div>
         {filteredCourses.length ? (
@@ -704,7 +711,7 @@ const DatePickerField: React.FC<{
       <Button
         type="button"
         variant="outline"
-        className="h-10 min-w-[150px] justify-start gap-2 rounded-lg border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+        className="h-10 min-w-[150px] justify-start gap-2 rounded-lg border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-900 transition-colors hover:translate-y-0 active:scale-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
         aria-label={label}
       >
         <Calendar className="h-4 w-4 text-zinc-400" />

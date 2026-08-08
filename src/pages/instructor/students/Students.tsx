@@ -10,7 +10,7 @@ import { BookOpen, GraduationCap, Search, Users, WalletCards, CalendarClock, Fil
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useInstructorStudents } from '@/hooks/useInstructorCourses';
 import type { IInstructorStudentEnrollment } from '@/services/courseApi';
 
@@ -153,22 +153,37 @@ export const InstructorStudents: React.FC = () => {
               className="h-11 rounded-xl pl-10"
             />
           </div>
-          <Select value={courseFilter} onChange={(event) => handleCourseFilterChange(event.target.value)} className="h-11 rounded-xl">
-            <option value="ALL">Tất cả khóa học</option>
-            {courses.map((course) => (
-              <option key={course._id} value={course._id}>{course.title}</option>
-            ))}
+          <Select value={courseFilter} onValueChange={(event) => handleCourseFilterChange(event)}>
+            <SelectTrigger className="h-11 rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Tất cả khóa học</SelectItem>
+                          {courses.map((course) => (
+                            <SelectItem key={course._id} value={course._id}>{course.title}</SelectItem>
+                          ))}
+            </SelectContent>
           </Select>
-          <Select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value as SourceFilter)} className="h-11 rounded-xl">
-            <option value="ALL">Mọi nguồn</option>
-            <option value="PURCHASE">Mua khóa</option>
-            <option value="SUBSCRIPTION">Thuê bao</option>
+          <Select value={sourceFilter} onValueChange={(event) => setSourceFilter(event as SourceFilter)}>
+            <SelectTrigger className="h-11 rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Mọi nguồn</SelectItem>
+                          <SelectItem value="PURCHASE">Mua khóa</SelectItem>
+                          <SelectItem value="SUBSCRIPTION">Thuê bao</SelectItem>
+            </SelectContent>
           </Select>
-          <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} className="h-11 rounded-xl">
-            <option value="ALL">Mọi trạng thái</option>
-            <option value="ACTIVE">Đang học</option>
-            <option value="COMPLETED">Hoàn thành</option>
-            <option value="CANCELLED">Đã hủy</option>
+          <Select value={statusFilter} onValueChange={(event) => setStatusFilter(event as StatusFilter)}>
+            <SelectTrigger className="h-11 rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Mọi trạng thái</SelectItem>
+                          <SelectItem value="ACTIVE">Đang học</SelectItem>
+                          <SelectItem value="COMPLETED">Hoàn thành</SelectItem>
+                          <SelectItem value="CANCELLED">Đã hủy</SelectItem>
+            </SelectContent>
           </Select>
           <Button type="button" variant="ghost" className="h-11 gap-2" onClick={resetFilters}>
             <FilterX className="h-4 w-4" />
