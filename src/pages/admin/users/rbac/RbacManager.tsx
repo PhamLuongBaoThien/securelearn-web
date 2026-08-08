@@ -14,7 +14,14 @@ import { getRoleBadgeClass } from '@/types/admin.types';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PermissionGroupCard } from './PermissionGroupCard';
-import { ALL_PERMISSIONS, RESOURCE_GROUPS, SYSTEM_ONLY_PERMISSIONS } from './rbac.constants';
+import {
+  ALL_PERMISSIONS,
+  normalizePermissionDependencies,
+  PERMISSION_PREREQUISITES,
+  RESOURCE_GROUPS,
+  SYSTEM_ONLY_PERMISSIONS,
+  type PermissionId,
+} from './rbac.constants';
 import { RoleFormDialog } from './RoleFormDialog';
 import { RoleListItem } from './RoleListItem';
 
@@ -35,9 +42,10 @@ export const RbacManager: React.FC = () => {
   const rawCurrentPerms = isDirty
     ? localPerms[selectedKey] ?? selected?.permissions ?? []
     : selected?.permissions ?? [];
-  const currentPerms = isSystem
+  const allowedCurrentPerms = isSystem
     ? rawCurrentPerms
     : rawCurrentPerms.filter((permissionId) => !SYSTEM_ONLY_PERMISSIONS.includes(permissionId as (typeof SYSTEM_ONLY_PERMISSIONS)[number]));
+  const currentPerms = isSystem ? allowedCurrentPerms : normalizePermissionDependencies(allowedCurrentPerms);
 
   const handleSavePerms = () => {
     updateMut.mutate(
@@ -73,12 +81,23 @@ export const RbacManager: React.FC = () => {
       return;
     }
 
+    const prerequisite = PERMISSION_PREREQUISITES[permissionId as PermissionId];
+    if (prerequisite && !currentPerms.includes(prerequisite)) {
+      toast.error('Cần bật quyền Xem trước khi cấp quyền này.');
+      return;
+    }
+
+    const isRemoving = currentPerms.includes(permissionId);
+    const nextPermissions = isRemoving
+      ? currentPerms.filter(
+          (item) => item !== permissionId && PERMISSION_PREREQUISITES[item as PermissionId] !== permissionId,
+        )
+      : [...currentPerms, permissionId];
+
     setLocalPerms((prev) => {
       return {
         ...prev,
-        [selectedKey]: currentPerms.includes(permissionId)
-          ? currentPerms.filter((item) => item !== permissionId)
-          : [...currentPerms, permissionId],
+        [selectedKey]: nextPermissions,
       };
     });
     setDirtyRoles((prev) => new Set(prev).add(selectedKey));

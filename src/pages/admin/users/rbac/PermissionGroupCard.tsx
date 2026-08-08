@@ -4,7 +4,7 @@
 import React from 'react';
 import { Check, LockKeyhole } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ALL_PERMISSIONS } from './rbac.constants';
+import { ALL_PERMISSIONS, PERMISSION_PREREQUISITES, type PermissionId } from './rbac.constants';
 
 interface PermissionGroupCardProps {
   resourceKey: string;
@@ -66,7 +66,10 @@ export const PermissionGroupCard: React.FC<PermissionGroupCardProps> = ({
       <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
         {permissions.map((permission) => {
           const granted = currentPerms.includes(permission.id);
-          const locked = !isSystem && lockedPermissionIds.includes(permission.id);
+          const systemOnlyLocked = !isSystem && lockedPermissionIds.includes(permission.id);
+          const prerequisite = PERMISSION_PREREQUISITES[permission.id as PermissionId];
+          const dependencyLocked = !isSystem && Boolean(prerequisite && !currentPerms.includes(prerequisite));
+          const locked = systemOnlyLocked || dependencyLocked;
 
           return (
             <div
@@ -97,10 +100,16 @@ export const PermissionGroupCard: React.FC<PermissionGroupCardProps> = ({
                 </p>
                 <p className="text-xs text-zinc-400 mt-0.5">{permission.desc}</p>
               </div>
-              {locked && (
+              {systemOnlyLocked && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 dark:bg-red-500/10 dark:text-red-300">
                   <LockKeyhole className="h-3 w-3" />
                   Chỉ Super Admin
+                </span>
+              )}
+              {dependencyLocked && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                  <LockKeyhole className="h-3 w-3" />
+                  Cần quyền Xem
                 </span>
               )}
               <code className="text-xs text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg font-mono shrink-0">
