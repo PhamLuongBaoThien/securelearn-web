@@ -44,6 +44,9 @@ export interface SidebarProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onItemClick?: () => void;
+  displayMode?: 'default' | 'desktop' | 'mobile';
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
   
   // User info
   userFullName?: string;
@@ -310,6 +313,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   onToggleCollapsed,
   onItemClick,
+  displayMode = 'default',
+  mobileOpen = false,
+  onMobileClose,
   userFullName,
   userEmail,
   userAvatarNode,
@@ -324,6 +330,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation();
   const fullCurrentPath = location.pathname + location.search;
   const navRef = useRef<HTMLDivElement | null>(null);
+  const isMobileSidebar = displayMode === 'mobile';
+  const visibilityClass = isMobileSidebar
+    ? `${mobileOpen ? 'translate-x-0' : '-translate-x-full'} flex w-72 md:hidden`
+    : displayMode === 'desktop'
+      ? `${collapsed ? 'w-20' : 'w-72'} hidden md:flex`
+      : `${collapsed ? 'w-20' : 'w-72'} flex`;
+  const surfaceClass = isMobileSidebar
+    ? 'bg-white/95 dark:bg-zinc-950/95'
+    : 'bg-white/80 dark:bg-zinc-950/50';
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -345,8 +360,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <SidebarAnimationContext.Provider value={{ subMenuVariants, textVariants, onItemClick }}>
+      {isMobileSidebar && mobileOpen && (
+        <button
+          type="button"
+          aria-label="Đóng menu giảng viên"
+          onClick={onMobileClose}
+          className="fixed inset-0 z-[55] bg-black/40 backdrop-blur-[1px] md:hidden"
+        />
+      )}
       <aside
-        className={`${collapsed ? 'w-20' : 'w-72'} bg-white/80 dark:bg-zinc-950/50 backdrop-blur-xl border-r border-zinc-200 dark:border-zinc-800/60 flex flex-col fixed h-full z-20 transition-[width] duration-200 ease-out will-change-[width]`}
+        className={`${visibilityClass} ${surfaceClass} fixed inset-y-0 left-0 ${isMobileSidebar ? 'z-[60] transition-transform' : 'z-20 transition-[width]'} flex-col border-r border-zinc-200 backdrop-blur-xl duration-200 ease-out dark:border-zinc-800/60`}
       >
         {/* Header Sidebar */}
         <div className="h-20 flex items-center justify-between px-4 border-b border-zinc-200 dark:border-zinc-800/60 shrink-0">
