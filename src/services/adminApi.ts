@@ -478,7 +478,7 @@ export const getTransactions = async (params?: {
   page?: number;
   limit?: number;
   productType?: 'COURSE' | 'SUBSCRIPTION';
-}): Promise<AdminApiResponse<{ transactions: ITransaction[]; total: number; totalAmount: number; summary?: IRevenueStats }>> => {
+}): Promise<AdminApiResponse<IRevenueStats & { transactions: ITransaction[]; total: number; totalAmount: number }>> => {
   const res = await apiClient.get(`${ADMIN_FINANCE}/transactions`, { params });
   return res.data;
 };
@@ -503,8 +503,12 @@ export const updatePricingPlan = async (planId: string, data: Partial<IPricingPl
   return res.data;
 };
 
-export const getRevenueStats = async (): Promise<AdminApiResponse<IRevenueStats>> => {
-  const res = await apiClient.get<AdminApiResponse<IRevenueStats>>(`${ADMIN_FINANCE}/revenue`);
+export const getRevenueStats = async (params?: {
+  startDate?: string;
+  endDate?: string;
+  productType?: 'COURSE' | 'SUBSCRIPTION';
+}): Promise<AdminApiResponse<IRevenueStats>> => {
+  const res = await apiClient.get<AdminApiResponse<IRevenueStats>>(`${ADMIN_FINANCE}/revenue`, { params });
   return res.data;
 };
 
@@ -577,6 +581,4 @@ export const multiReviewCourseSubscription = async (
   const res = await apiClient.patch<AdminApiResponse>(`${ADMIN}/courses/subscription-review/multi`, { ids, action, reason });
   return res.data;
 };
-
-
 

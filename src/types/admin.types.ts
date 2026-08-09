@@ -473,6 +473,7 @@ export interface ITransaction {
     adminAmount?: number;
     instructorAmount?: number;
   }>;
+  paidAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -524,6 +525,13 @@ export interface IRevenueStats {
     transactions: number;
     courseRevenue?: number;
     subscriptionRevenue?: number;
+  }[];
+  dailyData?: {
+    date: string;
+    revenue: number;
+    adminRevenue: number;
+    instructorRevenue: number;
+    transactions: number;
   }[];
   providerBreakdown?: {
     provider: PaymentProvider;
@@ -627,9 +635,6 @@ export interface IAdminCourseStudent {
   };
   enrolledAt: string;
 }
-
-
-
 
 
 

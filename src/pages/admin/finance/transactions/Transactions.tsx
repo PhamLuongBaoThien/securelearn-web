@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Search, Filter, CreditCard, Download, RefreshCw, CheckCircle, XCircle, Clock, Percent, Save, Undo2, ChevronDown, ChevronUp, CircleDollarSign, Scale, Users, Loader2, X } from 'lucide-react';
+import { Search, Filter, CreditCard, Download, RefreshCw, CheckCircle, XCircle, Clock, Percent, Save, Undo2, ChevronDown, ChevronUp, CircleDollarSign, Scale, Users, Loader2, X, CalendarRange, TrendingUp } from 'lucide-react';
+import { Area, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts';
 import { useSearchParams } from 'react-router-dom';
 import type { ITransaction, PaymentProvider, TransactionStatus, IRevenueSplitConfig, IRevenueStats } from '@/types/admin.types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import {
   Pagination,
   PaginationContent,
@@ -19,6 +21,7 @@ import { getTransactions } from '@/services/adminApi';
 import type { AdminSubscriptionTerm, SubscriptionSettlement } from '@/services/paymentApi';
 import {
   useAdminRevenueSplitConfig,
+  useAdminRevenueStats,
   useAdminTransactions,
   useAdminSubscriptionTerms,
   useAdminSubscriptionSettlements,
@@ -40,6 +43,60 @@ const providerBadge: Record<PaymentProvider, { label: string; cls: string }> = {
 };
 
 const fmt = (value: unknown) => { const amount = Number(value); return (Number.isFinite(amount) ? amount.toLocaleString('vi-VN') : '0') + '₫'; };
+const compactCurrency = (value: number) => new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+
+type RevenueRange = '30d' | '90d' | '12m' | 'all' | 'custom';
+type CustomRevenueDates = { startDate: string; endDate: string };
+
+const revenueRangeOptions: Array<{ value: RevenueRange; label: string }> = [
+  { value: '30d', label: '30 ngày' },
+  { value: '90d', label: '90 ngày' },
+  { value: '12m', label: '12 tháng' },
+  { value: 'all', label: 'Tất cả' },
+  { value: 'custom', label: 'Tùy chọn' },
+];
+
+const revenueChartConfig = {
+  revenue: { label: 'Tổng doanh thu', color: 'var(--chart-1)' },
+  adminRevenue: { label: 'Doanh thu nền tảng', color: 'var(--chart-2)' },
+  instructorRevenue: { label: 'Phần chia giảng viên', color: 'var(--chart-3)' },
+} satisfies ChartConfig;
+
+const formatInputDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getRevenueDateParams = (range: RevenueRange, customDates: CustomRevenueDates) => {
+  if (range === 'all') return {};
+  if (range === 'custom') {
+    return {
+      startDate: customDates.startDate ? `${customDates.startDate}T00:00:00+07:00` : undefined,
+      endDate: customDates.endDate ? `${customDates.endDate}T23:59:59.999+07:00` : undefined,
+    };
+  }
+
+  const end = new Date();
+  const start = new Date(end);
+  if (range === '12m') start.setFullYear(start.getFullYear() - 1);
+  else start.setDate(start.getDate() - (range === '30d' ? 29 : 89));
+  return {
+    startDate: `${formatInputDate(start)}T00:00:00+07:00`,
+    endDate: `${formatInputDate(end)}T23:59:59.999+07:00`,
+  };
+};
+
+const getDefaultCustomRevenueDates = (): CustomRevenueDates => {
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(start.getDate() - 89);
+  return { startDate: formatInputDate(start), endDate: formatInputDate(end) };
+};
+
+const getTransactionEffectiveDate = (transaction: ITransaction) =>
+  transaction.paidAt ? new Date(transaction.paidAt) : new Date(transaction.createdAt);
 
 const providerFilters: Array<{ value: string; label: string }> = [
   { value: '', label: 'Tất cả cổng' },
@@ -273,6 +330,12 @@ export const Transactions: React.FC = () => {
   const [draftConfig, setDraftConfig] = useState<IRevenueSplitConfig | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [expandedSettlement, setExpandedSettlement] = useState<string | null>(null);
+  const [revenueRange, setRevenueRange] = useState<RevenueRange>('90d');
+  const [customRevenueDates, setCustomRevenueDates] = useState<CustomRevenueDates>(getDefaultCustomRevenueDates);
+  const revenueDateParams = useMemo(
+    () => getRevenueDateParams(revenueRange, customRevenueDates),
+    [customRevenueDates, revenueRange],
+  );
 
   const hasActiveFilters = Boolean(urlSearch || providerFilter || statusFilter || sortVal !== 'newest');
 
@@ -296,8 +359,15 @@ export const Transactions: React.FC = () => {
     providerFilter,
     statusFilter,
     sort: sortVal,
+    startDate: revenueDateParams.startDate,
+    endDate: revenueDateParams.endDate,
     page,
     limit,
+    productType,
+  });
+  const revenueQuery = useAdminRevenueStats({
+    startDate: revenueDateParams.startDate,
+    endDate: revenueDateParams.endDate,
     productType,
   });
 
@@ -314,8 +384,40 @@ export const Transactions: React.FC = () => {
   const totalPages = Math.max(Math.ceil(totalTransactions / limit), 1);
   const visiblePages = getVisiblePages(page, totalPages);
 
-  const summary = transactionsQuery.data as (IRevenueStats | undefined);
+  const summary = revenueQuery.data as (IRevenueStats | undefined);
   const totalAmount = transactions.filter((t) => t.status === 'SUCCEEDED').reduce((s, t) => s + t.amount, 0);
+  const useDailyRevenueData = revenueRange === '30d' || revenueRange === '90d' || (
+    revenueRange === 'custom'
+    && Boolean(customRevenueDates.startDate && customRevenueDates.endDate)
+    && (new Date(customRevenueDates.endDate).getTime() - new Date(customRevenueDates.startDate).getTime()) <= 120 * 24 * 60 * 60 * 1000
+  );
+  const revenueChartData = useMemo(() => {
+    const source = useDailyRevenueData && summary?.dailyData?.length
+      ? summary.dailyData
+      : summary?.monthlyData ?? [];
+    return source.map((entry) => {
+      const key = 'date' in entry ? entry.date : entry.month;
+      const [year, month, day] = key.split('-');
+      return {
+        ...entry,
+        label: day ? `${day}/${month}` : `${month}/${year}`,
+        fullLabel: day ? `${day}/${month}/${year}` : `${month}/${year}`,
+      };
+    });
+  }, [summary?.dailyData, summary?.monthlyData, useDailyRevenueData]);
+  const todayInput = formatInputDate(new Date());
+
+  const resetToFirstPage = () => {
+    if (page === 1) return;
+    const params = new URLSearchParams(searchParams);
+    params.delete('page');
+    setSearchParams(params, { replace: true });
+  };
+
+  const changeRevenueRange = (range: RevenueRange) => {
+    setRevenueRange(range);
+    resetToFirstPage();
+  };
 
   const exportCsv = async () => {
     setIsExporting(true);
@@ -324,7 +426,7 @@ export const Transactions: React.FC = () => {
       let exportPage = 1;
       let total = 0;
       do {
-        const response = await getTransactions({ search: debouncedSearch || undefined, provider: providerFilter || undefined, status: statusFilter || undefined, sort: sortVal, productType, page: exportPage, limit: 100 });
+        const response = await getTransactions({ search: debouncedSearch || undefined, provider: providerFilter || undefined, status: statusFilter || undefined, sort: sortVal, startDate: revenueDateParams.startDate, endDate: revenueDateParams.endDate, productType, page: exportPage, limit: 100 });
         const batch = response.data?.transactions || [];
         total = response.data?.total || 0;
         rows.push(...batch);
@@ -332,7 +434,7 @@ export const Transactions: React.FC = () => {
       } while (rows.length < total);
       const quote = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
       const header = ['Mã giao dịch', 'Người dùng', 'Email', 'Sản phẩm', 'Cổng thanh toán', 'Số tiền', 'Trạng thái', 'Thời gian'];
-      const body = rows.map((row) => [row.transactionCode || row.transactionId, row.fullName, row.email, row.subscriptionSnapshot?.name || row.items?.map((item) => item.title).join('; ') || row.course?.title || '', row.provider, row.amount, row.status, new Date(row.createdAt).toLocaleString('vi-VN')]);
+      const body = rows.map((row) => [row.transactionCode || row.transactionId, row.fullName, row.email, row.subscriptionSnapshot?.name || row.items?.map((item) => item.title).join('; ') || row.course?.title || '', row.provider, row.amount, row.status, getTransactionEffectiveDate(row).toLocaleString('vi-VN')]);
       const csv = '\uFEFF' + [header, ...body].map((line) => line.map(quote).join(',')).join('\r\n');
       const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
       const link = document.createElement('a');
@@ -352,7 +454,7 @@ export const Transactions: React.FC = () => {
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-1">Lịch sử Giao dịch</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Theo dõi thanh toán qua VNPay/MoMo và tỷ lệ chia doanh thu cho từng giao dịch.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2"><Button variant="outline" onClick={() => void Promise.all([transactionsQuery.refetch(), splitConfigQuery.refetch(), termsQuery.refetch(), settlementsQuery.refetch()])} disabled={transactionsQuery.isFetching || splitConfigQuery.isFetching || termsQuery.isFetching || settlementsQuery.isFetching} className="gap-2" title="Làm mới dữ liệu giao dịch"><RefreshCw className={`h-4 w-4 ${transactionsQuery.isFetching || splitConfigQuery.isFetching || termsQuery.isFetching || settlementsQuery.isFetching ? 'animate-spin' : ''}`} /> Làm mới</Button><Button id="btn-export-transactions" variant="outline" onClick={exportCsv} disabled={isExporting} className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
+        <div className="flex flex-wrap items-center gap-2"><Button variant="outline" onClick={() => void Promise.all([transactionsQuery.refetch(), revenueQuery.refetch(), splitConfigQuery.refetch(), termsQuery.refetch(), settlementsQuery.refetch()])} disabled={transactionsQuery.isFetching || revenueQuery.isFetching || splitConfigQuery.isFetching || termsQuery.isFetching || settlementsQuery.isFetching} className="gap-2" title="Làm mới dữ liệu giao dịch"><RefreshCw className={`h-4 w-4 ${transactionsQuery.isFetching || revenueQuery.isFetching || splitConfigQuery.isFetching || termsQuery.isFetching || settlementsQuery.isFetching ? 'animate-spin' : ''}`} /> Làm mới</Button><Button id="btn-export-transactions" variant="outline" onClick={exportCsv} disabled={isExporting} className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors shadow-sm">
           <Download className="w-4 h-4" /> {isExporting ? 'Đang xuất...' : 'Xuất CSV'}
         </Button></div>
       </div>
@@ -360,6 +462,71 @@ export const Transactions: React.FC = () => {
       <div className="inline-flex rounded-xl border border-zinc-200 bg-zinc-50 p-1 dark:border-zinc-800 dark:bg-zinc-900">
         {(['COURSE', 'SUBSCRIPTION'] as const).map((type) => <Button key={type} variant={productType === type ? 'default' : 'ghost'} className="rounded-lg" onClick={() => { const next = new URLSearchParams(searchParams); next.set('type', type); next.set('page', '1'); setSearchParams(next); setDraftConfig(null); }}>{type === 'COURSE' ? 'Mua đứt' : 'Thuê bao'}</Button>)}
       </div>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-primary/10 p-2 text-primary">
+              <CalendarRange className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-zinc-900 dark:text-white">Phạm vi báo cáo</h2>
+              <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                Điều khiển KPI, biểu đồ, danh sách giao dịch và file CSV.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2" aria-label="Khoảng thời gian doanh thu">
+              {revenueRangeOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={revenueRange === option.value ? 'default' : 'outline'}
+                  className="rounded-lg"
+                  onClick={() => changeRevenueRange(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+
+            {revenueRange === 'custom' && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="space-y-1 text-xs font-medium text-zinc-500">
+                  <span>Từ ngày</span>
+                  <Input
+                    type="date"
+                    value={customRevenueDates.startDate}
+                    max={customRevenueDates.endDate || todayInput}
+                    onChange={(event) => {
+                      setCustomRevenueDates((current) => ({ ...current, startDate: event.target.value }));
+                      resetToFirstPage();
+                    }}
+                    className="h-9 rounded-lg"
+                  />
+                </label>
+                <label className="space-y-1 text-xs font-medium text-zinc-500">
+                  <span>Đến ngày</span>
+                  <Input
+                    type="date"
+                    value={customRevenueDates.endDate}
+                    min={customRevenueDates.startDate || undefined}
+                    max={todayInput}
+                    onChange={(event) => {
+                      setCustomRevenueDates((current) => ({ ...current, endDate: event.target.value }));
+                      resetToFirstPage();
+                    }}
+                    className="h-9 rounded-lg"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm space-y-4">
@@ -422,24 +589,89 @@ export const Transactions: React.FC = () => {
           <h2 className="text-base font-bold text-zinc-900 dark:text-white mb-4">Tóm tắt doanh thu</h2>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4">
-              <p className="text-xs text-zinc-500">Tổng doanh thu</p>
-              <p className="text-xl font-bold text-zinc-900 dark:text-white mt-1">{fmt(summary?.totalRevenue ?? 0)}</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-zinc-500">Tổng doanh thu</p>
+                  <p className="mt-1 truncate text-xl font-bold text-zinc-900 dark:text-white">{fmt(summary?.totalRevenue ?? 0)}</p>
+                </div>
+                <CircleDollarSign className="h-5 w-5 shrink-0 text-zinc-300 dark:text-zinc-700" />
+              </div>
             </div>
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4">
-              <p className="text-xs text-zinc-500">Doanh thu nền tảng</p>
-              <p className="text-xl font-bold text-zinc-900 dark:text-white mt-1">{fmt(summary?.totalAdminRevenue ?? 0)}</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-zinc-500">Doanh thu nền tảng</p>
+                  <p className="mt-1 truncate text-xl font-bold text-zinc-900 dark:text-white">{fmt(summary?.totalAdminRevenue ?? 0)}</p>
+                </div>
+                <CreditCard className="h-5 w-5 shrink-0 text-zinc-300 dark:text-zinc-700" />
+              </div>
             </div>
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4">
-              <p className="text-xs text-zinc-500">{productType === 'SUBSCRIPTION' ? 'Tổng quỹ giảng dạy' : 'Thu nhập từ giảng dạy'}</p>
-              <p className="text-xl font-bold text-zinc-900 dark:text-white mt-1">{fmt(summary?.totalInstructorRevenue ?? 0)}</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-zinc-500">{productType === 'SUBSCRIPTION' ? 'Tổng quỹ giảng dạy' : 'Thu nhập từ giảng dạy'}</p>
+                  <p className="mt-1 truncate text-xl font-bold text-zinc-900 dark:text-white">{fmt(summary?.totalInstructorRevenue ?? 0)}</p>
+                </div>
+                <Users className="h-5 w-5 shrink-0 text-zinc-300 dark:text-zinc-700" />
+              </div>
             </div>
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4">
-              <p className="text-xs text-zinc-500">Giao dịch thành công</p>
-              <p className="text-xl font-bold text-zinc-900 dark:text-white mt-1">{summary?.successfulTransactions ?? 0}</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-zinc-500">Giao dịch thành công</p>
+                  <p className="mt-1 truncate text-xl font-bold text-zinc-900 dark:text-white">{summary?.successfulTransactions ?? 0}</p>
+                </div>
+                <CheckCircle className="h-5 w-5 shrink-0 text-zinc-300 dark:text-zinc-700" />
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/40">
+        <div>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-bold text-zinc-900 dark:text-white">Xu hướng doanh thu</h2>
+            {revenueQuery.isFetching && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
+          </div>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Tổng doanh thu và tỷ lệ phân bổ trong phạm vi báo cáo đã chọn.
+          </p>
+        </div>
+
+        <div className="mt-5 min-h-80">
+          {revenueChartData.length > 0 ? (
+            <ChartContainer config={revenueChartConfig} className="h-80 w-full">
+              <ComposedChart data={revenueChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="adminTransactionRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.22} />
+                    <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tickMargin={8} minTickGap={24} />
+                <YAxis axisLine={false} tickLine={false} tickMargin={8} tickFormatter={compactCurrency} width={68} />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent indicator="line" labelKey="fullLabel" formatter={(value) => fmt(value)} />}
+                />
+                <ChartLegend content={<ChartLegendContent />} />
+                <Area type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2.5} fill="url(#adminTransactionRevenue)" />
+                <Line type="monotone" dataKey="adminRevenue" stroke="var(--color-adminRevenue)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="instructorRevenue" stroke="var(--color-instructorRevenue)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              </ComposedChart>
+            </ChartContainer>
+          ) : (
+            <div className="flex h-80 flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-zinc-50 text-center dark:border-zinc-700 dark:bg-zinc-950/40">
+              <TrendingUp className="mb-3 h-9 w-9 text-zinc-300 dark:text-zinc-700" />
+              <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300">Chưa có doanh thu trong khoảng thời gian này.</p>
+              <p className="mt-1 text-xs text-zinc-400">Hãy chọn khoảng thời gian khác để xem xu hướng.</p>
+            </div>
+          )}
+        </div>
+      </section>
 
 
       {productType === 'SUBSCRIPTION' && (
@@ -644,8 +876,8 @@ export const Transactions: React.FC = () => {
                       )}
                     </td>
                     <td className="px-4 py-3.5 text-xs text-zinc-400 whitespace-nowrap">
-                      <p>{new Date(t.createdAt).toLocaleDateString('vi-VN')}</p>
-                      <p>{new Date(t.createdAt).toLocaleTimeString('vi-VN')}</p>
+                      <p>{getTransactionEffectiveDate(t).toLocaleDateString('vi-VN')}</p>
+                      <p>{getTransactionEffectiveDate(t).toLocaleTimeString('vi-VN')}</p>
                     </td>
                   </tr>
                 );

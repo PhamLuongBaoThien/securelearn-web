@@ -37,11 +37,15 @@ import {
 export const adminFinanceKeys = {
   splitConfig: (productType: 'COURSE' | 'SUBSCRIPTION') => ['admin', 'finance', 'split-config', productType] as const,
   revenue: ['admin', 'finance', 'revenue'] as const,
+  revenueByRange: (params: { startDate?: string; endDate?: string; productType?: 'COURSE' | 'SUBSCRIPTION' }) =>
+    [...adminFinanceKeys.revenue, params] as const,
   transactions: (params: {
     search?: string;
     providerFilter?: string;
     statusFilter?: string;
     sort?: string;
+    startDate?: string;
+    endDate?: string;
     page: number;
     limit: number;
     productType: 'COURSE' | 'SUBSCRIPTION';
@@ -68,16 +72,21 @@ export function useAdminRevenueSplitConfig(productType: 'COURSE' | 'SUBSCRIPTION
   });
 }
 
-export function useAdminRevenueStats() {
+export function useAdminRevenueStats(params: {
+  startDate?: string;
+  endDate?: string;
+  productType?: 'COURSE' | 'SUBSCRIPTION';
+} = {}) {
   return useQuery({
-    queryKey: adminFinanceKeys.revenue,
+    queryKey: adminFinanceKeys.revenueByRange(params),
     queryFn: async () => {
-      const response = await getRevenueStats();
+      const response = await getRevenueStats(params);
       if (response.status === 'ERR' || !response.data) {
         throw new Error(response.message || 'Không thể tải báo cáo doanh thu.');
       }
       return response.data as IRevenueStats;
     },
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -86,6 +95,8 @@ export function useAdminTransactions(params: {
   providerFilter?: string;
   statusFilter?: string;
   sort?: string;
+  startDate?: string;
+  endDate?: string;
   page: number;
   limit: number;
   productType: 'COURSE' | 'SUBSCRIPTION';
@@ -98,6 +109,8 @@ export function useAdminTransactions(params: {
         provider: params.providerFilter || undefined,
         status: params.statusFilter || undefined,
         sort: params.sort || undefined,
+        startDate: params.startDate || undefined,
+        endDate: params.endDate || undefined,
         page: params.page,
         limit: params.limit,
         productType: params.productType,
