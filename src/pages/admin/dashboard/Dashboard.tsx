@@ -15,6 +15,7 @@ import {
   AlertCircle,
   ArrowRight,
   CreditCard,
+  LockKeyhole,
 } from 'lucide-react';
 import {
   Area,
@@ -60,6 +61,36 @@ const monthlyChartConfig = {
   },
 } satisfies ChartConfig;
 
+const buildRecentMonthlyChartData = (
+  monthlyData: Array<{
+    month: string;
+    revenue: number;
+    adminRevenue: number;
+    instructorRevenue: number;
+    subscriptionRevenue?: number;
+    transactions: number;
+  }>,
+) => {
+  const dataByMonth = new Map(monthlyData.map((item) => [item.month, item]));
+  const currentMonth = new Date();
+
+  return Array.from({ length: 12 }, (_, index) => {
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - (11 - index), 1);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const item = dataByMonth.get(`${year}-${month}`);
+
+    return {
+      name: `T${month}/${year}`,
+      revenue: item?.revenue ?? 0,
+      adminRevenue: item?.adminRevenue ?? 0,
+      instructorRevenue: item?.instructorRevenue ?? 0,
+      subscriptionRevenue: item?.subscriptionRevenue ?? 0,
+      transactions: item?.transactions ?? 0,
+    };
+  });
+};
+
 const KpiCard: React.FC<{
   label: string;
   value: string;
@@ -82,6 +113,10 @@ const KpiCard: React.FC<{
 
 export const Dashboard: React.FC = () => {
   const { user } = useAppSelector((state) => state.adminAuth);
+  const isSuperAdmin = user?.adminRole === 'SUPER_ADMIN';
+  const canViewFinance = isSuperAdmin || user?.permissions?.includes('finance:read') === true;
+  const canViewUsers = isSuperAdmin || user?.permissions?.includes('user:read') === true;
+  const canReviewCourses = isSuperAdmin || user?.permissions?.includes('course:approve') === true;
 
   // Fetch users stats
   const { data: usersData, isLoading: usersLoading } = useQuery({
@@ -90,6 +125,7 @@ export const Dashboard: React.FC = () => {
       const res = await getUsers({ limit: 1 });
       return res.data;
     },
+    enabled: canViewUsers,
   });
 
   // Fetch courses pending review
@@ -99,6 +135,7 @@ export const Dashboard: React.FC = () => {
       const res = await getCoursesForReview({ limit: 5 });
       return res.data;
     },
+    enabled: canReviewCourses,
   });
 
   // Fetch revenue stats
@@ -108,6 +145,7 @@ export const Dashboard: React.FC = () => {
       const res = await getRevenueStats();
       return res.data;
     },
+    enabled: canViewFinance,
   });
 
   // Fetch split config
@@ -117,15 +155,18 @@ export const Dashboard: React.FC = () => {
       const res = await getRevenueSplitConfig();
       return res.data;
     },
+    enabled: canViewFinance,
   });
 
-  const isLoading = usersLoading || coursesLoading || revenueLoading;
+  const isLoading = (canViewUsers && usersLoading)
+    || (canReviewCourses && coursesLoading)
+    || (canViewFinance && revenueLoading);
 
   // Data
   const totalUsers = usersData?.total ?? 0;
   const pendingCourses = coursesData?.courses ?? [];
   const pendingCount = coursesData?.total ?? 0;
-  const revenue = revenueData;
+  const revenue = canViewFinance ? revenueData : undefined;
   const totalRevenue = revenue?.totalRevenue ?? 0;
   const totalAdminRevenue = revenue?.totalAdminRevenue ?? 0;
   const totalInstructorRevenue = revenue?.totalInstructorRevenue ?? 0;
@@ -142,14 +183,7 @@ export const Dashboard: React.FC = () => {
   const instructorPercent = splitConfig?.instructorPercent ?? revenue?.instructorPercent ?? 0;
 
   // Chart data
-  const chartData = monthlyData.map((m) => ({
-    name: m.month,
-    revenue: m.revenue,
-    adminRevenue: m.adminRevenue,
-    instructorRevenue: m.instructorRevenue,
-    subscriptionRevenue: m.subscriptionRevenue ?? 0,
-    transactions: m.transactions,
-  }));
+  const chartData = buildRecentMonthlyChartData(monthlyData);
 
   if (isLoading) {
     return (
@@ -173,27 +207,35 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label="Tổng doanh thu"
-          value={formatCurrency(totalRevenue)}
-          sub={`Khóa học ${formatCurrency(courseRevenue)} · Thuê bao ${formatCurrency(subscriptionRevenue)}`}
-          icon={<DollarSign className="h-5 w-5" />}
+          value={canViewFinance ? formatCurrency(totalRevenue) : '—'}
+          sub={canViewFinance
+            ? `Khóa học ${formatCurrency(courseRevenue)} · Thuê bao ${formatCurrency(subscriptionRevenue)}`
+            : 'Bạn không có quyền xem dữ liệu tài chính'}
+          icon={canViewFinance ? <DollarSign className="h-5 w-5" /> : <LockKeyhole className="h-5 w-5" />}
         />
         <KpiCard
           label="Giao dịch thành công"
-          value={successfulTransactions.toLocaleString('vi-VN')}
-          sub={`Tỷ lệ: QTV ${adminPercent}% / GV ${instructorPercent}%`}
-          icon={<CreditCard className="h-5 w-5" />}
+          value={canViewFinance ? successfulTransactions.toLocaleString('vi-VN') : '—'}
+          sub={canViewFinance
+            ? `Tỷ lệ: QTV ${adminPercent}% / GV ${instructorPercent}%`
+            : 'Bạn không có quyền xem dữ liệu tài chính'}
+          icon={canViewFinance ? <CreditCard className="h-5 w-5" /> : <LockKeyhole className="h-5 w-5" />}
         />
         <KpiCard
           label="Tổng người dùng"
-          value={totalUsers.toLocaleString('vi-VN')}
-          sub="Tài khoản học viên và người giảng dạy đã đăng ký"
-          icon={<Users className="h-5 w-5" />}
+          value={canViewUsers ? totalUsers.toLocaleString('vi-VN') : '—'}
+          sub={canViewUsers
+            ? 'Tài khoản học viên và người giảng dạy đã đăng ký'
+            : 'Bạn không có quyền xem dữ liệu người dùng'}
+          icon={canViewUsers ? <Users className="h-5 w-5" /> : <LockKeyhole className="h-5 w-5" />}
         />
         <KpiCard
           label="Chờ duyệt"
-          value={`${pendingCount} khóa học`}
-          sub={pendingCount > 0 ? 'Cần kiểm duyệt ngay' : 'Không có khóa nào chờ'}
-          icon={<AlertCircle className="h-5 w-5" />}
+          value={canReviewCourses ? `${pendingCount} khóa học` : '—'}
+          sub={canReviewCourses
+            ? pendingCount > 0 ? 'Cần kiểm duyệt ngay' : 'Không có khóa nào chờ'
+            : 'Bạn không có quyền duyệt khóa học'}
+          icon={canReviewCourses ? <AlertCircle className="h-5 w-5" /> : <LockKeyhole className="h-5 w-5" />}
         />
       </div>
 
@@ -220,12 +262,14 @@ export const Dashboard: React.FC = () => {
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{item.label}</p>
               <p className="text-lg font-bold text-zinc-900 dark:text-white mt-1">
-                {formatCurrency(item.val)}
+                {canViewFinance ? formatCurrency(item.val) : '—'}
               </p>
-              {item.sub && <p className="text-[10px] text-zinc-400 mt-1 truncate">{item.sub}</p>}
+              {canViewFinance
+                ? item.sub && <p className="text-[10px] text-zinc-400 mt-1 truncate">{item.sub}</p>
+                : <p className="text-[10px] text-zinc-400 mt-1 truncate">Bạn không có quyền xem dữ liệu tài chính</p>}
             </div>
             <div className="shrink-0 p-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 mt-0.5">
-              {item.icon}
+              {canViewFinance ? item.icon : <LockKeyhole className="h-4 w-4" />}
             </div>
           </div>
         ))}
@@ -238,13 +282,23 @@ export const Dashboard: React.FC = () => {
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Doanh thu theo tháng</h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Tổng doanh thu toàn nền tảng và phân chia thực nhận</p>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">Tổng doanh thu toàn nền tảng và phân chia thực nhận trong 12 tháng gần nhất.</p>
             </div>
-            <Link to="/admin/finance/transactions" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80">
-              Chi tiết <ArrowRight className="h-4 w-4" />
-            </Link>
+            {canViewFinance ? (
+              <Link to="/admin/finance/transactions" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary/80">
+                Chi tiết <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <LockKeyhole className="h-5 w-5 text-zinc-400" aria-hidden="true" />
+            )}
           </div>
-          {chartData.length > 0 ? (
+          {!canViewFinance ? (
+            <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed border-zinc-200 px-4 text-center dark:border-zinc-800">
+              <LockKeyhole className="mb-3 h-10 w-10 text-zinc-300 dark:text-zinc-700" />
+              <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Không có quyền xem dữ liệu tài chính</p>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Liên hệ Super Admin nếu bạn cần quyền truy cập.</p>
+            </div>
+          ) : monthlyData.length > 0 ? (
             <ChartContainer config={monthlyChartConfig} className="h-64 w-full">
               <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                 <defs>
@@ -322,13 +376,21 @@ export const Dashboard: React.FC = () => {
         <div className={`${cardClass} p-5 flex flex-col`}>
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Khóa chờ duyệt</h3>
-            {pendingCount > 0 && (
+            {!canReviewCourses ? (
+              <LockKeyhole className="h-5 w-5 text-zinc-400" aria-hidden="true" />
+            ) : pendingCount > 0 && (
               <span className="px-2 py-0.5 text-xs font-bold bg-amber-100 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 rounded-full">
                 {pendingCount}
               </span>
             )}
           </div>
-          {pendingCourses.length > 0 ? (
+          {!canReviewCourses ? (
+            <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-zinc-200 px-4 py-8 text-center dark:border-zinc-800">
+              <LockKeyhole className="mb-3 h-8 w-8 text-zinc-300 dark:text-zinc-700" />
+              <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Không có quyền duyệt khóa học</p>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Liên hệ Super Admin nếu bạn cần quyền truy cập.</p>
+            </div>
+          ) : pendingCourses.length > 0 ? (
             <div className="flex-1 space-y-3">
               {pendingCourses.slice(0, 5).map((course) => (
                 <div key={course._id} className="flex items-start gap-3 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/60 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors">
@@ -356,12 +418,14 @@ export const Dashboard: React.FC = () => {
               <p className="text-sm">Không có khóa nào chờ duyệt.</p>
             </div>
           )}
-          <Link
-            to="/admin/courses/review"
-            className="flex items-center justify-center gap-2 w-full mt-4 py-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800/40 dark:hover:bg-zinc-800"
-          >
-            Xem tất cả <ArrowRight className="w-4 h-4" />
-          </Link>
+          {canReviewCourses && (
+            <Link
+              to="/admin/courses/review"
+              className="flex items-center justify-center gap-2 w-full mt-4 py-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800/40 dark:hover:bg-zinc-800"
+            >
+              Xem tất cả <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
         </div>
       </div>
 
