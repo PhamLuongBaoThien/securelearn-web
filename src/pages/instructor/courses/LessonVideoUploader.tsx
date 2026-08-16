@@ -1,10 +1,19 @@
-// Component upload video cho 1 bài học của instructor.
-// Thứ tự flow chính:
-// 1. User chọn file → handleFile validate nhẹ và enqueue job vào videoUploadQueue.
-// 2. Queue tới lượt → uploadVideo chạy initiate → batch presign URLs → PUT chunks song song.
-// 3. PUT xong → bind asset vào lesson → confirm multipart upload.
-// 4. Backend xử lý HLS → startPolling/syncAssetState cập nhật trạng thái READY/FAILED.
-// 5. User hủy → cancelVideoUpload abort XHR, cleanup multipart nếu đã tạo asset.
+// Component thực hiện hai giai đoạn của luồng tải và xử lý video bài học.
+//
+// GIAI ĐOẠN 1 - TẢI TỆP GỐC (Frontend phải giữ trang cho đến khi confirm thành công):
+// 1. Đưa file vào hàng đợi Frontend để giới hạn số video được tải đồng thời.
+// 2. POST /api/media/videos/initiate-upload tạo VideoAsset và Multipart Upload trên R2.
+// 3. GET .../batch-part-urls lấy Presigned URL; trình duyệt chia file thành các part 25 MiB
+//    và PUT tối đa 5 part song song trực tiếp lên R2, không truyền nội dung file qua Backend.
+// 4. R2 trả ETag cho từng part; Frontend giữ cặp PartNumber/ETag để Backend ghép đúng các part.
+// 5. Gắn VideoAsset vào Lesson rồi POST .../confirm-upload để hoàn tất Multipart Upload.
+//
+// GIAI ĐOẠN 2 - XỬ LÝ NỀN (Frontend không phải giữ trang):
+// 1. Media Service lưu VideoAsset ở trạng thái QUEUED trong MongoDB; worker nội bộ nhận job.
+// 2. Worker tải file gốc từ R2, dùng FFprobe kiểm tra và FFmpeg tạo HLS mã hóa AES-128.
+// 3. Các playlist/segment được đưa lại lên R2; trạng thái chuyển thành READY hoặc FAILED.
+// 4. RabbitMQ chỉ chuyển sự kiện kết quả sang Course Service, không mang file và không chạy FFmpeg.
+// 5. Frontend hỏi trạng thái mỗi 3 giây để cập nhật tiến độ; thao tác hủy sẽ dọn multipart chưa hoàn tất.
 import React, { useEffect, useRef, useState } from 'react';
 import { Upload, CheckCircle2, AlertCircle, RotateCcw, X, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
@@ -99,7 +108,7 @@ const assetToLessonStatus = (s?: IVideoAsset['status']): LessonStatus | null => 
 
 // Cấu hình polling và multipart upload.
 const POLL_INITIAL_MS = 3000; // Cứ 3 giây hỏi trạng thái xử lý video một lần.
-const CHUNK_SIZE = 25 * 1024 * 1024;   // 25 MB — MinIO yêu cầu part ≥ 5MB (trừ part cuối)
+const CHUNK_SIZE = 25 * 1024 * 1024;   // 25 MiB; multipart S3 yêu cầu mỗi part (trừ part cuối) tối thiểu 5 MiB.
 const CONCURRENCY = 5;                  // Số chunks upload song song tối đa
 
 // Metadata asset dùng riêng cho UI. Những field này được hydrate từ media-service.
@@ -121,7 +130,7 @@ type UploadSnapshot = {
 };
 
 // Store progress upload ở cấp module để không mất tiến độ khi component bị unmount.
-// Ví dụ: user thu nhỏ lesson row rồi mở lại trong khi browser vẫn đang PUT lên MinIO.
+// Ví dụ: user thu nhỏ lesson row rồi mở lại trong khi browser vẫn đang PUT trực tiếp lên R2.
 // Store này chỉ sống trong cùng tab hiện tại, không dùng để resume sau khi refresh trang.
 const uploadSnapshots = new Map<string, UploadSnapshot>(); // key là lessonId, value là snapshot tiến độ upload hiện tại của bài học đó
 const uploadListeners = new Map<string, Set<(snapshot: UploadSnapshot | null) => void>>(); // key là lessonId, value là tập hợp các callback đang subscribe để nhận thông báo khi snapshot của bài học đó thay đổi
@@ -163,7 +172,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   const [assetMeta, setAssetMeta] = useState<AssetMeta | null>(() =>
     lesson.videoAssetId ? assetMetaCache.get(lesson.videoAssetId) ?? null : null,
   );
-  // uploadProgress: Phần trăm quá trình trình duyệt đẩy file lên MinIO (0-100%)
+  // uploadProgress: Phần trăm quá trình trình duyệt PUT trực tiếp file lên R2 (0-100%).
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadPhase, setUploadPhase] = useState<'queued' | 'uploading'>('uploading');
   // uploadSpeedBps: Tốc độ mạng đang tải lên (Byte / giây)
@@ -260,8 +269,12 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lesson.videoAssetId]);
 
-  // HÀM ĐỒNG BỘ TRẠNG THÁI (SYNC ASSET STATE)
-  // Gọi API lấy dữ liệu video mới nhất và cập nhật toàn bộ Form (thông qua onUpdate) và UI local.
+  /**
+   * Lấy trạng thái VideoAsset mới nhất từ Media Service và đồng bộ vào UI/CourseEditor.
+   * Hàm cũng dừng polling khi asset đã READY hoặc FAILED.
+   * @param id Mã VideoAsset cần kiểm tra.
+   * @returns Trạng thái đã ánh xạ cho giao diện, hoặc null khi không lấy được dữ liệu.
+   */
   const syncAssetState = async (id: string): Promise<VideoProcessingStatus | null> => {
     const res = await getVideoAsset(id);
     if (res.status === 'ERR' || !res.data) return null;
@@ -294,10 +307,12 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     return mapAssetStatus(a.status); // trả về status đã map để hàm gọi biết có cần tiếp tục polling hay không
   };
 
-  // HÀM POLLING: KIỂM TRA TRẠNG THÁI LIÊN TỤC
-  // Sau khi video tải lên thành công, Backend bắt đầu convert (HLS). 
-  // Frontend phải hỏi BE liên tục: "Xong chưa? Xong chưa?"
-  // Poll cố định mỗi POLL_INITIAL_MS để UI cập nhật đều, dễ theo dõi tiến trình xử lý.
+  /**
+   * Bắt đầu hỏi Media Service định kỳ để theo dõi giai đoạn xử lý nền.
+   * Mỗi chu kỳ gọi syncAssetState; chỉ tiếp tục khi video vẫn đang PROCESSING.
+   * @param id Mã VideoAsset đang được xử lý.
+   * @param immediate true để kiểm tra ngay một lần trước khi chờ chu kỳ 3 giây.
+   */
   const startPolling = (id: string, immediate = false) => {
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     isPollingRef.current = true; // Bật cờ cho phép chạy
@@ -319,9 +334,13 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     else schedule();
   };
 
-  // QUY TRÌNH UPLOAD CHÍNH (MAIN UPLOAD FLOW)
-  // Hàm này chỉ chạy khi queue gọi tới lượt job.
-  // signal dùng để hủy giữa chừng: trước/sau mỗi API call đều kiểm tra, còn XMLHttpRequest thì abort trực tiếp.
+  /**
+   * Thực hiện toàn bộ giai đoạn 1 khi job tới lượt trong hàng đợi Frontend:
+   * khởi tạo multipart, lấy Presigned URL, PUT các part lên R2, gắn asset vào Lesson và confirm.
+   * @param file Tệp video gốc do người dùng chọn.
+   * @param queueJobId Mã job dùng để cập nhật tiến độ trong hàng đợi Frontend.
+   * @param signal Tín hiệu hủy các API/XHR và kích hoạt dọn dẹp multipart chưa hoàn tất.
+   */
   const uploadVideo = async (file: File, queueJobId: string, signal: AbortSignal) => {
     if (!lessonId) { toast.error('Lưu khóa học trước khi tải video lên.'); return; }
     if (signal.aborted) throw new Error('Đã hủy upload.');
@@ -444,10 +463,10 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       };
 
       // BƯỚC 2: XIN ĐƯỜNG DẪN PRESIGNED VÀ TIẾN HÀNH UPLOAD
-      const storageUploadStartedAt = performance.now(); // Dùng để đo tổng thời gian upload lên MinIO
+      const storageUploadStartedAt = performance.now(); // Dùng để đo tổng thời gian trình duyệt tải file lên R2.
       const totalParts = Math.ceil(file.size / CHUNK_SIZE);
       
-      // Xin backend tạo 40 cái URLs nếu file có 40 parts (giả sử)
+      // Mỗi Presigned URL chỉ cho phép tải một PartNumber lên đúng object R2 trong thời hạn nhất định.
       if (signal.aborted) throw new Error('Đã hủy upload.');
       const batchRes = await getBatchPartPresignedUrls(assetId, totalParts);
       if (batchRes.status === 'ERR' || !batchRes.data?.urls?.length) throw new Error('Không lấy được URL upload.');
@@ -456,7 +475,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       
       // `partLoaded` là mảng lưu xem MỖI PART đã tải được chính xác bao nhiêu byte.
       // Ví dụ file chia làm 40 parts thì mảng này có 40 phần tử. 
-      // Do MinIO hỗ trợ upload song song, trình duyệt sẽ bắn event liên tục cho nhiều part xen kẽ nhau.
+      // Do các part được tải song song lên R2, trình duyệt phát event tiến độ của nhiều part xen kẽ nhau.
       const partLoaded = new Array<number>(totalParts).fill(0); 
 
       // Hàm tickPart: Hàm hứng event `onprogress` từ trình duyệt cho TỪNG PART.
@@ -474,7 +493,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         tick(delta); 
       };
 
-      // Hàm uploadPart: upload 1 part (chunk/phần nhỏ của file) trực tiếp lên MinIO qua presigned URL.
+      // Hàm uploadPart: tải một part trực tiếp lên R2 qua Presigned URL, không đi qua Media Service.
       // Dùng XMLHttpRequest/XHR (API request cũ của browser) thay vì fetch vì XHR có xhr.upload.onprogress
       // để biết chính xác part này đã upload được bao nhiêu byte.
       // Lưu ý: Không set Content-Type ở đây để tránh làm sai lệch chữ ký (signature/chữ ký bảo mật) của URL.
@@ -551,8 +570,9 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       logTiming('bind-video-asset');
 
       // BƯỚC 4: XÁC NHẬN (CONFIRM) HOÀN TẤT
-      // Gửi danh sách ETag về cho BE. BE sẽ lệnh cho MinIO ghép 40 parts lại thành 1 file .mp4 duy nhất.
-      // Sau đó BE đẩy file sang RabbitMQ để gọi worker chạy FFmpeg convert ra HLS.
+      // Gửi các cặp PartNumber/ETag để Media Service gọi CompleteMultipartUpload và yêu cầu R2
+      // ghép các part thành object gốc. Sau đó VideoAsset được lưu QUEUED để worker nội bộ xử lý nền.
+      // RabbitMQ chỉ phát kết quả READY/FAILED sang Course Service sau khi xử lý, không chứa file video.
       if (signal.aborted) throw new Error('Đã hủy upload.');
       const confirmRes = await confirmVideoUpload(assetId, parts);
       if (confirmRes.status === 'ERR') throw new Error(confirmRes.message || 'Confirm upload thất bại.');
@@ -580,13 +600,12 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     }
   };
 
-  // Bước user chọn file: chỉ validate nhẹ + đưa vào queue.
-  // Chưa gọi initiate-upload ở đây để tránh tạo multipart session khi job vẫn đang chờ.
+  /**
+   * Kiểm tra nhanh tệp người dùng vừa chọn và đưa nó vào hàng đợi Frontend.
+   * Hàm chưa gọi initiate-upload, nhờ đó không tạo multipart session khi job còn phải chờ.
+   * @param file Tệp được nhận từ input chọn video.
+   */
   const handleFile = async (file: File) => {
-//     enqueueVideoUpload
-//     chờ tới lượt
-//     queue gọi uploadVideo
-//     lúc đó mới initiate-upload
     if (!file.type.startsWith('video/')) { toast.error('Vui lòng chọn file video hợp lệ.'); return; }
     if (!lessonId) { toast.error('Lưu khóa học trước khi tải video lên.'); return; }
 
@@ -739,7 +758,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     );
   }
 
-  // Đang upload từ browser lên MinIO.
+  // Đang tải file trực tiếp từ trình duyệt lên Cloudflare R2.
   if (status === 'PENDING') {
     const isQueued = uploadPhase === 'queued' || activeQueueJob?.status === 'queued';
     const displayedProgress = activeQueueJob ? activeQueueJob.progress : uploadProgress;
@@ -899,5 +918,3 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     </div>
   );
 };
-
-
