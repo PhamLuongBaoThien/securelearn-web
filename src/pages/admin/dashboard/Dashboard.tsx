@@ -320,6 +320,7 @@ export const Dashboard: React.FC = () => {
                   content={
                     <ChartTooltipContent
                       indicator="line"
+                      labelFormatter={(label) => `Tháng ${String(label).replace(/^T/, '')}`}
                       formatter={(value) => formatCurrency(Number(value ?? 0))}
                     />
                   }
