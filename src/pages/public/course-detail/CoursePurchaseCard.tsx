@@ -24,12 +24,13 @@ import { BadgePercent, CheckCircle2, CreditCard, Heart, GraduationCap, Share2, C
 interface Props {
   course: ICourse;     // Dữ liệu khóa học cần hiển thị
   isEnrolled: boolean; // Người dùng đã ghi danh khóa này chưa (kiểm tra từ useEnrolledCourses)
+  isAccessLoading?: boolean; // Đang xác định quyền sở hữu khóa học
   accessSource?: 'PURCHASE' | 'SUBSCRIPTION';
   accessEndsAt?: string | null;
   reportButton?: React.ReactNode;
 }
 
-export function CoursePurchaseCard({ course, isEnrolled, accessSource, accessEndsAt, reportButton }: Props) {
+export function CoursePurchaseCard({ course, isEnrolled, isAccessLoading = false, accessSource, accessEndsAt, reportButton }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { addItem, isAdding } = useCartActions();
@@ -46,7 +47,7 @@ export function CoursePurchaseCard({ course, isEnrolled, accessSource, accessEnd
   const isSubscriptionEnrollment = isEnrolled && accessSource === 'SUBSCRIPTION';
   const couponPreviewQuery = useQuery({
     queryKey: ['course-coupon-preview', user?._id ?? 'guest', course._id, course.price],
-    enabled: (!isEnrolled || isSubscriptionEnrollment) && !isOwnCourse && course.price > 0,
+    enabled: !isAccessLoading && (!isEnrolled || isSubscriptionEnrollment) && !isOwnCourse && course.price > 0,
     queryFn: async () => {
       const response = await getBestCourseCouponPreview(course.price);
       if (!response.data) throw new Error(response.message || 'Không thể tải coupon cho khóa học.');
@@ -134,6 +135,16 @@ export function CoursePurchaseCard({ course, isEnrolled, accessSource, accessEnd
                 >
                   Xem nội dung khóa học
                 </Button>
+              </div>
+            ) : isAccessLoading ? (
+              // Chờ Course Service trả trạng thái ghi danh; không hiển thị giá
+              // hoặc nút mua để tránh giao diện sai xuất hiện trong chốc lát.
+              <div className="animate-pulse space-y-4" aria-label="Đang kiểm tra quyền truy cập">
+                <div className="h-3 w-32 rounded bg-secondary" />
+                <div className="h-9 w-40 rounded bg-secondary" />
+                <div className="h-4 w-full rounded bg-secondary" />
+                <div className="h-[52px] rounded-lg bg-secondary" />
+                <div className="h-[52px] rounded-lg bg-secondary" />
               </div>
             ) : isSubscriptionEnrollment ? (
               // Enrollment thuê bao chỉ là quyền có thời hạn; vẫn cho phép học viên mua đứt.
@@ -346,7 +357,6 @@ export function CoursePurchaseCard({ course, isEnrolled, accessSource, accessEnd
     </div>
   );
 }
-
 
 
 
