@@ -839,12 +839,17 @@ export const submitQuizAttempt = async (
   return data;
 };
 
-// Bind asset là bước nối giữa media-service và lesson của course-service.
+/**
+ * Gắn VideoAsset của Media Service vào bài học thuộc Course Service.
+ * Course Service kiểm tra quyền sở hữu/tài nguyên, đặt bài học ở PROCESSING và phát sự kiện
+ * VIDEO_ASSET_ATTACHED để Media Service xác nhận asset không còn là tài nguyên mồ côi.
+ */
 export const bindVideoAssetToLesson = async (courseId: string, lessonId: string, videoAssetId: string) => {
   const { data } = await apiClient.post<ApiResponse<ILesson>>(`/api/courses/${courseId}/lessons/${lessonId}/video-asset`, { videoAssetId });
   return data;
 };
 
+/** Gỡ VideoAsset khỏi bài học và yêu cầu dọn tài nguyên khi video không còn được tham chiếu. */
 export const removeVideoAssetFromLesson = async (courseId: string, lessonId: string) => {
   const { data } = await apiClient.delete<ApiResponse<ILesson>>(`/api/courses/${courseId}/lessons/${lessonId}/video-asset`);
   return data;

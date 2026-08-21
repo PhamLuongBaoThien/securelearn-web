@@ -3,7 +3,7 @@
 // GIAI ĐOẠN 1 - TẢI TỆP GỐC (Frontend phải giữ trang cho đến khi confirm thành công):
 // 1. Đưa file vào hàng đợi Frontend để giới hạn số video được tải đồng thời.
 // 2. POST /api/media/videos/initiate-upload tạo VideoAsset và Multipart Upload trên R2.
-// 3. GET .../batch-part-urls lấy Presigned URL; trình duyệt chia file thành các part 25 MiB
+// 3. GET .../batch-part-urls lấy Presigned URL; trình duyệt chia file thành các part 8 MiB
 //    và PUT tối đa 5 part song song trực tiếp lên R2, không truyền nội dung file qua Backend.
 // 4. R2 trả ETag cho từng part; Frontend giữ cặp PartNumber/ETag để Backend ghép đúng các part.
 // 5. Gắn VideoAsset vào Lesson rồi POST .../confirm-upload để hoàn tất Multipart Upload.
@@ -29,7 +29,7 @@ import {
   cancelVideoUpload, // hủy job đang chờ hoặc đang upload.
   enqueueVideoUpload, // đưa file vào hàng đợi.
   subscribeVideoUploadQueue, // component lắng nghe queue để biết job nào đang chạy.
-  updateVideoUploadQueueJob, // component lắng nghe queue để biết job nào đang chạy.
+  updateVideoUploadQueueJob, // cập nhật progress/tốc độ/ETA của job để các component cùng hiển thị.
   type VideoUploadQueueJobSnapshot,
 } from './videoUploadQueue';
 
@@ -67,10 +67,13 @@ const fmt = {
   },
 };
 
+/** Chuẩn hóa phần trăm xử lý về số nguyên trong khoảng 0-100. */
 const clamp = (v?: number) =>
   typeof v !== 'number' || Number.isNaN(v) ? 0 : Math.max(0, Math.min(100, Math.round(v)));
 
+/** Lấy chiều cao từ nhãn như 720p để sắp xếp danh sách chất lượng. */
 const parseQualityHeight = (value: string) => Number.parseInt(value, 10) || 0;
+/** Loại trùng, sắp xếp và ghép các nhãn chất lượng để hiển thị trên UI. */
 const formatQualityList = (qualities?: string[] | null) => {
   if (!qualities?.length) return null;
   return Array.from(new Set(qualities))
@@ -108,7 +111,10 @@ const assetToLessonStatus = (s?: IVideoAsset['status']): LessonStatus | null => 
 
 // Cấu hình polling và multipart upload.
 const POLL_INITIAL_MS = 3000; // Cứ 3 giây hỏi trạng thái xử lý video một lần.
-const CHUNK_SIZE = 25 * 1024 * 1024;   // 25 MiB; multipart S3 yêu cầu mỗi part (trừ part cuối) tối thiểu 5 MiB.
+const MAX_VIDEO_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2 GiB, đồng bộ với Media Service.
+// Chia part 8 MiB để các video cỡ vài chục MiB vẫn tận dụng được nhiều luồng tải song song.
+// Kích thước này vẫn lớn hơn mức tối thiểu 5 MiB của Multipart Upload (trừ part cuối).
+const CHUNK_SIZE = 8 * 1024 * 1024;
 const CONCURRENCY = 5;                  // Số chunks upload song song tối đa
 
 // Metadata asset dùng riêng cho UI. Những field này được hydrate từ media-service.
@@ -135,15 +141,17 @@ type UploadSnapshot = {
 const uploadSnapshots = new Map<string, UploadSnapshot>(); // key là lessonId, value là snapshot tiến độ upload hiện tại của bài học đó
 const uploadListeners = new Map<string, Set<(snapshot: UploadSnapshot | null) => void>>(); // key là lessonId, value là tập hợp các callback đang subscribe để nhận thông báo khi snapshot của bài học đó thay đổi
 
-// Cập nhật snapshot upload và thông báo cho mọi instance LessonVideoUploader
-// đang subscribe cùng lessonId.
+/**
+ * Lưu snapshot tiến độ theo lessonId và thông báo cho mọi LessonVideoUploader đang theo dõi.
+ * Nhờ đó đóng/mở lại hàng bài học không làm mất tiến độ của request vẫn chạy trong tab hiện tại.
+ */
 const emitUploadSnapshot = (key: string, snapshot: UploadSnapshot | null) => {
   if (snapshot) uploadSnapshots.set(key, snapshot);
   else uploadSnapshots.delete(key); // Nếu snapshot = null nghĩa là upload đã xong hoặc bị hủy, xóa luôn khỏi store để tránh nhầm lẫn khi mở lại component mới sau này.
   uploadListeners.get(key)?.forEach((listener) => listener(snapshot)); // Khi có snapshot mới, gọi tất cả callback đang đăng ký để họ cập nhật giao diện
 };
 
-// Khi component mount lại, hàm này trả ngay snapshot hiện có nếu upload vẫn chạy.
+/** Đăng ký nhận snapshot của bài học và trả hàm cleanup để hủy đăng ký khi component unmount. */
 const subscribeUploadSnapshot = (key: string, listener: (snapshot: UploadSnapshot | null) => void) => {
   const listeners = uploadListeners.get(key) ?? new Set<(snapshot: UploadSnapshot | null) => void>();
   listeners.add(listener);
@@ -165,7 +173,11 @@ interface Props {
   onRefresh?: () => Promise<void>;
 }
 
-// Component chính.
+/**
+ * Điều phối toàn bộ luồng video phía Frontend:
+ * kiểm tra/đưa tệp vào queue -> multipart PUT trực tiếp lên R2 -> bind vào bài học -> confirm
+ * -> polling trạng thái xử lý nền cho đến READY hoặc FAILED.
+ */
 export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesson, isReadOnly, onUpdate, onRefresh }) => {
   // --- STATE QUẢN LÝ GIAO DIỆN VÀ DỮ LIỆU ---
   // assetMeta: Lưu toàn bộ thông tin chi tiết của video (tên, dung lượng, % xử lý...) kéo từ media-service về.
@@ -361,6 +373,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       etaSec: null,
     };
 
+    /** Đồng bộ tiến độ vào component, module store và hàng đợi upload dùng chung. */
     const updateUploadSnapshot = (patch: Partial<UploadSnapshot>) => {
       currentSnapshot = { ...currentSnapshot, ...patch };
       emitUploadSnapshot(uploadKey, currentSnapshot); // để lưu snapshot và báo cho UI
@@ -390,7 +403,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       const totalStartedAt = performance.now(); // performance là API của trình duyệt để đo thời gian chính xác hơn Date.now()
       let phaseStartedAt = totalStartedAt;
       
-      // Hàm ghi log đo lường xem mỗi giai đoạn tốn bao nhiêu thời gian (chỉ chạy ở dev mode)
+      /** Ghi thời gian từng bước ở môi trường phát triển để tìm điểm upload bị chậm. */
       const logTiming = (phase: string, extra: Record<string, unknown> = {}) => {
         if (!import.meta.env.DEV) return;
         console.info('[LessonVideoUploader] upload timing', {
@@ -430,8 +443,10 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       // `bytes0`: Tổng số byte tải được kể từ `t0`.
       let t0 = Date.now(), bytes0 = 0;
 
-      // Hàm tick: Chịu trách nhiệm tính tốc độ, ETA, và cập nhật UI progress.
-      // Được gọi liên tục mỗi khi có 1 chunk nào đó vừa tải thêm được 1 lượng byte (`delta`).
+      /**
+       * Gộp byte mới của tất cả part để tính tốc độ, ETA và phần trăm tải lên R2.
+       * Tiến độ giữ tối đa 99% cho đến khi backend xác nhận multipart thành công.
+       */
       const tick = (delta: number) => {
         bytes0 += delta; // Cộng dồn số byte vừa tải được vào biến của chu kỳ đo hiện tại
         const elapsed = (Date.now() - t0) / 1000; // Tính số giây đã trôi qua kể từ lần chốt sổ trước (t0)
@@ -478,7 +493,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       // Do các part được tải song song lên R2, trình duyệt phát event tiến độ của nhiều part xen kẽ nhau.
       const partLoaded = new Array<number>(totalParts).fill(0); 
 
-      // Hàm tickPart: Hàm hứng event `onprogress` từ trình duyệt cho TỪNG PART.
+      /** Gộp onprogress của từng part mà không đếm trùng byte khi nhiều XHR chạy song song. */
       const tickPart = (partIndex: number, nextLoadedBytes: number) => {
         // 1. Tính số byte VỪA TẢI THÊM được kể từ lần event trước của CÙNG 1 PART
         const delta = nextLoadedBytes - partLoaded[partIndex]; 
@@ -493,10 +508,10 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
         tick(delta); 
       };
 
-      // Hàm uploadPart: tải một part trực tiếp lên R2 qua Presigned URL, không đi qua Media Service.
-      // Dùng XMLHttpRequest/XHR (API request cũ của browser) thay vì fetch vì XHR có xhr.upload.onprogress
-      // để biết chính xác part này đã upload được bao nhiêu byte.
-      // Lưu ý: Không set Content-Type ở đây để tránh làm sai lệch chữ ký (signature/chữ ký bảo mật) của URL.
+      /**
+       * Cắt và PUT một part trực tiếp lên R2 qua Presigned URL, rồi lấy ETag từ response.
+       * Dùng XHR để nhận upload.onprogress; không tự đặt Content-Type để tránh sai chữ ký URL.
+       */
       const uploadPart = async (i: number) => {
         if (signal.aborted) throw new Error('Đã hủy upload.');
         const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
@@ -547,8 +562,9 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
       };
 
       // TẠO WORKER POOL ĐỂ UPLOAD SONG SONG
-      // Giới hạn CONCURRENCY = 5 (tối đa 5 request chạy cùng lúc để không làm cháy mạng của trình duyệt)
+      // Giới hạn CONCURRENCY = 5 (tối đa 5 request chạy cùng lúc để không làm nghẽn kết nối trình duyệt).
       let next = 0;
+      /** Lấy PartNumber kế tiếp để các worker tải song song nhưng không xử lý trùng một part. */
       const worker = async () => { while (!signal.aborted && next < totalParts) { const i = next++; await uploadPart(i); } };
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, totalParts) }, worker));
       if (signal.aborted) throw new Error('Đã hủy upload.');
@@ -607,6 +623,10 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
    */
   const handleFile = async (file: File) => {
     if (!file.type.startsWith('video/')) { toast.error('Vui lòng chọn file video hợp lệ.'); return; }
+    if (file.size > MAX_VIDEO_FILE_SIZE) {
+      toast.error('Video vượt quá dung lượng tối đa 2 GB.');
+      return;
+    }
     if (!lessonId) { toast.error('Lưu khóa học trước khi tải video lên.'); return; }
 
     const queuedSnapshot: UploadSnapshot = {
@@ -638,7 +658,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     toast.info('Đã thêm video vào hàng đợi upload.');
   };
 
-  // Gỡ video khỏi lesson. Course-service sẽ phát cleanup event để media-service xóa file.
+  /** Gỡ video khỏi bài học; Course Service yêu cầu dọn asset khi không còn tham chiếu. */
   const handleRemove = async () => {
     if (!lessonId) { resetState(); return; }
     if (status === 'PENDING' && lesson.videoAssetId) await abortVideoUpload(lesson.videoAssetId).catch(() => {});
@@ -653,7 +673,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
     }
   };
 
-  // Reset toàn bộ state UI về trạng thái chưa có video.
+  /** Dừng polling, xóa cache/snapshot và đưa UI về trạng thái bài học chưa có video. */
   const resetState = () => {
     isPollingRef.current = false;
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
@@ -680,7 +700,7 @@ export const LessonVideoUploader: React.FC<Props> = ({ courseId, lessonId, lesso
   );
   const activeQueueJob = visibleQueueJobs.find((job) => job.status === 'queued' || job.status === 'uploading');
 
-  // Hủy từ UI: dừng queue job, xóa snapshot local và đưa lesson về dropzone nếu đang pending.
+  /** Hủy queue job và dọn snapshot; AbortSignal sẽ dừng các request đang chạy. */
   const handleCancelQueueJob = (jobId: string) => {
     cancelVideoUpload(jobId);
     if (lessonId) emitUploadSnapshot(lessonId, null);

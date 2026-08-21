@@ -53,6 +53,10 @@ export interface IVideoUploadSession {
   multipartUploadId?: string;
 }
 
+/**
+ * Khởi tạo phiên Multipart Upload tại Media Service.
+ * Backend kiểm tra metadata, tạo VideoAsset và mở phiên tải trên R2; hàm này chưa gửi byte video.
+ */
 export const initiateVideoUpload = async (payload: {
   courseId: string;
   lessonId: string;
@@ -67,6 +71,9 @@ export const initiateVideoUpload = async (payload: {
   return data;
 };
 
+/**
+ * Lấy một Presigned URL cho từng PartNumber để trình duyệt PUT các phần video trực tiếp lên R2.
+ */
 export const getBatchPartPresignedUrls = async (videoAssetId: string, totalParts: number) => {
   const { data } = await apiClient.get<ApiResponse<{ urls: string[] }>>(
     `/api/media/videos/${videoAssetId}/batch-part-urls?totalParts=${totalParts}`,
@@ -74,6 +81,10 @@ export const getBatchPartPresignedUrls = async (videoAssetId: string, totalParts
   return data;
 };
 
+/**
+ * Gửi danh sách PartNumber/ETag sau khi tải xong để Media Service yêu cầu R2 ghép tệp gốc
+ * và đưa VideoAsset vào hàng đợi xử lý nền.
+ */
 export const confirmVideoUpload = async (
   videoAssetId: string,
   parts: { ETag: string; PartNumber: number }[],
@@ -85,6 +96,7 @@ export const confirmVideoUpload = async (
   return data;
 };
 
+/** Hủy phiên Multipart Upload chưa hoàn tất và dọn bản ghi VideoAsset tương ứng. */
 export const abortVideoUpload = async (videoAssetId: string) => {
   const { data } = await apiClient.post<ApiResponse>(
     `/api/media/videos/${videoAssetId}/abort-upload`,
@@ -92,6 +104,7 @@ export const abortVideoUpload = async (videoAssetId: string) => {
   return data;
 };
 
+/** Đọc trạng thái và phần trăm xử lý của VideoAsset để Frontend polling trong giai đoạn xử lý nền. */
 export const getVideoAsset = async (videoAssetId: string) => {
   const { data } = await apiClient.get<ApiResponse<IVideoAsset>>(
     `/api/media/videos/${videoAssetId}`,

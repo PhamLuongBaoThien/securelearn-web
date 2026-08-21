@@ -42,6 +42,25 @@ interface LessonAttachmentManagerProps {
   isReadOnly?: boolean;
 }
 
+const MAX_ATTACHMENT_SIZE = 50 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
+  'pdf',
+  'doc',
+  'docx',
+  'ppt',
+  'pptx',
+  'xls',
+  'xlsx',
+  'txt',
+  'zip',
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'webp',
+]);
+const ATTACHMENT_ACCEPT = '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.jpg,.jpeg,.png,.gif,.webp';
+
 // Chọn icon phù hợp theo mimeType
 const getFileIcon = (mimeType?: string) => {
   if (!mimeType) return <FileText className="h-4 w-4" />;
@@ -111,6 +130,18 @@ export function LessonAttachmentManager({
   const handleSelectFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !lessonId) return;
+
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!ALLOWED_ATTACHMENT_EXTENSIONS.has(extension)) {
+      toast.error('Định dạng tệp không được hỗ trợ.');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      toast.error('Tài liệu đính kèm không được vượt quá 50 MB.');
+      event.target.value = '';
+      return;
+    }
 
     try {
       setIsUploading(true);
@@ -204,6 +235,7 @@ export function LessonAttachmentManager({
         <label className="cursor-pointer">
           <input
             type="file"
+            accept={ATTACHMENT_ACCEPT}
             className="hidden"
             onChange={handleSelectFile}
             disabled={isReadOnly || isUploading || !lessonId}
@@ -225,6 +257,14 @@ export function LessonAttachmentManager({
           </Button>
         </label>
       </div>
+
+      {!isReadOnly && (
+        <div className="border-b border-zinc-100 px-4 py-2 dark:border-zinc-800/60">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Hỗ trợ PDF, Word, PowerPoint, Excel, TXT, ZIP và hình ảnh; tối đa 50 MB.
+          </p>
+        </div>
+      )}
 
       {isUploading && (
         <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/60 bg-blue-50/60 dark:bg-blue-500/5">

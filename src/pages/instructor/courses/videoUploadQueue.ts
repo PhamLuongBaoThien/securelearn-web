@@ -27,6 +27,7 @@ const jobs: VideoUploadQueueJob[] = [];
 const listeners = new Set<Listener>();
 let activeJobId: string | null = null;
 
+/** Loại bỏ callback và AbortController trước khi chuyển dữ liệu job cho giao diện. */
 const toSnapshot = (job: VideoUploadQueueJob): VideoUploadQueueJobSnapshot => ({
   id: job.id,
   lessonId: job.lessonId,
@@ -37,16 +38,19 @@ const toSnapshot = (job: VideoUploadQueueJob): VideoUploadQueueJobSnapshot => ({
   etaSec: job.etaSec,
 });
 
-// Bắn snapshot mới cho UI. Store giữ job thật, component chỉ nhận bản sao nhẹ để render.
+/** Bắn snapshot mới cho UI; store giữ job thật, component chỉ nhận bản sao nhẹ để render. */
 const emit = () => {
   const snapshot = jobs.map(toSnapshot);
   listeners.forEach((listener) => listener(snapshot));
 };
 
+/** Tạo ảnh chụp hiện tại của hàng đợi để subscriber không sửa trực tiếp job nội bộ. */
 const getVideoUploadQueueSnapshot = () => jobs.map(toSnapshot);
 
-// Component gọi hàm này để theo dõi danh sách queue.
-// Tác dụng: mọi LessonVideoUploader trong cùng tab đồng bộ chung một hàng đợi.
+/**
+ * Đăng ký theo dõi hàng đợi để mọi LessonVideoUploader trong cùng tab hiển thị cùng trạng thái.
+ * Hàm trả về callback cleanup dùng khi component unmount.
+ */
 export const subscribeVideoUploadQueue = (listener: Listener) => {
   listeners.add(listener);
   listener(getVideoUploadQueueSnapshot());
@@ -55,6 +59,7 @@ export const subscribeVideoUploadQueue = (listener: Listener) => {
   };
 };
 
+/** Cập nhật trạng thái/progress/tốc độ/ETA của một job và thông báo lại cho giao diện. */
 export const updateVideoUploadQueueJob = (
   jobId: string,
   patch: Partial<Pick<VideoUploadQueueJobSnapshot, 'status' | 'progress' | 'speedBps' | 'etaSec'>>,
@@ -65,13 +70,13 @@ export const updateVideoUploadQueueJob = (
   emit();
 };
 
-// dequeue nội bộ: lấy phần tử queued đầu tiên nhưng không expose ra UI.
-// UI chỉ enqueue/cancel; quyền quyết định chạy job tiếp theo nằm ở processNext.
+/** Lấy job đang chờ đầu tiên; quyền chọn job chạy tiếp theo chỉ nằm trong module queue. */
 const dequeueNext = () => jobs.find((job) => job.status === 'queued');
 
-// Runner tuần tự của queue.
-// Nếu chưa có job active, lấy job đầu tiên đang queued, chuyển sang uploading,
-// truyền AbortSignal vào upload flow, rồi tự chạy job kế tiếp khi xong/lỗi/hủy.
+/**
+ * Runner tuần tự: lấy job chờ đầu tiên, truyền AbortSignal vào upload flow và tự chạy job kế tiếp.
+ * Queue chỉ cho một video thực hiện luồng upload tại một thời điểm trong cùng tab.
+ */
 const processNext = () => {
   if (activeJobId) return;
   const job = dequeueNext();
@@ -109,8 +114,10 @@ const processNext = () => {
     });
 };
 
-// enqueue: thêm file vào cuối hàng đợi và kích hoạt runner nếu queue đang rảnh.
-// run(jobId, signal) là upload flow thật của LessonVideoUploader.
+/**
+ * Thêm file vào cuối hàng đợi và kích hoạt runner nếu queue rảnh.
+ * `run(jobId, signal)` là toàn bộ upload flow do LessonVideoUploader cung cấp.
+ */
 export const enqueueVideoUpload = (input: {
   lessonId: string;
   file: File;
@@ -133,8 +140,9 @@ export const enqueueVideoUpload = (input: {
   return id;
 };
 
-// cancel: hủy job đang chờ hoặc đang upload.
-// Nếu đang upload, AbortController sẽ dừng các XMLHttpRequest PUT part hiện tại.
+/**
+ * Hủy job đang chờ hoặc đang upload; AbortController dừng các XMLHttpRequest PUT part hiện tại.
+ */
 export const cancelVideoUpload = (jobId: string) => {
   const job = jobs.find((item) => item.id === jobId);
   if (!job || job.status === 'done' || job.status === 'failed' || job.status === 'canceled') return;
