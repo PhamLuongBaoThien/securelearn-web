@@ -1,3 +1,4 @@
+// Mã hỗ trợ giao diện: Cung cấp kiểu dữ liệu, hằng số hoặc hàm dùng cho trang quản lý nhân viên quản trị (route: /admin/users/staff).
 // ========================
 // Staff Utils: Constants, type helpers, và pure functions dùng chung cho module staff đã tách nhỏ.
 // ========================

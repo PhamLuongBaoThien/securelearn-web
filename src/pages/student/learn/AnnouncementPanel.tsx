@@ -1,3 +1,4 @@
+// Thành phần giao diện: AnnouncementPanel thuộc trang học khóa học của người học (route: /student/courses/:courseId/learn).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bell, ChevronDown, Loader2, Pin } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';

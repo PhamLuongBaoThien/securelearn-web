@@ -1,3 +1,4 @@
+// Thành phần giao diện: ProfileEditPanel thuộc trang cài đặt hồ sơ và bảo mật tài khoản (route: /account/settings/:tab).
 import type { FieldErrors, UseFormHandleSubmit, UseFormRegister } from 'react-hook-form';
 import { BadgeCheck, Briefcase, FileText, Loader2, Mail, Phone, Save, User, Globe, Github, Facebook, Youtube, Linkedin } from 'lucide-react';
 import { Button } from '@/components/ui/button';

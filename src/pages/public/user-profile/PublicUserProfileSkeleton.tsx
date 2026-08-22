@@ -1,3 +1,4 @@
+// Thành phần giao diện: PublicUserProfileSkeleton thuộc trang hồ sơ công khai của người dùng (route: /users/:slug).
 
 export function PublicUserProfileSkeleton() {
   return (

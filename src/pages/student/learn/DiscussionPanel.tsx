@@ -1,3 +1,4 @@
+// Thành phần giao diện: DiscussionPanel thuộc trang học khóa học của người học (route: /student/courses/:courseId/learn).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, Heart, Loader2, MessageSquare, Pencil, Pin, Send, Trash2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';

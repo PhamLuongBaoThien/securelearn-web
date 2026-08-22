@@ -1,3 +1,4 @@
+// Thành phần giao diện: CoursePurchaseCard thuộc trang chi tiết khóa học công khai (route: /course/:slug).
 // File: CoursePurchaseCard.tsx
 // Sidebar mua hàng nằm bên phải trang Course Detail.
 // Tính năng:
@@ -357,7 +358,6 @@ export function CoursePurchaseCard({ course, isEnrolled, isAccessLoading = false
     </div>
   );
 }
-
 
 
 

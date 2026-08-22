@@ -1,4 +1,5 @@
-﻿// File: CourseIncludes.tsx
+﻿// Thành phần giao diện: CourseIncludes thuộc trang chi tiết khóa học công khai (route: /course/:slug).
+// File: CourseIncludes.tsx
 // Hiển thị danh sách những gì được bao gồm trong khóa học ở main content.
 
 import {
@@ -90,4 +91,3 @@ export function CourseIncludes({ totalDuration, totalLessons, totalQuizzes = 0, 
     </section>
   );
 }
-

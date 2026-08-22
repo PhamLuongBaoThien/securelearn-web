@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai nhóm trang quản lý, biên soạn và thảo luận khóa học (route: /instructor/courses...).
 import { useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';

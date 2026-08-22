@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang quản lý gói thuê bao (route: /admin/finance/plans).
 import { useState } from 'react';
 import { CalendarDays, Check, Loader2, RefreshCw, Save, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';

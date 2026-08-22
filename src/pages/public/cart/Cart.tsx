@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang giỏ hàng khóa học (route: /cart).
 // ========================
 // Cart Page
 // Mục đích:

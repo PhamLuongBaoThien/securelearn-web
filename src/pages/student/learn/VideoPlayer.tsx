@@ -1,3 +1,4 @@
+// Thành phần giao diện: VideoPlayer thuộc trang học khóa học của người học (route: /student/courses/:courseId/learn).
 // [TRÌNH PHÁT VIDEO BẢO MẬT & HEARTBEAT - BƯỚC 2 ĐẾN 2.8 & BƯỚC 3]
 // Component phát video bài học bảo mật tích hợp HLS (HTTP Live Streaming) và chống gian lận/quay lén màn hình.
 // Vai trò các bước:

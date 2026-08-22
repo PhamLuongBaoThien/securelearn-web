@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang danh sách, tìm kiếm và lọc khóa học (route: /courses).
 import { useState, useCallback, useEffect, useRef, type MouseEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";

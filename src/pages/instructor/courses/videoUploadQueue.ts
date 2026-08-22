@@ -1,3 +1,4 @@
+// Mã hỗ trợ giao diện: Cung cấp kiểu dữ liệu, hằng số hoặc hàm dùng cho nhóm trang quản lý, biên soạn và thảo luận khóa học (route: /instructor/courses...).
 // Queue upload video chạy trong memory của tab hiện tại.
 // Công dụng chính:
 // 1. enqueueVideoUpload: thêm video vào hàng đợi.

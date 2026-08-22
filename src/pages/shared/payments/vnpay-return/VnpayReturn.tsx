@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang tiếp nhận kết quả trả về từ VNPay (route: /payment/vnpay-return).
 // ========================
 // VNPay Return Page
 // Mục đích:

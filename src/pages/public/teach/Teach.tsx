@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang giới thiệu và đăng ký trở thành người giảng dạy (route: /teach).
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';
 import { SlideUp } from '@/components/animations/SlideUp';

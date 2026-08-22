@@ -1,4 +1,5 @@
-﻿import { useEffect, useState, useRef } from 'react';
+﻿// Trang/giao diện: Triển khai trung tâm hỗ trợ và quản lý phiếu yêu cầu (route: /support và /support/tickets/:id).
+import { useEffect, useState, useRef } from 'react';
 import { useEffectEvent } from 'react';
 import type { ElementType } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';

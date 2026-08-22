@@ -1,3 +1,4 @@
+// Mã hỗ trợ giao diện: Cung cấp kiểu dữ liệu, hằng số hoặc hàm dùng cho trang cài đặt hồ sơ và bảo mật tài khoản (route: /account/settings/:tab).
 // User Profile Utils: tab và style dùng chung cho trang cài đặt tài khoản.
 import React from 'react';
 import { Camera, KeyRound, MonitorSmartphone, User } from 'lucide-react';

@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai nhóm trang quản lý, biên soạn và thảo luận khóa học (route: /instructor/courses...).
 // ========================
 // Instructor Courses Page
 // Mục đích:

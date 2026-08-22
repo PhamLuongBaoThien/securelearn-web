@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang danh sách khóa học thuộc gói thuê bao (route: /subscription-catalog).
 // ========================
 // Subscription Catalog Page
 // Mục đích:

@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang giao tiếp của người giảng dạy (route: /instructor/communication).
 import { useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, Eye, EyeOff, FilterX, Loader2, MessageSquare, Pencil, Pin, Plus, RefreshCw, Search } from 'lucide-react';

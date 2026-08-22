@@ -1,3 +1,4 @@
+// Thành phần giao diện: CourseReviews thuộc trang chi tiết khóa học công khai (route: /course/:slug).
 import { useEffect, useState } from 'react';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';

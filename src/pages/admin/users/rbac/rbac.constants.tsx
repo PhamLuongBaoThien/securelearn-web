@@ -1,3 +1,4 @@
+// Mã hỗ trợ giao diện: Cung cấp kiểu dữ liệu, hằng số hoặc hàm dùng cho trang quản lý vai trò và quyền hạn (route: /admin/users/rbac).
 // ========================
 // RBAC Constants: Tập trung constants dùng chung cho module RBAC đã tách nhỏ.
 // ========================

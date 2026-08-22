@@ -1,3 +1,4 @@
+// Thành phần giao diện: ProfileSessionsPanel thuộc trang cài đặt hồ sơ và bảo mật tài khoản (route: /account/settings/:tab).
 import {
   BadgeCheck,
   Clock3,

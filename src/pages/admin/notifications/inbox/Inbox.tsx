@@ -1,4 +1,5 @@
-﻿import { useEffect, useState, useRef } from 'react';
+﻿// Trang/giao diện: Triển khai trang quản lý hỗ trợ, góp ý và báo cáo (route: /admin/notifications/inbox).
+import { useEffect, useState, useRef } from 'react';
 import type { ElementType } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';

@@ -1,3 +1,4 @@
+// Thành phần giao diện: ProfileTabNav thuộc trang cài đặt hồ sơ và bảo mật tài khoản (route: /account/settings/:tab).
 import { NavLink } from 'react-router-dom';
 import { profileTabs } from './profile.utils';
 

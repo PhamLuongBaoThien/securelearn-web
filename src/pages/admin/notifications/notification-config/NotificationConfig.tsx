@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang cấu hình mẫu và tùy chọn thông báo (route: /admin/notifications/config).
 import React, { useEffect, useState } from 'react';
 import { notificationApi } from '@/services/notificationApi';
 import { Bell, Mail, Smartphone, Save, X, Eye, Code } from 'lucide-react';

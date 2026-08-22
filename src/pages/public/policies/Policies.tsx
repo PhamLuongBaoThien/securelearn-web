@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai nhóm trang danh sách và chi tiết chính sách (route: /policies và /policies/:slug).
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, FileText, Loader2, Search, Shield } from 'lucide-react';

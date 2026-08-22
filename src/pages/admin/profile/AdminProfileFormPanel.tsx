@@ -1,3 +1,4 @@
+// Thành phần giao diện: AdminProfileFormPanel thuộc trang hồ sơ và bảo mật tài khoản quản trị (route: /admin/profile).
 // Admin Profile Form Panel: Form cập nhật thông tin cá nhân cho admin.
 import React from 'react';
 import type { FieldErrors, UseFormHandleSubmit, UseFormRegister } from 'react-hook-form';

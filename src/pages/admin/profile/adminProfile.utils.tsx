@@ -1,3 +1,4 @@
+// Mã hỗ trợ giao diện: Cung cấp kiểu dữ liệu, hằng số hoặc hàm dùng cho trang hồ sơ và bảo mật tài khoản quản trị (route: /admin/profile).
 // Admin Profile Utils: Hằng số tab và class dùng chung cho trang hồ sơ admin.
 import React from 'react';
 import { Camera, Shield, User } from 'lucide-react';

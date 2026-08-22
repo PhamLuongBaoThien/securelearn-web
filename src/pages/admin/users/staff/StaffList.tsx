@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang quản lý nhân viên quản trị (route: /admin/users/staff).
 // ========================
 // StaffList: File đầu mối sau khi đã tách nhỏ thành dialog, row component, và utils riêng.
 // Giữ phần điều phối state, query, filter, và thao tác quản lý nhân sự tại đây.

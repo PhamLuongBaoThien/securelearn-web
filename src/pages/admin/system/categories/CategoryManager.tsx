@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang quản lý danh mục khóa học (route: /admin/system/categories).
 import React, { useMemo, useState } from 'react';
 import { Plus, Tag, Loader2, RefreshCw, BookOpen, FolderOpen, Folder, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';

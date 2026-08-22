@@ -1,3 +1,4 @@
+// Thành phần giao diện: CourseInstructor thuộc trang chi tiết khóa học công khai (route: /course/:slug).
 // File: CourseInstructor.tsx
 // Hiển thị thông tin giảng viên của khóa học.
 // Dùng instructorProfile nếu public course response có avatar/bio,

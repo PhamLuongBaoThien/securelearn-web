@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang thông báo của người giảng dạy (route: /instructor/notifications).
 import React, { useCallback, useEffect, useState } from 'react';
 import { Bell, CheckCircle2, Clock, Info, AlertTriangle } from 'lucide-react';
 import { notificationApi } from '@/services/notificationApi';

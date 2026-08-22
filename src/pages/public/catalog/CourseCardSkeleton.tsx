@@ -1,3 +1,4 @@
+// Thành phần giao diện: CourseCardSkeleton thuộc trang danh sách, tìm kiếm và lọc khóa học (route: /courses).
 export function CourseCardSkeleton() {
   return (
     <div className="flex flex-col h-full bg-zinc-50 dark:bg-card border border-border rounded-xl overflow-hidden shadow-sm animate-pulse">

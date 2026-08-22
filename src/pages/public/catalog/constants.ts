@@ -1,3 +1,4 @@
+// Mã hỗ trợ giao diện: Cung cấp kiểu dữ liệu, hằng số hoặc hàm dùng cho trang danh sách, tìm kiếm và lọc khóa học (route: /courses).
 import type { PriceRangeValue } from "@/lib/courseUtils";
 
 export const PRICE_MAX = 5_000_000;

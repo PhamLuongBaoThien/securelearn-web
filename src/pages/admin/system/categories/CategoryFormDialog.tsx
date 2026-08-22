@@ -1,3 +1,4 @@
+// Thành phần giao diện: CategoryFormDialog thuộc trang quản lý danh mục khóa học (route: /admin/system/categories).
 import React, { useMemo, useState } from 'react';
 import { Save, Hash, ChevronDown, Check } from 'lucide-react';
 import { toast } from 'sonner';

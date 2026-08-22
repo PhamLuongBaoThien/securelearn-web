@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang quản lý nội dung chính sách (route: /admin/system/policies).
 import React, { useMemo, useState } from 'react';
 import { AlertCircle, FileText, Loader2, Pencil, Plus, RefreshCw, Save, Search, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';

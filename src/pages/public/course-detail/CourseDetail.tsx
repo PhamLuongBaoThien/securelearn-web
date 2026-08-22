@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang chi tiết khóa học công khai (route: /course/:slug).
 // File: CourseDetail.tsx
 // Component chính của trang xem chi tiết khóa học (route: /course/:slug).
 // Luồng hoạt động:

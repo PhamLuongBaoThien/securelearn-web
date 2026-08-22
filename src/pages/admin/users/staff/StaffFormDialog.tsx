@@ -1,3 +1,4 @@
+// Thành phần giao diện: StaffFormDialog thuộc trang quản lý nhân viên quản trị (route: /admin/users/staff).
 // ========================
 // StaffFormDialog: Dialog tạo/sửa staff, tách riêng khỏi StaffList để giữ luồng chính gọn hơn.
 // ========================

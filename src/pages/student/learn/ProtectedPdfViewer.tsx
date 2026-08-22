@@ -1,3 +1,4 @@
+// Thành phần giao diện: ProtectedPdfViewer thuộc trang học khóa học của người học (route: /student/courses/:courseId/learn).
 // [BƯỚC 2.3: LUỒNG ĐỌC TÀI LIỆU PDF TRONG ỨNG DỤNG (IN-APP PDF VIEW ENGINE)]
 // Component hiển thị tài liệu PDF đi kèm bài học ngay trong ứng dụng.
 // Vai trò chính:

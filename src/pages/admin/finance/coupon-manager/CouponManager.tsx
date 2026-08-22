@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang quản lý mã giảm giá (route: /admin/finance/coupons).
 // ========================
 // Admin Coupon Manager
 // Mục đích:

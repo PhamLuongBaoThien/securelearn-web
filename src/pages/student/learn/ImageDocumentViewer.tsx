@@ -1,3 +1,4 @@
+// Thành phần giao diện: ImageDocumentViewer thuộc trang học khóa học của người học (route: /student/courses/:courseId/learn).
 // [XEM TÀI LIỆU ẢNH BẢO MẬT - BƯỚC 5]
 // Component hiển thị các tài liệu dạng hình ảnh đính kèm bài học.
 // Vai trò chính:

@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang đăng nhập quản trị (route: /admin/login).
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '@/app/hooks';

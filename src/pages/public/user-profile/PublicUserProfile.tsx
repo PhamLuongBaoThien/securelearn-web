@@ -1,3 +1,4 @@
+// Thành phần giao diện: PublicUserProfile thuộc trang hồ sơ công khai của người dùng (route: /users/:slug).
 import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';

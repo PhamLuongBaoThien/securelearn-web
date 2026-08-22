@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang quản lý giao dịch và tài chính (route: /admin/finance/transactions).
 import React, { useMemo, useState } from 'react';
 import { Search, Filter, CreditCard, Download, RefreshCw, CheckCircle, XCircle, Clock, Percent, Save, Undo2, ChevronDown, ChevronUp, CircleDollarSign, Scale, Users, Loader2, X, CalendarRange, TrendingUp } from 'lucide-react';
 import { Area, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts';

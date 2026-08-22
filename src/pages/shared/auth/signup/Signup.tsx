@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang đăng ký tài khoản (route: /auth/signup).
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { StaggerContainer, StaggerItem } from '@/components/animations/Stagger';

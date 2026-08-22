@@ -1,3 +1,4 @@
+// Thành phần giao diện: UserTable thuộc trang quản lý danh sách người dùng (route: /admin/users/list).
 // ========================
 // UserTable: Component bảng danh sách người dùng và thao tác từng dòng trong module user list.
 // ========================

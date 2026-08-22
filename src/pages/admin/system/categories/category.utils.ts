@@ -1,3 +1,4 @@
+// Mã hỗ trợ giao diện: Cung cấp kiểu dữ liệu, hằng số hoặc hàm dùng cho trang quản lý danh mục khóa học (route: /admin/system/categories).
 // ========================
 // Category Utilities: Các hàm tiện ích xử lý cây danh mục
 // ========================

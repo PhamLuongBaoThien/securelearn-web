@@ -1,3 +1,4 @@
+// Thành phần giao diện: ProfileSecurityPanel thuộc trang cài đặt hồ sơ và bảo mật tài khoản (route: /account/settings/:tab).
 // User Profile Security Panel: Đổi mật khẩu và xóa tài khoản cho người dùng.
 import React, { useState } from 'react';
 import type { FieldErrors, UseFormHandleSubmit, UseFormRegister } from 'react-hook-form';
@@ -207,4 +208,3 @@ export const ProfileSecurityPanel: React.FC<ProfileSecurityPanelProps> = ({
     </AnimatedTabContent>
   );
 };
-

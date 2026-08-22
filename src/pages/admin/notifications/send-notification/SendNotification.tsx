@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang tạo và gửi chiến dịch thông báo (route: /admin/notifications/send).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Code2, Eye, Mail, MessageSquare, Send } from 'lucide-react';
 import { toast } from 'sonner';

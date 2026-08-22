@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trung tâm thông báo dùng chung (route: /notifications và /admin/notifications/system).
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { Bell, CheckCircle2, Clock, Settings, Inbox, Loader2, ChevronRight, Mail, Smartphone } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';

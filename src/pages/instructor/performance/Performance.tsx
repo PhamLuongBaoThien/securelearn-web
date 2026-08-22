@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang phân tích hiệu quả và doanh thu giảng dạy (route: /instructor/performance).
 // ========================
 // Instructor Performance Page
 // Mục đích:

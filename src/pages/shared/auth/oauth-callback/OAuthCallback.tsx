@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang xử lý callback đăng nhập Google OAuth (route: /oauth-callback).
 // ========================
 // OAuth Callback: Xử lý redirect từ Google OAuth
 // URL pattern: /oauth-callback?token=<access_token>

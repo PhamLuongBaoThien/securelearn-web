@@ -1,4 +1,5 @@
-﻿// ========================
+﻿// Trang/giao diện: Triển khai trang tổng quan quản trị hệ thống (route: /admin/dashboard).
+// ========================
 // Admin Dashboard: Bảng điều khiển
 // Hiển thị dữ liệu thật từ API: users, courses, revenue
 // Đồng bộ giao diện cao cấp và sử dụng biểu đồ shadcn UI

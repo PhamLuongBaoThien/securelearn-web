@@ -1,3 +1,4 @@
+// Thành phần giao diện: LessonVideoUploader thuộc nhóm trang quản lý, biên soạn và thảo luận khóa học (route: /instructor/courses...).
 // Component thực hiện hai giai đoạn của luồng tải và xử lý video bài học.
 //
 // GIAI ĐOẠN 1 - TẢI TỆP GỐC (Frontend phải giữ trang cho đến khi confirm thành công):

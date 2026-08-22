@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang quản lý học viên của người giảng dạy (route: /instructor/students).
 // ========================
 // Instructor Students Page
 // Mục đích:

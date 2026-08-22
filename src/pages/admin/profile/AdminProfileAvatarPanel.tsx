@@ -1,3 +1,4 @@
+// Thành phần giao diện: AdminProfileAvatarPanel thuộc trang hồ sơ và bảo mật tài khoản quản trị (route: /admin/profile).
 // Admin Profile Avatar Panel: Khu vực thay đổi ảnh đại diện cho tài khoản admin.
 import React from 'react';
 import { Camera, Loader2, Save } from 'lucide-react';

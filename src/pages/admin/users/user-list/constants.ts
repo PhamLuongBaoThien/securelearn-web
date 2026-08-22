@@ -1,3 +1,4 @@
+// Mã hỗ trợ giao diện: Cung cấp kiểu dữ liệu, hằng số hoặc hàm dùng cho trang quản lý danh sách người dùng (route: /admin/users/list).
 // ========================
 // User List Constants: Constants và label/color helpers dùng chung cho module user list đã tách nhỏ.
 // ========================

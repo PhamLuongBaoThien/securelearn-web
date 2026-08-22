@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai nhóm trang quản lý, biên soạn và thảo luận khóa học (route: /instructor/courses...).
 // File này là màn hình editor chính cho instructor.
 // Nó đang ghép 3 lớp logic:
 // - metadata khóa học

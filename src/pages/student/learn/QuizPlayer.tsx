@@ -1,3 +1,4 @@
+// Thành phần giao diện: QuizPlayer thuộc trang học khóa học của người học (route: /student/courses/:courseId/learn).
 // [BÀI TẬP TRẮC NGHIỆM - BƯỚC 4]
 // Component quản lý toàn bộ luồng làm bài và nộp bài trắc nghiệm của học viên.
 // Vai trò chính:

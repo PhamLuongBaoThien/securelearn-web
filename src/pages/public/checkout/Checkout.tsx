@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang xác nhận và khởi tạo thanh toán (route: /checkout).
 // ========================
 // Checkout Page
 // Mục đích:

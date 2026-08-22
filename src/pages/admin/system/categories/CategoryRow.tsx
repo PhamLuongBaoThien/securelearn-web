@@ -1,3 +1,4 @@
+// Thành phần giao diện: CategoryRow thuộc trang quản lý danh mục khóa học (route: /admin/system/categories).
 import React from 'react';
 import {
   ChevronRight,

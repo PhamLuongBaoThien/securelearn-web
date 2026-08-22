@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang quản lý banner trang chủ (route: /admin/system/banners).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle, ArrowDown, ArrowUp, GripVertical, ImagePlus, Loader2,

@@ -1,3 +1,4 @@
+// Thành phần giao diện: AdminProfileSecurityPanel thuộc trang hồ sơ và bảo mật tài khoản quản trị (route: /admin/profile).
 // Admin Profile Security Panel: Form đổi mật khẩu cho tài khoản quản trị.
 import React from 'react';
 import type { FieldErrors, UseFormHandleSubmit, UseFormRegister } from 'react-hook-form';

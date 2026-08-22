@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang cấu hình thông tin website (route: /admin/system/config).
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Facebook, Github, Globe, Image as ImageIcon, Loader2, Mail, MapPin, Phone, RefreshCw, Save, Upload, Youtube, Linkedin } from 'lucide-react';

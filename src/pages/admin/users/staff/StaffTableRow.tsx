@@ -1,3 +1,4 @@
+// Thành phần giao diện: StaffTableRow thuộc trang quản lý nhân viên quản trị (route: /admin/users/staff).
 // ========================
 // StaffTableRow: Component hiển thị từng dòng staff trong bảng quản lý nhân sự đã tách nhỏ.
 // ========================

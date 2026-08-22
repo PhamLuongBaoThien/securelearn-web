@@ -1,3 +1,4 @@
+// Thành phần giao diện: LessonQuizBuilder thuộc nhóm trang quản lý, biên soạn và thảo luận khóa học (route: /instructor/courses...).
 // File này là UI tạo/sửa quiz cho lesson type QUIZ.
 // Lưu ý:
 // - nếu lesson đã có quiz thì load lên để sửa

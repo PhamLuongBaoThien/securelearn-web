@@ -1,3 +1,4 @@
+// Thành phần giao diện: RbacColorPicker thuộc trang quản lý vai trò và quyền hạn (route: /admin/users/rbac).
 // ========================
 // RbacColorPicker: Component chọn màu vai trò, tách riêng để tái sử dụng trong module RBAC.
 // ========================

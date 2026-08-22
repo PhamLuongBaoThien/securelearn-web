@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang quản lý khóa học và học liệu (route: /admin/courses/resources).
 import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';

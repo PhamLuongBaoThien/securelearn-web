@@ -1,3 +1,4 @@
+// Thành phần giao diện: ProfileAvatarPanel thuộc trang cài đặt hồ sơ và bảo mật tài khoản (route: /account/settings/:tab).
 // User Profile Avatar Panel: Khu vực chọn ảnh và cập nhật avatar người dùng.
 import React from 'react';
 import { Camera, Loader2, Save } from 'lucide-react';

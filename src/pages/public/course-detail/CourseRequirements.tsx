@@ -1,3 +1,4 @@
+// Thành phần giao diện: CourseRequirements thuộc trang chi tiết khóa học công khai (route: /course/:slug).
 // File: CourseRequirements.tsx
 // Hiển thị hai phần:
 //   1. Danh sách yêu cầu đầu vào của khóa học (requirements[])

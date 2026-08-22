@@ -1,3 +1,4 @@
+// Mã hỗ trợ giao diện: Cung cấp kiểu dữ liệu, hằng số hoặc hàm dùng cho trung tâm thông báo dùng chung (route: /notifications và /admin/notifications/system).
 import type React from 'react';
 import { BookOpen, CreditCard, GraduationCap, Inbox, Megaphone } from 'lucide-react';
 import type { NotificationCategory } from '@/types/notification.types';

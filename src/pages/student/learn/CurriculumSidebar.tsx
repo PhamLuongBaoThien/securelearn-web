@@ -1,3 +1,4 @@
+// Thành phần giao diện: CurriculumSidebar thuộc trang học khóa học của người học (route: /student/courses/:courseId/learn).
 // [SIDEBAR GIÁO TRÌNH & TIẾN ĐỘ - BƯỚC 1]
 // Component hiển thị danh sách chương học (Sections) và bài học (Lessons).
 // Vai trò chính:
@@ -180,4 +181,3 @@ export function CurriculumSidebar({
     </TooltipProvider>
   );
 }
-

@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang tổng quan học tập của người học (route: /student/dashboard).
 import { useEffect, useMemo, useState, type ElementType } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';

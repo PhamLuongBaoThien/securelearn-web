@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang tổng quan khu vực giảng dạy (route: /instructor/dashboard).
 // ========================
 // Instructor Dashboard: Tổng quan
 // Snapshot nhanh: KPI, việc cần xử lý và hiệu quả nổi bật.

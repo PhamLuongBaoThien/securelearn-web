@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang kiểm duyệt khóa học (route: /admin/courses/review).
 import React, { useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {

@@ -1,3 +1,4 @@
+// Thành phần giao diện: CatalogFilterDrawer thuộc trang danh sách, tìm kiếm và lọc khóa học (route: /courses).
 import { useState } from "react";
 import { Check, Star, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";

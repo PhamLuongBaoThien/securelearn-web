@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang học khóa học của người học (route: /student/courses/:courseId/learn).
 // [GIAO DIỆN HỌC TẬP CHÍNH - BƯỚC 1]
 // Component cha điều phối màn hình học tập của học viên.
 // Vai trò chính:

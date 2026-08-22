@@ -1,3 +1,4 @@
+// Thành phần giao diện: CourseHeroBanner thuộc trang chi tiết khóa học công khai (route: /course/:slug).
 // File: CourseHeroBanner.tsx
 // Banner phần trên của trang Course Detail — layout Split Hero.
 // Bố cục 2 cột: trái = thông tin khóa học, phải = thumbnail lớn bo góc.

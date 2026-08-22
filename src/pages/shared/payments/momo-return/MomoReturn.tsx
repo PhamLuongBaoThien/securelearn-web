@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang tiếp nhận kết quả trả về từ MoMo (route: /payment/momo-return).
 // ========================
 // MoMo Return Page
 // Mục đích:

@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang chủ công khai (route: /).
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';

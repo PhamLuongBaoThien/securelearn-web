@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang cài đặt hồ sơ và bảo mật tài khoản (route: /account/settings/:tab).
 // User Profile Page: Điều phối state, form và các panel con cho trang hồ sơ người dùng.
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';

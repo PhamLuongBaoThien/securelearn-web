@@ -1,4 +1,5 @@
-﻿// File: CourseCurriculum.tsx
+﻿// Thành phần giao diện: CourseCurriculum thuộc trang chi tiết khóa học công khai (route: /course/:slug).
+// File: CourseCurriculum.tsx
 // Hiển thị toàn bộ nội dung chương trình học của khóa học dưới dạng accordion.
 // Mỗi section (chương) là một hàng có thể bấm để mở/đóng,
 // bên trong hiển thị danh sách các bài học.

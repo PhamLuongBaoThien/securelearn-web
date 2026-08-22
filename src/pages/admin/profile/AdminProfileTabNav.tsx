@@ -1,3 +1,4 @@
+// Thành phần giao diện: AdminProfileTabNav thuộc trang hồ sơ và bảo mật tài khoản quản trị (route: /admin/profile).
 // Admin Profile Tab Nav: Sidebar điều hướng giữa các tab trong trang hồ sơ quản trị.
 import React from 'react';
 import { Button } from '@/components/ui/button';

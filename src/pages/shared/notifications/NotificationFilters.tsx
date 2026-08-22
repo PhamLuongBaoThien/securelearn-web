@@ -1,3 +1,4 @@
+// Thành phần giao diện: NotificationFilters thuộc trung tâm thông báo dùng chung (route: /notifications và /admin/notifications/system).
 import { CalendarDays, Check, Search, SlidersHorizontal } from 'lucide-react';
 import type { NotificationCategory } from '@/types/notification.types';
 import { Button } from '@/components/ui/button';

@@ -1,3 +1,4 @@
+// Thành phần giao diện: CatalogFilters thuộc trang danh sách, tìm kiếm và lọc khóa học (route: /courses).
 import { useState } from 'react';
 import { ChevronRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';

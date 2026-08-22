@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang thông báo không tìm thấy nội dung (route: *).
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Home } from 'lucide-react';

@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang giới thiệu các gói thuê bao (route: /pricing).
 // ========================
 // Pricing Page
 // Mục đích:

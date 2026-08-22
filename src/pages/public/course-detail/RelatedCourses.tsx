@@ -1,3 +1,4 @@
+// Thành phần giao diện: RelatedCourses thuộc trang chi tiết khóa học công khai (route: /course/:slug).
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle, Loader2 } from 'lucide-react';

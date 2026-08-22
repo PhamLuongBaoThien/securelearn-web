@@ -1,3 +1,4 @@
+// Thành phần giao diện: SortDropdown thuộc trang danh sách, tìm kiếm và lọc khóa học (route: /courses).
 import { SORT_OPTIONS } from "./constants";
 import {
   Select,

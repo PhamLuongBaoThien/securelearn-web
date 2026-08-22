@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang quản lý vai trò và quyền hạn (route: /admin/users/rbac).
 // ========================
 // RbacManager: File đầu mối sau khi đã tách nhỏ thành các sub-components và constants riêng.
 // Giữ phần điều phối state, query, và luồng thao tác phân quyền tại đây.

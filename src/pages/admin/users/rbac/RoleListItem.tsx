@@ -1,3 +1,4 @@
+// Thành phần giao diện: RoleListItem thuộc trang quản lý vai trò và quyền hạn (route: /admin/users/rbac).
 // ========================
 // RoleListItem: Component hiển thị từng role trong danh sách của module RBAC đã tách nhỏ.
 // ========================

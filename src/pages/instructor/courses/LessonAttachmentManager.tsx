@@ -1,3 +1,4 @@
+// Thành phần giao diện: LessonAttachmentManager thuộc nhóm trang quản lý, biên soạn và thảo luận khóa học (route: /instructor/courses...).
 // File này là UI quản lý tài liệu đính kèm cho lesson (cả VIDEO lẫn QUIZ).
 // Flow:
 // - Upload file → media-service → nhận documentAssetId

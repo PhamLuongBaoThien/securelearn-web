@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang đăng nhập người dùng (route: /auth/login).
 // ========================
 // Trang Đăng nhập — Dùng React Query useMutation
 // ========================

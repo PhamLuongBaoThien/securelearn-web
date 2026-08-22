@@ -1,3 +1,4 @@
+// Thành phần giao diện: CourseWhatYouLearn thuộc trang chi tiết khóa học công khai (route: /course/:slug).
 // File: CourseWhatYouLearn.tsx
 // Hiển thị danh sách những gì học viên sẽ học được sau khi hoàn thành khóa học.
 // Dữ liệu lấy từ trường whatYouWillLearn[] của ICourse.

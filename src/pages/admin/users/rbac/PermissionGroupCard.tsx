@@ -1,3 +1,4 @@
+// Thành phần giao diện: PermissionGroupCard thuộc trang quản lý vai trò và quyền hạn (route: /admin/users/rbac).
 // ========================
 // PermissionGroupCard: Component con cho từng nhóm quyền trong module RBAC đã tách nhỏ.
 // ========================

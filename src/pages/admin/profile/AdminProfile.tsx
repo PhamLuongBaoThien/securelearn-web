@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang hồ sơ và bảo mật tài khoản quản trị (route: /admin/profile).
 // Admin Profile Page: Điều phối state, form và các panel con cho trang hồ sơ quản trị.
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';

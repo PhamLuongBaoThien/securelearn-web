@@ -1,3 +1,4 @@
+// Thành phần giao diện: RoleFormDialog thuộc trang quản lý vai trò và quyền hạn (route: /admin/users/rbac).
 // ========================
 // RoleFormDialog: Dialog tạo/sửa role, tách riêng khỏi RbacManager để gọn luồng chính.
 // ========================

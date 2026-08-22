@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai trang quản lý danh sách người dùng (route: /admin/users/list).
 // ========================
 // Admin User List: File đầu mối quản lý học viên & giảng viên sau khi đã tách nhỏ.
 // Giữ phần điều phối state, query, paging, và các thao tác quản trị người dùng tại đây.

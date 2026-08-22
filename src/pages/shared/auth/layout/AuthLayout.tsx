@@ -1,3 +1,4 @@
+// Trang/giao diện: Triển khai bố cục dùng chung cho các trang xác thực (route: /auth/*).
 import { Outlet, Link } from 'react-router-dom';
 import { FadeIn } from '@/components/animations/FadeIn';
 import { BrandLogo } from '@/components/branding/BrandLogo';

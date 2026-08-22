@@ -1,3 +1,4 @@
+// Thành phần giao diện: InteractiveTabs thuộc trang học khóa học của người học (route: /student/courses/:courseId/learn).
 // [TAB TƯƠNG TÁC BÀI HỌC - BƯỚC 1 & 4 & 5]
 import { ReportDialog } from '@/components/inbox/ReportDialog';
 // Component InteractiveTabs quản lý các tab tương tác bổ trợ bên dưới bài học bao gồm:
