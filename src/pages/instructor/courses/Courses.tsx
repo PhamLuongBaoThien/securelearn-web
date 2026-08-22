@@ -176,6 +176,14 @@ export const InstructorCourses: React.FC = () => {
       return;
     }
 
+    // Khóa đã xuất bản chỉ được có một revision đang hoạt động. Nếu revision
+    // đã tồn tại thì mở đúng version đó, tránh gọi API "tạo" rồi nhận lại bản
+    // PENDING/REJECTED cũ và khiến trạng thái trên UI gây hiểu nhầm.
+    if (course.activeRevision) {
+      navigate(`/instructor/courses/${course.activeRevision._id}/edit`);
+      return;
+    }
+
     revisionMutation.mutate(course._id, {
       onSuccess: (revision) => {
         navigate(`/instructor/courses/${revision._id}/edit`);
@@ -348,7 +356,16 @@ export const InstructorCourses: React.FC = () => {
                         className="gap-2 cursor-pointer"
                         onClick={() => handleEditCourse(course)}
                       >
-                        <Edit className="w-4 h-4" /> {course.status === 'PUBLISHED' ? 'Tạo bản cập nhật' : 'Chỉnh sửa'}
+                        <Edit className="w-4 h-4" />
+                        {course.status === 'PUBLISHED'
+                          ? course.activeRevision?.status === 'PENDING'
+                            ? 'Xem bản cập nhật chờ duyệt'
+                            : course.activeRevision
+                              ? 'Chỉnh sửa bản cập nhật'
+                              : 'Tạo bản cập nhật'
+                          : course.status === 'PENDING'
+                            ? 'Xem bản chờ duyệt'
+                            : 'Chỉnh sửa'}
                       </DropdownMenuItem>
 
                       <DropdownMenuItem

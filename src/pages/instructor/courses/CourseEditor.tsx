@@ -894,6 +894,7 @@ export const CourseEditor: React.FC = () => {
     if (metadataSaveInFlightRef.current) return;
 
     let cancelled = false;
+    let requestSucceeded = false;
     const saveSeq = metadataSaveSeqRef.current + 1;
     const thumbnailChangeSeq = thumbnailChangeSeqRef.current;
     metadataSaveSeqRef.current = saveSeq;
@@ -905,6 +906,7 @@ export const CourseEditor: React.FC = () => {
       courseId: courseId!,
       payload: buildCourseMetadataPayload(debouncedMetadataDraft, thumbnailFile),
     }).then((updatedCourse) => {
+      requestSucceeded = true;
       if (
         cancelled ||
         metadataSaveSeqRef.current !== saveSeq ||
@@ -931,16 +933,25 @@ export const CourseEditor: React.FC = () => {
       ) return;
       setMetadataSaveStatus("error");
       metadataSaveTimerRef.current = setTimeout(() => setMetadataSaveStatus("idle"), 3000);
-      toast.error(error instanceof Error ? error.message : "Không thể tự lưu thông tin khóa học.");
+      const message = error instanceof Error ? error.message : "Không thể tự lưu thông tin khóa học.";
+      // Đồng bộ lại trạng thái khi server đã khóa version (PENDING/PUBLISHED).
+      // Quan trọng hơn, không tự kích hoạt lại save cycle cho chính payload vừa lỗi.
+      if (message.includes("không thể chỉnh sửa trực tiếp")) void refetch();
+      toast.error(message);
     }).finally(() => {
       metadataSaveInFlightRef.current = false;
-      setMetadataSaveCycle((cycle) => cycle + 1);
+      // Chỉ đánh thức effect khi request đã lưu được, hoặc draft đã đổi trong lúc
+      // request chạy. Nếu request lỗi với cùng draft, tăng cycle tại đây sẽ tạo
+      // vòng lặp PUT + toast vô hạn.
+      if (requestSucceeded || cancelled) {
+        setMetadataSaveCycle((cycle) => cycle + 1);
+      }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [courseId, debouncedMetadataDraft, effectiveReadOnly, isInitialized, metadataDraft, metadataSaveCycle, thumbnailFile]);
+  }, [courseId, debouncedMetadataDraft, effectiveReadOnly, isInitialized, metadataDraft, metadataSaveCycle, refetch, thumbnailFile]);
 
   useEffect(() => {
     if (!isInitialized || effectiveReadOnly || !savedSnapshotRef.current) return;
@@ -1120,7 +1131,9 @@ export const CourseEditor: React.FC = () => {
           </Button>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">Chỉnh sửa khóa học</h1>
+              <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
+                {course.status === "PENDING" ? "Bản khóa học đang chờ duyệt" : course.status === "PUBLISHED" ? "Chi tiết khóa học" : "Chỉnh sửa khóa học"}
+              </h1>
               {getStatusBadge(displayCourse.status)}
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">ID: {courseId}</p>
@@ -1188,6 +1201,11 @@ export const CourseEditor: React.FC = () => {
             >
               {(submitReviewMutation.isPending || validatePublishMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} Gửi duyệt
               {hasBlockingVideos && <AlertTriangle className="w-3.5 h-3.5 text-amber-300" />}
+            </Button>
+          )}
+          {course.status === "PENDING" && !isViewingPublished && (
+            <Button disabled variant="outline" className="gap-2 rounded-xl">
+              <Clock className="w-4 h-4" /> Đã gửi duyệt
             </Button>
           )}
         </div>
